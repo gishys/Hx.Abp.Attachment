@@ -1,0 +1,15 @@
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Domain\bin\Debug\net8.0\Hx.Abp.Attachment.Domain.deps.json
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Domain\bin\Debug\net8.0\Hx.Abp.Attachment.Domain.dll
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Domain\bin\Debug\net8.0\Hx.Abp.Attachment.Domain.pdb
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Domain\bin\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.dll
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Domain\bin\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.pdb
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Domain\obj\Debug\net8.0\Hx.Abp.Attachment.Domain.csproj.AssemblyReference.cache
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Domain\obj\Debug\net8.0\Hx.Abp.Attachment.Domain.GeneratedMSBuildEditorConfig.editorconfig
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Domain\obj\Debug\net8.0\Hx.Abp.Attachment.Domain.AssemblyInfoInputs.cache
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Domain\obj\Debug\net8.0\Hx.Abp.Attachment.Domain.AssemblyInfo.cs
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Domain\obj\Debug\net8.0\Hx.Abp.Attachment.Domain.csproj.CoreCompileInputs.cache
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Domain\obj\Debug\net8.0\Hx.Abp.Attachment.Domain.csproj.CopyComplete
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Domain\obj\Debug\net8.0\Hx.Abp.Attachment.Domain.dll
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Domain\obj\Debug\net8.0\refint\Hx.Abp.Attachment.Domain.dll
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Domain\obj\Debug\net8.0\Hx.Abp.Attachment.Domain.pdb
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Domain\obj\Debug\net8.0\ref\Hx.Abp.Attachment.Domain.dll

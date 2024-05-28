@@ -1,0 +1,15 @@
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Application.Contracts\bin\Debug\net8.0\Hx.Abp.Attachment.Application.Contracts.deps.json
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Application.Contracts\bin\Debug\net8.0\Hx.Abp.Attachment.Application.Contracts.dll
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Application.Contracts\bin\Debug\net8.0\Hx.Abp.Attachment.Application.Contracts.pdb
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Application.Contracts\bin\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.dll
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Application.Contracts\bin\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.pdb
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Application.Contracts\obj\Debug\net8.0\Hx.Abp.Attachment.Application.Contracts.csproj.AssemblyReference.cache
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Application.Contracts\obj\Debug\net8.0\Hx.Abp.Attachment.Application.Contracts.GeneratedMSBuildEditorConfig.editorconfig
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Application.Contracts\obj\Debug\net8.0\Hx.Abp.Attachment.Application.Contracts.AssemblyInfoInputs.cache
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Application.Contracts\obj\Debug\net8.0\Hx.Abp.Attachment.Application.Contracts.AssemblyInfo.cs
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Application.Contracts\obj\Debug\net8.0\Hx.Abp.Attachment.Application.Contracts.csproj.CoreCompileInputs.cache
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Application.Contracts\obj\Debug\net8.0\Hx.Abp.Attachment.Application.Contracts.csproj.CopyComplete
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Application.Contracts\obj\Debug\net8.0\Hx.Abp.Attachment.Application.Contracts.dll
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Application.Contracts\obj\Debug\net8.0\refint\Hx.Abp.Attachment.Application.Contracts.dll
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Application.Contracts\obj\Debug\net8.0\Hx.Abp.Attachment.Application.Contracts.pdb
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Application.Contracts\obj\Debug\net8.0\ref\Hx.Abp.Attachment.Application.Contracts.dll

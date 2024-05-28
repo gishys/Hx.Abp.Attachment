@@ -1,0 +1,6 @@
+@Hx.Abp.Attachment_HostAddress = http://localhost:5186
+
+GET {{Hx.Abp.Attachment_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

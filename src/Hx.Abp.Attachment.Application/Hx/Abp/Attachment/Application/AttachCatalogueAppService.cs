@@ -13,13 +13,13 @@ namespace Hx.Abp.Attachment.Application
     [Dependency(ServiceLifetime.Singleton, ReplaceServices = true)]
     public class AttachCatalogueAppService(
         IEfCoreAttachCatalogueRepository catalogueRepository,
-        IBlobContainer blobContainer,
-        IConfiguration configuration) : AttachmentService, IAttachCatalogueAppService
+        IConfiguration configuration,
+        IBlobContainerFactory blobContainerFactory) : AttachmentService, IAttachCatalogueAppService
     {
         private readonly IEfCoreAttachCatalogueRepository CatalogueRepository = catalogueRepository;
-        private readonly IBlobContainer BlobContainer = blobContainer;
+        private readonly IBlobContainer BlobContainer = blobContainerFactory.Create("attachment");
         private readonly IConfiguration Configuration = configuration;
-
+        private readonly IBlobContainerFactory BlobContainerFactory = blobContainerFactory;
         /// <summary>
         /// 创建文件夹
         /// </summary>
@@ -87,18 +87,14 @@ namespace Hx.Abp.Attachment.Application
         public virtual async Task<AttachFileDto> DownloadSingleFileAsync(Guid catalogueId, Guid attachFileId)
         {
             var entity = await CatalogueRepository.FindAsync(catalogueId);
-            var attachFile= (entity?.AttachFiles?.FirstOrDefault(d => d.Id == attachFileId)) ?? throw new BusinessException(message: "没有查询到有效的文件！");
-            var fileName = $"{attachFile.Id}{Path.GetExtension(attachFile.FileAlias)}";
-            var tenant = CurrentTenant.Id == null ? "host" : $"tenants/{CurrentTenant.Id}";
-            var fileUrl = $"/cmsfile/{tenant}/attachment/{fileName}";
-            var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{fileUrl}";
+            var attachFile = (entity?.AttachFiles?.FirstOrDefault(d => d.Id == attachFileId)) ?? throw new BusinessException(message: "没有查询到有效的文件！");
+            var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{attachFile.FilePath}";
             var tempFile = new AttachFileDto()
             {
                 FilePath = src,
                 Id = attachFile.Id,
                 FileAlias = attachFile.FileAlias,
                 SequenceNumber = attachFile.SequenceNumber
-
             };
             return tempFile;
         }
@@ -120,8 +116,7 @@ namespace Hx.Abp.Attachment.Application
                     tempAttachFile.AttachFiles?.Count > 0 ?
                     tempAttachFile.AttachFiles.Max(d => d.SequenceNumber) : 0;
                 var fileName = $"{attachId}{Path.GetExtension(input.FileAlias)}";
-                var tenant = CurrentTenant.Id == null ? "host" : $"tenants/{CurrentTenant.Id}";
-                var fileUrl = $"/cmsfile/{tenant}/attachment/{fileName}";
+                var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{tempAttachFile.BusinessId}/{fileName}";
                 var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{fileUrl}";
                 var tempFile = new AttachFile(
                     attachId,
@@ -222,9 +217,7 @@ namespace Hx.Abp.Attachment.Application
                 await BlobContainer.DeleteAsync(target.FileName);
                 var attachId = GuidGenerator.Create();
                 var fileName = $"{attachId}{Path.GetExtension(input.FileAlias)}";
-                var tenant = CurrentTenant.Id == null ? "host" : $"tenants/{CurrentTenant.Id}";
-                var fileUrl = $"/cmsfile/{tenant}/attachment/{fileName}";
-                var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{fileUrl}";
+                var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{entity.BusinessId}/{fileName}";
                 var tempFile = new AttachFile(
                     attachId,
                     input.FileAlias,

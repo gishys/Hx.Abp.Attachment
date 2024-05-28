@@ -32,3 +32,4 @@ D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.EntityFrameworkCore\obj\D
 D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.EntityFrameworkCore\obj\Debug\net8.0\refint\Hx.Abp.Attachment.EntityFrameworkCore.dll
 D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.EntityFrameworkCore\obj\Debug\net8.0\Hx.Abp.Attachment.EntityFrameworkCore.pdb
 D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.EntityFrameworkCore\obj\Debug\net8.0\ref\Hx.Abp.Attachment.EntityFrameworkCore.dll
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.EntityFrameworkCore\obj\Debug\net8.0\Hx.Abp.Attachment.EntityFrameworkCore.sourcelink.json

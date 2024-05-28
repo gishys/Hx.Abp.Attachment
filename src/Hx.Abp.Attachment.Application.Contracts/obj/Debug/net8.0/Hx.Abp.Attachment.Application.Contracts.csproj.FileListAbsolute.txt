@@ -13,3 +13,4 @@ D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Application.Contracts\obj
 D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Application.Contracts\obj\Debug\net8.0\refint\Hx.Abp.Attachment.Application.Contracts.dll
 D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Application.Contracts\obj\Debug\net8.0\Hx.Abp.Attachment.Application.Contracts.pdb
 D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Application.Contracts\obj\Debug\net8.0\ref\Hx.Abp.Attachment.Application.Contracts.dll
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Application.Contracts\obj\Debug\net8.0\Hx.Abp.Attachment.Application.Contracts.sourcelink.json

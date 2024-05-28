@@ -880,3 +880,4 @@ D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment\obj\Debug\net8.0\refint\H
 D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment\obj\Debug\net8.0\Hx.Abp.Attachment.pdb
 D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment\obj\Debug\net8.0\Hx.Abp.Attachment.genruntimeconfig.cache
 D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment\obj\Debug\net8.0\ref\Hx.Abp.Attachment.dll
+D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment\obj\Debug\net8.0\Hx.Abp.Attachment.sourcelink.json

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp.AutoMapper;
+using Volo.Abp.BlobStoring;
 using Volo.Abp.Modularity;
 
 namespace Hx.Abp.Attachment.Application
@@ -17,6 +18,14 @@ namespace Hx.Abp.Attachment.Application
             {
                 options.AddProfile<AttachmentAutoMapperProfile>(validate: true);
             });
+            Configure<AbpBlobStoringOptions>(options =>
+            {
+                options.Containers.Configure<AttachmentContainer>(container =>
+                {
+                    container.IsMultiTenant = false;
+                });
+            });
+
         }
     }
 }

@@ -23,6 +23,21 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// </summary>
         [MaxLength(20)]
         public required string BusinessId { get; set; }
+        /// <summary>
+        /// 父节点Id
+        /// </summary>
         public Guid? ParentId { get; set; }
+        /// <summary>
+        /// 是否核验
+        /// </summary>
+        public bool IsVerification { get; set; }
+        /// <summary>
+        /// 核验通过
+        /// </summary>
+        public bool VerificationPassed { get; set; }
+        /// <summary>
+        /// 是否必收
+        /// </summary>
+        public bool IsRequired { get; set; }
     }
 }

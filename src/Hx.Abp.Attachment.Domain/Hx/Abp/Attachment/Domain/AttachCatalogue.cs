@@ -36,6 +36,10 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual bool IsVerification { get; private set; }
         /// <summary>
+        /// 核验通过
+        /// </summary>
+        public virtual bool VerificationPassed { get; private set; }
+        /// <summary>
         /// 是否必收
         /// </summary>
         public virtual bool IsRequired { get; private set; }
@@ -67,7 +71,9 @@ namespace Hx.Abp.Attachment.Domain
             int sequenceNumber,
             string businessId,
             Guid? parentId = null,
-            bool isRequired = true,
+            bool isRequired = false,
+            bool isVerification = false,
+            bool verificationPassed = false,
             int attachCount = 0,
             int pageCount = 0
             )
@@ -79,6 +85,8 @@ namespace Hx.Abp.Attachment.Domain
             BusinessId = businessId;
             ParentId = parentId;
             IsRequired = isRequired;
+            IsVerification = isVerification;
+            VerificationPassed = verificationPassed;
             AttachCount = attachCount;
             PageCount = pageCount;
             AttachFiles = [];

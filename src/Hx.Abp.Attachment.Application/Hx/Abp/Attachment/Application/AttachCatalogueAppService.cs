@@ -46,7 +46,10 @@ namespace Hx.Abp.Attachment.Application
                     input.CatalogueName,
                     maxNumber,
                     input.BusinessId,
-                    input.ParentId);
+                    input.ParentId,
+                    isRequired: input.IsRequired,
+                    isVerification: input.IsVerification,
+                    verificationPassed: input.VerificationPassed);
             await CatalogueRepository.InsertAsync(attachCatalogue);
             await uow.SaveChangesAsync();
             return ObjectMapper.Map<AttachCatalogue, AttachCatalogueDto>(attachCatalogue);
@@ -72,13 +75,11 @@ namespace Hx.Abp.Attachment.Application
                         FileAlias = file.FileAlias,
                         SequenceNumber = file.SequenceNumber
                     };
-
                     files.Add(tempFile);
                 }
             }
             return files;
         }
-
         /// <summary>
         /// 单个文件下载
         /// </summary>
@@ -154,7 +155,6 @@ namespace Hx.Abp.Attachment.Application
             var reader = new PdfReader(memoryStream);
             return reader.NumberOfPages;
         }
-
         /// <summary>
         /// 删除单个文件
         /// </summary>
@@ -251,7 +251,6 @@ namespace Hx.Abp.Attachment.Application
                 Id = entity.Id,
                 FileAlias = entity.FileAlias,
                 SequenceNumber = entity.SequenceNumber
-
             };
         }
         /// <summary>

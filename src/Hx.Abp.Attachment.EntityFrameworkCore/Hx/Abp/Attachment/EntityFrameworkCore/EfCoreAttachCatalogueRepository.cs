@@ -1,5 +1,6 @@
 ﻿using Hx.Abp.Attachment.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 
@@ -30,14 +31,14 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .DefaultIfEmpty()
                 .MaxAsync(GetCancellationToken(cancellationToken));
         }
-        public async Task<List<AttachCatalogue>> FindByBusinessIdAsync(
-            string businessId,
+        public async Task<List<AttachCatalogue>> FindByReferenceAsync(
+            string reference,
             bool includeDetails = true,
             CancellationToken cancellationToken = default)
         {
             return await (await GetDbSetAsync())
                 .IncludeDetials(includeDetails)
-                .Where(p => p.BusinessId == businessId)
+                .Where(p => p.Reference == reference)
                 .OrderBy(d => d.SequenceNumber)
                 .ToListAsync(cancellationToken);
         }

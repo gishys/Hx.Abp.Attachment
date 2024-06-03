@@ -17,12 +17,12 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.HasKey(d => d.Id).HasName("ATTACH_CATALOGUES_PK");
             builder.HasIndex(d => d.CatalogueName)
                 .HasDatabaseName("ATTACH_CATALOGUES_IND_CNAME");
-            builder.HasIndex(d => d.BusinessId)
-                .HasDatabaseName("ATTACH_CATALOGUES_IND_BID");
+            builder.HasIndex(d => d.Reference)
+                .HasDatabaseName("ATTACH_CATALOGUES_IND_REFERENCE");
 
             builder.Property(d => d.AttachReceiveType).HasColumnName("ATTACHRECEIVETYPE");
             builder.Property(d => d.CatalogueName).HasColumnName("CATALOGUENAME").HasMaxLength(50);
-            builder.Property(d => d.BusinessId).HasColumnName("BUSINESSID").HasMaxLength(100);
+            builder.Property(d => d.Reference).HasColumnName("REFERENCE").HasMaxLength(100);
             builder.Property(d => d.AttachCount).HasColumnName("ATTACHCOUNT").HasDefaultValue(0);
             builder.Property(d => d.PageCount).HasColumnName("PAGECOUNT").HasDefaultValue(0);
             builder.Property(d => d.IsVerification).HasColumnName("ISVERIFICATION").HasDefaultValue(false);

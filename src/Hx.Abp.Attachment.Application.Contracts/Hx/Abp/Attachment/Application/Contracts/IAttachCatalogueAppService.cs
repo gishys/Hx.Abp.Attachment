@@ -5,7 +5,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
     public interface IAttachCatalogueAppService : IApplicationService
     {
         Task<AttachCatalogueDto> CreateAsync(AttachCatalogueCreateDto create);
-        Task<List<AttachCatalogueDto>> FindByBusinessIdAsync(string businessId);
+        Task<List<AttachCatalogueDto>> FindByReferenceAsync(string reference);
         Task<AttachCatalogueDto> UpdateAsync(Guid id, AttachCatalogueUpdateDto input);
         Task DeleteAsync(Guid id);
        

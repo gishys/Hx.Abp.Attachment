@@ -22,7 +22,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// 业务Id
         /// </summary>
         [MaxLength(20)]
-        public required string BusinessId { get; set; }
+        public required string Reference { get; set; }
         /// <summary>
         /// 父节点Id
         /// </summary>

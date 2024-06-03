@@ -13,7 +13,7 @@ namespace Hx.Abp.Attachment.Domain
         /// <summary>
         /// 业务类型Id
         /// </summary>
-        public virtual string BusinessId { get; private set; }
+        public virtual string Reference { get; private set; }
         public virtual Guid? ParentId { get; protected set; }
         /// <summary>
         /// 附件类型
@@ -69,7 +69,7 @@ namespace Hx.Abp.Attachment.Domain
             AttachReceiveType attachReceiveType,
             string catologueName,
             int sequenceNumber,
-            string businessId,
+            string reference,
             Guid? parentId = null,
             bool isRequired = false,
             bool isVerification = false,
@@ -82,7 +82,7 @@ namespace Hx.Abp.Attachment.Domain
             AttachReceiveType = attachReceiveType;
             CatalogueName = catologueName;
             SequenceNumber = sequenceNumber;
-            BusinessId = businessId;
+            Reference = reference;
             ParentId = parentId;
             IsRequired = isRequired;
             IsVerification = isVerification;
@@ -122,7 +122,7 @@ namespace Hx.Abp.Attachment.Domain
         }
         public virtual void SetAttachReceiveType([NotNull] AttachReceiveType attachReceiveType) => AttachReceiveType = attachReceiveType;
         public virtual void SetCatalogueName([NotNull] string catalogueName) => CatalogueName = catalogueName;
-        public virtual void SetBusinessId([NotNull] string businessId) => BusinessId = businessId;
+        public virtual void SetReference([NotNull] string reference) => Reference = reference;
         public virtual void SetSequenceNumber(int sequenceNumber)
         {
             SequenceNumber = sequenceNumber;

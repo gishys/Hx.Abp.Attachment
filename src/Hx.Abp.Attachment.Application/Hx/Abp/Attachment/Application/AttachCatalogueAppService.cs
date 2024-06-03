@@ -45,7 +45,7 @@ namespace Hx.Abp.Attachment.Application
                     input.AttachReceiveType,
                     input.CatalogueName,
                     maxNumber,
-                    input.BusinessId,
+                    input.Reference,
                     input.ParentId,
                     isRequired: input.IsRequired,
                     isVerification: input.IsVerification,
@@ -117,7 +117,7 @@ namespace Hx.Abp.Attachment.Application
                     tempAttachFile.AttachFiles?.Count > 0 ?
                     tempAttachFile.AttachFiles.Max(d => d.SequenceNumber) : 0;
                 var fileName = $"{attachId}{Path.GetExtension(input.FileAlias)}";
-                var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{tempAttachFile.BusinessId}/{fileName}";
+                var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{tempAttachFile.Reference}/{fileName}";
                 var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{fileUrl}";
                 var tempFile = new AttachFile(
                     attachId,
@@ -217,7 +217,7 @@ namespace Hx.Abp.Attachment.Application
                 await BlobContainer.DeleteAsync(target.FileName);
                 var attachId = GuidGenerator.Create();
                 var fileName = $"{attachId}{Path.GetExtension(input.FileAlias)}";
-                var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{entity.BusinessId}/{fileName}";
+                var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{entity.Reference}/{fileName}";
                 var tempFile = new AttachFile(
                     attachId,
                     input.FileAlias,
@@ -256,11 +256,11 @@ namespace Hx.Abp.Attachment.Application
         /// <summary>
         /// 通过业务编号获取所有的附件（文件夹及文件）
         /// </summary>
-        /// <param name="businessId"></param>
+        /// <param name="Reference"></param>
         /// <returns></returns>
-        public virtual async Task<List<AttachCatalogueDto>> FindByBusinessIdAsync(string businessId)
+        public virtual async Task<List<AttachCatalogueDto>> FindByReferenceAsync(string Reference)
         {
-            var entity = await CatalogueRepository.FindByBusinessIdAsync(businessId);
+            var entity = await CatalogueRepository.FindByReferenceAsync(Reference);
             return ObjectMapper.Map<List<AttachCatalogue>, List<AttachCatalogueDto>>(entity);
         }
         /// <summary>
@@ -281,9 +281,9 @@ namespace Hx.Abp.Attachment.Application
             {
                 entity.SetCatalogueName(input.CatalogueName);
             }
-            if (!string.Equals(entity.BusinessId, input.BusinessId, StringComparison.InvariantCultureIgnoreCase))
+            if (!string.Equals(entity.Reference, input.Reference, StringComparison.InvariantCultureIgnoreCase))
             {
-                entity.SetBusinessId(input.BusinessId);
+                entity.SetReference(input.Reference);
             }
             await CatalogueRepository.UpdateAsync(entity);
             await uow.SaveChangesAsync();

@@ -4,8 +4,8 @@ namespace Hx.Abp.Attachment.Domain
 {
     public interface IEfCoreAttachCatalogueRepository : IBasicRepository<AttachCatalogue, Guid>
     {
-        Task<List<AttachCatalogue>> FindByBusinessIdAsync(
-            string businessId,
+        Task<List<AttachCatalogue>> FindByReferenceAsync(
+            string reference,
             bool includeDetails = true,
             CancellationToken cancellationToken = default);
         Task<AttachFile?> FindSingleAttachFileAsync(

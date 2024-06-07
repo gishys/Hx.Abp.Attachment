@@ -16,6 +16,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             context.Services.AddAbpDbContext<AttachmentDbContext>(options =>
             {
                 options.AddRepository<AttachCatalogue, EfCoreAttachCatalogueRepository>();
+                options.AddRepository<AttachFile, EfCoreAttachFileRepository>();
 
                 options.AddDefaultRepositories(includeAllEntities: true);
             });

@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "RrPbb1sp5XI+z5UHnvpAmE8fONIsww3F4PYWsbtxO4Mc6bXmEWwb2kGFfQKFMB/JEUzwJCas9H2Ys/Cg1wN5pw==",
+  "dgSpecHash": "dKRMWwSabr8=",
   "success": true,
-  "projectFilePath": "D:\\2024\\Attach\\Hx.Abp.Attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj",
+  "projectFilePath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj",
   "expectedPackageFiles": [],
   "logs": []
 }

@@ -23,6 +23,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.Property(d => d.AttachReceiveType).HasColumnName("ATTACHRECEIVETYPE");
             builder.Property(d => d.CatalogueName).HasColumnName("CATALOGUENAME").HasMaxLength(50);
             builder.Property(d => d.Reference).HasColumnName("REFERENCE").HasMaxLength(100);
+            builder.Property(d => d.ReferenceType).HasColumnName("REFERENCETYPE");
             builder.Property(d => d.AttachCount).HasColumnName("ATTACHCOUNT").HasDefaultValue(0);
             builder.Property(d => d.PageCount).HasColumnName("PAGECOUNT").HasDefaultValue(0);
             builder.Property(d => d.IsVerification).HasColumnName("ISVERIFICATION").HasDefaultValue(false);

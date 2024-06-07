@@ -21,3 +21,15 @@ D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\ne
 D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.pdb
 D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\ref\Hx.Abp.Attachment.Dmain.Shared.dll
 D:\2024\Attach\Hx.Abp.Attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.sourcelink.json
+C:\work\projects\attachment\src\Hx.Abp.Attachment.Dmain.Shared\bin\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.deps.json
+C:\work\projects\attachment\src\Hx.Abp.Attachment.Dmain.Shared\bin\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.dll
+C:\work\projects\attachment\src\Hx.Abp.Attachment.Dmain.Shared\bin\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.pdb
+C:\work\projects\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.GeneratedMSBuildEditorConfig.editorconfig
+C:\work\projects\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.AssemblyInfoInputs.cache
+C:\work\projects\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.AssemblyInfo.cs
+C:\work\projects\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.csproj.CoreCompileInputs.cache
+C:\work\projects\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.sourcelink.json
+C:\work\projects\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.dll
+C:\work\projects\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\refint\Hx.Abp.Attachment.Dmain.Shared.dll
+C:\work\projects\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.pdb
+C:\work\projects\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\ref\Hx.Abp.Attachment.Dmain.Shared.dll

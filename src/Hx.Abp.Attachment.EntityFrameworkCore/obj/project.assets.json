@@ -5331,23 +5331,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\P52\\.nuget\\packages\\": {},
+    "C:\\Users\\24383\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\2024\\Attach\\Hx.Abp.Attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx.Abp.Attachment.EntityFrameworkCore.csproj",
+      "projectUniqueName": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx.Abp.Attachment.EntityFrameworkCore.csproj",
       "projectName": "Hx.Abp.Attachment.EntityFrameworkCore",
-      "projectPath": "D:\\2024\\Attach\\Hx.Abp.Attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx.Abp.Attachment.EntityFrameworkCore.csproj",
-      "packagesPath": "C:\\Users\\P52\\.nuget\\packages\\",
-      "outputPath": "D:\\2024\\Attach\\Hx.Abp.Attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\obj\\",
+      "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx.Abp.Attachment.EntityFrameworkCore.csproj",
+      "packagesPath": "C:\\Users\\24383\\.nuget\\packages\\",
+      "outputPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\P52\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\24383\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -5363,8 +5363,8 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "projectReferences": {
-            "D:\\2024\\Attach\\Hx.Abp.Attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj": {
-              "projectPath": "D:\\2024\\Attach\\Hx.Abp.Attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj"
+            "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj": {
+              "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj"
             }
           }
         }
@@ -5373,6 +5373,11 @@
         "warnAsError": [
           "NU1605"
         ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
       }
     },
     "frameworks": {
@@ -5400,7 +5405,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.106/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.301/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

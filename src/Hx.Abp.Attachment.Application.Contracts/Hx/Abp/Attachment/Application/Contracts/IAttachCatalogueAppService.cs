@@ -8,13 +8,12 @@ namespace Hx.Abp.Attachment.Application.Contracts
         Task<List<AttachCatalogueDto>> FindByReferenceAsync(string reference);
         Task<AttachCatalogueDto> UpdateAsync(Guid id, AttachCatalogueUpdateDto input);
         Task DeleteAsync(Guid id);
-       
-        Task DeleteSingleFileAsync(Guid catalogueId, Guid attachFileId);
+        Task DeleteSingleFileAsync(Guid attachFileId);
         Task<AttachFileDto> UpdateSingleFileAsync(Guid catalogueId, Guid attachFileId, AttachFileCreateDto input);
-        Task<AttachFileDto> QuerySingleFileAsync(Guid catalogueId, Guid attachFileId);
+        Task<AttachFileDto> QuerySingleFileAsync(Guid attachFileId);
         Task<List<AttachFileDto>> DownloadFilesAsync(Guid catalogueId);
         Task DeleteFilesAsync(Guid catalogueId);
-        Task<AttachFileDto> DownloadSingleFileAsync(Guid catalogueId, Guid attachFileId);
+        Task<AttachFileDto> DownloadSingleFileAsync(Guid attachFileId);
         Task<AttachFileDto> CreateSingleFileAsync(Guid id, AttachFileCreateDto input);
     }
 }

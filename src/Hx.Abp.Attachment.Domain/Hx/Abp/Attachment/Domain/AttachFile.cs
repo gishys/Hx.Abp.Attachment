@@ -1,13 +1,13 @@
 ﻿using JetBrains.Annotations;
 using Volo.Abp;
-using Volo.Abp.Domain.Entities;
+using Volo.Abp.Domain.Entities.Auditing;
 
 namespace Hx.Abp.Attachment.Domain
 {
     /// <summary>
     /// 附件文件
     /// </summary>
-    public class AttachFile : Entity<Guid>
+    public class AttachFile : FullAuditedAggregateRoot<Guid>
     {
         /// <summary>
         /// 文件名称
@@ -34,6 +34,18 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual Guid? AttachCatalogueId { get; protected set; }
         /// <summary>
+        /// 文件类型
+        /// </summary>
+        public virtual string FileType { get; protected set; }
+        /// <summary>
+        /// 文件大小
+        /// </summary>
+        public virtual int FileSize { get; protected set; }
+        /// <summary>
+        /// 下载次数
+        /// </summary>
+        public virtual int DownloadTimes { get; protected set; }
+        /// <summary>
         /// 提供给ORM用来从数据库中获取实体，
         /// 无需初始化子集合因为它会被来自数据库的值覆盖
         /// </summary>
@@ -52,13 +64,19 @@ namespace Hx.Abp.Attachment.Domain
             [NotNull] string aliasName,
             int sequenceNumber,
             [NotNull] string fileName,
-            [NotNull] string filePath)
+            [NotNull] string filePath,
+            [NotNull] string fileType,
+            int fileSize,
+            int downloadTimes)
         {
             Id = id;
             SequenceNumber = sequenceNumber;
             FileAlias = Check.NotNullOrWhiteSpace(aliasName, nameof(aliasName));
             FileName = Check.NotNullOrWhiteSpace(fileName, nameof(fileName));
             FilePath = Check.NotNullOrWhiteSpace(filePath, nameof(filePath));
+            FileType = Check.NotNullOrWhiteSpace(filePath, nameof(fileType));
+            FileSize = fileSize;
+            DownloadTimes = downloadTimes;
         }
         /// <summary>
         /// 创建附件文件，通过数据库持久化
@@ -73,7 +91,10 @@ namespace Hx.Abp.Attachment.Domain
             byte[] documentContent,
             int sequenceNumber,
             string fileName,
-            string filePath)
+            string filePath,
+            [NotNull] string fileType,
+            int fileSize,
+            int downloadTimes)
         {
             Id = id;
             SequenceNumber = sequenceNumber;
@@ -81,6 +102,9 @@ namespace Hx.Abp.Attachment.Domain
             DocumentContent = documentContent;
             FileName = fileName;
             FilePath = filePath;
+            FileType = Check.NotNullOrWhiteSpace(filePath, nameof(fileType));
+            FileSize = fileSize;
+            DownloadTimes = downloadTimes;
         }
         public virtual void SetFileAlias(string fileAlias)
         {
@@ -93,6 +117,10 @@ namespace Hx.Abp.Attachment.Domain
         public virtual void SetDocumentContent(byte[] documentContent)
         {
             DocumentContent = documentContent;
+        }
+        public virtual void Download()
+        {
+            DownloadTimes++;
         }
     }
 }

@@ -14,6 +14,13 @@ namespace Hx.Abp.Attachment.Domain
         /// 业务类型Id
         /// </summary>
         public virtual string Reference { get; private set; }
+        /// <summary>
+        /// 业务类型标识
+        /// </summary>
+        public virtual int ReferenceType { get; private set; }
+        /// <summary>
+        /// 父Id
+        /// </summary>
         public virtual Guid? ParentId { get; protected set; }
         /// <summary>
         /// 附件类型
@@ -70,6 +77,7 @@ namespace Hx.Abp.Attachment.Domain
             string catologueName,
             int sequenceNumber,
             string reference,
+            int referenceType,
             Guid? parentId = null,
             bool isRequired = false,
             bool isVerification = false,
@@ -83,6 +91,7 @@ namespace Hx.Abp.Attachment.Domain
             CatalogueName = catologueName;
             SequenceNumber = sequenceNumber;
             Reference = reference;
+            ReferenceType = referenceType;
             ParentId = parentId;
             IsRequired = isRequired;
             IsVerification = isVerification;

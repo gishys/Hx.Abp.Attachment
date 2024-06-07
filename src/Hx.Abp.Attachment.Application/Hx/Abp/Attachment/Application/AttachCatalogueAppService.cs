@@ -14,12 +14,14 @@ namespace Hx.Abp.Attachment.Application
     public class AttachCatalogueAppService(
         IEfCoreAttachCatalogueRepository catalogueRepository,
         IConfiguration configuration,
-        IBlobContainerFactory blobContainerFactory) : AttachmentService, IAttachCatalogueAppService
+        IBlobContainerFactory blobContainerFactory,
+        IEfCoreAttachFileRepository efCoreAttachFileRepository) : AttachmentService, IAttachCatalogueAppService
     {
         private readonly IEfCoreAttachCatalogueRepository CatalogueRepository = catalogueRepository;
         private readonly IBlobContainer BlobContainer = blobContainerFactory.Create("attachment");
         private readonly IConfiguration Configuration = configuration;
         private readonly IBlobContainerFactory BlobContainerFactory = blobContainerFactory;
+        private readonly IEfCoreAttachFileRepository EfCoreAttachFileRepository= efCoreAttachFileRepository;
         /// <summary>
         /// 创建文件夹
         /// </summary>
@@ -46,6 +48,7 @@ namespace Hx.Abp.Attachment.Application
                     input.CatalogueName,
                     maxNumber,
                     input.Reference,
+                    input.ReferenceType,
                     input.ParentId,
                     isRequired: input.IsRequired,
                     isVerification: input.IsVerification,
@@ -66,17 +69,23 @@ namespace Hx.Abp.Attachment.Application
             if (catologue?.AttachFiles?.Count > 0)
             {
                 foreach (var file in catologue.AttachFiles)
-                {           
+                {
                     var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{file.FilePath}";
                     var tempFile = new AttachFileDto()
                     {
                         FilePath = src,
                         Id = file.Id,
                         FileAlias = file.FileAlias,
-                        SequenceNumber = file.SequenceNumber
+                        SequenceNumber = file.SequenceNumber,
+                        FileName = file.FileName,
+                        FileType = file.FileType,
+                        FileSize = file.FileSize,
+                        DownloadTimes = file.DownloadTimes,
                     };
                     files.Add(tempFile);
+                    file.Download();
                 }
+                await CatalogueRepository.UpdateAsync(catologue);
             }
             return files;
         }
@@ -85,18 +94,25 @@ namespace Hx.Abp.Attachment.Application
         /// </summary>
         /// <param name="catalogueId"></param>
         /// <returns></returns>
-        public virtual async Task<AttachFileDto> DownloadSingleFileAsync(Guid catalogueId, Guid attachFileId)
+        public virtual async Task<AttachFileDto> DownloadSingleFileAsync(Guid attachFileId)
         {
-            var entity = await CatalogueRepository.FindAsync(catalogueId);
-            var attachFile = (entity?.AttachFiles?.FirstOrDefault(d => d.Id == attachFileId)) ?? throw new BusinessException(message: "没有查询到有效的文件！");
+            using var uow = UnitOfWorkManager.Begin();
+            var attachFile = await EfCoreAttachFileRepository.FindAsync(attachFileId) ?? throw new BusinessException(message: "没有查询到有效的文件！");
             var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{attachFile.FilePath}";
             var tempFile = new AttachFileDto()
             {
                 FilePath = src,
                 Id = attachFile.Id,
                 FileAlias = attachFile.FileAlias,
-                SequenceNumber = attachFile.SequenceNumber
+                SequenceNumber = attachFile.SequenceNumber,
+                FileName = attachFile.FileName,
+                FileType = attachFile.FileType,
+                FileSize = attachFile.FileSize,
+                DownloadTimes = attachFile.DownloadTimes,
             };
+            attachFile.Download();
+            await EfCoreAttachFileRepository.UpdateAsync(attachFile);
+            await uow.SaveChangesAsync();
             return tempFile;
         }
         /// <summary>
@@ -124,7 +140,10 @@ namespace Hx.Abp.Attachment.Application
                     input.FileAlias,
                     ++tempSequenceNumber,
                     fileName,
-                    fileUrl);
+                    fileUrl,
+                    Path.GetExtension(input.FileAlias),
+                    input.DocumentContent.Length,
+                    0);
                 await BlobContainer.SaveAsync(fileName, input.DocumentContent);
                 string fileExtension = Path.GetExtension(input.FileAlias).ToLowerInvariant();
                 var pagesToAdd = fileExtension switch
@@ -141,7 +160,11 @@ namespace Hx.Abp.Attachment.Application
                     Id = attachId,
                     FileAlias = input.FileAlias,
                     FilePath = src,
-                    SequenceNumber = tempFile.SequenceNumber
+                    SequenceNumber = tempFile.SequenceNumber,
+                    FileName = fileName,
+                    FileType = tempFile.FileType,
+                    FileSize = tempFile.FileSize,
+                    DownloadTimes = tempFile.DownloadTimes,
                 };
             }
             else
@@ -162,22 +185,12 @@ namespace Hx.Abp.Attachment.Application
         /// <param name="attachFileId"></param>
         /// <returns></returns>
         /// <exception cref="BusinessException"></exception>
-        public virtual async Task DeleteSingleFileAsync(Guid catalogueId, Guid attachFileId)
+        public virtual async Task DeleteSingleFileAsync(Guid attachFileId)
         {
             using var uow = UnitOfWorkManager.Begin();
-            var entity = await CatalogueRepository.FindAsync(catalogueId) ?? throw new UserFriendlyException(message: "删除文件的目录不存在！");
-            if (entity?.AttachFiles?.Count > 0)
-            {
-                var attachFile = (entity.AttachFiles?.FirstOrDefault(d => d.Id == attachFileId)) ?? throw new UserFriendlyException(message: "没有查询到有效的文件！");
-                entity.AttachFiles?.Remove(attachFile);
-                await BlobContainer.DeleteAsync(attachFile.FileName);
-                await CatalogueRepository.UpdateAsync(entity);
-                await uow.SaveChangesAsync();
-            }
-            else
-            {
-                throw new UserFriendlyException(message: "没有查询到有效的文件！");
-            }
+            var entity = await EfCoreAttachFileRepository.FindAsync(attachFileId) ?? throw new UserFriendlyException(message: "没有查询到有效的文件！");
+            await EfCoreAttachFileRepository.DeleteAsync(entity);
+            await uow.SaveChangesAsync();
         }
         /// <summary>
         /// 清空文件夹
@@ -223,7 +236,10 @@ namespace Hx.Abp.Attachment.Application
                     input.FileAlias,
                     target.SequenceNumber,
                     fileName,
-                    fileUrl);
+                    fileUrl, 
+                    Path.GetExtension(input.FileAlias),
+                    input.DocumentContent.Length,
+                    0);
                 await BlobContainer.SaveAsync(fileName, input.DocumentContent);
                 entity.AddAttachFile(tempFile, entity.PageCount + 1);
                 await CatalogueRepository.UpdateAsync(entity);
@@ -241,16 +257,20 @@ namespace Hx.Abp.Attachment.Application
         /// <param name="catalogueId"></param>
         /// <param name="attachFileId"></param>
         /// <returns></returns>
-        public virtual async Task<AttachFileDto> QuerySingleFileAsync(Guid catalogueId, Guid attachFileId)
+        public virtual async Task<AttachFileDto> QuerySingleFileAsync(Guid attachFileId)
         {
-            var entity = await CatalogueRepository.FindSingleAttachFileAsync(catalogueId, attachFileId) ?? throw new UserFriendlyException(message: "没有查到文件！");
+            var entity = await EfCoreAttachFileRepository.FindAsync(attachFileId) ?? throw new UserFriendlyException(message: "没有查到文件！");
             var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{entity.FilePath}";
             return new AttachFileDto()
             {
                 FilePath = src,
                 Id = entity.Id,
                 FileAlias = entity.FileAlias,
-                SequenceNumber = entity.SequenceNumber
+                SequenceNumber = entity.SequenceNumber,
+                FileName = entity.FileName,
+                FileType = entity.FileType,
+                FileSize = entity.FileSize,
+                DownloadTimes = entity.DownloadTimes,
             };
         }
         /// <summary>

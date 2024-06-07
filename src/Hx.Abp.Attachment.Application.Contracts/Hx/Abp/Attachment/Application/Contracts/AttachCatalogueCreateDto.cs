@@ -19,6 +19,10 @@ namespace Hx.Abp.Attachment.Application.Contracts
         [MaxLength(500)]
         public required string CatalogueName { get; set; }
         /// <summary>
+        /// 业务类型标识
+        /// </summary>
+        public int ReferenceType { get; set; }
+        /// <summary>
         /// 业务Id
         /// </summary>
         [MaxLength(20)]

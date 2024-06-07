@@ -9,6 +9,7 @@ namespace Hx.Abp.Attachment.Application
         public AttachmentAutoMapperProfile()
         {
             CreateMap<AttachCatalogue, AttachCatalogueDto>(MemberList.Destination);
+            CreateMap<AttachFile, AttachFileDto>(MemberList.Destination);
         }
     }
 }

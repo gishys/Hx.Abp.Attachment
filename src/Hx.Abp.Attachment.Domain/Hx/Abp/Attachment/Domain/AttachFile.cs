@@ -74,7 +74,7 @@ namespace Hx.Abp.Attachment.Domain
             FileAlias = Check.NotNullOrWhiteSpace(aliasName, nameof(aliasName));
             FileName = Check.NotNullOrWhiteSpace(fileName, nameof(fileName));
             FilePath = Check.NotNullOrWhiteSpace(filePath, nameof(filePath));
-            FileType = Check.NotNullOrWhiteSpace(filePath, nameof(fileType));
+            FileType = Check.NotNullOrWhiteSpace(fileType, nameof(fileType));
             FileSize = fileSize;
             DownloadTimes = downloadTimes;
         }

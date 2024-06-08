@@ -11,6 +11,6 @@ namespace Hx.Abp.Attachment.Domain
         public static string ServerBaseUrl = "StaticFile:CmsFile";
         public static string FileServerBasePath = "App:SelfUrl";
         public static string StaticFilesBasePathSign = "StaticFiles-BasePath";
-        public static string AttachmentBasicPath = $"/attachment/{DateTime.Now.Year}{DateTime.Now.Year:D2}";
+        public static string AttachmentBasicPath = $"{DateTime.Now.Year}{DateTime.Now.Month:D2}";
     }
 }

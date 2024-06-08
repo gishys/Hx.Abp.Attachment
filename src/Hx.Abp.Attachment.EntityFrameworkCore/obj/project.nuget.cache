@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "GVjFdfphO2k=",
+  "dgSpecHash": "k3OyMe6kdNzBWdhwFplOH4VyUFCvWVrns5l4kJPeoDtIqJoINEmITgTt2Sn1YSX/hX6M5nbm2J1WDvphY3ufow==",
   "success": true,
-  "projectFilePath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx.Abp.Attachment.EntityFrameworkCore.csproj",
+  "projectFilePath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx.Abp.Attachment.EntityFrameworkCore.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\24383\\.nuget\\packages\\asynckeyedlock\\6.3.4\\asynckeyedlock.6.3.4.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\jetbrains.annotations\\2023.3.0\\jetbrains.annotations.2023.3.0.nupkg.sha512",

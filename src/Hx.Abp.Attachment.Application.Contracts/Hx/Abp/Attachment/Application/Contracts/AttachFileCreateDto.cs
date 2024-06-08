@@ -10,6 +10,5 @@
         /// 文件内容
         /// </summary>
         public required virtual byte[] DocumentContent { get; set; }
-        public int? SequenceNumber {  get; set; }
     }
 }

@@ -20,8 +20,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
             builder.Property(d => d.Id).HasColumnName("ID");
             builder.Property(d => d.FileName).HasColumnName("FILENAME").HasMaxLength(50);
-            builder.Property(d => d.FileAlias).HasColumnName("FILEALIAS").HasMaxLength(50);
-            builder.Property(d => d.FilePath).HasColumnName("FILEPATH").HasMaxLength(100);
+            builder.Property(d => d.FileAlias).HasColumnName("FILEALIAS").HasMaxLength(100);
+            builder.Property(d => d.FilePath).HasColumnName("FILEPATH").HasMaxLength(200);
             builder.Property(d => d.SequenceNumber).HasColumnName("SEQUENCENUMBER");
             builder.Property(d => d.DocumentContent).HasColumnName("DOCUMENTCONTENT");
             builder.Property(d => d.AttachCatalogueId).HasColumnName("ATTACHCATALOGUEID");

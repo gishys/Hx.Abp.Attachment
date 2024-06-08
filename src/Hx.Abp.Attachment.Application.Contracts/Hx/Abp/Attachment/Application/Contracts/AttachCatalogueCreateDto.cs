@@ -6,10 +6,6 @@ namespace Hx.Abp.Attachment.Application.Contracts
     public class AttachCatalogueCreateDto
     {
         /// <summary>
-        /// 顺序号
-        /// </summary>
-        public required int SequenceNumber { get; set; }
-        /// <summary>
         /// 附件收取类型
         /// </summary>
         public required AttachReceiveType AttachReceiveType { get; set; }
@@ -34,11 +30,11 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 是否核验
         /// </summary>
-        public bool IsVerification { get; set; }
+        public bool IsVerification { get; set; } = false;
         /// <summary>
         /// 核验通过
         /// </summary>
-        public bool VerificationPassed { get; set; }
+        public bool VerificationPassed { get; set; } = false;
         /// <summary>
         /// 是否必收
         /// </summary>

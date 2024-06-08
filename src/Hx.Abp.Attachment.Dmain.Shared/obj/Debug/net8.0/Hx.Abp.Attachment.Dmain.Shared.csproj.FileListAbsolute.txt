@@ -33,3 +33,15 @@ C:\work\projects\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\
 C:\work\projects\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\refint\Hx.Abp.Attachment.Dmain.Shared.dll
 C:\work\projects\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.pdb
 C:\work\projects\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\ref\Hx.Abp.Attachment.Dmain.Shared.dll
+D:\work\attachment\src\Hx.Abp.Attachment.Dmain.Shared\bin\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.deps.json
+D:\work\attachment\src\Hx.Abp.Attachment.Dmain.Shared\bin\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.dll
+D:\work\attachment\src\Hx.Abp.Attachment.Dmain.Shared\bin\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.pdb
+D:\work\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.GeneratedMSBuildEditorConfig.editorconfig
+D:\work\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.AssemblyInfoInputs.cache
+D:\work\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.AssemblyInfo.cs
+D:\work\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.csproj.CoreCompileInputs.cache
+D:\work\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.sourcelink.json
+D:\work\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.dll
+D:\work\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\refint\Hx.Abp.Attachment.Dmain.Shared.dll
+D:\work\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.pdb
+D:\work\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\ref\Hx.Abp.Attachment.Dmain.Shared.dll

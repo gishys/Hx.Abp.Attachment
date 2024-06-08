@@ -40,7 +40,7 @@ namespace Hx.Abp.Attachment.Application
             if (input.ParentId.HasValue)
             {
                 var entitys = await CatalogueRepository.FindByParentIdAsync(input.ParentId.Value);
-                maxNumber = entitys.Max(d => d.SequenceNumber) + 1;
+                maxNumber = entitys.Any() ? entitys.Max(d => d.SequenceNumber) + 1 : 1;
             }
             var attachCatalogue = new AttachCatalogue(
                     GuidGenerator.Create(),
@@ -140,11 +140,11 @@ namespace Hx.Abp.Attachment.Application
                     input.FileAlias,
                     ++tempSequenceNumber,
                     fileName,
-                    fileUrl,
+                    $"/host/attachment/{fileUrl}",
                     Path.GetExtension(input.FileAlias),
                     input.DocumentContent.Length,
                     0);
-                await BlobContainer.SaveAsync(fileName, input.DocumentContent);
+                await BlobContainer.SaveAsync(fileUrl, input.DocumentContent);
                 string fileExtension = Path.GetExtension(input.FileAlias).ToLowerInvariant();
                 var pagesToAdd = fileExtension switch
                 {
@@ -236,7 +236,7 @@ namespace Hx.Abp.Attachment.Application
                     input.FileAlias,
                     target.SequenceNumber,
                     fileName,
-                    fileUrl, 
+                    $"/host/attachment/{fileUrl}",
                     Path.GetExtension(input.FileAlias),
                     input.DocumentContent.Length,
                     0);

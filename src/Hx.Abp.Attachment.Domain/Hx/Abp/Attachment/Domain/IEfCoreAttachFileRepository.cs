@@ -4,5 +4,6 @@ namespace Hx.Abp.Attachment.Domain
 {
     public interface IEfCoreAttachFileRepository : IBasicRepository<AttachFile, Guid>
     {
+        Task<int> DeleteByCatalogueAsync(Guid catalogueId);
     }
 }

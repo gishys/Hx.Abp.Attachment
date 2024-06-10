@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.Domain.Entities;
 using Volo.Abp.Uow;
 
 namespace Hx.Abp.Attachment.Application
@@ -21,7 +22,7 @@ namespace Hx.Abp.Attachment.Application
         private readonly IBlobContainer BlobContainer = blobContainerFactory.Create("attachment");
         private readonly IConfiguration Configuration = configuration;
         private readonly IBlobContainerFactory BlobContainerFactory = blobContainerFactory;
-        private readonly IEfCoreAttachFileRepository EfCoreAttachFileRepository= efCoreAttachFileRepository;
+        private readonly IEfCoreAttachFileRepository EfCoreAttachFileRepository = efCoreAttachFileRepository;
         /// <summary>
         /// 创建文件夹
         /// </summary>
@@ -200,16 +201,7 @@ namespace Hx.Abp.Attachment.Application
         /// <exception cref="BusinessException"></exception>
         public virtual async Task DeleteFilesAsync(Guid catalogueId)
         {
-            var entity = await CatalogueRepository.FindAsync(catalogueId) ?? throw new UserFriendlyException(message: "删除文件的目录不存在！");
-            if (entity.AttachFiles?.Count > 0)
-            {
-                foreach (var file in entity.AttachFiles)
-                {
-                    await BlobContainer.DeleteAsync(file.FileName);
-                }
-                entity.RemoveFiles(_ => true, 0);
-                await CatalogueRepository.UpdateAsync(entity, true);
-            }
+            await EfCoreAttachFileRepository.DeleteByCatalogueAsync(catalogueId);
         }
         /// <summary>
         /// 替换文件（存储的文件没有替换核实对错）
@@ -227,7 +219,6 @@ namespace Hx.Abp.Attachment.Application
             if (entity != null && target != null)
             {
                 entity.AttachFiles.RemoveAll(d => d.Id == attachFileId);
-                await BlobContainer.DeleteAsync(target.FileName);
                 var attachId = GuidGenerator.Create();
                 var fileName = $"{attachId}{Path.GetExtension(input.FileAlias)}";
                 var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{entity.Reference}/{fileName}";
@@ -319,17 +310,21 @@ namespace Hx.Abp.Attachment.Application
         {
             using var uow = UnitOfWorkManager.Begin();
             var entity = await CatalogueRepository.FindAsync(id) ?? throw new BusinessException(message: "没有查询到有效的目录");
-            if (entity.AttachFiles?.Count > 0)
-            {
-                System.Collections.ObjectModel.Collection<AttachFile>? attachs = entity?.AttachFiles;
-                for (int i = 0; i < attachs?.Count; i++)
-                {
-                    AttachFile? file = attachs[i];
-                    await BlobContainer.DeleteAsync(file.FileName);
-                }
-            }
-            await CatalogueRepository.DeleteAsync(id);
+            var keys = new List<Guid>();
+            var fileKeys = new List<Guid>();
+            GetChildrenKeys(entity, ref keys, ref fileKeys);
+            await EfCoreAttachFileRepository.DeleteManyAsync(fileKeys);
+            await CatalogueRepository.DeleteManyAsync(keys);
             await uow.SaveChangesAsync();
+        }
+        private void GetChildrenKeys(AttachCatalogue attachCatalogue, ref List<Guid> keys, ref List<Guid> fileKeys)
+        {
+            keys.Add(attachCatalogue.Id);
+            foreach (var child in attachCatalogue.Children)
+            {
+                GetChildrenKeys(child, ref keys, ref fileKeys);
+            }
+            fileKeys.AddRange(attachCatalogue.AttachFiles.Select(d => d.Id));
         }
     }
 }

@@ -1,6 +1,5 @@
 ﻿using Hx.Abp.Attachment.Domain;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 
@@ -11,14 +10,9 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 : EfCoreRepository<AttachmentDbContext, AttachFile, Guid>(provider),
         IEfCoreAttachFileRepository
     {
-        public async Task<AttachFile?> GetByParentIdAsync(
-            Guid id,
-            bool includeDetails = true,
-            CancellationToken cancellationToken = default)
+        public async Task<int> DeleteByCatalogueAsync(Guid catalogueId)
         {
-            return await (await GetDbSetAsync())
-                .FirstOrDefaultAsync(u => u.Id == id,
-                GetCancellationToken(cancellationToken));
+            return await (await GetDbSetAsync()).Where(d => d.AttachCatalogueId == catalogueId).ExecuteDeleteAsync();
         }
     }
 }

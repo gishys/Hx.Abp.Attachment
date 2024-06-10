@@ -27,7 +27,7 @@ namespace Hx.Abp.Attachment.Api.Controllers
         }
         [Route("downloadsinglefiles")]
         [HttpGet]
-        public virtual Task<AttachFileDto> DownloadSingleFileAsync(Guid catalogueId, Guid attachFileId)
+        public virtual Task<AttachFileDto> DownloadSingleFileAsync(Guid attachFileId)
         {
             return AttachCatalogueAppService.DownloadSingleFileAsync(attachFileId);
         }
@@ -54,7 +54,7 @@ namespace Hx.Abp.Attachment.Api.Controllers
         }
         [Route("deletesinglefile")]
         [HttpDelete]
-        public virtual Task DeleteSingleFileAsync(Guid catalogueId, Guid attachFileId)
+        public virtual Task DeleteSingleFileAsync(Guid attachFileId)
         {
             return AttachCatalogueAppService.DeleteSingleFileAsync(attachFileId);
         }
@@ -72,7 +72,7 @@ namespace Hx.Abp.Attachment.Api.Controllers
         }
         [Route("querysinglefile")]
         [HttpGet]
-        public virtual Task<AttachFileDto> QuerySingleFileAsync(Guid catalogueId, Guid attachFileId)
+        public virtual Task<AttachFileDto> QuerySingleFileAsync(Guid attachFileId)
         {
             return AttachCatalogueAppService.QuerySingleFileAsync(attachFileId);
         }

@@ -1,6 +1,5 @@
 ﻿using Hx.Abp.Attachment.Domain;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 
@@ -38,7 +37,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         {
             return await (await GetDbSetAsync())
                 .IncludeDetials(includeDetails)
-                .Where(p => p.Reference == reference)
+                .Where(p => p.Reference == reference && p.ParentId == null)
                 .OrderBy(d => d.SequenceNumber)
                 .ToListAsync(cancellationToken);
         }

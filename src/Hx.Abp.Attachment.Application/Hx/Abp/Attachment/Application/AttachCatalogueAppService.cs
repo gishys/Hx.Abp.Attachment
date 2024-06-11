@@ -273,28 +273,31 @@ namespace Hx.Abp.Attachment.Application
         public virtual async Task<List<AttachCatalogueDto>> FindByReferenceAsync(string Reference)
         {
             var entity = await CatalogueRepository.FindByReferenceAsync(Reference);
-            var result = ObjectMapper.Map<List<AttachCatalogue>, List<AttachCatalogueDto>>(entity);
-            ConvertSrc(ref result);
-            return result;
+            return ConvertSrc(entity);
         }
-        private void ConvertSrc(ref List<AttachCatalogueDto> cats)
+        private List<AttachCatalogueDto> ConvertSrc(ICollection<AttachCatalogue> cats)
         {
+            var result = new List<AttachCatalogueDto>();
             foreach (var cat in cats)
             {
+                var catalogueDto = ObjectMapper.Map<AttachCatalogue, AttachCatalogueDto>(cat);
                 if (cat.AttachFiles?.Count > 0)
                 {
+                    catalogueDto.AttachFiles = new System.Collections.ObjectModel.Collection<AttachFileDto>();
                     foreach (var file in cat.AttachFiles)
                     {
-                        file.FilePath = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{file.FilePath}";
+                        var fileDto = ObjectMapper.Map<AttachFile, AttachFileDto>(file);
+                        fileDto.FilePath = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{file.FilePath}";
+                        catalogueDto.AttachFiles.Add(fileDto);
                     }
                 }
                 if (cat.Children?.Count > 0)
                 {
-                    var children = cat.Children.ToList();
-                    ConvertSrc(ref children);
-                    cat.Children = children;
+                    ConvertSrc(cat.Children);
                 }
+                result.Add(catalogueDto);
             }
+            return result;
         }
         /// <summary>
         /// 修改目录

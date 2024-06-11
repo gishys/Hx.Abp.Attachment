@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Hx.Abp.Attachment.EntityFrameworkCore")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+76c36409f1fe55977ca0fccc485955d10a2227f3")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c30800e12da8a2e1b3fa72282f2ef6a51cb1a5af")]
 [assembly: System.Reflection.AssemblyProductAttribute("Hx.Abp.Attachment.EntityFrameworkCore")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Hx.Abp.Attachment.EntityFrameworkCore")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

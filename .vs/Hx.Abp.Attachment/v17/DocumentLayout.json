@@ -1,53 +1,12 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "C:\\work\\projects\\attachment\\",
-  "Documents": [
-    {
-      "AbsoluteMoniker": "D:0:0:{99F2F961-DBDB-4503-8D1A-7A51714F2EC7}|src\\Hx.Abp.Attachment.Application\\Hx.Abp.Attachment.Application.csproj|c:\\work\\projects\\attachment\\src\\hx.abp.attachment.application\\hx\\abp\\attachment\\application\\attachcatalogueappservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{99F2F961-DBDB-4503-8D1A-7A51714F2EC7}|src\\Hx.Abp.Attachment.Application\\Hx.Abp.Attachment.Application.csproj|solutionrelative:src\\hx.abp.attachment.application\\hx\\abp\\attachment\\application\\attachcatalogueappservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{CD9BF0F9-7623-45AB-862B-9B1678B57874}|src\\Hx.Abp.Attachment.Api\\Hx.Abp.Attachment.Api.csproj|c:\\work\\projects\\attachment\\src\\hx.abp.attachment.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{CD9BF0F9-7623-45AB-862B-9B1678B57874}|src\\Hx.Abp.Attachment.Api\\Hx.Abp.Attachment.Api.csproj|solutionrelative:src\\hx.abp.attachment.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
-    }
-  ],
+  "Documents": [],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
       "VerticalTabListWidth": 256,
-      "DocumentGroups": [
-        {
-          "DockedWidth": 200,
-          "SelectedChildIndex": 1,
-          "Children": [
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "appsettings.json",
-              "DocumentMoniker": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Api\\appsettings.json",
-              "RelativeDocumentMoniker": "src\\Hx.Abp.Attachment.Api\\appsettings.json",
-              "ToolTip": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Api\\appsettings.json",
-              "RelativeToolTip": "src\\Hx.Abp.Attachment.Api\\appsettings.json",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAIAAAAmAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2024-06-11T06:53:23.924Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "AttachCatalogueAppService.cs",
-              "DocumentMoniker": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application\\Hx\\Abp\\Attachment\\Application\\AttachCatalogueAppService.cs",
-              "RelativeDocumentMoniker": "src\\Hx.Abp.Attachment.Application\\Hx\\Abp\\Attachment\\Application\\AttachCatalogueAppService.cs",
-              "ToolTip": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application\\Hx\\Abp\\Attachment\\Application\\AttachCatalogueAppService.cs",
-              "RelativeToolTip": "src\\Hx.Abp.Attachment.Application\\Hx\\Abp\\Attachment\\Application\\AttachCatalogueAppService.cs",
-              "ViewState": "AQIAAAMBAAAAAAAAAAAAwBMBAAAMAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-06-11T06:51:56.66Z",
-              "EditorCaption": ""
-            }
-          ]
-        }
-      ]
+      "DocumentGroups": []
     }
   ]
 }

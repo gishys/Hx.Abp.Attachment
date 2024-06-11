@@ -135,14 +135,14 @@ namespace Hx.Abp.Attachment.Application
                     tempAttachFile.AttachFiles?.Count > 0 ?
                     tempAttachFile.AttachFiles.Max(d => d.SequenceNumber) : 0;
                 var fileName = $"{attachId}{Path.GetExtension(input.FileAlias)}";
-                var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{tempAttachFile.Reference}/{fileName}";
+                var fileUrl = $"/host/attachment/{AppGlobalProperties.AttachmentBasicPath}/{tempAttachFile.Reference}/{fileName}";
                 var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{fileUrl}";
                 var tempFile = new AttachFile(
                     attachId,
                     input.FileAlias,
                     ++tempSequenceNumber,
                     fileName,
-                    $"/host/attachment/{fileUrl}",
+                    fileUrl,
                     Path.GetExtension(input.FileAlias),
                     input.DocumentContent.Length,
                     0);
@@ -222,13 +222,13 @@ namespace Hx.Abp.Attachment.Application
                 entity.AttachFiles.RemoveAll(d => d.Id == attachFileId);
                 var attachId = GuidGenerator.Create();
                 var fileName = $"{attachId}{Path.GetExtension(input.FileAlias)}";
-                var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{entity.Reference}/{fileName}";
+                var fileUrl = $"/host/attachment/{AppGlobalProperties.AttachmentBasicPath}/{entity.Reference}/{fileName}";
                 var tempFile = new AttachFile(
                     attachId,
                     input.FileAlias,
                     target.SequenceNumber,
                     fileName,
-                    $"/host/attachment/{fileUrl}",
+                    $"{Configuration[AppGlobalProperties.FileServerBasePath]}{fileUrl}",
                     Path.GetExtension(input.FileAlias),
                     input.DocumentContent.Length,
                     0);

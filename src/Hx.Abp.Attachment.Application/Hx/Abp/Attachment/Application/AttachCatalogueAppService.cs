@@ -3,6 +3,7 @@ using Hx.Abp.Attachment.Domain;
 using iTextSharp.text.pdf;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SkiaSharp;
 using Volo.Abp;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.DependencyInjection;
@@ -136,6 +137,7 @@ namespace Hx.Abp.Attachment.Application
                     var tempSequenceNumber =
                     tempAttachFile.AttachFiles?.Count > 0 ?
                     tempAttachFile.AttachFiles.Max(d => d.SequenceNumber) : 0;
+<<<<<<< HEAD
                     var fileName = $"{attachId}{Path.GetExtension(input.FileAlias)}";
                     var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{tempAttachFile.Reference}/{fileName}";
                     var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{fileUrl}";
@@ -173,6 +175,42 @@ namespace Hx.Abp.Attachment.Application
                     result.Add(retFile);
                 }
                 return result;
+=======
+                var fileName = $"{attachId}{Path.GetExtension(input.FileAlias)}";
+                var fileUrl = $"/host/attachment/{AppGlobalProperties.AttachmentBasicPath}/{tempAttachFile.Reference}/{fileName}";
+                var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{fileUrl}";
+                var tempFile = new AttachFile(
+                    attachId,
+                    input.FileAlias,
+                    ++tempSequenceNumber,
+                    fileName,
+                    fileUrl,
+                    Path.GetExtension(input.FileAlias),
+                    input.DocumentContent.Length,
+                    0);
+                await BlobContainer.SaveAsync(fileUrl, input.DocumentContent);
+                string fileExtension = Path.GetExtension(input.FileAlias).ToLowerInvariant();
+                var pagesToAdd = fileExtension switch
+                {
+                    ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" => 1,
+                    ".pdf" => CalculatePdfPages(input.DocumentContent),
+                    _ => 0,
+                };
+                tempAttachFile.AddAttachFile(tempFile, tempAttachFile.PageCount + pagesToAdd);
+                await CatalogueRepository.UpdateAsync(tempAttachFile);
+                await uow.SaveChangesAsync();
+                return new AttachFileDto()
+                {
+                    Id = attachId,
+                    FileAlias = input.FileAlias,
+                    FilePath = src,
+                    SequenceNumber = tempFile.SequenceNumber,
+                    FileName = fileName,
+                    FileType = tempFile.FileType,
+                    FileSize = tempFile.FileSize,
+                    DownloadTimes = tempFile.DownloadTimes,
+                };
+>>>>>>> aced6ef11a35c169befd725ce2c4755a68c32c4d
             }
             else
             {
@@ -227,13 +265,13 @@ namespace Hx.Abp.Attachment.Application
                 entity.AttachFiles.RemoveAll(d => d.Id == attachFileId);
                 var attachId = GuidGenerator.Create();
                 var fileName = $"{attachId}{Path.GetExtension(input.FileAlias)}";
-                var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{entity.Reference}/{fileName}";
+                var fileUrl = $"/host/attachment/{AppGlobalProperties.AttachmentBasicPath}/{entity.Reference}/{fileName}";
                 var tempFile = new AttachFile(
                     attachId,
                     input.FileAlias,
                     target.SequenceNumber,
                     fileName,
-                    $"/host/attachment/{fileUrl}",
+                    $"{Configuration[AppGlobalProperties.FileServerBasePath]}{fileUrl}",
                     Path.GetExtension(input.FileAlias),
                     input.DocumentContent.Length,
                     0);
@@ -256,7 +294,31 @@ namespace Hx.Abp.Attachment.Application
         public virtual async Task<List<AttachCatalogueDto>> FindByReferenceAsync(string Reference)
         {
             var entity = await CatalogueRepository.FindByReferenceAsync(Reference);
-            return ObjectMapper.Map<List<AttachCatalogue>, List<AttachCatalogueDto>>(entity);
+            return ConvertSrc(entity);
+        }
+        private List<AttachCatalogueDto> ConvertSrc(ICollection<AttachCatalogue> cats)
+        {
+            var result = new List<AttachCatalogueDto>();
+            foreach (var cat in cats)
+            {
+                var catalogueDto = ObjectMapper.Map<AttachCatalogue, AttachCatalogueDto>(cat);
+                if (cat.AttachFiles?.Count > 0)
+                {
+                    catalogueDto.AttachFiles = new System.Collections.ObjectModel.Collection<AttachFileDto>();
+                    foreach (var file in cat.AttachFiles)
+                    {
+                        var fileDto = ObjectMapper.Map<AttachFile, AttachFileDto>(file);
+                        fileDto.FilePath = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{file.FilePath}";
+                        catalogueDto.AttachFiles.Add(fileDto);
+                    }
+                }
+                if (cat.Children?.Count > 0)
+                {
+                    ConvertSrc(cat.Children);
+                }
+                result.Add(catalogueDto);
+            }
+            return result;
         }
         /// <summary>
         /// 修改目录

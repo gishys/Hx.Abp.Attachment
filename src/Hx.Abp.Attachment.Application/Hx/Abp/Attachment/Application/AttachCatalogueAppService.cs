@@ -3,6 +3,7 @@ using Hx.Abp.Attachment.Domain;
 using iTextSharp.text.pdf;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SkiaSharp;
 using Volo.Abp;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.DependencyInjection;
@@ -272,7 +273,28 @@ namespace Hx.Abp.Attachment.Application
         public virtual async Task<List<AttachCatalogueDto>> FindByReferenceAsync(string Reference)
         {
             var entity = await CatalogueRepository.FindByReferenceAsync(Reference);
-            return ObjectMapper.Map<List<AttachCatalogue>, List<AttachCatalogueDto>>(entity);
+            var result = ObjectMapper.Map<List<AttachCatalogue>, List<AttachCatalogueDto>>(entity);
+            ConvertSrc(ref result);
+            return result;
+        }
+        private void ConvertSrc(ref List<AttachCatalogueDto> cats)
+        {
+            foreach (var cat in cats)
+            {
+                if (cat.AttachFiles?.Count > 0)
+                {
+                    foreach (var file in cat.AttachFiles)
+                    {
+                        file.FilePath = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{file.FilePath}";
+                    }
+                }
+                if (cat.Children?.Count > 0)
+                {
+                    var children = cat.Children.ToList();
+                    ConvertSrc(ref children);
+                    cat.Children = children;
+                }
+            }
         }
         /// <summary>
         /// 修改目录

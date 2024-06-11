@@ -10,10 +10,9 @@ namespace Hx.Abp.Attachment.Application.Contracts
         Task DeleteAsync(Guid id);
         Task DeleteSingleFileAsync(Guid attachFileId);
         Task<AttachFileDto> UpdateSingleFileAsync(Guid catalogueId, Guid attachFileId, AttachFileCreateDto input);
-        Task<AttachFileDto> QuerySingleFileAsync(Guid attachFileId);
-        Task<List<AttachFileDto>> DownloadFilesAsync(Guid catalogueId);
+        Task<List<AttachFileDto>> QueryFilesAsync(Guid catalogueId);
         Task DeleteFilesAsync(Guid catalogueId);
-        Task<AttachFileDto> DownloadSingleFileAsync(Guid attachFileId);
-        Task<AttachFileDto> CreateSingleFileAsync(Guid id, AttachFileCreateDto input);
+        Task<AttachFileDto> QueryFileAsync(Guid attachFileId);
+        Task<List<AttachFileDto>> CreateFilesAsync(Guid id, List<AttachFileCreateDto> input);
     }
 }

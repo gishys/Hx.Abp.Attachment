@@ -122,6 +122,10 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
+            "SixLabors.ImageSharp": {
+              "target": "Package",
+              "version": "[3.1.4, )"
+            },
             "Volo.Abp.AutoMapper": {
               "target": "Package",
               "version": "[8.1.1, )"

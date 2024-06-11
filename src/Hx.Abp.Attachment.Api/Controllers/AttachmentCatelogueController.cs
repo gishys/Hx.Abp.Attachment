@@ -19,38 +19,41 @@ namespace Hx.Abp.Attachment.Api.Controllers
         {
             return AttachCatalogueAppService.CreateAsync(input);
         }
-        [Route("downloadfiles")]
+        [Route("queryfiles")]
         [HttpGet]
-        public virtual Task<List<AttachFileDto>> DownloadFilesAsync(Guid catalogueId)
+        public virtual Task<List<AttachFileDto>> QueryFilesAsync(Guid catalogueId)
         {
-            return AttachCatalogueAppService.DownloadFilesAsync(catalogueId);
+            return AttachCatalogueAppService.QueryFilesAsync(catalogueId);
         }
-        [Route("downloadsinglefiles")]
+        [Route("query")]
         [HttpGet]
-        public virtual Task<AttachFileDto> DownloadSingleFileAsync(Guid attachFileId)
+        public virtual Task<AttachFileDto> QueryFileAsync(Guid attachFileId)
         {
-            return AttachCatalogueAppService.DownloadSingleFileAsync(attachFileId);
+            return AttachCatalogueAppService.QueryFileAsync(attachFileId);
         }
-        [Route("createsinglefiles")]
+        [Route("uploadfiles")]
         [HttpPost]
-        public virtual async Task<AttachFileDto> CreateSingleFileAsync(Guid id)
+        public virtual async Task<List<AttachFileDto>> CreateSingleFileAsync(Guid id)
         {
             var files = Request.Form.Files;
             if (files.Count > 0)
             {
-                var file = files[0];
-                byte[] fileBytes;
-                using (var fileStream = file.OpenReadStream())
-                using (var ms = new MemoryStream())
+                var inputs = new List<AttachFileCreateDto>();
+                foreach (var file in files)
                 {
-                    fileStream.CopyTo(ms);
-                    fileBytes = ms.ToArray();
+                    byte[] fileBytes;
+                    using (var fileStream = file.OpenReadStream())
+                    using (var ms = new MemoryStream())
+                    {
+                        fileStream.CopyTo(ms);
+                        fileBytes = ms.ToArray();
+                    }
+                    var attachFile = new AttachFileCreateDto() { DocumentContent = fileBytes, FileAlias = file.FileName };
+                    inputs.Add(attachFile);
                 }
-                return await AttachCatalogueAppService.CreateSingleFileAsync(id, new AttachFileCreateDto() { DocumentContent = fileBytes, FileAlias = file.FileName });
-
+                return await AttachCatalogueAppService.CreateFilesAsync(id, inputs);
             }
             throw new UserFriendlyException("上传文件为空！");
-
         }
         [Route("deletesinglefile")]
         [HttpDelete]
@@ -69,12 +72,6 @@ namespace Hx.Abp.Attachment.Api.Controllers
         public virtual Task<AttachFileDto> UpdateSingleFileAsync(Guid catalogueId, Guid attachFileId, AttachFileCreateDto input)
         {
             return AttachCatalogueAppService.UpdateSingleFileAsync(catalogueId, attachFileId, input);
-        }
-        [Route("querysinglefile")]
-        [HttpGet]
-        public virtual Task<AttachFileDto> QuerySingleFileAsync(Guid attachFileId)
-        {
-            return AttachCatalogueAppService.QuerySingleFileAsync(attachFileId);
         }
         [Route("findbyreference")]
         [HttpGet]

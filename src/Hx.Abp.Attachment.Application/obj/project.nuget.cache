@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "EQpzIkt1P5rXhk1OiHXwj8BEqWjIqT5SxW0nuEByPB0Rk8wvUNyLd0mv4vJWc3+Z1q8zxYe+xBBSLn3OKFS1KA==",
+  "dgSpecHash": "cYZe4TUITMDo7c6ZYPCzIKTtnep6KLQ5amP2AXxjROg9a7r/nzBvIdybU0s8wBspFOypwOqbqbnfPzGKLRWntg==",
   "success": true,
   "projectFilePath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Application\\Hx.Abp.Attachment.Application.csproj",
   "expectedPackageFiles": [
@@ -46,6 +46,7 @@
     "C:\\Users\\24383\\.nuget\\packages\\nito.disposables\\2.2.1\\nito.disposables.2.2.1.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\polly\\8.2.0\\polly.8.2.0.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\polly.core\\8.2.0\\polly.core.8.2.0.nupkg.sha512",
+    "C:\\Users\\24383\\.nuget\\packages\\sixlabors.imagesharp\\3.1.4\\sixlabors.imagesharp.3.1.4.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\skiasharp\\2.88.8\\skiasharp.2.88.8.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\skiasharp.nativeassets.macos\\2.88.8\\skiasharp.nativeassets.macos.2.88.8.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\skiasharp.nativeassets.win32\\2.88.8\\skiasharp.nativeassets.win32.2.88.8.nupkg.sha512",

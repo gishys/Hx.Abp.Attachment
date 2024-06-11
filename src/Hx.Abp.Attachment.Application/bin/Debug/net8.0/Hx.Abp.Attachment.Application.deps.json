@@ -10,6 +10,7 @@
         "dependencies": {
           "Hx.Abp.Attachment.Application.Contracts": "1.0.0",
           "Hx.Abp.Attachment.Domain": "1.0.0",
+          "SixLabors.ImageSharp": "3.1.4",
           "Volo.Abp.AutoMapper": "8.1.1",
           "Volo.Abp.BlobStoring.FileSystem": "8.1.1",
           "iTextSharp.LGPLv2.Core": "3.4.20"
@@ -458,6 +459,14 @@
           "lib/net8.0/Polly.Core.dll": {
             "assemblyVersion": "8.0.0.0",
             "fileVersion": "8.2.0.2702"
+          }
+        }
+      },
+      "SixLabors.ImageSharp/3.1.4": {
+        "runtime": {
+          "lib/net6.0/SixLabors.ImageSharp.dll": {
+            "assemblyVersion": "3.0.0.0",
+            "fileVersion": "3.1.4.0"
           }
         }
       },
@@ -1589,6 +1598,13 @@
       "sha512": "sha512-gnKp3+mxGFmkFs4eHcD9aex0JOF8zS1Y18c2A5ckXXTVqbs6XLcDyLKgSa/mUFqAnH3mn9+uVIM0RhAec/d3kA==",
       "path": "polly.core/8.2.0",
       "hashPath": "polly.core.8.2.0.nupkg.sha512"
+    },
+    "SixLabors.ImageSharp/3.1.4": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-lFIdxgGDA5iYkUMRFOze7BGLcdpoLFbR+a20kc1W7NepvzU7ejtxtWOg9RvgG7kb9tBoJ3ONYOK6kLil/dgF1w==",
+      "path": "sixlabors.imagesharp/3.1.4",
+      "hashPath": "sixlabors.imagesharp.3.1.4.nupkg.sha512"
     },
     "SkiaSharp/2.88.8": {
       "type": "package",

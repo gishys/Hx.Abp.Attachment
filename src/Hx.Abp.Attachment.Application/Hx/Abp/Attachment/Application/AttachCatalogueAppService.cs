@@ -63,7 +63,7 @@ namespace Hx.Abp.Attachment.Application
         /// </summary>
         /// <param name="catalogueId"></param>
         /// <returns></returns>
-        public virtual async Task<List<AttachFileDto>> DownloadFilesAsync(Guid catalogueId)
+        public virtual async Task<List<AttachFileDto>> QueryFilesAsync(Guid catalogueId)
         {
             var catologue = await CatalogueRepository.FindAsync(catalogueId);
             List<AttachFileDto> files = [];
@@ -95,7 +95,7 @@ namespace Hx.Abp.Attachment.Application
         /// </summary>
         /// <param name="catalogueId"></param>
         /// <returns></returns>
-        public virtual async Task<AttachFileDto> DownloadSingleFileAsync(Guid attachFileId)
+        public virtual async Task<AttachFileDto> QueryFileAsync(Guid attachFileId)
         {
             using var uow = UnitOfWorkManager.Begin();
             var attachFile = await EfCoreAttachFileRepository.FindAsync(attachFileId) ?? throw new BusinessException(message: "没有查询到有效的文件！");
@@ -123,50 +123,56 @@ namespace Hx.Abp.Attachment.Application
         /// <param name="input"></param>
         /// <returns></returns>
         /// <exception cref="BusinessException"></exception>
-        public virtual async Task<AttachFileDto> CreateSingleFileAsync(Guid id, AttachFileCreateDto input)
+        public virtual async Task<List<AttachFileDto>> CreateFilesAsync(Guid id, List<AttachFileCreateDto> inputs)
         {
             using var uow = UnitOfWorkManager.Begin();
             var attachId = GuidGenerator.Create();
             var tempAttachFile = await CatalogueRepository.FindAsync(id);
+            var result = new List<AttachFileDto>();
             if (tempAttachFile != null)
             {
-                var tempSequenceNumber =
+                foreach (var input in inputs)
+                {
+                    var tempSequenceNumber =
                     tempAttachFile.AttachFiles?.Count > 0 ?
                     tempAttachFile.AttachFiles.Max(d => d.SequenceNumber) : 0;
-                var fileName = $"{attachId}{Path.GetExtension(input.FileAlias)}";
-                var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{tempAttachFile.Reference}/{fileName}";
-                var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{fileUrl}";
-                var tempFile = new AttachFile(
-                    attachId,
-                    input.FileAlias,
-                    ++tempSequenceNumber,
-                    fileName,
-                    $"/host/attachment/{fileUrl}",
-                    Path.GetExtension(input.FileAlias),
-                    input.DocumentContent.Length,
-                    0);
-                await BlobContainer.SaveAsync(fileUrl, input.DocumentContent);
-                string fileExtension = Path.GetExtension(input.FileAlias).ToLowerInvariant();
-                var pagesToAdd = fileExtension switch
-                {
-                    ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" => 1,
-                    ".pdf" => CalculatePdfPages(input.DocumentContent),
-                    _ => 0,
-                };
-                tempAttachFile.AddAttachFile(tempFile, tempAttachFile.PageCount + pagesToAdd);
-                await CatalogueRepository.UpdateAsync(tempAttachFile);
-                await uow.SaveChangesAsync();
-                return new AttachFileDto()
-                {
-                    Id = attachId,
-                    FileAlias = input.FileAlias,
-                    FilePath = src,
-                    SequenceNumber = tempFile.SequenceNumber,
-                    FileName = fileName,
-                    FileType = tempFile.FileType,
-                    FileSize = tempFile.FileSize,
-                    DownloadTimes = tempFile.DownloadTimes,
-                };
+                    var fileName = $"{attachId}{Path.GetExtension(input.FileAlias)}";
+                    var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{tempAttachFile.Reference}/{fileName}";
+                    var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{fileUrl}";
+                    var tempFile = new AttachFile(
+                        attachId,
+                        input.FileAlias,
+                        ++tempSequenceNumber,
+                        fileName,
+                        $"/host/attachment/{fileUrl}",
+                        Path.GetExtension(input.FileAlias),
+                        input.DocumentContent.Length,
+                        0);
+                    await BlobContainer.SaveAsync(fileUrl, input.DocumentContent);
+                    string fileExtension = Path.GetExtension(input.FileAlias).ToLowerInvariant();
+                    var pagesToAdd = fileExtension switch
+                    {
+                        ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".tif" or ".tiff" => 1,
+                        ".pdf" => CalculatePdfPages(input.DocumentContent),
+                        _ => 0,
+                    };
+                    tempAttachFile.AddAttachFile(tempFile, tempAttachFile.PageCount + pagesToAdd);
+                    await CatalogueRepository.UpdateAsync(tempAttachFile);
+                    await uow.SaveChangesAsync();
+                    var retFile = new AttachFileDto()
+                    {
+                        Id = attachId,
+                        FileAlias = input.FileAlias,
+                        FilePath = src,
+                        SequenceNumber = tempFile.SequenceNumber,
+                        FileName = fileName,
+                        FileType = tempFile.FileType,
+                        FileSize = tempFile.FileSize,
+                        DownloadTimes = tempFile.DownloadTimes,
+                    };
+                    result.Add(retFile);
+                }
+                return result;
             }
             else
             {
@@ -241,28 +247,6 @@ namespace Hx.Abp.Attachment.Application
             {
                 throw new UserFriendlyException(message: "没有可替换文件！");
             }
-        }
-        /// <summary>
-        /// 查询单个文件
-        /// </summary>
-        /// <param name="catalogueId"></param>
-        /// <param name="attachFileId"></param>
-        /// <returns></returns>
-        public virtual async Task<AttachFileDto> QuerySingleFileAsync(Guid attachFileId)
-        {
-            var entity = await EfCoreAttachFileRepository.FindAsync(attachFileId) ?? throw new UserFriendlyException(message: "没有查到文件！");
-            var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{entity.FilePath}";
-            return new AttachFileDto()
-            {
-                FilePath = src,
-                Id = entity.Id,
-                FileAlias = entity.FileAlias,
-                SequenceNumber = entity.SequenceNumber,
-                FileName = entity.FileName,
-                FileType = entity.FileType,
-                FileSize = entity.FileSize,
-                DownloadTimes = entity.DownloadTimes,
-            };
         }
         /// <summary>
         /// 通过业务编号获取所有的附件（文件夹及文件）

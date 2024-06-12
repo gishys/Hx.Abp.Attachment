@@ -61,12 +61,6 @@ namespace Hx.Abp.Attachment.Api.Controllers
         {
             return AttachCatalogueAppService.DeleteSingleFileAsync(attachFileId);
         }
-        [Route("deletefile")]
-        [HttpDelete]
-        public virtual Task DeleteFilesAsync(Guid catalogueId)
-        {
-            return AttachCatalogueAppService.DeleteFilesAsync(catalogueId);
-        }
         [Route("updatesinglefile")]
         [HttpPut]
         public virtual Task<AttachFileDto> UpdateSingleFileAsync(Guid catalogueId, Guid attachFileId, AttachFileCreateDto input)

@@ -1,5 +1,6 @@
 ﻿using Hx.Abp.Attachment.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 
@@ -39,7 +40,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .Select(d => new CreateAttachFileCatalogueInfo()
                 {
                     SequenceNumber = d.AttachFiles.Count > 0 ? d.AttachFiles.Max(f => f.SequenceNumber) : 0,
-                    Reference = d.Reference
+                    Reference = d.Reference,
+                    Id = d.Id,
                 }).FirstOrDefaultAsync(cancellationToken);
         }
         public async Task<List<AttachCatalogue>> FindByReferenceAsync(
@@ -53,41 +55,22 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .OrderBy(d => d.SequenceNumber)
                 .ToListAsync(cancellationToken);
         }
-        public async Task<List<AttachCatalogue>> FindByParentIdAsync(
-            Guid parentId,
-            bool includeDetails = true,
-            CancellationToken cancellationToken = default)
-        {
-            return await (await GetDbSetAsync())
-                .IncludeDetials(includeDetails)
-                .Where(p => p.ParentId == parentId)
-                .OrderBy(d => d.SequenceNumber)
-                .ToListAsync(cancellationToken);
-        }
-        public async Task<AttachFile?> FindSingleAttachFileAsync(
-            Guid catalogueId,
-            Guid attachFileId)
-        {
-            var entity = (await GetDbSetAsync())
-                .IncludeDetials(true)
-                .FirstOrDefault(d => d.Id == catalogueId);
-            return entity?
-                .AttachFiles?
-                .FirstOrDefault(d => d.Id == attachFileId);
-        }
         public override async Task<IQueryable<AttachCatalogue>> WithDetailsAsync()
         {
             var queryable = await GetQueryableAsync();
             return queryable.IncludeDetials();
         }
 
-        public async Task<bool> AnyByNameAsync(string catalogueName)
+        public async Task<bool> AnyByNameAsync(string catalogueName, string reference)
         {
-            return await (await GetDbSetAsync()).AnyAsync(p => p.CatalogueName == catalogueName);
+            return await (await GetDbSetAsync()).AnyAsync(p => p.CatalogueName == catalogueName && p.Reference == reference);
         }
-        public async Task<int> DeleteByNameAsync(string catalogueName)
+        public async Task<int> GetMaxSequenceNumberByReferenceAsync(string reference)
         {
-            return await (await GetDbSetAsync()).Where(d => d.CatalogueName == catalogueName).ExecuteDeleteAsync();
+            return await (await GetDbSetAsync())
+                .Where(d => d.CatalogueName == reference)
+                .OrderByDescending(d => d.SequenceNumber)
+                .Select(d => d.SequenceNumber).FirstOrDefaultAsync();
         }
     }
 }

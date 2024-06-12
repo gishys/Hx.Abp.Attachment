@@ -123,7 +123,11 @@ namespace Hx.Abp.Attachment.Domain
         }
         public virtual void CalculatePageCount(int pageCount)
         {
-            PageCount = pageCount;
+            PageCount += pageCount;
+        }
+        public virtual void AddAttachCount(int count = 1)
+        {
+            AttachCount += count;
         }
         public virtual void AddAttachCatalogue(AttachCatalogue attachCatalogue)
         {
@@ -135,10 +139,17 @@ namespace Hx.Abp.Attachment.Domain
         }
         public virtual void SetAttachReceiveType([NotNull] AttachReceiveType attachReceiveType) => AttachReceiveType = attachReceiveType;
         public virtual void SetCatalogueName([NotNull] string catalogueName) => CatalogueName = catalogueName;
-        public virtual void SetReference([NotNull] string reference) => Reference = reference;
+        public virtual void SetReference([NotNull] string reference, int referenceType)
+        {
+            Reference = reference;
+            ReferenceType = referenceType;
+        }
         public virtual void SetSequenceNumber(int sequenceNumber)
         {
             SequenceNumber = sequenceNumber;
         }
+        public virtual void RemoveTo(Guid? parentId) => ParentId = parentId;
+        public virtual void SetIsVerification(bool isVerification) => IsVerification = isVerification;
+        public virtual void SetIsRequired(bool isIsRequired) => IsRequired = isIsRequired;
     }
 }

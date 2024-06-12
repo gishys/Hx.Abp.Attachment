@@ -1,6 +1,6 @@
 ﻿using Hx.Abp.Attachment.Application.Contracts;
 using Hx.Abp.Attachment.Domain;
-using iTextSharp.text.pdf;
+using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp;
@@ -30,23 +30,25 @@ namespace Hx.Abp.Attachment.Application
         public virtual async Task<AttachCatalogueDto> CreateAsync(AttachCatalogueCreateDto input)
         {
             using var uow = UnitOfWorkManager.Begin();
-            var existingCatalogue = await CatalogueRepository.AnyByNameAsync(input.CatalogueName);
+            var existingCatalogue = await CatalogueRepository.AnyByNameAsync(input.CatalogueName, input.Reference);
             if (existingCatalogue)
             {
-                await CatalogueRepository.DeleteByNameAsync(input.CatalogueName);
-                await uow.SaveChangesAsync();
+                throw new UserFriendlyException("名称重复，请先删除现有名称再创建！");
             }
-            var maxNumber = 1;
-            if (input.ParentId.HasValue)
+            int maxNumber = 0;
+            if (!input.ParentId.HasValue)
             {
-                var entitys = await CatalogueRepository.FindByParentIdAsync(input.ParentId.Value);
-                maxNumber = entitys.Any() ? entitys.Max(d => d.SequenceNumber) + 1 : 1;
+                maxNumber = await CatalogueRepository.GetMaxSequenceNumberByReferenceAsync(input.Reference);
+            }
+            else
+            {
+                maxNumber = await CatalogueRepository.ByParentIdFindMaxSequenceAsync(input.ParentId.Value);
             }
             var attachCatalogue = new AttachCatalogue(
                     GuidGenerator.Create(),
                     input.AttachReceiveType,
                     input.CatalogueName,
-                    maxNumber,
+                    ++maxNumber,
                     input.Reference,
                     input.ReferenceType,
                     input.ParentId,
@@ -151,15 +153,9 @@ namespace Hx.Abp.Attachment.Application
                         fileUrl,
                         fileExtension,
                         input.DocumentContent.Length,
-                        0);
-                    await BlobContainer.SaveAsync($"{AppGlobalProperties.AttachmentBasicPath}/{catalogue.Reference}/{fileName}", input.DocumentContent, overrideExisting: true);
-                    var pagesToAdd = fileExtension switch
-                    {
-                        ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".tif" or ".tiff" => 1,
-                        ".pdf" => CalculatePdfPages(input.DocumentContent),
-                        _ => 1,
-                    };
-                    //tempAttachFile.CalculatePageCount(tempAttachFile.PageCount + pagesToAdd);
+                        0,
+                        catalogue.Id);
+                    await BlobContainer.SaveAsync(fileUrl, input.DocumentContent, overrideExisting: true);
                     entitys.Add(tempFile);
                     var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{fileUrl}";
                     var retFile = new AttachFileDto()
@@ -184,12 +180,6 @@ namespace Hx.Abp.Attachment.Application
                 throw new BusinessException(message: "没有查询到目录！");
             }
         }
-        private static int CalculatePdfPages(byte[] pdfContent)
-        {
-            using var memoryStream = new MemoryStream(pdfContent);
-            var reader = new PdfReader(memoryStream);
-            return reader.NumberOfPages;
-        }
         /// <summary>
         /// 删除单个文件
         /// </summary>
@@ -201,38 +191,8 @@ namespace Hx.Abp.Attachment.Application
         {
             using var uow = UnitOfWorkManager.Begin();
             var entity = await EfCoreAttachFileRepository.FindAsync(attachFileId) ?? throw new UserFriendlyException(message: "没有查询到有效的文件！");
-            if (entity.AttachCatalogueId.HasValue)
-            {
-                var catalogue = await CatalogueRepository.FindAsync(entity.AttachCatalogueId.Value);
-                if (catalogue != null)
-                {
-                    var pagesToAdd = entity.FileType switch
-                    {
-                        ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".tif" or ".tiff" => 1,
-                        ".pdf" => CalculatePdfPages(await BlobContainer.GetAllBytesAsync(entity.FilePath)),
-                        _ => 1,
-                    };
-                    catalogue?.RemoveFiles(d => d.Id == attachFileId, pagesToAdd);
-                }
-            }
             await EfCoreAttachFileRepository.DeleteAsync(entity);
             await uow.CompleteAsync();
-        }
-        /// <summary>
-        /// 清空文件夹
-        /// </summary>
-        /// <param name="catalogueId"></param>
-        /// <returns></returns>
-        /// <exception cref="BusinessException"></exception>
-        public virtual async Task DeleteFilesAsync(Guid catalogueId)
-        {
-            var entity = await CatalogueRepository.FindAsync(catalogueId);
-            if (entity != null)
-            {
-                entity.RemoveFiles(d => true, 0);
-                await CatalogueRepository.UpdateAsync(entity);
-            }
-            await EfCoreAttachFileRepository.DeleteByCatalogueAsync(catalogueId);
         }
         /// <summary>
         /// 替换文件（存储的文件没有替换核实对错）
@@ -336,7 +296,19 @@ namespace Hx.Abp.Attachment.Application
             }
             if (!string.Equals(entity.Reference, input.Reference, StringComparison.InvariantCultureIgnoreCase))
             {
-                entity.SetReference(input.Reference);
+                entity.SetReference(input.Reference, input.ReferenceType);
+            }
+            if (entity.ParentId != input.ParentId)
+            {
+                entity.RemoveTo(input.ParentId);
+            }
+            if (entity.IsVerification != input.IsVerification)
+            {
+                entity.SetIsVerification(input.IsVerification);
+            }
+            if (entity.IsRequired != input.IsRequired)
+            {
+                entity.SetIsRequired(input.IsRequired);
             }
             await CatalogueRepository.UpdateAsync(entity);
             await uow.SaveChangesAsync();

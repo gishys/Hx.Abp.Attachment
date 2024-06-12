@@ -8,18 +8,11 @@ namespace Hx.Abp.Attachment.Domain
             string reference,
             bool includeDetails = true,
             CancellationToken cancellationToken = default);
-        Task<AttachFile?> FindSingleAttachFileAsync(
-            Guid catalogueId,
-            Guid attachFileId);
-        Task<List<AttachCatalogue>> FindByParentIdAsync(
-            Guid parentId,
-            bool includeDetails = true,
-            CancellationToken cancellationToken = default);
         Task<int> ByParentIdFindMaxSequenceAsync(
             Guid parentId,
             CancellationToken cancellationToken = default);
-        Task<bool> AnyByNameAsync(string catalogueName);
-        Task<int> DeleteByNameAsync(string catalogueName);
+        Task<bool> AnyByNameAsync(string catalogueName, string reference);
+        Task<int> GetMaxSequenceNumberByReferenceAsync(string reference);
         Task<CreateAttachFileCatalogueInfo?> ByIdMaxSequenceAsync(
             Guid id,
             CancellationToken cancellationToken = default);

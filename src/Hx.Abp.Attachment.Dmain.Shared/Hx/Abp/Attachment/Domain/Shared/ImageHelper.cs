@@ -2,7 +2,7 @@
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.PixelFormats;
 
-namespace Hx.Abp.Attachment.Application
+namespace Hx.Abp.Attachment.Domain.Shared
 {
     public static class ImageHelper
     {

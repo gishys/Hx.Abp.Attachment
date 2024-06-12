@@ -12,8 +12,7 @@
           "Hx.Abp.Attachment.Domain": "1.0.0",
           "SixLabors.ImageSharp": "3.1.4",
           "Volo.Abp.AutoMapper": "8.1.1",
-          "Volo.Abp.BlobStoring.FileSystem": "8.1.1",
-          "iTextSharp.LGPLv2.Core": "3.4.20"
+          "Volo.Abp.BlobStoring.FileSystem": "8.1.1"
         },
         "runtime": {
           "Hx.Abp.Attachment.Application.dll": {}
@@ -1284,6 +1283,10 @@
         }
       },
       "Hx.Abp.Attachment.Dmain.Shared/1.0.0": {
+        "dependencies": {
+          "SixLabors.ImageSharp": "3.1.4",
+          "iTextSharp.LGPLv2.Core": "3.4.20"
+        },
         "runtime": {
           "Hx.Abp.Attachment.Dmain.Shared.dll": {}
         }
@@ -1291,6 +1294,7 @@
       "Hx.Abp.Attachment.Domain/1.0.0": {
         "dependencies": {
           "Hx.Abp.Attachment.Dmain.Shared": "1.0.0",
+          "Volo.Abp.BlobStoring.FileSystem": "8.1.1",
           "Volo.Abp.Ddd.Domain": "8.1.3"
         },
         "runtime": {

@@ -20,5 +20,8 @@ namespace Hx.Abp.Attachment.Domain
             CancellationToken cancellationToken = default);
         Task<bool> AnyByNameAsync(string catalogueName);
         Task<int> DeleteByNameAsync(string catalogueName);
+        Task<CreateAttachFileCatalogueInfo?> ByIdMaxSequenceAsync(
+            Guid id,
+            CancellationToken cancellationToken = default);
     }
 }

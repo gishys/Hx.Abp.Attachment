@@ -125,10 +125,10 @@ namespace Hx.Abp.Attachment.Application
         public virtual async Task<List<AttachFileDto>> CreateFilesAsync(Guid id, List<AttachFileCreateDto> inputs)
         {
             using var uow = UnitOfWorkManager.Begin();
-            var tempAttachFile = await CatalogueRepository.FindAsync(id);
+            var catalogue = await CatalogueRepository.ByIdMaxSequenceAsync(id);
             var result = new List<AttachFileDto>();
             var entitys = new List<AttachFile>();
-            if (tempAttachFile != null && inputs.Count > 0)
+            if (catalogue != null && inputs.Count > 0)
             {
                 foreach (var input in inputs)
                 {
@@ -140,11 +140,9 @@ namespace Hx.Abp.Attachment.Application
                         fileExtension = ".jpeg";
                         input.FileAlias = $"{Path.GetFileNameWithoutExtension(input.FileAlias)}{fileExtension}";
                     }
-                    var tempSequenceNumber =
-                    tempAttachFile.AttachFiles?.Count > 0 ?
-                    tempAttachFile.AttachFiles.Max(d => d.SequenceNumber) : 0;
+                    var tempSequenceNumber = catalogue.SequenceNumber;
                     var fileName = $"{attachId}{fileExtension}";
-                    var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{tempAttachFile.Reference}/{fileName}";
+                    var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{catalogue.Reference}/{fileName}";
                     var tempFile = new AttachFile(
                         attachId,
                         input.FileAlias,
@@ -154,14 +152,14 @@ namespace Hx.Abp.Attachment.Application
                         fileExtension,
                         input.DocumentContent.Length,
                         0);
-                    await BlobContainer.SaveAsync($"{AppGlobalProperties.AttachmentBasicPath}/{tempAttachFile.Reference}/{fileName}", input.DocumentContent, overrideExisting: true);
+                    await BlobContainer.SaveAsync($"{AppGlobalProperties.AttachmentBasicPath}/{catalogue.Reference}/{fileName}", input.DocumentContent, overrideExisting: true);
                     var pagesToAdd = fileExtension switch
                     {
                         ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".tif" or ".tiff" => 1,
                         ".pdf" => CalculatePdfPages(input.DocumentContent),
                         _ => 1,
                     };
-                    tempAttachFile.CalculatePageCount(tempAttachFile.PageCount + pagesToAdd);
+                    //tempAttachFile.CalculatePageCount(tempAttachFile.PageCount + pagesToAdd);
                     entitys.Add(tempFile);
                     var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{fileUrl}";
                     var retFile = new AttachFileDto()

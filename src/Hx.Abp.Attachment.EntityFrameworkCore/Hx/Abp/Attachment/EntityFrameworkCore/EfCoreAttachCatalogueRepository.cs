@@ -30,6 +30,18 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .DefaultIfEmpty()
                 .MaxAsync(GetCancellationToken(cancellationToken));
         }
+        public async Task<CreateAttachFileCatalogueInfo?> ByIdMaxSequenceAsync(
+            Guid id,
+            CancellationToken cancellationToken = default)
+        {
+            return await (await GetDbSetAsync())
+                .Where(u => u.Id == id)
+                .Select(d => new CreateAttachFileCatalogueInfo()
+                {
+                    SequenceNumber = d.AttachFiles.Count > 0 ? d.AttachFiles.Max(f => f.SequenceNumber) : 0,
+                    Reference = d.Reference
+                }).FirstOrDefaultAsync(cancellationToken);
+        }
         public async Task<List<AttachCatalogue>> FindByReferenceAsync(
             string reference,
             bool includeDetails = true,

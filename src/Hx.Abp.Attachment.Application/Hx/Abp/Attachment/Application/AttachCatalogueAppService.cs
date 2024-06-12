@@ -127,18 +127,24 @@ namespace Hx.Abp.Attachment.Application
         public virtual async Task<List<AttachFileDto>> CreateFilesAsync(Guid id, List<AttachFileCreateDto> inputs)
         {
             using var uow = UnitOfWorkManager.Begin();
-            var attachId = GuidGenerator.Create();
             var tempAttachFile = await CatalogueRepository.FindAsync(id);
             var result = new List<AttachFileDto>();
             if (tempAttachFile != null)
             {
                 foreach (var input in inputs)
                 {
+                    var attachId = GuidGenerator.Create();
+                    string fileExtension = Path.GetExtension(input.FileAlias).ToLowerInvariant();
+                    if (fileExtension == ".tif" || fileExtension == ".tiff")
+                    {
+                        input.DocumentContent = await ImageHelper.ConvertTiffToImage(input.DocumentContent);
+                        fileExtension = ".jpeg";
+                        input.FileAlias = $"{Path.GetFileNameWithoutExtension(input.FileAlias)}{fileExtension}";
+                    }
                     var tempSequenceNumber =
                     tempAttachFile.AttachFiles?.Count > 0 ?
                     tempAttachFile.AttachFiles.Max(d => d.SequenceNumber) : 0;
-<<<<<<< HEAD
-                    var fileName = $"{attachId}{Path.GetExtension(input.FileAlias)}";
+                    var fileName = $"{attachId}{fileExtension}";
                     var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{tempAttachFile.Reference}/{fileName}";
                     var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{fileUrl}";
                     var tempFile = new AttachFile(
@@ -147,11 +153,10 @@ namespace Hx.Abp.Attachment.Application
                         ++tempSequenceNumber,
                         fileName,
                         $"/host/attachment/{fileUrl}",
-                        Path.GetExtension(input.FileAlias),
+                        fileExtension,
                         input.DocumentContent.Length,
                         0);
-                    await BlobContainer.SaveAsync(fileUrl, input.DocumentContent);
-                    string fileExtension = Path.GetExtension(input.FileAlias).ToLowerInvariant();
+                    await BlobContainer.SaveAsync(fileUrl, input.DocumentContent, overrideExisting: true);
                     var pagesToAdd = fileExtension switch
                     {
                         ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".tif" or ".tiff" => 1,
@@ -175,42 +180,6 @@ namespace Hx.Abp.Attachment.Application
                     result.Add(retFile);
                 }
                 return result;
-=======
-                var fileName = $"{attachId}{Path.GetExtension(input.FileAlias)}";
-                var fileUrl = $"/host/attachment/{AppGlobalProperties.AttachmentBasicPath}/{tempAttachFile.Reference}/{fileName}";
-                var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{fileUrl}";
-                var tempFile = new AttachFile(
-                    attachId,
-                    input.FileAlias,
-                    ++tempSequenceNumber,
-                    fileName,
-                    fileUrl,
-                    Path.GetExtension(input.FileAlias),
-                    input.DocumentContent.Length,
-                    0);
-                await BlobContainer.SaveAsync(fileUrl, input.DocumentContent);
-                string fileExtension = Path.GetExtension(input.FileAlias).ToLowerInvariant();
-                var pagesToAdd = fileExtension switch
-                {
-                    ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" => 1,
-                    ".pdf" => CalculatePdfPages(input.DocumentContent),
-                    _ => 0,
-                };
-                tempAttachFile.AddAttachFile(tempFile, tempAttachFile.PageCount + pagesToAdd);
-                await CatalogueRepository.UpdateAsync(tempAttachFile);
-                await uow.SaveChangesAsync();
-                return new AttachFileDto()
-                {
-                    Id = attachId,
-                    FileAlias = input.FileAlias,
-                    FilePath = src,
-                    SequenceNumber = tempFile.SequenceNumber,
-                    FileName = fileName,
-                    FileType = tempFile.FileType,
-                    FileSize = tempFile.FileSize,
-                    DownloadTimes = tempFile.DownloadTimes,
-                };
->>>>>>> aced6ef11a35c169befd725ce2c4755a68c32c4d
             }
             else
             {
@@ -275,7 +244,7 @@ namespace Hx.Abp.Attachment.Application
                     Path.GetExtension(input.FileAlias),
                     input.DocumentContent.Length,
                     0);
-                await BlobContainer.SaveAsync(fileName, input.DocumentContent);
+                await BlobContainer.SaveAsync(fileName, input.DocumentContent, overrideExisting: true);
                 entity.AddAttachFile(tempFile, entity.PageCount + 1);
                 await CatalogueRepository.UpdateAsync(entity);
                 await uow.SaveChangesAsync();

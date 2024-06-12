@@ -1,10 +1,6 @@
 {
   "version": 2,
-<<<<<<< HEAD
-  "dgSpecHash": "cYZe4TUITMDo7c6ZYPCzIKTtnep6KLQ5amP2AXxjROg9a7r/nzBvIdybU0s8wBspFOypwOqbqbnfPzGKLRWntg==",
-=======
-  "dgSpecHash": "nodRSMj/Z80=",
->>>>>>> aced6ef11a35c169befd725ce2c4755a68c32c4d
+  "dgSpecHash": "RTD31qKDqbA=",
   "success": true,
   "projectFilePath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application\\Hx.Abp.Attachment.Application.csproj",
   "expectedPackageFiles": [

@@ -26,14 +26,14 @@ namespace Hx.Abp.Attachment.Api
                 {
                     container.UseFileSystem(fileSystem =>
                     {
-                        fileSystem.BasePath = "D:\\my-files";
+                        fileSystem.BasePath = "C:\\my-files";
                     });
                 });
                 options.Containers.ConfigureDefault(container =>
                 {
                     container.UseFileSystem(fileSystem =>
                     {
-                        fileSystem.BasePath = "D:\\my-files";
+                        fileSystem.BasePath = "C:\\my-files";
                     });
                 });
             });

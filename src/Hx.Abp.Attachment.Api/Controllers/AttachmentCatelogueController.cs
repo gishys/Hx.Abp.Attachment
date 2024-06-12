@@ -33,7 +33,7 @@ namespace Hx.Abp.Attachment.Api.Controllers
         }
         [Route("uploadfiles")]
         [HttpPost]
-        public virtual async Task<List<AttachFileDto>> CreateSingleFileAsync(Guid id)
+        public virtual async Task<List<AttachFileDto>> CreateFilesAsync(Guid id)
         {
             var files = Request.Form.Files;
             if (files.Count > 0)

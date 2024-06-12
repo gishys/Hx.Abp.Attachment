@@ -127,6 +127,7 @@ namespace Hx.Abp.Attachment.Application
             using var uow = UnitOfWorkManager.Begin();
             var tempAttachFile = await CatalogueRepository.FindAsync(id);
             var result = new List<AttachFileDto>();
+            var entitys = new List<AttachFile>();
             if (tempAttachFile != null && inputs.Count > 0)
             {
                 foreach (var input in inputs)
@@ -160,7 +161,8 @@ namespace Hx.Abp.Attachment.Application
                         ".pdf" => CalculatePdfPages(input.DocumentContent),
                         _ => 1,
                     };
-                    tempAttachFile.AddAttachFile(tempFile, tempAttachFile.PageCount + pagesToAdd);
+                    tempAttachFile.CalculatePageCount(tempAttachFile.PageCount + pagesToAdd);
+                    entitys.Add(tempFile);
                     var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{fileUrl}";
                     var retFile = new AttachFileDto()
                     {
@@ -175,6 +177,7 @@ namespace Hx.Abp.Attachment.Application
                     };
                     result.Add(retFile);
                 }
+                await EfCoreAttachFileRepository.InsertManyAsync(entitys);
                 await uow.CompleteAsync();
                 return result;
             }
@@ -263,7 +266,6 @@ namespace Hx.Abp.Attachment.Application
                     0);
                 await BlobContainer.SaveAsync(fileName, input.DocumentContent, overrideExisting: true);
                 entity.AddAttachFile(tempFile, entity.PageCount + 1);
-                await CatalogueRepository.UpdateAsync(entity);
                 await uow.SaveChangesAsync();
                 return new AttachFileDto()
                 {

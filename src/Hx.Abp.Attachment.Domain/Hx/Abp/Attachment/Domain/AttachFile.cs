@@ -67,7 +67,8 @@ namespace Hx.Abp.Attachment.Domain
             [NotNull] string filePath,
             [NotNull] string fileType,
             int fileSize,
-            int downloadTimes)
+            int downloadTimes,
+            Guid? attachCatalogueId = null)
         {
             Id = id;
             SequenceNumber = sequenceNumber;
@@ -77,6 +78,7 @@ namespace Hx.Abp.Attachment.Domain
             FileType = Check.NotNullOrWhiteSpace(fileType, nameof(fileType));
             FileSize = fileSize;
             DownloadTimes = downloadTimes;
+            AttachCatalogueId = attachCatalogueId;
         }
         /// <summary>
         /// 创建附件文件，通过数据库持久化

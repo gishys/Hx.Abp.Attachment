@@ -121,6 +121,10 @@ namespace Hx.Abp.Attachment.Domain
             AttachCount = AttachFiles.Count;
             PageCount = pageCount;
         }
+        public virtual void CalculatePageCount(int pageCount)
+        {
+            PageCount = pageCount;
+        }
         public virtual void AddAttachCatalogue(AttachCatalogue attachCatalogue)
         {
             Children.Add(attachCatalogue);

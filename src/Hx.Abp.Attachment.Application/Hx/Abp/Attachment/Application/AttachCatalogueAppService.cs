@@ -3,11 +3,9 @@ using Hx.Abp.Attachment.Domain;
 using iTextSharp.text.pdf;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using SkiaSharp;
 using Volo.Abp;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.DependencyInjection;
-using Volo.Abp.Domain.Entities;
 using Volo.Abp.Uow;
 
 namespace Hx.Abp.Attachment.Application
@@ -72,7 +70,7 @@ namespace Hx.Abp.Attachment.Application
             {
                 foreach (var file in catologue.AttachFiles)
                 {
-                    var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{file.FilePath}";
+                    var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{file.FilePath}";
                     var tempFile = new AttachFileDto()
                     {
                         FilePath = src,
@@ -100,7 +98,7 @@ namespace Hx.Abp.Attachment.Application
         {
             using var uow = UnitOfWorkManager.Begin();
             var attachFile = await EfCoreAttachFileRepository.FindAsync(attachFileId) ?? throw new BusinessException(message: "没有查询到有效的文件！");
-            var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{attachFile.FilePath}";
+            var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{attachFile.FilePath}";
             var tempFile = new AttachFileDto()
             {
                 FilePath = src,
@@ -145,7 +143,7 @@ namespace Hx.Abp.Attachment.Application
                     tempAttachFile.AttachFiles?.Count > 0 ?
                     tempAttachFile.AttachFiles.Max(d => d.SequenceNumber) : 0;
                     var fileName = $"{attachId}{fileExtension}";
-                    var fileUrl = $"/host/attachment/{AppGlobalProperties.AttachmentBasicPath}/{tempAttachFile.Reference}/{fileName}";
+                    var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{tempAttachFile.Reference}/{fileName}";
                     var tempFile = new AttachFile(
                         attachId,
                         input.FileAlias,
@@ -154,8 +152,9 @@ namespace Hx.Abp.Attachment.Application
                         fileUrl,
                         fileExtension,
                         input.DocumentContent.Length,
-                        0);
-                    await BlobContainer.SaveAsync(fileUrl, input.DocumentContent, overrideExisting: true);
+                        0,
+                        tempAttachFile.Id);
+                    await BlobContainer.SaveAsync($"{AppGlobalProperties.AttachmentBasicPath}/{tempAttachFile.Reference}/{fileName}", input.DocumentContent, overrideExisting: true);
                     var pagesToAdd = fileExtension switch
                     {
                         ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".tif" or ".tiff" => 1,
@@ -163,7 +162,7 @@ namespace Hx.Abp.Attachment.Application
                         _ => 1,
                     };
                     tempAttachFile.AddAttachFile(tempFile, tempAttachFile.PageCount + pagesToAdd);
-                    var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{fileUrl}";
+                    var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{fileUrl}";
                     var retFile = new AttachFileDto()
                     {
                         Id = attachId,
@@ -178,7 +177,7 @@ namespace Hx.Abp.Attachment.Application
                     result.Add(retFile);
                 }
                 await CatalogueRepository.UpdateAsync(tempAttachFile);
-                await uow.SaveChangesAsync();
+                await uow.CompleteAsync();
                 return result;
             }
             else
@@ -203,8 +202,22 @@ namespace Hx.Abp.Attachment.Application
         {
             using var uow = UnitOfWorkManager.Begin();
             var entity = await EfCoreAttachFileRepository.FindAsync(attachFileId) ?? throw new UserFriendlyException(message: "没有查询到有效的文件！");
+            if (entity.AttachCatalogueId.HasValue)
+            {
+                var catalogue = await CatalogueRepository.FindAsync(entity.AttachCatalogueId.Value);
+                if (catalogue != null)
+                {
+                    var pagesToAdd = entity.FileType switch
+                    {
+                        ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".tif" or ".tiff" => 1,
+                        ".pdf" => CalculatePdfPages(await BlobContainer.GetAllBytesAsync(entity.FilePath)),
+                        _ => 1,
+                    };
+                    catalogue?.RemoveFiles(d => d.Id == attachFileId, pagesToAdd);
+                }
+            }
             await EfCoreAttachFileRepository.DeleteAsync(entity);
-            await uow.SaveChangesAsync();
+            await uow.CompleteAsync();
         }
         /// <summary>
         /// 清空文件夹
@@ -214,6 +227,12 @@ namespace Hx.Abp.Attachment.Application
         /// <exception cref="BusinessException"></exception>
         public virtual async Task DeleteFilesAsync(Guid catalogueId)
         {
+            var entity = await CatalogueRepository.FindAsync(catalogueId);
+            if (entity != null)
+            {
+                entity.RemoveFiles(d => true, 0);
+                await CatalogueRepository.UpdateAsync(entity);
+            }
             await EfCoreAttachFileRepository.DeleteByCatalogueAsync(catalogueId);
         }
         /// <summary>
@@ -234,7 +253,7 @@ namespace Hx.Abp.Attachment.Application
                 entity.AttachFiles.RemoveAll(d => d.Id == attachFileId);
                 var attachId = GuidGenerator.Create();
                 var fileName = $"{attachId}{Path.GetExtension(input.FileAlias)}";
-                var fileUrl = $"/host/attachment/{AppGlobalProperties.AttachmentBasicPath}/{entity.Reference}/{fileName}";
+                var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{entity.Reference}/{fileName}";
                 var tempFile = new AttachFile(
                     attachId,
                     input.FileAlias,
@@ -252,7 +271,7 @@ namespace Hx.Abp.Attachment.Application
                 {
                     Id = attachId,
                     FileAlias = input.FileAlias,
-                    FilePath = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{fileUrl}",
+                    FilePath = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{fileUrl}",
                     SequenceNumber = tempFile.SequenceNumber,
                     FileName = fileName,
                     FileType = tempFile.FileType,
@@ -287,7 +306,7 @@ namespace Hx.Abp.Attachment.Application
                     foreach (var file in cat.AttachFiles)
                     {
                         var fileDto = ObjectMapper.Map<AttachFile, AttachFileDto>(file);
-                        fileDto.FilePath = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{file.FilePath}";
+                        fileDto.FilePath = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{file.FilePath}";
                         catalogueDto.AttachFiles.Add(fileDto);
                     }
                 }

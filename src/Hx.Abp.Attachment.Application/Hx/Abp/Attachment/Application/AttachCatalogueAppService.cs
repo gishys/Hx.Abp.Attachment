@@ -127,7 +127,6 @@ namespace Hx.Abp.Attachment.Application
             using var uow = UnitOfWorkManager.Begin();
             var tempAttachFile = await CatalogueRepository.FindAsync(id);
             var result = new List<AttachFileDto>();
-            var entitys = new List<AttachFile>();
             if (tempAttachFile != null && inputs.Count > 0)
             {
                 foreach (var input in inputs)
@@ -153,8 +152,7 @@ namespace Hx.Abp.Attachment.Application
                         fileUrl,
                         fileExtension,
                         input.DocumentContent.Length,
-                        0,
-                        tempAttachFile.Id);
+                        0);
                     await BlobContainer.SaveAsync($"{AppGlobalProperties.AttachmentBasicPath}/{tempAttachFile.Reference}/{fileName}", input.DocumentContent, overrideExisting: true);
                     var pagesToAdd = fileExtension switch
                     {
@@ -162,12 +160,11 @@ namespace Hx.Abp.Attachment.Application
                         ".pdf" => CalculatePdfPages(input.DocumentContent),
                         _ => 1,
                     };
-                    tempAttachFile.CalculatePageCount(tempAttachFile.PageCount + pagesToAdd);
-                    entitys.Add(tempFile);
+                    tempAttachFile.AddAttachFile(tempFile, tempAttachFile.PageCount + pagesToAdd);
                     var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{fileUrl}";
                     var retFile = new AttachFileDto()
                     {
-                        Id = attachId,
+                        Id = tempFile.Id,
                         FileAlias = input.FileAlias,
                         FilePath = src,
                         SequenceNumber = tempFile.SequenceNumber,
@@ -178,8 +175,6 @@ namespace Hx.Abp.Attachment.Application
                     };
                     result.Add(retFile);
                 }
-                await EfCoreAttachFileRepository.InsertManyAsync(entitys);
-                await CatalogueRepository.UpdateAsync(tempAttachFile);
                 await uow.CompleteAsync();
                 return result;
             }
@@ -272,7 +267,7 @@ namespace Hx.Abp.Attachment.Application
                 await uow.SaveChangesAsync();
                 return new AttachFileDto()
                 {
-                    Id = attachId,
+                    Id = tempFile.Id,
                     FileAlias = input.FileAlias,
                     FilePath = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{fileUrl}",
                     SequenceNumber = tempFile.SequenceNumber,

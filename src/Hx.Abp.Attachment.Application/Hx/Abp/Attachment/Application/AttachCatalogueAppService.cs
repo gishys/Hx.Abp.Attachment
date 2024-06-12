@@ -129,7 +129,7 @@ namespace Hx.Abp.Attachment.Application
             using var uow = UnitOfWorkManager.Begin();
             var tempAttachFile = await CatalogueRepository.FindAsync(id);
             var result = new List<AttachFileDto>();
-            if (tempAttachFile != null)
+            if (tempAttachFile != null && inputs.Count > 0)
             {
                 foreach (var input in inputs)
                 {
@@ -145,14 +145,13 @@ namespace Hx.Abp.Attachment.Application
                     tempAttachFile.AttachFiles?.Count > 0 ?
                     tempAttachFile.AttachFiles.Max(d => d.SequenceNumber) : 0;
                     var fileName = $"{attachId}{fileExtension}";
-                    var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{tempAttachFile.Reference}/{fileName}";
-                    var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{fileUrl}";
+                    var fileUrl = $"/host/attachment/{AppGlobalProperties.AttachmentBasicPath}/{tempAttachFile.Reference}/{fileName}";
                     var tempFile = new AttachFile(
                         attachId,
                         input.FileAlias,
                         ++tempSequenceNumber,
                         fileName,
-                        $"/host/attachment/{fileUrl}",
+                        fileUrl,
                         fileExtension,
                         input.DocumentContent.Length,
                         0);
@@ -161,11 +160,10 @@ namespace Hx.Abp.Attachment.Application
                     {
                         ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".tif" or ".tiff" => 1,
                         ".pdf" => CalculatePdfPages(input.DocumentContent),
-                        _ => 0,
+                        _ => 1,
                     };
                     tempAttachFile.AddAttachFile(tempFile, tempAttachFile.PageCount + pagesToAdd);
-                    await CatalogueRepository.UpdateAsync(tempAttachFile);
-                    await uow.SaveChangesAsync();
+                    var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{fileUrl}";
                     var retFile = new AttachFileDto()
                     {
                         Id = attachId,
@@ -179,6 +177,8 @@ namespace Hx.Abp.Attachment.Application
                     };
                     result.Add(retFile);
                 }
+                await CatalogueRepository.UpdateAsync(tempAttachFile);
+                await uow.SaveChangesAsync();
                 return result;
             }
             else
@@ -240,7 +240,7 @@ namespace Hx.Abp.Attachment.Application
                     input.FileAlias,
                     target.SequenceNumber,
                     fileName,
-                    $"{Configuration[AppGlobalProperties.FileServerBasePath]}{fileUrl}",
+                    fileUrl,
                     Path.GetExtension(input.FileAlias),
                     input.DocumentContent.Length,
                     0);
@@ -248,7 +248,17 @@ namespace Hx.Abp.Attachment.Application
                 entity.AddAttachFile(tempFile, entity.PageCount + 1);
                 await CatalogueRepository.UpdateAsync(entity);
                 await uow.SaveChangesAsync();
-                return ObjectMapper.Map<AttachFile, AttachFileDto>(target);
+                return new AttachFileDto()
+                {
+                    Id = attachId,
+                    FileAlias = input.FileAlias,
+                    FilePath = $"{Configuration[AppGlobalProperties.FileServerBasePath]}{fileUrl}",
+                    SequenceNumber = tempFile.SequenceNumber,
+                    FileName = fileName,
+                    FileType = tempFile.FileType,
+                    FileSize = tempFile.FileSize,
+                    DownloadTimes = tempFile.DownloadTimes,
+                };
             }
             else
             {

@@ -6,6 +6,7 @@ namespace Hx.Abp.Attachment.Domain
     {
         Task<List<AttachCatalogue>> FindByReferenceAsync(
             string reference,
+            int referenceType,
             bool includeDetails = true,
             CancellationToken cancellationToken = default);
         Task<int> ByParentIdFindMaxSequenceAsync(

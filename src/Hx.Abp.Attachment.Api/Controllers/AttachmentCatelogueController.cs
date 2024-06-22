@@ -69,9 +69,9 @@ namespace Hx.Abp.Attachment.Api.Controllers
         }
         [Route("findbyreference")]
         [HttpGet]
-        public virtual Task<List<AttachCatalogueDto>> FindByReferenceAsync(string Reference)
+        public virtual Task<List<AttachCatalogueDto>> FindByReferenceAsync(string reference, int referenceType)
         {
-            return AttachCatalogueAppService.FindByReferenceAsync(Reference);
+            return AttachCatalogueAppService.FindByReferenceAsync(reference, referenceType);
         }
         [Route("update")]
         [HttpPut]

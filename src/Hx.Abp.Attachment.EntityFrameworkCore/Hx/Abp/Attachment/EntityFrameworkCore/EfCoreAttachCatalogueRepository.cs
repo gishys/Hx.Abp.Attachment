@@ -46,12 +46,13 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         }
         public async Task<List<AttachCatalogue>> FindByReferenceAsync(
             string reference,
+            int referenceType,
             bool includeDetails = true,
             CancellationToken cancellationToken = default)
         {
             return await (await GetDbSetAsync())
                 .IncludeDetials(includeDetails)
-                .Where(p => p.Reference == reference && p.ParentId == null)
+                .Where(p => p.Reference == reference && p.ParentId == null && p.ReferenceType == referenceType)
                 .OrderBy(d => d.SequenceNumber)
                 .ToListAsync(cancellationToken);
         }

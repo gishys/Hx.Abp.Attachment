@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.ObjectMapping;
 using Volo.Abp.Uow;
 
 namespace Hx.Abp.Attachment.Application
@@ -59,6 +60,48 @@ namespace Hx.Abp.Attachment.Application
             await CatalogueRepository.InsertAsync(attachCatalogue);
             await uow.SaveChangesAsync();
             return ObjectMapper.Map<AttachCatalogue, AttachCatalogueDto>(attachCatalogue);
+        }
+        /// <summary>
+        /// 创建文件夹(Many)
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        public virtual async Task<List<AttachCatalogueDto>> CreateManyAsync(List<AttachCatalogueCreateDto> inputs)
+        {
+            using var uow = UnitOfWorkManager.Begin();
+            List<AttachCatalogue> attachCatalogues = GetEntitys(inputs, 0);
+            await CatalogueRepository.InsertManyAsync(attachCatalogues);
+            await uow.SaveChangesAsync();
+            return ObjectMapper.Map<List<AttachCatalogue>, List<AttachCatalogueDto>>(attachCatalogues);
+        }
+        private List<AttachCatalogue> GetEntitys(List<AttachCatalogueCreateDto> inputs, int maxNumber)
+        {
+            List<AttachCatalogue> attachCatalogues = new List<AttachCatalogue>();
+            foreach (var input in inputs)
+            {
+                var attachCatalogue = new AttachCatalogue(
+                        GuidGenerator.Create(),
+                        input.AttachReceiveType,
+                        input.CatalogueName,
+                        ++maxNumber,
+                        input.Reference,
+                        input.ReferenceType,
+                        input.ParentId,
+                        isRequired: input.IsRequired,
+                        isVerification: input.IsVerification,
+                        verificationPassed: input.VerificationPassed,
+                        isStatic: input.IsStatic);
+                if (input.Children?.Count() > 0)
+                {
+                    var children = GetEntitys(input.Children.ToList(), 0);
+                    foreach (var item in children)
+                    {
+                        attachCatalogue.AddAttachCatalogue(item);
+                    }
+                }
+                attachCatalogues.Add(attachCatalogue);
+            }
+            return attachCatalogues;
         }
         /// <summary>
         /// 批量下载

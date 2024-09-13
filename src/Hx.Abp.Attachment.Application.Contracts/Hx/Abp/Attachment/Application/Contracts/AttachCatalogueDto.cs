@@ -43,6 +43,10 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// </summary>
         public int PageCount { get; set; }
         /// <summary>
+        /// 静态标识
+        /// </summary>
+        public bool IsStatic { get; set; }
+        /// <summary>
         /// 子文件夹
         /// </summary>
         public ICollection<AttachCatalogueDto>? Children { get; set; }

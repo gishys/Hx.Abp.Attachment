@@ -8,7 +8,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 附件收取类型
         /// </summary>
-        public required AttachReceiveType AttachReceiveType { get; set; }
+        public required AttachReceiveType AttachReceiveType { get; set; } = AttachReceiveType.Copy;
         /// <summary>
         /// 目录名称
         /// </summary>
@@ -21,7 +21,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 业务Id
         /// </summary>
-        [MaxLength(20)]
+        [MaxLength(28)]
         public required string Reference { get; set; }
         /// <summary>
         /// 父节点Id
@@ -43,5 +43,9 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// 静态标识
         /// </summary>
         public bool IsStatic { get; set; } = false;
+        /// <summary>
+        /// 子文件夹
+        /// </summary>
+        public ICollection<AttachCatalogueCreateDto>? Children { get; set; }
     }
 }

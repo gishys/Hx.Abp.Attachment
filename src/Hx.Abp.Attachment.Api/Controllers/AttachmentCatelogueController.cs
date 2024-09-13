@@ -20,6 +20,12 @@ namespace Hx.Abp.Attachment.Api.Controllers
         {
             return AttachCatalogueAppService.CreateAsync(input);
         }
+        [Route("createmany")]
+        [HttpPost]
+        public virtual Task<List<AttachCatalogueDto>> CreateManyAsync(List<AttachCatalogueCreateDto> inputs)
+        {
+            return AttachCatalogueAppService.CreateManyAsync(inputs);
+        }
         [Route("queryfiles")]
         [HttpGet]
         public virtual Task<List<AttachFileDto>> QueryFilesAsync(Guid catalogueId)

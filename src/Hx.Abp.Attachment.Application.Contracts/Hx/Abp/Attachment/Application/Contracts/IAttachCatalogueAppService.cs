@@ -14,5 +14,6 @@ namespace Hx.Abp.Attachment.Application.Contracts
         Task<List<AttachFileDto>> QueryFilesAsync(Guid catalogueId);
         Task<AttachFileDto> QueryFileAsync(Guid attachFileId);
         Task<List<AttachFileDto>> CreateFilesAsync(Guid id, List<AttachFileCreateDto> input);
+        Task<bool> VerifyUploadAsync(List<GetAttachListInput> inputs);
     }
 }

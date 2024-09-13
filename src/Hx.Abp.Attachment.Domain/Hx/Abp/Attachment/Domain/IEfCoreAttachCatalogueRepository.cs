@@ -17,5 +17,9 @@ namespace Hx.Abp.Attachment.Domain
         Task<CreateAttachFileCatalogueInfo?> ByIdMaxSequenceAsync(
             Guid id,
             CancellationToken cancellationToken = default);
+        Task<List<AttachCatalogue>> VerifyUploadAsync(
+            List<GetAttachListInput> inputs,
+            bool includeDetails = true,
+            CancellationToken cancellationToken = default);
     }
 }

@@ -279,6 +279,29 @@ namespace Hx.Abp.Attachment.Application
             return result;
         }
         /// <summary>
+        /// 验证是否已上传所有必填文件
+        /// </summary>
+        /// <param name="inputs"></param>
+        /// <returns></returns>
+        public virtual async Task<bool> VerifyUploadAsync(List<GetAttachListInput> inputs)
+        {
+            var list = await CatalogueRepository.VerifyUploadAsync(inputs);
+            return VerifyCatelogues(list);
+        }
+        public bool VerifyCatelogues(List<AttachCatalogue> cats)
+        {
+            foreach (var cat in cats)
+            {
+                if (cat.Children?.Count <= 0 && cat.IsRequired && cat.AttachFiles?.Count <= 0)
+                {
+                    return false;
+                }
+                if (cat.Children?.Count > 0)
+                    VerifyCatelogues(cat.Children.ToList());
+            }
+            return true;
+        }
+        /// <summary>
         /// 修改目录
         /// </summary>
         /// <param name="id"></param>

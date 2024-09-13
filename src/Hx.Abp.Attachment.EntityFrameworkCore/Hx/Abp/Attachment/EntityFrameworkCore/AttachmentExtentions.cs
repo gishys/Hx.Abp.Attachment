@@ -22,6 +22,10 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .ThenInclude(d => d.AttachFiles.OrderBy(d => d.SequenceNumber))
                 .Include(d => d.Children)
                 .ThenInclude(d => d.Children)
+                .ThenInclude(d => d.AttachFiles.OrderBy(d => d.SequenceNumber))
+                .Include(d => d.Children)
+                .ThenInclude(d => d.Children)
+                .ThenInclude(d => d.Children)
                 .ThenInclude(d => d.AttachFiles.OrderBy(d => d.SequenceNumber));
         }
     }

@@ -74,6 +74,12 @@ namespace Hx.Abp.Attachment.Api.Controllers
         {
             return AttachCatalogueAppService.FindByReferenceAsync(inputs);
         }
+        [Route("verifycatelogues")]
+        [HttpPost]
+        public virtual Task<bool> VerifyCateloguesAsync(List<GetAttachListInput> inputs)
+        {
+            return AttachCatalogueAppService.VerifyUploadAsync(inputs);
+        }
         [Route("update")]
         [HttpPut]
         public virtual Task<AttachCatalogueDto> UpdateAsync(Guid id, AttachCatalogueUpdateDto input)

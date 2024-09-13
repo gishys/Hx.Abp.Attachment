@@ -56,6 +56,18 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .ThenBy(d => d.SequenceNumber)
                 .ToListAsync(cancellationToken);
         }
+        public async Task<List<AttachCatalogue>> VerifyUploadAsync(
+            List<GetAttachListInput> inputs,
+            bool includeDetails = true,
+            CancellationToken cancellationToken = default)
+        {
+            return await (await GetDbSetAsync())
+                .IncludeDetials(includeDetails)
+                .Where(p => p.ParentId == null && inputs.Any(i => i.Reference == p.Reference && i.ReferenceType == p.ReferenceType))
+                .OrderBy(d => d.Reference)
+                .ThenBy(d => d.SequenceNumber)
+                .ToListAsync(cancellationToken);
+        }
         public override async Task<IQueryable<AttachCatalogue>> WithDetailsAsync()
         {
             var queryable = await GetQueryableAsync();

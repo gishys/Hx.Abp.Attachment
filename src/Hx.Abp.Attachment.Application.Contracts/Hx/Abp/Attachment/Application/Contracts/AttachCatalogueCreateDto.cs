@@ -39,5 +39,9 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// 是否必收
         /// </summary>
         public bool IsRequired { get; set; }
+        /// <summary>
+        /// 静态标识
+        /// </summary>
+        public bool IsStatic { get; set; } = false;
     }
 }

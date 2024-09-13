@@ -55,6 +55,10 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual int SequenceNumber { get; private set; }
         /// <summary>
+        /// 静态标识
+        /// </summary>
+        public virtual bool IsStatic { get; private set; }
+        /// <summary>
         /// 子文件夹
         /// </summary>
         public virtual ICollection<AttachCatalogue> Children { get; private set; }
@@ -82,6 +86,7 @@ namespace Hx.Abp.Attachment.Domain
             bool isRequired = false,
             bool isVerification = false,
             bool verificationPassed = false,
+            bool isStatic = false,
             int attachCount = 0,
             int pageCount = 0
             )
@@ -98,6 +103,7 @@ namespace Hx.Abp.Attachment.Domain
             VerificationPassed = verificationPassed;
             AttachCount = attachCount;
             PageCount = pageCount;
+            IsStatic = isStatic;
             AttachFiles = [];
             Children = [];
         }
@@ -151,5 +157,6 @@ namespace Hx.Abp.Attachment.Domain
         public virtual void RemoveTo(Guid? parentId) => ParentId = parentId;
         public virtual void SetIsVerification(bool isVerification) => IsVerification = isVerification;
         public virtual void SetIsRequired(bool isIsRequired) => IsRequired = isIsRequired;
+        public virtual void SetIsStatic(bool isIsStatic) => IsStatic = isIsStatic;
     }
 }

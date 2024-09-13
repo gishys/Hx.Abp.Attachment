@@ -31,6 +31,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.Property(d => d.IsRequired).HasColumnName("ISREQUIRED").HasDefaultValue(false);
             builder.Property(d => d.SequenceNumber).HasColumnName("SEQUENCENUMBER").HasDefaultValue(0);
             builder.Property(d => d.ParentId).HasColumnName("PARENTID");
+            builder.Property(d => d.IsStatic).HasColumnName("ISSTATIC").HasDefaultValue(false);
 
             builder.Property(p => p.ExtraProperties).HasColumnName("EXTRAPROPERTIES");
             builder.Property(p => p.ConcurrencyStamp).HasColumnName("CONCURRENCYSTAMP");

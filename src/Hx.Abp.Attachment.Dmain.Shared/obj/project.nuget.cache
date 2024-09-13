@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "zQM863u5oSHuwer0gD1cdwQah5fVr2ixEl1oe75HhsrQC8flHSCDhMIDDn81JEoTtBQgcfUK2WbCNGTcsI8UFw==",
+  "dgSpecHash": "KDznoiKk+WU=",
   "success": true,
-  "projectFilePath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj",
+  "projectFilePath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\24383\\.nuget\\packages\\bouncycastle.cryptography\\2.3.1\\bouncycastle.cryptography.2.3.1.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\itextsharp.lgplv2.core\\3.4.20\\itextsharp.lgplv2.core.3.4.20.nupkg.sha512",

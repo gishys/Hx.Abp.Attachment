@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "2SD4vX6NGiWEaAknulZd/7s/+ILlDeY3UTNc8kg9/EtLoi+2y9LMu32I5TLPgHHPFs/mk7EKBdyTMiFpI85hpg==",
+  "dgSpecHash": "dyYUvdNfD9s=",
   "success": true,
-  "projectFilePath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Application\\Hx.Abp.Attachment.Application.csproj",
+  "projectFilePath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application\\Hx.Abp.Attachment.Application.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\24383\\.nuget\\packages\\asynckeyedlock\\6.3.4\\asynckeyedlock.6.3.4.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\automapper\\12.0.1\\automapper.12.0.1.nupkg.sha512",

@@ -46,3 +46,4 @@ D:\work\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\refint\Hx
 D:\work\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.pdb
 D:\work\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\ref\Hx.Abp.Attachment.Dmain.Shared.dll
 D:\work\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.csproj.AssemblyReference.cache
+C:\work\projects\attachment\src\Hx.Abp.Attachment.Dmain.Shared\obj\Debug\net8.0\Hx.Abp.Attachment.Dmain.Shared.csproj.AssemblyReference.cache

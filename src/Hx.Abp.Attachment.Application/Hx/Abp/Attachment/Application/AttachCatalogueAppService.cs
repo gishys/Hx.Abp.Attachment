@@ -54,7 +54,8 @@ namespace Hx.Abp.Attachment.Application
                     input.ParentId,
                     isRequired: input.IsRequired,
                     isVerification: input.IsVerification,
-                    verificationPassed: input.VerificationPassed);
+                    verificationPassed: input.VerificationPassed,
+                    isStatic: input.IsStatic);
             await CatalogueRepository.InsertAsync(attachCatalogue);
             await uow.SaveChangesAsync();
             return ObjectMapper.Map<AttachCatalogue, AttachCatalogueDto>(attachCatalogue);

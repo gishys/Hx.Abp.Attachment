@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "rvTNQiZCgOLE3Auktt/kppn5C/2W7IiAkmXtJRyB99E8g9LeRReYXiIfNa87sS5vB4mGVW5NKSD1vEtcSP0lTA==",
+  "dgSpecHash": "vWFJm2TEhMM=",
   "success": true,
-  "projectFilePath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx.Abp.Attachment.EntityFrameworkCore.csproj",
+  "projectFilePath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx.Abp.Attachment.EntityFrameworkCore.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\24383\\.nuget\\packages\\asynckeyedlock\\6.3.4\\asynckeyedlock.6.3.4.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\bouncycastle.cryptography\\2.3.1\\bouncycastle.cryptography.2.3.1.nupkg.sha512",

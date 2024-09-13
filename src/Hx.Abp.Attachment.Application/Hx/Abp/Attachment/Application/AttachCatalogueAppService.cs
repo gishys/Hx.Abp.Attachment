@@ -253,16 +253,17 @@ namespace Hx.Abp.Attachment.Application
             var entity = await CatalogueRepository.FindByReferenceAsync(inputs);
             return ConvertSrc(entity);
         }
-        private List<AttachCatalogueDto> ConvertSrc(ICollection<AttachCatalogue> cats)
+        private List<AttachCatalogueDto> ConvertSrc(List<AttachCatalogue> cats)
         {
             var result = new List<AttachCatalogueDto>();
+            cats.Sort((a, b) => a.SequenceNumber.CompareTo(b.SequenceNumber));
             foreach (var cat in cats)
             {
                 var catalogueDto = ObjectMapper.Map<AttachCatalogue, AttachCatalogueDto>(cat);
                 if (cat.AttachFiles?.Count > 0)
                 {
                     catalogueDto.AttachFiles = new System.Collections.ObjectModel.Collection<AttachFileDto>();
-                    foreach (var file in cat.AttachFiles)
+                    foreach (var file in cat.AttachFiles.OrderBy(d => d.SequenceNumber))
                     {
                         var fileDto = ObjectMapper.Map<AttachFile, AttachFileDto>(file);
                         fileDto.FilePath = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{file.FilePath}";
@@ -271,7 +272,7 @@ namespace Hx.Abp.Attachment.Application
                 }
                 if (cat.Children?.Count > 0)
                 {
-                    ConvertSrc(cat.Children);
+                    ConvertSrc(cat.Children.ToList());
                 }
                 result.Add(catalogueDto);
             }

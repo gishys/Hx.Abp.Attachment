@@ -69,7 +69,7 @@ namespace Hx.Abp.Attachment.Api.Controllers
             return AttachCatalogueAppService.UpdateSingleFileAsync(catalogueId, attachFileId, input);
         }
         [Route("findbyreference")]
-        [HttpGet]
+        [HttpPost]
         public virtual Task<List<AttachCatalogueDto>> FindByReferenceAsync(List<GetAttachListInput> inputs)
         {
             return AttachCatalogueAppService.FindByReferenceAsync(inputs);

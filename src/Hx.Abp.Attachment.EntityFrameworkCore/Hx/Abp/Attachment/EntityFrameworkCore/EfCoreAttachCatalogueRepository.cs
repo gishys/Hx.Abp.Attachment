@@ -49,9 +49,12 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             bool includeDetails = true,
             CancellationToken cancellationToken = default)
         {
+            var inputReferences = inputs.Select(i => i.Reference).ToList();
+            var inputReferenceTypes = inputs.Select(i => i.ReferenceType).ToList();
             return await (await GetDbSetAsync())
                 .IncludeDetials(includeDetails)
-                .Where(p => p.ParentId == null && inputs.Any(i => i.Reference == p.Reference && i.ReferenceType == p.ReferenceType))
+                .Where(p => p.ParentId == null && inputReferences.Contains(p.Reference))
+                .Where(p => inputReferenceTypes.Contains(p.ReferenceType))
                 .OrderBy(d => d.Reference)
                 .ThenBy(d => d.SequenceNumber)
                 .ToListAsync(cancellationToken);
@@ -61,9 +64,12 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             bool includeDetails = true,
             CancellationToken cancellationToken = default)
         {
+            var inputReferences = inputs.Select(i => i.Reference).ToList();
+            var inputReferenceTypes = inputs.Select(i => i.ReferenceType).ToList();
             return await (await GetDbSetAsync())
                 .IncludeDetials(includeDetails)
-                .Where(p => p.ParentId == null && inputs.Any(i => i.Reference == p.Reference && i.ReferenceType == p.ReferenceType))
+                .Where(p => p.ParentId == null && inputReferences.Contains(p.Reference))
+                .Where(p => inputReferenceTypes.Contains(p.ReferenceType))
                 .OrderBy(d => d.Reference)
                 .ThenBy(d => d.SequenceNumber)
                 .ToListAsync(cancellationToken);

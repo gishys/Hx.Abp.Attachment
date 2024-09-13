@@ -1,12 +1,71 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "C:\\work\\projects\\attachment\\",
-  "Documents": [],
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{EDFDED99-EB17-4BB8-90A7-797BF2097FBF}|src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx.Abp.Attachment.EntityFrameworkCore.csproj|c:\\work\\projects\\attachment\\src\\hx.abp.attachment.entityframeworkcore\\hx\\abp\\attachment\\entityframeworkcore\\efcoreattachcataloguerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{EDFDED99-EB17-4BB8-90A7-797BF2097FBF}|src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx.Abp.Attachment.EntityFrameworkCore.csproj|solutionrelative:src\\hx.abp.attachment.entityframeworkcore\\hx\\abp\\attachment\\entityframeworkcore\\efcoreattachcataloguerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{99F2F961-DBDB-4503-8D1A-7A51714F2EC7}|src\\Hx.Abp.Attachment.Application\\Hx.Abp.Attachment.Application.csproj|c:\\work\\projects\\attachment\\src\\hx.abp.attachment.application\\hx\\abp\\attachment\\application\\attachcatalogueappservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{99F2F961-DBDB-4503-8D1A-7A51714F2EC7}|src\\Hx.Abp.Attachment.Application\\Hx.Abp.Attachment.Application.csproj|solutionrelative:src\\hx.abp.attachment.application\\hx\\abp\\attachment\\application\\attachcatalogueappservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CD9BF0F9-7623-45AB-862B-9B1678B57874}|src\\Hx.Abp.Attachment.Api\\Hx.Abp.Attachment.Api.csproj|c:\\work\\projects\\attachment\\src\\hx.abp.attachment.api\\controllers\\attachmentcateloguecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{CD9BF0F9-7623-45AB-862B-9B1678B57874}|src\\Hx.Abp.Attachment.Api\\Hx.Abp.Attachment.Api.csproj|solutionrelative:src\\hx.abp.attachment.api\\controllers\\attachmentcateloguecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
       "VerticalTabListWidth": 256,
-      "DocumentGroups": []
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "EfCoreAttachCatalogueRepository.cs",
+              "DocumentMoniker": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx\\Abp\\Attachment\\EntityFrameworkCore\\EfCoreAttachCatalogueRepository.cs",
+              "RelativeDocumentMoniker": "src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx\\Abp\\Attachment\\EntityFrameworkCore\\EfCoreAttachCatalogueRepository.cs",
+              "ToolTip": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx\\Abp\\Attachment\\EntityFrameworkCore\\EfCoreAttachCatalogueRepository.cs",
+              "RelativeToolTip": "src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx\\Abp\\Attachment\\EntityFrameworkCore\\EfCoreAttachCatalogueRepository.cs",
+              "ViewState": "AQIAAC4AAAAAAAAAAAAAAEUAAAAvAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-09-13T02:46:33.343Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "AttachCatalogueAppService.cs",
+              "DocumentMoniker": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application\\Hx\\Abp\\Attachment\\Application\\AttachCatalogueAppService.cs",
+              "RelativeDocumentMoniker": "src\\Hx.Abp.Attachment.Application\\Hx\\Abp\\Attachment\\Application\\AttachCatalogueAppService.cs",
+              "ToolTip": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application\\Hx\\Abp\\Attachment\\Application\\AttachCatalogueAppService.cs",
+              "RelativeToolTip": "src\\Hx.Abp.Attachment.Application\\Hx\\Abp\\Attachment\\Application\\AttachCatalogueAppService.cs",
+              "ViewState": "AQIAAO0AAAAAAAAAAAArwP4AAAAJAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-09-13T02:45:58.193Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "AttachmentCatelogueController.cs",
+              "DocumentMoniker": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Api\\Controllers\\AttachmentCatelogueController.cs",
+              "RelativeDocumentMoniker": "src\\Hx.Abp.Attachment.Api\\Controllers\\AttachmentCatelogueController.cs",
+              "ToolTip": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Api\\Controllers\\AttachmentCatelogueController.cs",
+              "RelativeToolTip": "src\\Hx.Abp.Attachment.Api\\Controllers\\AttachmentCatelogueController.cs",
+              "ViewState": "AQIAADAAAAAAAAAAAAAUwEYAAAAiAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-09-13T02:28:05.372Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
     }
   ]
 }

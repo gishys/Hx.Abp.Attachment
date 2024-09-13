@@ -17,16 +17,16 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             if (!include)
                 return queryable;
             return queryable
-                .Include(d => d.AttachFiles.OrderBy(d => d.SequenceNumber))
+                .Include(d => d.AttachFiles)
                 .Include(d => d.Children)
-                .ThenInclude(d => d.AttachFiles.OrderBy(d => d.SequenceNumber))
-                .Include(d => d.Children)
-                .ThenInclude(d => d.Children)
-                .ThenInclude(d => d.AttachFiles.OrderBy(d => d.SequenceNumber))
+                .ThenInclude(d => d.AttachFiles)
                 .Include(d => d.Children)
                 .ThenInclude(d => d.Children)
+                .ThenInclude(d => d.AttachFiles)
+                .Include(d => d.Children)
                 .ThenInclude(d => d.Children)
-                .ThenInclude(d => d.AttachFiles.OrderBy(d => d.SequenceNumber));
+                .ThenInclude(d => d.Children)
+                .ThenInclude(d => d.AttachFiles);
         }
     }
 }

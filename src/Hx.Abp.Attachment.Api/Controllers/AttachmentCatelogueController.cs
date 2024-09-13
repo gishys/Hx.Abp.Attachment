@@ -8,10 +8,10 @@ namespace Hx.Abp.Attachment.Api.Controllers
 {
     [ApiController]
     [Route("api/app/attachment")]
-    public class AttachmentCatelogueController : AbpControllerBase
+    public class AttachmentCatalogueController : AbpControllerBase
     {
         protected IAttachCatalogueAppService AttachCatalogueAppService { get; }
-        public AttachmentCatelogueController(IAttachCatalogueAppService attachCatalogueAppService)
+        public AttachmentCatalogueController(IAttachCatalogueAppService attachCatalogueAppService)
         {
             AttachCatalogueAppService = attachCatalogueAppService;
         }
@@ -80,9 +80,9 @@ namespace Hx.Abp.Attachment.Api.Controllers
         {
             return AttachCatalogueAppService.FindByReferenceAsync(inputs);
         }
-        [Route("verifycatelogues")]
+        [Route("verifycatalogues")]
         [HttpPost]
-        public virtual Task<bool> VerifyCateloguesAsync(List<GetAttachListInput> inputs)
+        public virtual Task<bool> VerifyCataloguesAsync(List<GetAttachListInput> inputs)
         {
             return AttachCatalogueAppService.VerifyUploadAsync(inputs);
         }

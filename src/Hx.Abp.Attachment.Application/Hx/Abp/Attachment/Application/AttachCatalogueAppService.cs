@@ -329,9 +329,9 @@ namespace Hx.Abp.Attachment.Application
         public virtual async Task<bool> VerifyUploadAsync(List<GetAttachListInput> inputs)
         {
             var list = await CatalogueRepository.VerifyUploadAsync(inputs);
-            return VerifyCatelogues(list);
+            return VerifyCatalogues(list);
         }
-        public bool VerifyCatelogues(List<AttachCatalogue> cats)
+        public bool VerifyCatalogues(List<AttachCatalogue> cats)
         {
             foreach (var cat in cats)
             {
@@ -340,7 +340,7 @@ namespace Hx.Abp.Attachment.Application
                     return false;
                 }
                 if (cat.Children?.Count > 0)
-                    VerifyCatelogues(cat.Children.ToList());
+                    VerifyCatalogues(cat.Children.ToList());
             }
             return true;
         }

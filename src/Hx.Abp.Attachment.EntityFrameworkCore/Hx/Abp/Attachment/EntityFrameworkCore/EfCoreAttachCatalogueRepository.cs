@@ -17,7 +17,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             CancellationToken cancellationToken = default)
         {
             return await (await GetDbSetAsync())
-                .IncludeDetials(includeDetails)
+                .IncludeDetails(includeDetails)
                 .FirstOrDefaultAsync(u => u.Id == id,
                 GetCancellationToken(cancellationToken));
         }
@@ -52,7 +52,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             var inputReferences = inputs.Select(i => i.Reference).ToList();
             var inputReferenceTypes = inputs.Select(i => i.ReferenceType).ToList();
             return await (await GetDbSetAsync())
-                .IncludeDetials(includeDetails)
+                .IncludeDetails(includeDetails)
                 .Where(p => p.ParentId == null && inputReferences.Contains(p.Reference))
                 .Where(p => inputReferenceTypes.Contains(p.ReferenceType))
                 .OrderBy(d => d.Reference)
@@ -67,7 +67,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             var inputReferences = inputs.Select(i => i.Reference).ToList();
             var inputReferenceTypes = inputs.Select(i => i.ReferenceType).ToList();
             return await (await GetDbSetAsync())
-                .IncludeDetials(includeDetails)
+                .IncludeDetails(includeDetails)
                 .Where(p => p.ParentId == null && inputReferences.Contains(p.Reference))
                 .Where(p => inputReferenceTypes.Contains(p.ReferenceType))
                 .OrderBy(d => d.Reference)
@@ -77,7 +77,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         public override async Task<IQueryable<AttachCatalogue>> WithDetailsAsync()
         {
             var queryable = await GetQueryableAsync();
-            return queryable.IncludeDetials();
+            return queryable.IncludeDetails();
         }
 
         public async Task<bool> AnyByNameAsync(string catalogueName, string reference)

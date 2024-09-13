@@ -10,7 +10,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 {
     public static class AttachmentExtentions
     {
-        public static IQueryable<AttachCatalogue> IncludeDetials(
+        public static IQueryable<AttachCatalogue> IncludeDetails(
             this IQueryable<AttachCatalogue> queryable,
             bool include = true)
         {

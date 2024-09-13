@@ -1,6 +1,6 @@
 ﻿using Hx.Abp.Attachment.Domain;
+using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 
@@ -45,14 +45,13 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 }).FirstOrDefaultAsync(cancellationToken);
         }
         public async Task<List<AttachCatalogue>> FindByReferenceAsync(
-            string reference,
-            int referenceType,
+            List<GetAttachListInput> inputs,
             bool includeDetails = true,
             CancellationToken cancellationToken = default)
         {
             return await (await GetDbSetAsync())
                 .IncludeDetials(includeDetails)
-                .Where(p => p.Reference == reference && p.ParentId == null && p.ReferenceType == referenceType)
+                .Where(p => p.ParentId == null && inputs.Any(i => i.Reference == p.Reference && i.ReferenceType == p.ReferenceType))
                 .OrderBy(d => d.SequenceNumber)
                 .ToListAsync(cancellationToken);
         }

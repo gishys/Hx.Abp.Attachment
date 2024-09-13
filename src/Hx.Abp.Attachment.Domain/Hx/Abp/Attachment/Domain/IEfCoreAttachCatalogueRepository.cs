@@ -1,12 +1,12 @@
-﻿using Volo.Abp.Domain.Repositories;
+﻿using Hx.Abp.Attachment.Domain.Shared;
+using Volo.Abp.Domain.Repositories;
 
 namespace Hx.Abp.Attachment.Domain
 {
     public interface IEfCoreAttachCatalogueRepository : IBasicRepository<AttachCatalogue, Guid>
     {
         Task<List<AttachCatalogue>> FindByReferenceAsync(
-            string reference,
-            int referenceType,
+            List<GetAttachListInput> inputs,
             bool includeDetails = true,
             CancellationToken cancellationToken = default);
         Task<int> ByParentIdFindMaxSequenceAsync(

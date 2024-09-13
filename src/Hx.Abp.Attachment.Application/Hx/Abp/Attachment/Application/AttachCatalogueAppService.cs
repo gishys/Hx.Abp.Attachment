@@ -248,9 +248,9 @@ namespace Hx.Abp.Attachment.Application
         /// </summary>
         /// <param name="Reference"></param>
         /// <returns></returns>
-        public virtual async Task<List<AttachCatalogueDto>> FindByReferenceAsync(string Reference, int referenceType)
+        public virtual async Task<List<AttachCatalogueDto>> FindByReferenceAsync(List<GetAttachListInput> inputs)
         {
-            var entity = await CatalogueRepository.FindByReferenceAsync(Reference, referenceType);
+            var entity = await CatalogueRepository.FindByReferenceAsync(inputs);
             return ConvertSrc(entity);
         }
         private List<AttachCatalogueDto> ConvertSrc(ICollection<AttachCatalogue> cats)

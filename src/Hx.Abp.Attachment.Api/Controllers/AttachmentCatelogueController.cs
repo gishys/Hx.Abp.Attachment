@@ -1,4 +1,5 @@
 ﻿using Hx.Abp.Attachment.Application.Contracts;
+using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp;
 using Volo.Abp.AspNetCore.Mvc;
@@ -69,9 +70,9 @@ namespace Hx.Abp.Attachment.Api.Controllers
         }
         [Route("findbyreference")]
         [HttpGet]
-        public virtual Task<List<AttachCatalogueDto>> FindByReferenceAsync(string reference, int referenceType)
+        public virtual Task<List<AttachCatalogueDto>> FindByReferenceAsync(List<GetAttachListInput> inputs)
         {
-            return AttachCatalogueAppService.FindByReferenceAsync(reference, referenceType);
+            return AttachCatalogueAppService.FindByReferenceAsync(inputs);
         }
         [Route("update")]
         [HttpPut]

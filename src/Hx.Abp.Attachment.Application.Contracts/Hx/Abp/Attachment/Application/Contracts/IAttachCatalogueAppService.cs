@@ -1,11 +1,12 @@
-﻿using Volo.Abp.Application.Services;
+﻿using Hx.Abp.Attachment.Domain.Shared;
+using Volo.Abp.Application.Services;
 
 namespace Hx.Abp.Attachment.Application.Contracts
 {
     public interface IAttachCatalogueAppService : IApplicationService
     {
         Task<AttachCatalogueDto> CreateAsync(AttachCatalogueCreateDto create);
-        Task<List<AttachCatalogueDto>> FindByReferenceAsync(string reference,int referenceType);
+        Task<List<AttachCatalogueDto>> FindByReferenceAsync(List<GetAttachListInput> inputs);
         Task<AttachCatalogueDto> UpdateAsync(Guid id, AttachCatalogueUpdateDto input);
         Task DeleteAsync(Guid id);
         Task DeleteSingleFileAsync(Guid attachFileId);

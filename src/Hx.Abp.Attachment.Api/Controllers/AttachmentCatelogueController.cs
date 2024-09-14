@@ -22,9 +22,9 @@ namespace Hx.Abp.Attachment.Api.Controllers
         }
         [Route("createmany")]
         [HttpPost]
-        public virtual Task<List<AttachCatalogueDto>> CreateManyAsync(List<AttachCatalogueCreateDto> inputs)
+        public virtual Task<List<AttachCatalogueDto>> CreateManyAsync(List<AttachCatalogueCreateDto> inputs, CatalogueCreateMode mode)
         {
-            return AttachCatalogueAppService.CreateManyAsync(inputs);
+            return AttachCatalogueAppService.CreateManyAsync(inputs, mode);
         }
         [Route("queryfiles")]
         [HttpGet]
@@ -82,9 +82,9 @@ namespace Hx.Abp.Attachment.Api.Controllers
         }
         [Route("verifycatalogues")]
         [HttpPost]
-        public virtual Task<bool> VerifyCataloguesAsync(List<GetAttachListInput> inputs)
+        public virtual Task<FileVerifyResultDto> VerifyUploadAsync(List<GetAttachListInput> inputs, bool details = false)
         {
-            return AttachCatalogueAppService.VerifyUploadAsync(inputs);
+            return AttachCatalogueAppService.VerifyUploadAsync(inputs, details);
         }
         [Route("update")]
         [HttpPut]

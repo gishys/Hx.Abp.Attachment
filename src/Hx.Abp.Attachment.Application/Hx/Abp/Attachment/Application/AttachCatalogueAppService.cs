@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.DependencyInjection;
-using Volo.Abp.ObjectMapping;
 using Volo.Abp.Uow;
 
 namespace Hx.Abp.Attachment.Application
@@ -64,11 +63,17 @@ namespace Hx.Abp.Attachment.Application
         /// <summary>
         /// 创建文件夹(Many)
         /// </summary>
-        /// <param name="input"></param>
+        /// <param name="inputs"></param>
+        /// <param name="createMode">创建模式</param>
         /// <returns></returns>
-        public virtual async Task<List<AttachCatalogueDto>> CreateManyAsync(List<AttachCatalogueCreateDto> inputs)
+        public virtual async Task<List<AttachCatalogueDto>> CreateManyAsync(List<AttachCatalogueCreateDto> inputs, CatalogueCreateMode createMode)
         {
             using var uow = UnitOfWorkManager.Begin();
+            var deletePara = inputs.Select(d => new GetAttachListInput() { Reference = d.Reference, ReferenceType = d.ReferenceType }).Distinct().ToList();
+            if (createMode != CatalogueCreateMode.Append)
+            {
+                await CatalogueRepository.DeleteByReferenceAsync(deletePara, createMode);
+            }
             List<AttachCatalogue> attachCatalogues = GetEntitys(inputs, 0);
             await CatalogueRepository.InsertManyAsync(attachCatalogues);
             await uow.SaveChangesAsync();
@@ -326,23 +331,62 @@ namespace Hx.Abp.Attachment.Application
         /// </summary>
         /// <param name="inputs"></param>
         /// <returns></returns>
-        public virtual async Task<bool> VerifyUploadAsync(List<GetAttachListInput> inputs)
+        public virtual async Task<FileVerifyResultDto> VerifyUploadAsync(List<GetAttachListInput> inputs, bool details = false)
         {
             var list = await CatalogueRepository.VerifyUploadAsync(inputs);
-            return VerifyCatalogues(list);
+            var parentMessage = "";
+            return new FileVerifyResultDto()
+            {
+                DetailedInfo = details ? VerifyCatalogues(list) : [],
+                ProfileInfo = details ? [] : SimpleVerifyCatalogues(list, ref parentMessage)
+            };
         }
-        public bool VerifyCatalogues(List<AttachCatalogue> cats)
+        private List<DetailedFileVerifyResultDto> VerifyCatalogues(ICollection<AttachCatalogue> cats)
         {
+            List<DetailedFileVerifyResultDto> result = new List<DetailedFileVerifyResultDto>();
             foreach (var cat in cats)
             {
-                if (cat.Children?.Count <= 0 && cat.IsRequired && cat.AttachFiles?.Count <= 0)
+                var entity = new DetailedFileVerifyResultDto()
                 {
-                    return false;
-                }
+                    Id = cat.Id,
+                    IsRequired = cat.IsRequired,
+                    Reference = cat.Reference,
+                    Name = cat.CatalogueName,
+                    Uploaded = cat.Children?.Count > 0 || (cat.Children?.Count <= 0 && cat.IsRequired && cat.AttachFiles?.Count > 0)
+                };
                 if (cat.Children?.Count > 0)
-                    VerifyCatalogues(cat.Children.ToList());
+                    entity.Children = VerifyCatalogues(cat.Children);
+                result.Add(entity);
             }
-            return true;
+            return result;
+        }
+        private List<ProfileFileVerifyResultDto> SimpleVerifyCatalogues(ICollection<AttachCatalogue> cats, ref string parentMessage)
+        {
+            List<ProfileFileVerifyResultDto> list = new List<ProfileFileVerifyResultDto>();
+            foreach (var cat in cats)
+            {
+                string message = cat.Children?.Count > 0 || (cat.Children?.Count <= 0 && cat.IsRequired && cat.AttachFiles?.Count <= 0) ? cat.CatalogueName : "";
+                parentMessage = parentMessage != "" && message != "" ? $"{parentMessage}-{message}" : message;
+                if (cat.Children?.Count > 0)
+                {
+                    SimpleVerifyCatalogues(cat.Children, ref parentMessage);
+                }
+                if (!string.IsNullOrEmpty(parentMessage))
+                {
+                    ProfileFileVerifyResultDto tmp;
+                    if (!list.Any(d => d.Reference == cat.Reference))
+                    {
+                        tmp = new ProfileFileVerifyResultDto() { Reference = cat.Reference, Message = [parentMessage] };
+                        list.Add(tmp);
+                    }
+                    else
+                    {
+                        tmp = list.First();
+                        tmp.Message.Add(parentMessage);
+                    }
+                }
+            }
+            return list;
         }
         /// <summary>
         /// 修改目录

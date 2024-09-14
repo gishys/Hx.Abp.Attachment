@@ -21,5 +21,10 @@ namespace Hx.Abp.Attachment.Domain
             List<GetAttachListInput> inputs,
             bool includeDetails = true,
             CancellationToken cancellationToken = default);
+        Task DeleteByReferenceAsync(
+            List<GetAttachListInput> inputs,
+            CatalogueCreateMode createMode,
+            bool includeDetails = true,
+            CancellationToken cancellationToken = default);
     }
 }

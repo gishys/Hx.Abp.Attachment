@@ -49,8 +49,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             bool includeDetails = true,
             CancellationToken cancellationToken = default)
         {
-            var inputReferences = inputs.Select(i => i.Reference).ToList();
-            var inputReferenceTypes = inputs.Select(i => i.ReferenceType).ToList();
+            var inputReferences = inputs.Select(i => i.Reference).Distinct().ToList();
+            var inputReferenceTypes = inputs.Select(i => i.ReferenceType).Distinct().ToList();
             return await (await GetDbSetAsync())
                 .IncludeDetails(includeDetails)
                 .Where(p => p.ParentId == null && inputReferences.Contains(p.Reference))
@@ -59,13 +59,29 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .ThenBy(d => d.SequenceNumber)
                 .ToListAsync(cancellationToken);
         }
+        public async Task DeleteByReferenceAsync(
+            List<GetAttachListInput> inputs,
+            CatalogueCreateMode createMode,
+            bool includeDetails = true,
+            CancellationToken cancellationToken = default)
+        {
+            var inputReferences = inputs.Select(i => i.Reference).Distinct().ToList();
+            var inputReferenceTypes = inputs.Select(i => i.ReferenceType).Distinct().ToList();
+            var ids = await (await GetDbSetAsync())
+                .IncludeDetails(includeDetails)
+                .Where(p => inputReferences.Contains(p.Reference))
+                .WhereIf(createMode == CatalogueCreateMode.Overlap, p => inputReferenceTypes.Contains(p.ReferenceType))
+                .Select(d => d.Id)
+                .ToListAsync(cancellationToken);
+            await DeleteManyAsync(ids);
+        }
         public async Task<List<AttachCatalogue>> VerifyUploadAsync(
             List<GetAttachListInput> inputs,
             bool includeDetails = true,
             CancellationToken cancellationToken = default)
         {
-            var inputReferences = inputs.Select(i => i.Reference).ToList();
-            var inputReferenceTypes = inputs.Select(i => i.ReferenceType).ToList();
+            var inputReferences = inputs.Select(i => i.Reference).Distinct().ToList();
+            var inputReferenceTypes = inputs.Select(i => i.ReferenceType).Distinct().ToList();
             return await (await GetDbSetAsync())
                 .IncludeDetails(includeDetails)
                 .Where(p => p.ParentId == null && inputReferences.Contains(p.Reference))

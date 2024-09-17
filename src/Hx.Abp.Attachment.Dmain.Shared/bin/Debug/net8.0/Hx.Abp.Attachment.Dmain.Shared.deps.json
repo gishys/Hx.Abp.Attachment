@@ -8,7 +8,7 @@
     ".NETCoreApp,Version=v8.0": {
       "Hx.Abp.Attachment.Dmain.Shared/1.0.0": {
         "dependencies": {
-          "SixLabors.ImageSharp": "3.1.4",
+          "SixLabors.ImageSharp": "3.1.5",
           "iTextSharp.LGPLv2.Core": "3.4.20"
         },
         "runtime": {
@@ -36,11 +36,11 @@
           }
         }
       },
-      "SixLabors.ImageSharp/3.1.4": {
+      "SixLabors.ImageSharp/3.1.5": {
         "runtime": {
           "lib/net6.0/SixLabors.ImageSharp.dll": {
             "assemblyVersion": "3.0.0.0",
-            "fileVersion": "3.1.4.0"
+            "fileVersion": "3.1.5.0"
           }
         }
       },
@@ -107,12 +107,12 @@
       "path": "itextsharp.lgplv2.core/3.4.20",
       "hashPath": "itextsharp.lgplv2.core.3.4.20.nupkg.sha512"
     },
-    "SixLabors.ImageSharp/3.1.4": {
+    "SixLabors.ImageSharp/3.1.5": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-lFIdxgGDA5iYkUMRFOze7BGLcdpoLFbR+a20kc1W7NepvzU7ejtxtWOg9RvgG7kb9tBoJ3ONYOK6kLil/dgF1w==",
-      "path": "sixlabors.imagesharp/3.1.4",
-      "hashPath": "sixlabors.imagesharp.3.1.4.nupkg.sha512"
+      "sha512": "sha512-lNtlq7dSI/QEbYey+A0xn48z5w4XHSffF8222cC4F4YwTXfEImuiBavQcWjr49LThT/pRmtWJRcqA/PlL+eJ6g==",
+      "path": "sixlabors.imagesharp/3.1.5",
+      "hashPath": "sixlabors.imagesharp.3.1.5.nupkg.sha512"
     },
     "SkiaSharp/2.88.8": {
       "type": "package",

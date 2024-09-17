@@ -98,5 +98,11 @@ namespace Hx.Abp.Attachment.Api.Controllers
         {
             return AttachCatalogueAppService.DeleteAsync(id);
         }
+        [Route("deletebyreference")]
+        [HttpDelete]
+        public virtual Task DeleteByReferenceAsync(List<AttachCatalogueCreateDto> inputs)
+        {
+            return AttachCatalogueAppService.DeleteByReferenceAsync(inputs);
+        }
     }
 }

@@ -1,12 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "KDznoiKk+WU=",
+  "dgSpecHash": "3IbQwwx+5EAM+cB+QpdghbZvwhjyrtiSz5HtuxA8M8/K/5vqo39j7fn9PTEhqWNijcBT0fHTbK9hwdGfqx5IcA==",
   "success": true,
-  "projectFilePath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj",
+  "projectFilePath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\24383\\.nuget\\packages\\bouncycastle.cryptography\\2.3.1\\bouncycastle.cryptography.2.3.1.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\itextsharp.lgplv2.core\\3.4.20\\itextsharp.lgplv2.core.3.4.20.nupkg.sha512",
-    "C:\\Users\\24383\\.nuget\\packages\\sixlabors.imagesharp\\3.1.4\\sixlabors.imagesharp.3.1.4.nupkg.sha512",
+    "C:\\Users\\24383\\.nuget\\packages\\sixlabors.imagesharp\\3.1.5\\sixlabors.imagesharp.3.1.5.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\skiasharp\\2.88.8\\skiasharp.2.88.8.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\skiasharp.nativeassets.macos\\2.88.8\\skiasharp.nativeassets.macos.2.88.8.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\skiasharp.nativeassets.win32\\2.88.8\\skiasharp.nativeassets.win32.2.88.8.nupkg.sha512",

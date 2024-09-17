@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "U9khLughbco=",
+  "dgSpecHash": "SrlJcQDHRkX7nfFCglPdbat1DRqrM9tRCtcEpn8Husd8jvKzyt8wtZmVPdDRiUibJOM8zbSyP0y/TWtoJGHLDg==",
   "success": true,
-  "projectFilePath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.Contracts\\Hx.Abp.Attachment.Application.Contracts.csproj",
+  "projectFilePath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Application.Contracts\\Hx.Abp.Attachment.Application.Contracts.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\24383\\.nuget\\packages\\asynckeyedlock\\6.3.4\\asynckeyedlock.6.3.4.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\bouncycastle.cryptography\\2.3.1\\bouncycastle.cryptography.2.3.1.nupkg.sha512",
@@ -42,7 +42,7 @@
     "C:\\Users\\24383\\.nuget\\packages\\nito.asyncex.context\\5.1.2\\nito.asyncex.context.5.1.2.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\nito.asyncex.tasks\\5.1.2\\nito.asyncex.tasks.5.1.2.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\nito.disposables\\2.2.1\\nito.disposables.2.2.1.nupkg.sha512",
-    "C:\\Users\\24383\\.nuget\\packages\\sixlabors.imagesharp\\3.1.4\\sixlabors.imagesharp.3.1.4.nupkg.sha512",
+    "C:\\Users\\24383\\.nuget\\packages\\sixlabors.imagesharp\\3.1.5\\sixlabors.imagesharp.3.1.5.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\skiasharp\\2.88.8\\skiasharp.2.88.8.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\skiasharp.nativeassets.macos\\2.88.8\\skiasharp.nativeassets.macos.2.88.8.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\skiasharp.nativeassets.win32\\2.88.8\\skiasharp.nativeassets.win32.2.88.8.nupkg.sha512",

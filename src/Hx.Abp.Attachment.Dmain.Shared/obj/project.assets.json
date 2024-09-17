@@ -33,7 +33,7 @@
           }
         }
       },
-      "SixLabors.ImageSharp/3.1.4": {
+      "SixLabors.ImageSharp/3.1.5": {
         "type": "package",
         "compile": {
           "lib/net6.0/SixLabors.ImageSharp.dll": {
@@ -165,10 +165,10 @@
         "lib/netstandard2.0/iTextSharp.LGPLv2.Core.xml"
       ]
     },
-    "SixLabors.ImageSharp/3.1.4": {
-      "sha512": "lFIdxgGDA5iYkUMRFOze7BGLcdpoLFbR+a20kc1W7NepvzU7ejtxtWOg9RvgG7kb9tBoJ3ONYOK6kLil/dgF1w==",
+    "SixLabors.ImageSharp/3.1.5": {
+      "sha512": "lNtlq7dSI/QEbYey+A0xn48z5w4XHSffF8222cC4F4YwTXfEImuiBavQcWjr49LThT/pRmtWJRcqA/PlL+eJ6g==",
       "type": "package",
-      "path": "sixlabors.imagesharp/3.1.4",
+      "path": "sixlabors.imagesharp/3.1.5",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -177,7 +177,7 @@
         "lib/net6.0/SixLabors.ImageSharp.dll",
         "lib/net6.0/SixLabors.ImageSharp.xml",
         "sixlabors.imagesharp.128.png",
-        "sixlabors.imagesharp.3.1.4.nupkg.sha512",
+        "sixlabors.imagesharp.3.1.5.nupkg.sha512",
         "sixlabors.imagesharp.nuspec"
       ]
     },
@@ -348,7 +348,7 @@
   },
   "projectFileDependencyGroups": {
     "net8.0": [
-      "SixLabors.ImageSharp >= 3.1.4",
+      "SixLabors.ImageSharp >= 3.1.5",
       "iTextSharp.LGPLv2.Core >= 3.4.20"
     ]
   },
@@ -359,11 +359,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj",
+      "projectUniqueName": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj",
       "projectName": "Hx.Abp.Attachment.Dmain.Shared",
-      "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj",
+      "projectPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj",
       "packagesPath": "C:\\Users\\24383\\.nuget\\packages\\",
-      "outputPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\obj\\",
+      "outputPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -391,11 +391,6 @@
         "warnAsError": [
           "NU1605"
         ]
-      },
-      "restoreAuditProperties": {
-        "enableAudit": "true",
-        "auditLevel": "low",
-        "auditMode": "direct"
       }
     },
     "frameworks": {
@@ -404,7 +399,7 @@
         "dependencies": {
           "SixLabors.ImageSharp": {
             "target": "Package",
-            "version": "[3.1.4, )"
+            "version": "[3.1.5, )"
           },
           "iTextSharp.LGPLv2.Core": {
             "target": "Package",
@@ -427,7 +422,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.301/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.100/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

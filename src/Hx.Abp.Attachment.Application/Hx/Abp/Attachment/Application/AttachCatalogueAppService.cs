@@ -30,7 +30,7 @@ namespace Hx.Abp.Attachment.Application
         public virtual async Task<AttachCatalogueDto> CreateAsync(AttachCatalogueCreateDto input)
         {
             using var uow = UnitOfWorkManager.Begin();
-            var existingCatalogue = await CatalogueRepository.AnyByNameAsync(input.CatalogueName, input.Reference);
+            var existingCatalogue = await CatalogueRepository.AnyByNameAsync(input.CatalogueName, input.Reference, input.ReferenceType);
             if (existingCatalogue)
             {
                 throw new UserFriendlyException("名称重复，请先删除现有名称再创建！");
@@ -70,14 +70,45 @@ namespace Hx.Abp.Attachment.Application
         {
             using var uow = UnitOfWorkManager.Begin();
             var deletePara = inputs.Select(d => new GetAttachListInput() { Reference = d.Reference, ReferenceType = d.ReferenceType }).Distinct().ToList();
-            if (createMode != CatalogueCreateMode.Append)
+            if (createMode == CatalogueCreateMode.Rebuild)
             {
-                await CatalogueRepository.DeleteByReferenceAsync(deletePara, createMode);
+                await CatalogueRepository.DeleteByReferenceAsync(deletePara);
+            }
+            else if (createMode == CatalogueCreateMode.Overlap)
+            {
+                await CatalogueRepository.DeleteRootCatalogueAsync(inputs.Select(d =>
+                new GetCatalogueInput()
+                {
+                    CatalogueName = d.CatalogueName,
+                    Reference = d.Reference,
+                    ReferenceType = d.ReferenceType
+                }).ToList());
+            }
+            else if (createMode == CatalogueCreateMode.Append)
+            {
+                var existingCatalogues = await CatalogueRepository.AnyByNameAsync(inputs.Select(d =>
+                new GetCatalogueInput()
+                {
+                    CatalogueName = d.CatalogueName,
+                    Reference = d.Reference,
+                    ReferenceType = d.ReferenceType
+                }).ToList());
+                if (existingCatalogues.Count > 0)
+                {
+                    throw new UserFriendlyException($"{existingCatalogues
+                        .Select(d => d.CatalogueName)
+                        .Aggregate((pre, next) => $"{pre},{next}")} 名称重复，请先删除现有名称再创建！");
+                }
             }
             List<AttachCatalogue> attachCatalogues = GetEntitys(inputs, 0);
             await CatalogueRepository.InsertManyAsync(attachCatalogues);
             await uow.SaveChangesAsync();
             return ObjectMapper.Map<List<AttachCatalogue>, List<AttachCatalogueDto>>(attachCatalogues);
+        }
+        public virtual async Task DeleteByReferenceAsync(List<AttachCatalogueCreateDto> inputs)
+        {
+            var deletePara = inputs.Select(d => new GetAttachListInput() { Reference = d.Reference, ReferenceType = d.ReferenceType }).Distinct().ToList();
+            await CatalogueRepository.DeleteByReferenceAsync(deletePara);
         }
         private List<AttachCatalogue> GetEntitys(List<AttachCatalogueCreateDto> inputs, int maxNumber)
         {

@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj": {}
+    "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj": {}
   },
   "projects": {
-    "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj": {
+    "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj",
+        "projectUniqueName": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj",
         "projectName": "Hx.Abp.Attachment.Dmain.Shared",
-        "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj",
+        "projectPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj",
         "packagesPath": "C:\\Users\\24383\\.nuget\\packages\\",
-        "outputPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\obj\\",
+        "outputPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -39,11 +39,6 @@
           "warnAsError": [
             "NU1605"
           ]
-        },
-        "restoreAuditProperties": {
-          "enableAudit": "true",
-          "auditLevel": "low",
-          "auditMode": "direct"
         }
       },
       "frameworks": {
@@ -52,7 +47,7 @@
           "dependencies": {
             "SixLabors.ImageSharp": {
               "target": "Package",
-              "version": "[3.1.4, )"
+              "version": "[3.1.5, )"
             },
             "iTextSharp.LGPLv2.Core": {
               "target": "Package",
@@ -75,18 +70,18 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.301/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.100/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj": {
+    "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj",
+        "projectUniqueName": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj",
         "projectName": "Hx.Abp.Attachment.Domain",
-        "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj",
+        "projectPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj",
         "packagesPath": "C:\\Users\\24383\\.nuget\\packages\\",
-        "outputPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Domain\\obj\\",
+        "outputPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Domain\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -108,8 +103,8 @@
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj": {
-                "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj"
+              "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj": {
+                "projectPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj"
               }
             }
           }
@@ -118,11 +113,6 @@
           "warnAsError": [
             "NU1605"
           ]
-        },
-        "restoreAuditProperties": {
-          "enableAudit": "true",
-          "auditLevel": "low",
-          "auditMode": "direct"
         }
       },
       "frameworks": {
@@ -154,7 +144,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.301/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.100/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

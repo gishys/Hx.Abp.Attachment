@@ -12,7 +12,7 @@ namespace Hx.Abp.Attachment.Domain
         Task<int> ByParentIdFindMaxSequenceAsync(
             Guid parentId,
             CancellationToken cancellationToken = default);
-        Task<bool> AnyByNameAsync(string catalogueName, string reference);
+        Task<bool> AnyByNameAsync(string catalogueName, string reference, int referenceType);
         Task<int> GetMaxSequenceNumberByReferenceAsync(string reference);
         Task<CreateAttachFileCatalogueInfo?> ByIdMaxSequenceAsync(
             Guid id,
@@ -23,8 +23,9 @@ namespace Hx.Abp.Attachment.Domain
             CancellationToken cancellationToken = default);
         Task DeleteByReferenceAsync(
             List<GetAttachListInput> inputs,
-            CatalogueCreateMode createMode,
             bool includeDetails = true,
             CancellationToken cancellationToken = default);
+        Task DeleteRootCatalogueAsync(List<GetCatalogueInput> inputs);
+        Task<List<AttachCatalogue>> AnyByNameAsync(List<GetCatalogueInput> inputs);
     }
 }

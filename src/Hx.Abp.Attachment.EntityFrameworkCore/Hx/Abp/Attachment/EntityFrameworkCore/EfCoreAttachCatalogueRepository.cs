@@ -1,5 +1,6 @@
 ﻿using Hx.Abp.Attachment.Domain;
 using Hx.Abp.Attachment.Domain.Shared;
+using iTextSharp.text.pdf;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Linq.Dynamic.Core;
@@ -106,7 +107,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             p.Reference == reference &&
             p.ReferenceType == referenceType);
         }
-        public async Task<List<AttachCatalogue>> AnyByNameAsync(List<GetCatalogueInput> inputs)
+        public async Task<List<AttachCatalogue>> AnyByNameAsync(List<GetCatalogueInput> inputs, bool details = true)
         {
             var predicate = PredicateBuilder.New<AttachCatalogue>(true);
             foreach (var input in inputs)
@@ -120,7 +121,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             {
                 throw new UserFriendlyException("输入条件不能为空！");
             }
-            return await (await GetDbSetAsync()).Where(predicate).ToListAsync();
+            return await (await GetDbSetAsync()).IncludeDetails(details).Where(predicate).ToListAsync();
         }
         public async Task DeleteRootCatalogueAsync(List<GetCatalogueInput> inputs)
         {
@@ -163,6 +164,17 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 throw new UserFriendlyException("输入条件不能为空！");
             }
             return predicate;
+        }
+        public async Task<int> ByReferenceMaxSequenceAsync(
+            string reference,
+            int referenceType,
+            CancellationToken cancellationToken = default)
+        {
+            return await (await GetDbSetAsync())
+                .Where(u => u.Reference == reference && u.ReferenceType == referenceType)
+                .Select(d => d.SequenceNumber)
+                .DefaultIfEmpty()
+                .MaxAsync(GetCancellationToken(cancellationToken));
         }
     }
 }

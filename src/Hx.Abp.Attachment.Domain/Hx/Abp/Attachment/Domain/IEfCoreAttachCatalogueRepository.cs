@@ -26,6 +26,10 @@ namespace Hx.Abp.Attachment.Domain
             bool includeDetails = true,
             CancellationToken cancellationToken = default);
         Task DeleteRootCatalogueAsync(List<GetCatalogueInput> inputs);
-        Task<List<AttachCatalogue>> AnyByNameAsync(List<GetCatalogueInput> inputs);
+        Task<List<AttachCatalogue>> AnyByNameAsync(List<GetCatalogueInput> inputs, bool details = true);
+        Task<int> ByReferenceMaxSequenceAsync(
+            string reference,
+            int referenceType,
+            CancellationToken cancellationToken = default);
     }
 }

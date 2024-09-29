@@ -100,10 +100,34 @@ namespace Hx.Abp.Attachment.Application
                         .Aggregate((pre, next) => $"{pre},{next}")} 名称重复，请先删除现有名称再创建！");
                 }
             }
-            List<AttachCatalogue> attachCatalogues = GetEntitys(inputs, 0);
-            await CatalogueRepository.InsertManyAsync(attachCatalogues);
-            await uow.SaveChangesAsync();
-            return ObjectMapper.Map<List<AttachCatalogue>, List<AttachCatalogueDto>>(attachCatalogues);
+            else if (createMode == CatalogueCreateMode.SkipExistAppend)
+            {
+                var existingCatalogues = await CatalogueRepository.AnyByNameAsync(inputs.Select(d =>
+                new GetCatalogueInput()
+                {
+                    CatalogueName = d.CatalogueName,
+                    Reference = d.Reference,
+                    ReferenceType = d.ReferenceType
+                }).ToList(), false);
+                inputs = inputs.Where(e => existingCatalogues.Any(d =>
+                d.CatalogueName == e.CatalogueName &&
+                d.Reference == e.Reference &&
+                d.ReferenceType == e.ReferenceType)).ToList();
+            }
+            if (inputs.Count > 0)
+            {
+                List<AttachCatalogue> attachCatalogues = GetEntitys(inputs, 0);
+                await CatalogueRepository.InsertManyAsync(attachCatalogues);
+                await uow.SaveChangesAsync();
+            }
+            var entitys = await CatalogueRepository.AnyByNameAsync(inputs.Select(d =>
+                new GetCatalogueInput()
+                {
+                    CatalogueName = d.CatalogueName,
+                    Reference = d.Reference,
+                    ReferenceType = d.ReferenceType
+                }).ToList());
+            return ObjectMapper.Map<List<AttachCatalogue>, List<AttachCatalogueDto>>(entitys);
         }
         public virtual async Task DeleteByReferenceAsync(List<AttachCatalogueCreateDto> inputs)
         {

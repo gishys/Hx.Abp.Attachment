@@ -22,6 +22,10 @@ namespace Hx.Abp.Attachment.Domain.Shared
         /// <summary>
         /// 覆盖
         /// </summary>
-        Overlap = 3
+        Overlap = 3,
+        /// <summary>
+        /// 跳过已存在追加
+        /// </summary>
+        SkipExistAppend = 5,
     }
 }

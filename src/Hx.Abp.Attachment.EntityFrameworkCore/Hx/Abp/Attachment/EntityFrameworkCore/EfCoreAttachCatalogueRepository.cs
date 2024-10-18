@@ -123,7 +123,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             {
                 throw new UserFriendlyException("输入条件不能为空！");
             }
-            return await (await GetDbSetAsync()).IncludeDetails(details).Where(predicate).ToListAsync();
+            return await (await GetDbSetAsync()).IncludeDetails(details).Where(predicate).OrderBy(d=>d.SequenceNumber).ToListAsync();
         }
         public async Task DeleteRootCatalogueAsync(List<GetCatalogueInput> inputs)
         {

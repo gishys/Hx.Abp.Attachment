@@ -112,12 +112,18 @@ namespace Hx.Abp.Attachment.Application
                 d.ReferenceType == e.ReferenceType &&
                 d.ParentId == e.ParentId)).ToList();
             }
+            var number = 0;
+            foreach (var input in inputs.Select(d => new { d.ParentId, d.Reference, d.ReferenceType }).Distinct())
+            {
+                var tmp = await CatalogueRepository.GetMaxSequenceNumberByReferenceAsync(input.ParentId, input.Reference, input.ReferenceType);
+                number = tmp > number ? tmp : number;
+            }
             //跳过已存在的文件夹（只检查根路径）
             if (createMode == CatalogueCreateMode.SkipExistAppend)
             {
                 if (skipAppend.Count > 0)
                 {
-                    List<AttachCatalogue> attachCatalogues = GetEntitys(skipAppend, 0);
+                    List<AttachCatalogue> attachCatalogues = GetEntitys(skipAppend, number);
                     await CatalogueRepository.InsertManyAsync(attachCatalogues);
                     await uow.SaveChangesAsync();
                 }
@@ -126,7 +132,7 @@ namespace Hx.Abp.Attachment.Application
             {
                 if (inputs.Count > 0)
                 {
-                    List<AttachCatalogue> attachCatalogues = GetEntitys(inputs, 0);
+                    List<AttachCatalogue> attachCatalogues = GetEntitys(inputs, number);
                     await CatalogueRepository.InsertManyAsync(attachCatalogues);
                     await uow.SaveChangesAsync();
                 }

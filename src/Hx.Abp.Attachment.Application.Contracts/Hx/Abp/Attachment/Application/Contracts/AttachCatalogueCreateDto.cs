@@ -47,5 +47,9 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// 子文件夹
         /// </summary>
         public ICollection<AttachCatalogueCreateDto>? Children { get; set; }
+        /// <summary>
+        /// 子文件
+        /// </summary>
+        public List<AttachFileCreateDto>? AttachFiles {  get; set; }
     }
 }

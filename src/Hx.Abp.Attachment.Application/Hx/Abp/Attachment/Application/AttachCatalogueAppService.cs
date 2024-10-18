@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using Volo.Abp;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.Domain.Entities;
 using Volo.Abp.Uow;
 
 namespace Hx.Abp.Attachment.Application
@@ -123,7 +124,7 @@ namespace Hx.Abp.Attachment.Application
             {
                 if (skipAppend.Count > 0)
                 {
-                    List<AttachCatalogue> attachCatalogues = GetEntitys(skipAppend, number);
+                    List<AttachCatalogue> attachCatalogues = await GetEntitys(skipAppend, number);
                     await CatalogueRepository.InsertManyAsync(attachCatalogues);
                     await uow.SaveChangesAsync();
                 }
@@ -132,7 +133,7 @@ namespace Hx.Abp.Attachment.Application
             {
                 if (inputs.Count > 0)
                 {
-                    List<AttachCatalogue> attachCatalogues = GetEntitys(inputs, number);
+                    List<AttachCatalogue> attachCatalogues = await GetEntitys(inputs, number);
                     await CatalogueRepository.InsertManyAsync(attachCatalogues);
                     await uow.SaveChangesAsync();
                 }
@@ -145,14 +146,14 @@ namespace Hx.Abp.Attachment.Application
                     ReferenceType = d.ReferenceType,
                     ParentId = d.ParentId,
                 }).ToList());
-            return ObjectMapper.Map<List<AttachCatalogue>, List<AttachCatalogueDto>>(entitys);
+            return ConvertSrc(entitys);
         }
         public virtual async Task DeleteByReferenceAsync(List<AttachCatalogueCreateDto> inputs)
         {
             var deletePara = inputs.Select(d => new GetAttachListInput() { Reference = d.Reference, ReferenceType = d.ReferenceType }).Distinct().ToList();
             await CatalogueRepository.DeleteByReferenceAsync(deletePara);
         }
-        private List<AttachCatalogue> GetEntitys(List<AttachCatalogueCreateDto> inputs, int maxNumber)
+        private async Task<List<AttachCatalogue>> GetEntitys(List<AttachCatalogueCreateDto> inputs, int maxNumber)
         {
             List<AttachCatalogue> attachCatalogues = new List<AttachCatalogue>();
             foreach (var input in inputs)
@@ -171,11 +172,16 @@ namespace Hx.Abp.Attachment.Application
                         isStatic: input.IsStatic);
                 if (input.Children?.Count() > 0)
                 {
-                    var children = GetEntitys(input.Children.ToList(), 0);
+                    var children = await GetEntitys(input.Children.ToList(), 0);
                     foreach (var item in children)
                     {
                         attachCatalogue.AddAttachCatalogue(item);
                     }
+                }
+                if (input.AttachFiles?.Count() > 0)
+                {
+                    var files = await CreateFiles(attachCatalogue, input.AttachFiles);
+                    files.ForEach(item => attachCatalogue.AddAttachFile(item, 1));
                 }
                 attachCatalogues.Add(attachCatalogue);
             }
@@ -301,6 +307,37 @@ namespace Hx.Abp.Attachment.Application
             {
                 throw new BusinessException(message: "没有查询到目录！");
             }
+        }
+        private async Task<List<AttachFile>> CreateFiles(AttachCatalogue catalogue, List<AttachFileCreateDto> inputs)
+        {
+            var entitys = new List<AttachFile>();
+            foreach (var input in inputs)
+            {
+                var attachId = GuidGenerator.Create();
+                string fileExtension = Path.GetExtension(input.FileAlias).ToLowerInvariant();
+                if (fileExtension == ".tif" || fileExtension == ".tiff")
+                {
+                    input.DocumentContent = await ImageHelper.ConvertTiffToImage(input.DocumentContent);
+                    fileExtension = ".jpeg";
+                    input.FileAlias = $"{Path.GetFileNameWithoutExtension(input.FileAlias)}{fileExtension}";
+                }
+                var tempSequenceNumber = catalogue.SequenceNumber;
+                var fileName = $"{attachId}{fileExtension}";
+                var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{catalogue.Reference}/{fileName}";
+                var tempFile = new AttachFile(
+                    attachId,
+                    input.FileAlias,
+                    ++tempSequenceNumber,
+                    fileName,
+                    fileUrl,
+                    fileExtension,
+                    input.DocumentContent.Length,
+                    0,
+                    catalogue.Id);
+                await BlobContainer.SaveAsync(fileUrl, input.DocumentContent, overrideExisting: true);
+                entitys.Add(tempFile);
+            }
+            return entitys;
         }
         /// <summary>
         /// 删除单个文件

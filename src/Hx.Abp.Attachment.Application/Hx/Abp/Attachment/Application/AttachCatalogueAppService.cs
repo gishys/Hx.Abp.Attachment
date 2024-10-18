@@ -3,6 +3,7 @@ using Hx.Abp.Attachment.Domain;
 using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System.Collections.Generic;
 using Volo.Abp;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.DependencyInjection;
@@ -30,20 +31,12 @@ namespace Hx.Abp.Attachment.Application
         public virtual async Task<AttachCatalogueDto> CreateAsync(AttachCatalogueCreateDto input)
         {
             using var uow = UnitOfWorkManager.Begin();
-            var existingCatalogue = await CatalogueRepository.AnyByNameAsync(input.CatalogueName, input.Reference, input.ReferenceType);
+            var existingCatalogue = await CatalogueRepository.AnyByNameAsync(input.ParentId, input.CatalogueName, input.Reference, input.ReferenceType);
             if (existingCatalogue)
             {
                 throw new UserFriendlyException("名称重复，请先删除现有名称再创建！");
             }
-            int maxNumber = 0;
-            if (!input.ParentId.HasValue)
-            {
-                maxNumber = await CatalogueRepository.GetMaxSequenceNumberByReferenceAsync(input.Reference);
-            }
-            else
-            {
-                maxNumber = await CatalogueRepository.ByParentIdFindMaxSequenceAsync(input.ParentId.Value);
-            }
+            int maxNumber = await CatalogueRepository.GetMaxSequenceNumberByReferenceAsync(input.ParentId, input.Reference, input.ReferenceType);
             var attachCatalogue = new AttachCatalogue(
                     GuidGenerator.Create(),
                     input.AttachReceiveType,
@@ -70,6 +63,7 @@ namespace Hx.Abp.Attachment.Application
         {
             using var uow = UnitOfWorkManager.Begin();
             var deletePara = inputs.Select(d => new GetAttachListInput() { Reference = d.Reference, ReferenceType = d.ReferenceType }).Distinct().ToList();
+            List<AttachCatalogueCreateDto> skipAppend = new List<AttachCatalogueCreateDto>();
             if (createMode == CatalogueCreateMode.Rebuild)
             {
                 await CatalogueRepository.DeleteByReferenceAsync(deletePara);
@@ -81,7 +75,8 @@ namespace Hx.Abp.Attachment.Application
                 {
                     CatalogueName = d.CatalogueName,
                     Reference = d.Reference,
-                    ReferenceType = d.ReferenceType
+                    ReferenceType = d.ReferenceType,
+                    ParentId = d.ParentId,
                 }).ToList());
             }
             else if (createMode == CatalogueCreateMode.Append)
@@ -91,7 +86,8 @@ namespace Hx.Abp.Attachment.Application
                 {
                     CatalogueName = d.CatalogueName,
                     Reference = d.Reference,
-                    ReferenceType = d.ReferenceType
+                    ReferenceType = d.ReferenceType,
+                    ParentId = d.ParentId,
                 }).ToList());
                 if (existingCatalogues.Count > 0)
                 {
@@ -107,25 +103,41 @@ namespace Hx.Abp.Attachment.Application
                 {
                     CatalogueName = d.CatalogueName,
                     Reference = d.Reference,
-                    ReferenceType = d.ReferenceType
+                    ReferenceType = d.ReferenceType,
+                    ParentId = d.ParentId,
                 }).ToList(), false);
-                inputs = inputs.Where(e => existingCatalogues.Any(d =>
+                skipAppend = inputs.Where(e => !existingCatalogues.Any(d =>
                 d.CatalogueName == e.CatalogueName &&
                 d.Reference == e.Reference &&
-                d.ReferenceType == e.ReferenceType)).ToList();
+                d.ReferenceType == e.ReferenceType &&
+                d.ParentId == e.ParentId)).ToList();
             }
-            if (inputs.Count > 0)
+            //跳过已存在的文件夹（只检查根路径）
+            if (createMode == CatalogueCreateMode.SkipExistAppend)
             {
-                List<AttachCatalogue> attachCatalogues = GetEntitys(inputs, 0);
-                await CatalogueRepository.InsertManyAsync(attachCatalogues);
-                await uow.SaveChangesAsync();
+                if (skipAppend.Count > 0)
+                {
+                    List<AttachCatalogue> attachCatalogues = GetEntitys(skipAppend, 0);
+                    await CatalogueRepository.InsertManyAsync(attachCatalogues);
+                    await uow.SaveChangesAsync();
+                }
+            }
+            else
+            {
+                if (inputs.Count > 0)
+                {
+                    List<AttachCatalogue> attachCatalogues = GetEntitys(inputs, 0);
+                    await CatalogueRepository.InsertManyAsync(attachCatalogues);
+                    await uow.SaveChangesAsync();
+                }
             }
             var entitys = await CatalogueRepository.AnyByNameAsync(inputs.Select(d =>
                 new GetCatalogueInput()
                 {
                     CatalogueName = d.CatalogueName,
                     Reference = d.Reference,
-                    ReferenceType = d.ReferenceType
+                    ReferenceType = d.ReferenceType,
+                    ParentId = d.ParentId,
                 }).ToList());
             return ObjectMapper.Map<List<AttachCatalogue>, List<AttachCatalogueDto>>(entitys);
         }

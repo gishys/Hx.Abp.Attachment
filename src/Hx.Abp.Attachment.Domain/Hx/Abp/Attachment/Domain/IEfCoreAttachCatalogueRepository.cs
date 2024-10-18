@@ -12,8 +12,8 @@ namespace Hx.Abp.Attachment.Domain
         Task<int> ByParentIdFindMaxSequenceAsync(
             Guid parentId,
             CancellationToken cancellationToken = default);
-        Task<bool> AnyByNameAsync(string catalogueName, string reference, int referenceType);
-        Task<int> GetMaxSequenceNumberByReferenceAsync(string reference);
+        Task<bool> AnyByNameAsync(Guid? parentId, string catalogueName, string reference, int referenceType);
+        Task<int> GetMaxSequenceNumberByReferenceAsync(Guid? parentId, string reference, int referenceType);
         Task<CreateAttachFileCatalogueInfo?> ByIdMaxSequenceAsync(
             Guid id,
             CancellationToken cancellationToken = default);

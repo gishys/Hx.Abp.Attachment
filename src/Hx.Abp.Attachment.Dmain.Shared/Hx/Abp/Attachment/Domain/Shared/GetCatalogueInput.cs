@@ -20,5 +20,9 @@ namespace Hx.Abp.Attachment.Domain.Shared
         /// 目录名称
         /// </summary>
         public required string CatalogueName { get; set; }
+        /// <summary>
+        /// 父Id
+        /// </summary>
+        public Guid? ParentId { get; set; }
     }
 }

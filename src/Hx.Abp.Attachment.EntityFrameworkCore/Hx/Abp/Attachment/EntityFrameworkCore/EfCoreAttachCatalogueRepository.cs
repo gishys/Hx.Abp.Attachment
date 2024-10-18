@@ -100,9 +100,10 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             return queryable.IncludeDetails();
         }
 
-        public async Task<bool> AnyByNameAsync(string catalogueName, string reference, int referenceType)
+        public async Task<bool> AnyByNameAsync(Guid? parentId, string catalogueName, string reference, int referenceType)
         {
             return await (await GetDbSetAsync()).AnyAsync(p =>
+            p.ParentId == parentId &&
             p.CatalogueName == catalogueName &&
             p.Reference == reference &&
             p.ReferenceType == referenceType);
@@ -113,6 +114,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             foreach (var input in inputs)
             {
                 predicate = predicate?.Or(d =>
+                d.ParentId == input.ParentId &&
                 d.Reference == input.Reference &&
                 d.ReferenceType == input.ReferenceType &&
                 d.CatalogueName == input.CatalogueName);
@@ -130,6 +132,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             foreach (var input in inputs)
             {
                 predicate = predicate?.Or(d =>
+                d.ParentId == input.ParentId &&
                 d.Reference == input.Reference &&
                 d.ReferenceType == input.ReferenceType &&
                 d.CatalogueName == input.CatalogueName);
@@ -142,10 +145,10 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             var ids = await queryable.Select(d => d.Id).ToListAsync();
             await DeleteManyAsync(ids);
         }
-        public async Task<int> GetMaxSequenceNumberByReferenceAsync(string reference)
+        public async Task<int> GetMaxSequenceNumberByReferenceAsync(Guid? parentId, string reference, int referenceType)
         {
             return await (await GetDbSetAsync())
-                .Where(d => d.CatalogueName == reference)
+                .Where(d => d.ParentId == parentId && d.Reference == reference && d.ReferenceType == referenceType)
                 .OrderByDescending(d => d.SequenceNumber)
                 .Select(d => d.SequenceNumber).FirstOrDefaultAsync();
         }

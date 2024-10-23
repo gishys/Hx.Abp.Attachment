@@ -108,6 +108,14 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             p.Reference == reference &&
             p.ReferenceType == referenceType);
         }
+        public async Task<AttachCatalogue?> GetAsync(Guid? parentId, string catalogueName, string reference, int referenceType)
+        {
+            return await (await GetDbSetAsync()).Where(p =>
+            p.ParentId == parentId &&
+            p.CatalogueName == catalogueName &&
+            p.Reference == reference &&
+            p.ReferenceType == referenceType).FirstOrDefaultAsync();
+        }
         public async Task<List<AttachCatalogue>> AnyByNameAsync(List<GetCatalogueInput> inputs, bool details = true)
         {
             var predicate = PredicateBuilder.New<AttachCatalogue>(true);

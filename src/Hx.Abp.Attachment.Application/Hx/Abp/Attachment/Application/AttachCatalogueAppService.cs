@@ -29,30 +29,46 @@ namespace Hx.Abp.Attachment.Application
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
-        public virtual async Task<AttachCatalogueDto> CreateAsync(AttachCatalogueCreateDto input)
+        public virtual async Task<AttachCatalogueDto?> CreateAsync(AttachCatalogueCreateDto input, CatalogueCreateMode? createMode)
         {
             using var uow = UnitOfWorkManager.Begin();
             var existingCatalogue = await CatalogueRepository.AnyByNameAsync(input.ParentId, input.CatalogueName, input.Reference, input.ReferenceType);
-            if (existingCatalogue)
+            if (createMode != CatalogueCreateMode.SkipExistAppend && existingCatalogue)
             {
                 throw new UserFriendlyException("名称重复，请先删除现有名称再创建！");
             }
-            int maxNumber = await CatalogueRepository.GetMaxSequenceNumberByReferenceAsync(input.ParentId, input.Reference, input.ReferenceType);
-            var attachCatalogue = new AttachCatalogue(
-                    GuidGenerator.Create(),
-                    input.AttachReceiveType,
-                    input.CatalogueName,
-                    ++maxNumber,
-                    input.Reference,
-                    input.ReferenceType,
-                    input.ParentId,
-                    isRequired: input.IsRequired,
-                    isVerification: input.IsVerification,
-                    verificationPassed: input.VerificationPassed,
-                    isStatic: input.IsStatic);
-            await CatalogueRepository.InsertAsync(attachCatalogue);
-            await uow.SaveChangesAsync();
-            return ObjectMapper.Map<AttachCatalogue, AttachCatalogueDto>(attachCatalogue);
+            AttachCatalogue? attachCatalogue;
+            if (createMode == CatalogueCreateMode.SkipExistAppend && existingCatalogue)
+            {
+                attachCatalogue = await CatalogueRepository.GetAsync(input.ParentId, input.CatalogueName, input.Reference, input.ReferenceType);
+            }
+            else
+            {
+                int maxNumber = await CatalogueRepository.GetMaxSequenceNumberByReferenceAsync(input.ParentId, input.Reference, input.ReferenceType);
+                attachCatalogue = new AttachCatalogue(
+                        GuidGenerator.Create(),
+                        input.AttachReceiveType,
+                        input.CatalogueName,
+                        ++maxNumber,
+                        input.Reference,
+                        input.ReferenceType,
+                        input.ParentId,
+                        isRequired: input.IsRequired,
+                        isVerification: input.IsVerification,
+                        verificationPassed: input.VerificationPassed,
+                        isStatic: input.IsStatic);
+                await CatalogueRepository.InsertAsync(attachCatalogue);
+                await uow.SaveChangesAsync();
+            }
+            var retDto = ObjectMapper.Map<AttachCatalogue?, AttachCatalogueDto?>(attachCatalogue);
+            if (retDto?.AttachFiles?.Count > 0)
+            {
+                foreach (var item in retDto.AttachFiles)
+                {
+                    item.FilePath = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{item.FilePath}";
+                }
+            }
+            return retDto;
         }
         /// <summary>
         /// 创建文件夹(Many)

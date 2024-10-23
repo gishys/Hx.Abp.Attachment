@@ -16,9 +16,9 @@ namespace Hx.Abp.Attachment.Api.Controllers
             AttachCatalogueAppService = attachCatalogueAppService;
         }
         [HttpPost]
-        public virtual Task<AttachCatalogueDto> CreateAsync(AttachCatalogueCreateDto input)
+        public virtual Task<AttachCatalogueDto?> CreateAsync(AttachCatalogueCreateDto input, CatalogueCreateMode? mode)
         {
-            return AttachCatalogueAppService.CreateAsync(input);
+            return AttachCatalogueAppService.CreateAsync(input, mode);
         }
         [Route("createmany")]
         [HttpPost]

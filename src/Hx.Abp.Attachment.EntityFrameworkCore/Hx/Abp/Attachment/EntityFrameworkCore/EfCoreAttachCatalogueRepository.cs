@@ -54,7 +54,25 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             CancellationToken cancellationToken = default)
         {
             var queryable = (await GetDbSetAsync()).IncludeDetails(includeDetails);
-            var predicate = GetCataloguesByReference(inputs);
+            var predicate = PredicateBuilder.New<AttachCatalogue>(true);
+            foreach (var input in inputs)
+            {
+                if (string.IsNullOrWhiteSpace(input.CatalogueName))
+                {
+                    predicate = predicate?.Or(d =>
+                    d.ParentId == null &&
+                    d.Reference == input.Reference &&
+                    d.ReferenceType == input.ReferenceType);
+                }
+                else
+                {
+                    predicate = predicate?.Or(d =>
+                    d.ParentId == null &&
+                    d.Reference == input.Reference &&
+                    d.ReferenceType == input.ReferenceType &&
+                    d.CatalogueName == input.CatalogueName);
+                }
+            }
             queryable = queryable.Where(predicate);
             return await queryable.OrderBy(d => d.Reference)
              .ThenBy(d => d.SequenceNumber)

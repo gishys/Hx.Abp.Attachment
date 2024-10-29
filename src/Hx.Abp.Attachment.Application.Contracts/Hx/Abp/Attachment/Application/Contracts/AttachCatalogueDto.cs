@@ -47,6 +47,14 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// </summary>
         public bool IsStatic { get; set; }
         /// <summary>
+        /// 是否核验
+        /// </summary>
+        public bool IsVerification { get; set; }
+        /// <summary>
+        /// 核验通过
+        /// </summary>
+        public bool VerificationPassed { get; set; }
+        /// <summary>
         /// 子文件夹
         /// </summary>
         public ICollection<AttachCatalogueDto>? Children { get; set; }

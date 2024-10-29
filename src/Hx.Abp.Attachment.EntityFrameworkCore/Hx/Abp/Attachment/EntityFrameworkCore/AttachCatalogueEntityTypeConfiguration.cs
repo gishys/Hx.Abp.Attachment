@@ -19,6 +19,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .HasDatabaseName("ATTACH_CATALOGUES_IND_CNAME");
             builder.HasIndex(d => d.Reference)
                 .HasDatabaseName("ATTACH_CATALOGUES_IND_REFERENCE");
+            builder.HasIndex(e => new { e.Reference, e.ReferenceType, e.CatalogueName }).IsUnique();
 
             builder.Property(d => d.AttachReceiveType).HasColumnName("ATTACHRECEIVETYPE");
             builder.Property(d => d.CatalogueName).HasColumnName("CATALOGUENAME").HasMaxLength(50);

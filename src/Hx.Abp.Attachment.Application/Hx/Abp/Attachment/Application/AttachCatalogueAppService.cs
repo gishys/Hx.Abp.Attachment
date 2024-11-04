@@ -60,15 +60,8 @@ namespace Hx.Abp.Attachment.Application
                 await CatalogueRepository.InsertAsync(attachCatalogue);
                 await uow.SaveChangesAsync();
             }
-            var retDto = ObjectMapper.Map<AttachCatalogue?, AttachCatalogueDto?>(attachCatalogue);
-            if (retDto?.AttachFiles?.Count > 0)
-            {
-                foreach (var item in retDto.AttachFiles)
-                {
-                    item.FilePath = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{item.FilePath}";
-                }
-            }
-            return retDto;
+            var result = attachCatalogue != null ? ConvertSrc([attachCatalogue]) : null;
+            return result?.First();
         }
         /// <summary>
         /// 创建文件夹(Many)
@@ -446,7 +439,7 @@ namespace Hx.Abp.Attachment.Application
                 }
                 if (cat.Children?.Count > 0)
                 {
-                    ConvertSrc(cat.Children.ToList());
+                    catalogueDto.Children = ConvertSrc(cat.Children.ToList());
                 }
                 result.Add(catalogueDto);
             }

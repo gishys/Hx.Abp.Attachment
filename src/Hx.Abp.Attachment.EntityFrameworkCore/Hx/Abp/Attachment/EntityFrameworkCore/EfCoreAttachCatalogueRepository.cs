@@ -149,7 +149,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             {
                 throw new UserFriendlyException("输入条件不能为空！");
             }
-            return await (await GetDbSetAsync()).IncludeDetails(details).Where(predicate).OrderBy(d=>d.SequenceNumber).ToListAsync();
+            return await (await GetDbSetAsync()).IncludeDetails(details).Where(predicate).OrderBy(d => d.SequenceNumber).ToListAsync();
         }
         public async Task DeleteRootCatalogueAsync(List<GetCatalogueInput> inputs)
         {
@@ -204,6 +204,11 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .Select(d => d.SequenceNumber)
                 .DefaultIfEmpty()
                 .MaxAsync(GetCancellationToken(cancellationToken));
+        }
+        public async Task<AttachCatalogue?> GetByFileIdAsync(Guid fileId, CancellationToken cancellationToken = default)
+        {
+            return await (await GetDbSetAsync())
+                .FirstOrDefaultAsync(u => u.AttachFiles.Any(d => d.Id == fileId));
         }
     }
 }

@@ -17,5 +17,6 @@ namespace Hx.Abp.Attachment.Application.Contracts
         Task<FileVerifyResultDto> VerifyUploadAsync(List<GetAttachListInput> inputs, bool details = false);
         Task<List<AttachCatalogueDto>> CreateManyAsync(List<AttachCatalogueCreateDto> inputs, CatalogueCreateMode createMode);
         Task DeleteByReferenceAsync(List<AttachCatalogueCreateDto> inputs);
+        Task<AttachCatalogueDto?> GetAttachCatalogueByFileIdAsync(Guid fileId);
     }
 }

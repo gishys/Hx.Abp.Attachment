@@ -571,5 +571,9 @@ namespace Hx.Abp.Attachment.Application
             }
             fileKeys.AddRange(attachCatalogue.AttachFiles.Select(d => d.Id));
         }
+        public async Task<AttachCatalogueDto?> GetAttachCatalogueByFileIdAsync(Guid fileId)
+        {
+            return ObjectMapper.Map<AttachCatalogue?, AttachCatalogueDto?>(await CatalogueRepository.GetByFileIdAsync(fileId));
+        }
     }
 }

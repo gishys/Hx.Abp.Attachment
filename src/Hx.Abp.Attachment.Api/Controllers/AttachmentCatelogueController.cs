@@ -104,5 +104,11 @@ namespace Hx.Abp.Attachment.Api.Controllers
         {
             return AttachCatalogueAppService.DeleteByReferenceAsync(inputs);
         }
+        [Route("getbyfileid")]
+        [HttpGet]
+        public virtual Task GetByFileIdAsync(Guid fileId)
+        {
+            return AttachCatalogueAppService.GetAttachCatalogueByFileIdAsync(fileId);
+        }
     }
 }

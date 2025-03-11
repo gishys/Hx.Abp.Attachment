@@ -11,19 +11,23 @@
         /// </summary>
         public int SequenceNumber { get; set; }
         public Guid Id { get; set; }
-        public required string FilePath { get; set; }
-        public required string FileName { get; set; }
+        public string FilePath { get; set; }
+        public string FileName { get; set; }
         /// <summary>
         /// 文件类型
         /// </summary>
-        public required string FileType { get; set; }
+        public string FileType { get; set; }
         /// <summary>
         /// 文件大小
         /// </summary>
-        public virtual int FileSize { get; set; }
+        public int FileSize { get; set; }
         /// <summary>
         /// 下载次数
         /// </summary>
-        public virtual int DownloadTimes { get; set; }
+        public int DownloadTimes { get; set; }
+        /// <summary>
+        /// Attach catalogue id of this attach file.
+        /// </summary>
+        public Guid? AttachCatalogueId { get; set; }
     }
 }

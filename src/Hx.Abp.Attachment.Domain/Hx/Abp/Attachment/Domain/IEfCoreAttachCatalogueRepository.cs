@@ -32,5 +32,6 @@ namespace Hx.Abp.Attachment.Domain
             int referenceType,
             CancellationToken cancellationToken = default);
         Task<AttachCatalogue?> GetAsync(Guid? parentId, string catalogueName, string reference, int referenceType);
+        Task<AttachCatalogue?> GetByFileIdAsync(Guid fileId, CancellationToken cancellationToken = default);
     }
 }

@@ -220,6 +220,7 @@ namespace Hx.Abp.Attachment.Application
                         FileType = file.FileType,
                         FileSize = file.FileSize,
                         DownloadTimes = file.DownloadTimes,
+                        AttachCatalogueId = file.AttachCatalogueId,
                     };
                     files.Add(tempFile);
                     file.Download();
@@ -248,6 +249,7 @@ namespace Hx.Abp.Attachment.Application
                 FileType = attachFile.FileType,
                 FileSize = attachFile.FileSize,
                 DownloadTimes = attachFile.DownloadTimes,
+                AttachCatalogueId = attachFile.AttachCatalogueId,
             };
             attachFile.Download();
             await EfCoreAttachFileRepository.UpdateAsync(attachFile);
@@ -305,6 +307,7 @@ namespace Hx.Abp.Attachment.Application
                         FileType = tempFile.FileType,
                         FileSize = tempFile.FileSize,
                         DownloadTimes = tempFile.DownloadTimes,
+                        AttachCatalogueId = tempFile.AttachCatalogueId,
                     };
                     result.Add(retFile);
                 }
@@ -403,6 +406,7 @@ namespace Hx.Abp.Attachment.Application
                     FileType = tempFile.FileType,
                     FileSize = tempFile.FileSize,
                     DownloadTimes = tempFile.DownloadTimes,
+                    AttachCatalogueId = tempFile.AttachCatalogueId,
                 };
             }
             else

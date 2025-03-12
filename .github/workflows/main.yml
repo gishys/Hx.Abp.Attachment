@@ -44,8 +44,8 @@ jobs:
 
     - name: Push NuGet packages
       run: |
-       dotnet nuget push ./src/Hx.Abp.Attachment.Application/*.nupkg -Source https://api.nuget.org/v3/index.json -ApiKey ${{ secrets.NUGET_API_KEY }} -SkipDuplicate
-       dotnet nuget push ./src/Hx.Abp.Attachment.Application.Contracts/*.nupkg -Source https://api.nuget.org/v3/index.json -ApiKey ${{ secrets.NUGET_API_KEY }} -SkipDuplicate
-       dotnet nuget push ./src/Hx.Abp.Attachment.Domain/*.nupkg -Source https://api.nuget.org/v3/index.json -ApiKey ${{ secrets.NUGET_API_KEY }} -SkipDuplicate
-       dotnet nuget push ./src/Hx.Abp.Attachment.Dmain.Shared/*.nupkg -Source https://api.nuget.org/v3/index.json -ApiKey ${{ secrets.NUGET_API_KEY }} -SkipDuplicate
-       dotnet nuget push ./src/Hx.Abp.Attachment.EntityFrameworkCore/*.nupkg -Source https://api.nuget.org/v3/index.json -ApiKey ${{ secrets.NUGET_API_KEY }} -SkipDuplicate
+       dotnet nuget push ./src/Hx.Abp.Attachment.Application/*.nupkg --source https://api.nuget.org/v3/index.json -ApiKey ${{ secrets.NUGET_API_KEY }} -SkipDuplicate
+       dotnet nuget push ./src/Hx.Abp.Attachment.Application.Contracts/*.nupkg --source https://api.nuget.org/v3/index.json -ApiKey ${{ secrets.NUGET_API_KEY }} -SkipDuplicate
+       dotnet nuget push ./src/Hx.Abp.Attachment.Domain/*.nupkg --source https://api.nuget.org/v3/index.json -ApiKey ${{ secrets.NUGET_API_KEY }} -SkipDuplicate
+       dotnet nuget push ./src/Hx.Abp.Attachment.Dmain.Shared/*.nupkg --source https://api.nuget.org/v3/index.json -ApiKey ${{ secrets.NUGET_API_KEY }} -SkipDuplicate
+       dotnet nuget push ./src/Hx.Abp.Attachment.EntityFrameworkCore/*.nupkg --source https://api.nuget.org/v3/index.json -ApiKey ${{ secrets.NUGET_API_KEY }} -SkipDuplicate

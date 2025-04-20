@@ -263,7 +263,3 @@ src/Hx.BgApp.Blazor.Tiered/Logs/*
 
 # Use abp install-libs to restore.
 **/wwwroot/libs/*
-
-**/.vs/
-**/obj/
-**/bin/

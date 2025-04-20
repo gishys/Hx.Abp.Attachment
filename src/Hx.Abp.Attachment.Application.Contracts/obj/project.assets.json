@@ -5757,11 +5757,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.Contracts\\Hx.Abp.Attachment.Application.Contracts.csproj",
+      "projectUniqueName": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Application.Contracts\\Hx.Abp.Attachment.Application.Contracts.csproj",
       "projectName": "Hx.Abp.Attachment.Application.Contracts",
-      "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.Contracts\\Hx.Abp.Attachment.Application.Contracts.csproj",
+      "projectPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Application.Contracts\\Hx.Abp.Attachment.Application.Contracts.csproj",
       "packagesPath": "C:\\Users\\24383\\.nuget\\packages\\",
-      "outputPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.Contracts\\obj\\",
+      "outputPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Application.Contracts\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -5783,8 +5783,8 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "projectReferences": {
-            "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj": {
-              "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj"
+            "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj": {
+              "projectPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj"
             }
           }
         }
@@ -5793,11 +5793,6 @@
         "warnAsError": [
           "NU1605"
         ]
-      },
-      "restoreAuditProperties": {
-        "enableAudit": "true",
-        "auditLevel": "low",
-        "auditMode": "direct"
       }
     },
     "frameworks": {
@@ -5825,7 +5820,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.301/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.100/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

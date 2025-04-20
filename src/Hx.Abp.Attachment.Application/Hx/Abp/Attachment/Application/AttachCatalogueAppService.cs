@@ -73,7 +73,7 @@ namespace Hx.Abp.Attachment.Application
         {
             using var uow = UnitOfWorkManager.Begin();
             var deletePara = inputs.Select(d => new GetAttachListInput() { Reference = d.Reference, ReferenceType = d.ReferenceType }).Distinct().ToList();
-            List<AttachCatalogueCreateDto> skipAppend = new List<AttachCatalogueCreateDto>();
+            List<AttachCatalogueCreateDto> skipAppend = [];
             if (createMode == CatalogueCreateMode.Rebuild)
             {
                 await CatalogueRepository.DeleteByReferenceAsync(deletePara);
@@ -164,7 +164,7 @@ namespace Hx.Abp.Attachment.Application
         }
         private async Task<List<AttachCatalogue>> GetEntitys(List<AttachCatalogueCreateDto> inputs, int maxNumber)
         {
-            List<AttachCatalogue> attachCatalogues = new List<AttachCatalogue>();
+            List<AttachCatalogue> attachCatalogues = [];
             foreach (var input in inputs)
             {
                 var attachCatalogue = new AttachCatalogue(
@@ -179,15 +179,15 @@ namespace Hx.Abp.Attachment.Application
                         isVerification: input.IsVerification,
                         verificationPassed: input.VerificationPassed,
                         isStatic: input.IsStatic);
-                if (input.Children?.Count() > 0)
+                if (input.Children?.Count > 0)
                 {
-                    var children = await GetEntitys(input.Children.ToList(), 0);
+                    var children = await GetEntitys([.. input.Children], 0);
                     foreach (var item in children)
                     {
                         attachCatalogue.AddAttachCatalogue(item);
                     }
                 }
-                if (input.AttachFiles?.Count() > 0)
+                if (input.AttachFiles?.Count > 0)
                 {
                     var files = await CreateFiles(attachCatalogue, input.AttachFiles);
                     files.ForEach(item => attachCatalogue.AddAttachFile(item, 1));
@@ -433,7 +433,7 @@ namespace Hx.Abp.Attachment.Application
                 var catalogueDto = ObjectMapper.Map<AttachCatalogue, AttachCatalogueDto>(cat);
                 if (cat.AttachFiles?.Count > 0)
                 {
-                    catalogueDto.AttachFiles = new System.Collections.ObjectModel.Collection<AttachFileDto>();
+                    catalogueDto.AttachFiles = [];
                     foreach (var file in cat.AttachFiles.OrderBy(d => d.SequenceNumber))
                     {
                         var fileDto = ObjectMapper.Map<AttachFile, AttachFileDto>(file);
@@ -443,7 +443,7 @@ namespace Hx.Abp.Attachment.Application
                 }
                 if (cat.Children?.Count > 0)
                 {
-                    catalogueDto.Children = ConvertSrc(cat.Children.ToList());
+                    catalogueDto.Children = ConvertSrc([.. cat.Children]);
                 }
                 result.Add(catalogueDto);
             }
@@ -464,9 +464,9 @@ namespace Hx.Abp.Attachment.Application
                 ProfileInfo = details ? [] : SimpleVerifyCatalogues(list, ref parentMessage)
             };
         }
-        private List<DetailedFileVerifyResultDto> VerifyCatalogues(ICollection<AttachCatalogue> cats)
+        private static List<DetailedFileVerifyResultDto> VerifyCatalogues(ICollection<AttachCatalogue> cats)
         {
-            List<DetailedFileVerifyResultDto> result = new List<DetailedFileVerifyResultDto>();
+            List<DetailedFileVerifyResultDto> result = [];
             foreach (var cat in cats)
             {
                 var entity = new DetailedFileVerifyResultDto()
@@ -485,7 +485,7 @@ namespace Hx.Abp.Attachment.Application
         }
         private List<ProfileFileVerifyResultDto> SimpleVerifyCatalogues(ICollection<AttachCatalogue> cats, ref string parentMessage)
         {
-            List<ProfileFileVerifyResultDto> list = new List<ProfileFileVerifyResultDto>();
+            List<ProfileFileVerifyResultDto> list = [];
             foreach (var cat in cats)
             {
                 string message = cat.Children?.Count > 0 || (cat.Children?.Count <= 0 && cat.IsRequired && cat.AttachFiles?.Count <= 0) ? cat.CatalogueName : "";
@@ -566,7 +566,7 @@ namespace Hx.Abp.Attachment.Application
             await CatalogueRepository.DeleteManyAsync(keys);
             await uow.SaveChangesAsync();
         }
-        private void GetChildrenKeys(AttachCatalogue attachCatalogue, ref List<Guid> keys, ref List<Guid> fileKeys)
+        private static void GetChildrenKeys(AttachCatalogue attachCatalogue, ref List<Guid> keys, ref List<Guid> fileKeys)
         {
             keys.Add(attachCatalogue.Id);
             foreach (var child in attachCatalogue.Children)

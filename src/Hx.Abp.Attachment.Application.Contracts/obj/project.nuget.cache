@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "SrlJcQDHRkX7nfFCglPdbat1DRqrM9tRCtcEpn8Husd8jvKzyt8wtZmVPdDRiUibJOM8zbSyP0y/TWtoJGHLDg==",
+  "dgSpecHash": "DjA1H0sMVQ8=",
   "success": true,
-  "projectFilePath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Application.Contracts\\Hx.Abp.Attachment.Application.Contracts.csproj",
+  "projectFilePath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.Contracts\\Hx.Abp.Attachment.Application.Contracts.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\24383\\.nuget\\packages\\asynckeyedlock\\6.3.4\\asynckeyedlock.6.3.4.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\bouncycastle.cryptography\\2.3.1\\bouncycastle.cryptography.2.3.1.nupkg.sha512",

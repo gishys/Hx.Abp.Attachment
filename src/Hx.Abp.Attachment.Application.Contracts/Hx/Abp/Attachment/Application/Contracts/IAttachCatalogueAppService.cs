@@ -13,7 +13,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         Task<AttachFileDto> UpdateSingleFileAsync(Guid catalogueId, Guid attachFileId, AttachFileCreateDto input);
         Task<List<AttachFileDto>> QueryFilesAsync(Guid catalogueId);
         Task<AttachFileDto> QueryFileAsync(Guid attachFileId);
-        Task<List<AttachFileDto>> CreateFilesAsync(Guid id, List<AttachFileCreateDto> input);
+        Task<List<AttachFileDto>> CreateFilesAsync(Guid? id, List<AttachFileCreateDto> inputs, string? prefix = null);
         Task<FileVerifyResultDto> VerifyUploadAsync(List<GetAttachListInput> inputs, bool details = false);
         Task<List<AttachCatalogueDto>> CreateManyAsync(List<AttachCatalogueCreateDto> inputs, CatalogueCreateMode createMode);
         Task DeleteByReferenceAsync(List<AttachCatalogueCreateDto> inputs);

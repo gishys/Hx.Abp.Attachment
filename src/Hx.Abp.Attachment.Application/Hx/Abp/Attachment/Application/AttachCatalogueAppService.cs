@@ -263,13 +263,17 @@ namespace Hx.Abp.Attachment.Application
         /// <param name="input"></param>
         /// <returns></returns>
         /// <exception cref="BusinessException"></exception>
-        public virtual async Task<List<AttachFileDto>> CreateFilesAsync(Guid id, List<AttachFileCreateDto> inputs)
+        public virtual async Task<List<AttachFileDto>> CreateFilesAsync(Guid? id, List<AttachFileCreateDto> inputs, string? prefix = null)
         {
             using var uow = UnitOfWorkManager.Begin();
-            var catalogue = await CatalogueRepository.ByIdMaxSequenceAsync(id);
+            CreateAttachFileCatalogueInfo? catalogue = null;
+            if (id.HasValue)
+            {
+                catalogue = await CatalogueRepository.ByIdMaxSequenceAsync(id.Value);
+            }
             var result = new List<AttachFileDto>();
             var entitys = new List<AttachFile>();
-            if (catalogue != null && inputs.Count > 0)
+            if (inputs.Count > 0)
             {
                 foreach (var input in inputs)
                 {
@@ -281,9 +285,17 @@ namespace Hx.Abp.Attachment.Application
                         fileExtension = ".jpeg";
                         input.FileAlias = $"{Path.GetFileNameWithoutExtension(input.FileAlias)}{fileExtension}";
                     }
-                    var tempSequenceNumber = catalogue.SequenceNumber;
+                    var tempSequenceNumber = catalogue == null ? 0 : catalogue.SequenceNumber;
                     var fileName = $"{attachId}{fileExtension}";
-                    var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{catalogue.Reference}/{fileName}";
+                    var fileUrl = "";
+                    if (catalogue != null)
+                    {
+                        fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{catalogue.Reference}/{fileName}";
+                    }
+                    else
+                    {
+                        fileUrl = $"{prefix ?? ""}/{fileName}";
+                    }
                     var tempFile = new AttachFile(
                         attachId,
                         input.FileAlias,
@@ -293,7 +305,7 @@ namespace Hx.Abp.Attachment.Application
                         fileExtension,
                         input.DocumentContent.Length,
                         0,
-                        catalogue.Id);
+                        catalogue?.Id);
                     await BlobContainer.SaveAsync(fileUrl, input.DocumentContent, overrideExisting: true);
                     entitys.Add(tempFile);
                     var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{fileUrl}";

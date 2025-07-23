@@ -296,7 +296,7 @@
             },
             "Volo.Abp.Ddd.Domain": {
               "target": "Package",
-              "version": "[8.1.3, )"
+              "version": "[8.1.1, )"
             }
           },
           "imports": [

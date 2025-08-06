@@ -14,5 +14,9 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         {
             return await (await GetDbSetAsync()).Where(d => d.AttachCatalogueId == catalogueId).ExecuteDeleteAsync();
         }
+        public async Task<List<AttachFile>> GetListByIdsAsync(List<Guid> ids)
+        {
+            return await (await GetDbSetAsync()).Where(d => ids.Any(id => id == d.Id)).ToListAsync();
+        }
     }
 }

@@ -15,6 +15,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hx.Abp.Attachment.Domain", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hx.Abp.Attachment.Api", "src\Hx.Abp.Attachment.Api\Hx.Abp.Attachment.Api.csproj", "{CD9BF0F9-7623-45AB-862B-9B1678B57874}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hx.Abp.Attachment.Application.ArchAI", "Hx.Abp.Attachment.Application.ArchAI\Hx.Abp.Attachment.Application.ArchAI.csproj", "{11894CF2-4896-4E69-A200-FD4B1EE5313E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,6 +47,10 @@ Global
 		{CD9BF0F9-7623-45AB-862B-9B1678B57874}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CD9BF0F9-7623-45AB-862B-9B1678B57874}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CD9BF0F9-7623-45AB-862B-9B1678B57874}.Release|Any CPU.Build.0 = Release|Any CPU
+		{11894CF2-4896-4E69-A200-FD4B1EE5313E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{11894CF2-4896-4E69-A200-FD4B1EE5313E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{11894CF2-4896-4E69-A200-FD4B1EE5313E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{11894CF2-4896-4E69-A200-FD4B1EE5313E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1482,10 +1482,20 @@
       },
       "Hx.Abp.Attachment.Application.ArchAI/1.0.0": {
         "dependencies": {
-          "AlibabaCloud.SDK.Ocr20191230": "4.0.0"
+          "AlibabaCloud.SDK.Ocr20191230": "4.0.0",
+          "Hx.Abp.Attachment.Application.ArchAI.Contracts": "1.0.0",
+          "Volo.Abp.Core": "8.1.1"
         },
         "runtime": {
           "Hx.Abp.Attachment.Application.ArchAI.dll": {}
+        }
+      },
+      "Hx.Abp.Attachment.Application.ArchAI.Contracts/1.0.0": {
+        "dependencies": {
+          "Volo.Abp.Ddd.Application.Contracts": "8.1.1"
+        },
+        "runtime": {
+          "Hx.Abp.Attachment.Application.ArchAI.Contracts.dll": {}
         }
       },
       "Hx.Abp.Attachment.Application.Contracts/1.0.0": {
@@ -2456,6 +2466,11 @@
       "hashPath": "volo.abp.virtualfilesystem.8.1.1.nupkg.sha512"
     },
     "Hx.Abp.Attachment.Application.ArchAI/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Hx.Abp.Attachment.Application.ArchAI.Contracts/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

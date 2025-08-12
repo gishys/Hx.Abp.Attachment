@@ -1,5 +1,7 @@
 ﻿using Hx.Abp.Attachment.Application;
 using Hx.Abp.Attachment.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
+using System.Xml.Linq;
 using Volo.Abp;
 using Volo.Abp.AspNetCore.Mvc;
 using Volo.Abp.Autofac;
@@ -61,7 +63,15 @@ namespace Hx.Abp.Attachment.Api
             }
 
             //app.UseHttpsRedirection();
-            app.UseStaticFiles();
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                FileProvider = new PhysicalFileProvider("C:\\my-files"),
+                RequestPath = "",
+                OnPrepareResponse = (c) =>
+                {
+                    c.Context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
+                }
+            });
             app.UseRouting();
             app.UseConfiguredEndpoints();
         }

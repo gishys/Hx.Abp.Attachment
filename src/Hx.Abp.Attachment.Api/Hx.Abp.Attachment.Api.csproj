@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Hx.Abp.Attachment.Application.ArchAI.Contracts\Hx.Abp.Attachment.Application.ArchAI.Contracts.csproj" />
     <ProjectReference Include="..\Hx.Abp.Attachment.Application.Contracts\Hx.Abp.Attachment.Application.Contracts.csproj" />
     <ProjectReference Include="..\Hx.Abp.Attachment.Application\Hx.Abp.Attachment.Application.csproj" />
     <ProjectReference Include="..\Hx.Abp.Attachment.EntityFrameworkCore\Hx.Abp.Attachment.EntityFrameworkCore.csproj" />

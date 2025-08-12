@@ -9,6 +9,11 @@
 
   <ItemGroup>
     <PackageReference Include="AlibabaCloud.SDK.Ocr20191230" Version="4.0.0" />
+    <PackageReference Include="Volo.Abp.Core" Version="8.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hx.Abp.Attachment.Application.ArchAI.Contracts\Hx.Abp.Attachment.Application.ArchAI.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

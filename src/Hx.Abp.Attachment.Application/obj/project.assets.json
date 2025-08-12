@@ -2273,13 +2273,28 @@
         "type": "project",
         "framework": ".NETCoreApp,Version=v8.0",
         "dependencies": {
-          "AlibabaCloud.SDK.Ocr20191230": "4.0.0"
+          "AlibabaCloud.SDK.Ocr20191230": "4.0.0",
+          "Hx.Abp.Attachment.Application.ArchAI.Contracts": "1.0.0",
+          "Volo.Abp.Core": "8.1.1"
         },
         "compile": {
           "bin/placeholder/Hx.Abp.Attachment.Application.ArchAI.dll": {}
         },
         "runtime": {
           "bin/placeholder/Hx.Abp.Attachment.Application.ArchAI.dll": {}
+        }
+      },
+      "Hx.Abp.Attachment.Application.ArchAI.Contracts/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "dependencies": {
+          "Volo.Abp.Ddd.Application.Contracts": "8.1.1"
+        },
+        "compile": {
+          "bin/placeholder/Hx.Abp.Attachment.Application.ArchAI.Contracts.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Hx.Abp.Attachment.Application.ArchAI.Contracts.dll": {}
         }
       },
       "Hx.Abp.Attachment.Application.Contracts/1.0.0": {
@@ -6539,6 +6554,11 @@
       "type": "project",
       "path": "../../Hx.Abp.Attachment.Application.ArchAI/Hx.Abp.Attachment.Application.ArchAI.csproj",
       "msbuildProject": "../../Hx.Abp.Attachment.Application.ArchAI/Hx.Abp.Attachment.Application.ArchAI.csproj"
+    },
+    "Hx.Abp.Attachment.Application.ArchAI.Contracts/1.0.0": {
+      "type": "project",
+      "path": "../../Hx.Abp.Attachment.Application.ArchAI.Contracts/Hx.Abp.Attachment.Application.ArchAI.Contracts.csproj",
+      "msbuildProject": "../../Hx.Abp.Attachment.Application.ArchAI.Contracts/Hx.Abp.Attachment.Application.ArchAI.Contracts.csproj"
     },
     "Hx.Abp.Attachment.Application.Contracts/1.0.0": {
       "type": "project",

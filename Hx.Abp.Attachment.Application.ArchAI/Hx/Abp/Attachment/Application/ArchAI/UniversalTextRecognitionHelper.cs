@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Hx.Abp.Attachment.Application.ArchAI.Contracts;
 using Tea;
+using Volo.Abp;
 
 namespace Hx.Abp.Attachment.Application.ArchAI
 {
@@ -28,7 +24,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             config.Endpoint = "ocr.cn-shanghai.aliyuncs.com";
             return new AlibabaCloud.SDK.Ocr20191230.Client(config);
         }
-        public async static void JpgUniversalTextRecognition(string accessKeyId, string accessKeySecret, string imageUrl)
+        public async static Task<RecognizeCharacterDto> JpgUniversalTextRecognition(string accessKeyId, string accessKeySecret, string imageUrl)
         {
             // 创建AccessKey ID和AccessKey Secret，请参考https://help.aliyun.com/document_detail/175144.html
             // 如果您使用的是RAM用户的AccessKey，还需要为子账号授予权限AliyunVIAPIFullAccess，请参考https://help.aliyun.com/document_detail/145025.html
@@ -52,24 +48,29 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             try
             {
                 AlibabaCloud.SDK.Ocr20191230.Models.RecognizeCharacterResponse recognizeCharacterResponse = client.RecognizeCharacterAdvance(recognizeCharacterAdvanceRequest, runtime);
-                // 获取整体结果
-                Console.WriteLine(AlibabaCloud.TeaUtil.Common.ToJSONString(recognizeCharacterResponse.Body));
-                // 获取单个字段
-                Console.WriteLine(AlibabaCloud.TeaUtil.Common.ToJSONString(recognizeCharacterResponse.Body.Data));
+                var body = recognizeCharacterResponse.Body;
+                var rc = new RecognizeCharacterDto(body.RequestId);
+                foreach (var item in body.Data.Results)
+                {
+                    var rectangle = new RecognizeCharacterDataRectangles();
+                    rectangle.Angle = item.TextRectangles.Angle ?? 0;
+                    rectangle.Width = item.TextRectangles.Width ?? 0;
+                    rectangle.Height = item.TextRectangles.Height ?? 0;
+                    rectangle.Left = item.TextRectangles.Left ?? 0;
+                    rectangle.Top = item.TextRectangles.Top ?? 0;
+                    rc.Results.Add(new(item.Probability, item.Text, rectangle));
+                }
+                return rc;
             }
             catch (TeaException error)
             {
                 // 如有需要，请打印 error
-                AlibabaCloud.TeaUtil.Common.AssertAsString(error.Message);
+                var message = AlibabaCloud.TeaUtil.Common.AssertAsString(error.Message);
+                throw new UserFriendlyException(message: message);
             }
             catch (Exception _error)
             {
-                TeaException error = new TeaException(new Dictionary<string, object>
-                {
-                    { "message", _error.Message }
-                });
-                // 如有需要，请打印 error
-                Console.WriteLine(error.Message);
+                throw new UserFriendlyException(message: _error.Message);
             }
         }
     }

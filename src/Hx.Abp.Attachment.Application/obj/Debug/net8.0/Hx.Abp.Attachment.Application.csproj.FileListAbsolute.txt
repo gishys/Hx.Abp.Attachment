@@ -60,3 +60,5 @@ D:\work\attachment\src\Hx.Abp.Attachment.Application\obj\Debug\net8.0\Hx.Abp.Att
 D:\work\attachment\src\Hx.Abp.Attachment.Application\obj\Debug\net8.0\ref\Hx.Abp.Attachment.Application.dll
 C:\work\projects\attachment\src\Hx.Abp.Attachment.Application\bin\Debug\net8.0\Hx.Abp.Attachment.Application.ArchAI.dll
 C:\work\projects\attachment\src\Hx.Abp.Attachment.Application\bin\Debug\net8.0\Hx.Abp.Attachment.Application.ArchAI.pdb
+C:\work\projects\attachment\src\Hx.Abp.Attachment.Application\bin\Debug\net8.0\Hx.Abp.Attachment.Application.ArchAI.Contracts.dll
+C:\work\projects\attachment\src\Hx.Abp.Attachment.Application\bin\Debug\net8.0\Hx.Abp.Attachment.Application.ArchAI.Contracts.pdb

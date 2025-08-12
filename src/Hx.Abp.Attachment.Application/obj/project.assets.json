@@ -6552,13 +6552,13 @@
     },
     "Hx.Abp.Attachment.Application.ArchAI/1.0.0": {
       "type": "project",
-      "path": "../../Hx.Abp.Attachment.Application.ArchAI/Hx.Abp.Attachment.Application.ArchAI.csproj",
-      "msbuildProject": "../../Hx.Abp.Attachment.Application.ArchAI/Hx.Abp.Attachment.Application.ArchAI.csproj"
+      "path": "../Hx.Abp.Attachment.Application.ArchAI/Hx.Abp.Attachment.Application.ArchAI.csproj",
+      "msbuildProject": "../Hx.Abp.Attachment.Application.ArchAI/Hx.Abp.Attachment.Application.ArchAI.csproj"
     },
     "Hx.Abp.Attachment.Application.ArchAI.Contracts/1.0.0": {
       "type": "project",
-      "path": "../../Hx.Abp.Attachment.Application.ArchAI.Contracts/Hx.Abp.Attachment.Application.ArchAI.Contracts.csproj",
-      "msbuildProject": "../../Hx.Abp.Attachment.Application.ArchAI.Contracts/Hx.Abp.Attachment.Application.ArchAI.Contracts.csproj"
+      "path": "../Hx.Abp.Attachment.Application.ArchAI.Contracts/Hx.Abp.Attachment.Application.ArchAI.Contracts.csproj",
+      "msbuildProject": "../Hx.Abp.Attachment.Application.ArchAI.Contracts/Hx.Abp.Attachment.Application.ArchAI.Contracts.csproj"
     },
     "Hx.Abp.Attachment.Application.Contracts/1.0.0": {
       "type": "project",
@@ -6619,8 +6619,8 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "projectReferences": {
-            "C:\\work\\projects\\attachment\\Hx.Abp.Attachment.Application.ArchAI\\Hx.Abp.Attachment.Application.ArchAI.csproj": {
-              "projectPath": "C:\\work\\projects\\attachment\\Hx.Abp.Attachment.Application.ArchAI\\Hx.Abp.Attachment.Application.ArchAI.csproj"
+            "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.ArchAI\\Hx.Abp.Attachment.Application.ArchAI.csproj": {
+              "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.ArchAI\\Hx.Abp.Attachment.Application.ArchAI.csproj"
             },
             "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.Contracts\\Hx.Abp.Attachment.Application.Contracts.csproj": {
               "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.Contracts\\Hx.Abp.Attachment.Application.Contracts.csproj"

@@ -4,14 +4,14 @@
     "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application\\Hx.Abp.Attachment.Application.csproj": {}
   },
   "projects": {
-    "C:\\work\\projects\\attachment\\Hx.Abp.Attachment.Application.ArchAI.Contracts\\Hx.Abp.Attachment.Application.ArchAI.Contracts.csproj": {
+    "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.ArchAI.Contracts\\Hx.Abp.Attachment.Application.ArchAI.Contracts.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\work\\projects\\attachment\\Hx.Abp.Attachment.Application.ArchAI.Contracts\\Hx.Abp.Attachment.Application.ArchAI.Contracts.csproj",
+        "projectUniqueName": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.ArchAI.Contracts\\Hx.Abp.Attachment.Application.ArchAI.Contracts.csproj",
         "projectName": "Hx.Abp.Attachment.Application.ArchAI.Contracts",
-        "projectPath": "C:\\work\\projects\\attachment\\Hx.Abp.Attachment.Application.ArchAI.Contracts\\Hx.Abp.Attachment.Application.ArchAI.Contracts.csproj",
+        "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.ArchAI.Contracts\\Hx.Abp.Attachment.Application.ArchAI.Contracts.csproj",
         "packagesPath": "C:\\Users\\24383\\.nuget\\packages\\",
-        "outputPath": "C:\\work\\projects\\attachment\\Hx.Abp.Attachment.Application.ArchAI.Contracts\\obj\\",
+        "outputPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.ArchAI.Contracts\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -75,14 +75,14 @@
         }
       }
     },
-    "C:\\work\\projects\\attachment\\Hx.Abp.Attachment.Application.ArchAI\\Hx.Abp.Attachment.Application.ArchAI.csproj": {
+    "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.ArchAI\\Hx.Abp.Attachment.Application.ArchAI.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\work\\projects\\attachment\\Hx.Abp.Attachment.Application.ArchAI\\Hx.Abp.Attachment.Application.ArchAI.csproj",
+        "projectUniqueName": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.ArchAI\\Hx.Abp.Attachment.Application.ArchAI.csproj",
         "projectName": "Hx.Abp.Attachment.Application.ArchAI",
-        "projectPath": "C:\\work\\projects\\attachment\\Hx.Abp.Attachment.Application.ArchAI\\Hx.Abp.Attachment.Application.ArchAI.csproj",
+        "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.ArchAI\\Hx.Abp.Attachment.Application.ArchAI.csproj",
         "packagesPath": "C:\\Users\\24383\\.nuget\\packages\\",
-        "outputPath": "C:\\work\\projects\\attachment\\Hx.Abp.Attachment.Application.ArchAI\\obj\\",
+        "outputPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.ArchAI\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -104,8 +104,8 @@
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "C:\\work\\projects\\attachment\\Hx.Abp.Attachment.Application.ArchAI.Contracts\\Hx.Abp.Attachment.Application.ArchAI.Contracts.csproj": {
-                "projectPath": "C:\\work\\projects\\attachment\\Hx.Abp.Attachment.Application.ArchAI.Contracts\\Hx.Abp.Attachment.Application.ArchAI.Contracts.csproj"
+              "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.ArchAI.Contracts\\Hx.Abp.Attachment.Application.ArchAI.Contracts.csproj": {
+                "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.ArchAI.Contracts\\Hx.Abp.Attachment.Application.ArchAI.Contracts.csproj"
               }
             }
           }
@@ -258,8 +258,8 @@
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "C:\\work\\projects\\attachment\\Hx.Abp.Attachment.Application.ArchAI\\Hx.Abp.Attachment.Application.ArchAI.csproj": {
-                "projectPath": "C:\\work\\projects\\attachment\\Hx.Abp.Attachment.Application.ArchAI\\Hx.Abp.Attachment.Application.ArchAI.csproj"
+              "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.ArchAI\\Hx.Abp.Attachment.Application.ArchAI.csproj": {
+                "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.ArchAI\\Hx.Abp.Attachment.Application.ArchAI.csproj"
               },
               "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.Contracts\\Hx.Abp.Attachment.Application.Contracts.csproj": {
                 "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.Contracts\\Hx.Abp.Attachment.Application.Contracts.csproj"

@@ -5,6 +5,7 @@
     {
         public string RequestId { get; set; } = requestId;
         public string? FileId { get; set; }
+        public string? Text {  get; set; }
         public List<RecognizeCharacterDataDto> Results { get; set; } = [];
     }
 }

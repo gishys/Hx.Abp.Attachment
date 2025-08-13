@@ -3,10 +3,9 @@ using System.Text.RegularExpressions;
 
 namespace OcrTextComposer
 {
-    public static class OcrComposer
+    public static partial class OcrComposer
     {
-        private static readonly Regex _meaninglessRegex =
-            new(@"^[\s●×·•―~…]+$", RegexOptions.Compiled);   // 1. 过滤整串无意义字符
+        private static readonly Regex _meaninglessRegex = InvalidCharacter();   // 1. 过滤整串无意义字符
 
         public static string Compose(RecognizeCharacterDto page, double minProbability = 0.8)
         {
@@ -69,7 +68,7 @@ namespace OcrTextComposer
         /* ---------- 行实现 ---------- */
         private sealed class TextLine
         {
-            private readonly List<(RecognizeCharacterDataDto Block, string Text, double Angle)> _items = new();
+            private readonly List<(RecognizeCharacterDataDto Block, string Text, double Angle)> _items = [];
 
             public int Left => _items.Count > 0 ? _items.Min(i => i.Block.TextRectangles.Left) : 0;
             public int Top => _items.Count > 0 ? _items.Min(i => i.Block.TextRectangles.Top) : 0;
@@ -132,5 +131,8 @@ namespace OcrTextComposer
                 }
             }
         }
+
+        [GeneratedRegex(@"^[\s●×·•―~…]+$", RegexOptions.Compiled)]
+        private static partial Regex InvalidCharacter();
     }
 }

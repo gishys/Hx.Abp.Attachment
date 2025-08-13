@@ -15,13 +15,13 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         */
         public static AlibabaCloud.SDK.Ocr20191230.Client CreateClient(string accessKeyId, string accessKeySecret)
         {
-            AlibabaCloud.OpenApiClient.Models.Config config = new AlibabaCloud.OpenApiClient.Models.Config
+            AlibabaCloud.OpenApiClient.Models.Config config = new()
             {
                 AccessKeyId = accessKeyId,
                 AccessKeySecret = accessKeySecret,
+                // 访问的域名
+                Endpoint = "ocr.cn-shanghai.aliyuncs.com"
             };
-            // 访问的域名
-            config.Endpoint = "ocr.cn-shanghai.aliyuncs.com";
             return new AlibabaCloud.SDK.Ocr20191230.Client(config);
         }
         public async static Task<RecognizeCharacterDto> JpgUniversalTextRecognition(string accessKeyId, string accessKeySecret, string imageUrl)
@@ -30,8 +30,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             // 如果您使用的是RAM用户的AccessKey，还需要为子账号授予权限AliyunVIAPIFullAccess，请参考https://help.aliyun.com/document_detail/145025.html
             // 从环境变量读取配置的AccessKey ID和AccessKey Secret。运行代码示例前必须先配置环境变量。
             AlibabaCloud.SDK.Ocr20191230.Client client = CreateClient(accessKeyId, accessKeySecret);
-            AlibabaCloud.SDK.Ocr20191230.Models.RecognizeCharacterAdvanceRequest recognizeCharacterAdvanceRequest = new AlibabaCloud.SDK.Ocr20191230.Models.RecognizeCharacterAdvanceRequest
-            ();
+            AlibabaCloud.SDK.Ocr20191230.Models.RecognizeCharacterAdvanceRequest recognizeCharacterAdvanceRequest = new ();
             // 场景一，使用本地文件
             // System.IO.StreamReader file = new System.IO.StreamReader(@"/tmp/ColorizeImage1.jpg");
             // recognizeCharacterAdvanceRequest.ImageURLObject = file.BaseStream;
@@ -44,7 +43,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             recognizeCharacterAdvanceRequest.ImageURLObject = stream;
             recognizeCharacterAdvanceRequest.MinHeight = 10;
             recognizeCharacterAdvanceRequest.OutputProbability = true;
-            AlibabaCloud.TeaUtil.Models.RuntimeOptions runtime = new AlibabaCloud.TeaUtil.Models.RuntimeOptions();
+            AlibabaCloud.TeaUtil.Models.RuntimeOptions runtime = new ();
             try
             {
                 AlibabaCloud.SDK.Ocr20191230.Models.RecognizeCharacterResponse recognizeCharacterResponse = client.RecognizeCharacterAdvance(recognizeCharacterAdvanceRequest, runtime);
@@ -52,12 +51,14 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                 var rc = new RecognizeCharacterDto(body.RequestId);
                 foreach (var item in body.Data.Results)
                 {
-                    var rectangle = new RecognizeCharacterDataRectangles();
-                    rectangle.Angle = item.TextRectangles.Angle ?? 0;
-                    rectangle.Width = item.TextRectangles.Width ?? 0;
-                    rectangle.Height = item.TextRectangles.Height ?? 0;
-                    rectangle.Left = item.TextRectangles.Left ?? 0;
-                    rectangle.Top = item.TextRectangles.Top ?? 0;
+                    var rectangle = new RecognizeCharacterDataRectangles
+                    {
+                        Angle = item.TextRectangles.Angle ?? 0,
+                        Width = item.TextRectangles.Width ?? 0,
+                        Height = item.TextRectangles.Height ?? 0,
+                        Left = item.TextRectangles.Left ?? 0,
+                        Top = item.TextRectangles.Top ?? 0
+                    };
                     rc.Results.Add(new(item.Probability, item.Text, rectangle));
                 }
                 return rc;

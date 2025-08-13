@@ -1,7 +1,7 @@
 ﻿using Hx.Abp.Attachment.Application;
+using Hx.Abp.Attachment.Application.ArchAI;
 using Hx.Abp.Attachment.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
-using System.Xml.Linq;
 using Volo.Abp;
 using Volo.Abp.AspNetCore.Mvc;
 using Volo.Abp.Autofac;
@@ -16,6 +16,7 @@ namespace Hx.Abp.Attachment.Api
     [DependsOn(typeof(AbpAutofacModule))]
     [DependsOn(typeof(AbpAspNetCoreMvcModule))]
     [DependsOn(typeof(HxAbpAttachmentApplicationModule))]
+    [DependsOn(typeof(HxAbpAttachmentApplicationArchAIModule))]
     [DependsOn(typeof(AbpEntityFrameworkCorePostgreSqlModule))]
     [DependsOn(typeof(HxAbpAttachmentEntityFrameworkCoreModule))]
     public class AppModule : AbpModule

@@ -1,6 +1,7 @@
 ﻿using Hx.Abp.Attachment.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Volo.Abp.Domain.Entities;
 using Volo.Abp.EntityFrameworkCore.Modeling;
 
 namespace Hx.Abp.Attachment.EntityFrameworkCore
@@ -33,6 +34,15 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.Property(d => d.SequenceNumber).HasColumnName("SEQUENCENUMBER").HasDefaultValue(0);
             builder.Property(d => d.ParentId).HasColumnName("PARENTID");
             builder.Property(d => d.IsStatic).HasColumnName("ISSTATIC").HasDefaultValue(false);
+
+            // 全文检索和语义检索字段
+            builder.Property(d => d.SearchVector).HasColumnName("SEARCH_VECTOR")
+                .HasComputedColumnSql("to_tsvector('zhparser', coalesce(\"CATALOGUENAME\",''))", stored: true);
+            builder.Property(d => d.Embedding).HasColumnName("EMBEDDING").HasColumnType("vector");
+
+            builder.HasIndex(d => d.SearchVector)
+                  .HasMethod("GIN")
+                  .IsTsVectorExpressionIndex("zhparser");
 
             builder.Property(p => p.ExtraProperties).HasColumnName("EXTRAPROPERTIES");
             builder.Property(p => p.ConcurrencyStamp).HasColumnName("CONCURRENCYSTAMP");

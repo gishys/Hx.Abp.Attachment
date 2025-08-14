@@ -327,7 +327,7 @@ namespace Hx.Abp.Attachment.Application
             }
             else
             {
-                throw new BusinessException(message: "没有查询到目录！");
+                throw new BusinessException(message: "没有查询到分类！");
             }
         }
         private async Task<List<AttachFile>> CreateFiles(AttachCatalogue catalogue, List<AttachFileCreateDto> inputs)
@@ -386,7 +386,7 @@ namespace Hx.Abp.Attachment.Application
         public virtual async Task<AttachFileDto> UpdateSingleFileAsync(Guid catalogueId, Guid attachFileId, AttachFileCreateDto input)
         {
             using var uow = UnitOfWorkManager.Begin();
-            var entity = await CatalogueRepository.FindAsync(catalogueId) ?? throw new UserFriendlyException(message: "替换文件的目录不存在！");
+            var entity = await CatalogueRepository.FindAsync(catalogueId) ?? throw new UserFriendlyException(message: "替换文件的分类不存在！");
             var target = entity?.AttachFiles?.FirstOrDefault(d => d.Id == attachFileId);
             if (entity != null && target != null)
             {
@@ -522,7 +522,7 @@ namespace Hx.Abp.Attachment.Application
             return list;
         }
         /// <summary>
-        /// 修改目录
+        /// 修改分类
         /// </summary>
         /// <param name="id"></param>
         /// <param name="input"></param>
@@ -560,7 +560,7 @@ namespace Hx.Abp.Attachment.Application
             return ObjectMapper.Map<AttachCatalogue, AttachCatalogueDto>(entity);
         }
         /// <summary>
-        /// 删除目录
+        /// 删除分类
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
@@ -588,6 +588,72 @@ namespace Hx.Abp.Attachment.Application
         public async Task<AttachCatalogueDto?> GetAttachCatalogueByFileIdAsync(Guid fileId)
         {
             return ObjectMapper.Map<AttachCatalogue?, AttachCatalogueDto?>(await CatalogueRepository.GetByFileIdAsync(fileId));
+        }
+
+        /// <summary>
+        /// 全文检索分类
+        /// </summary>
+        /// <param name="searchText">搜索文本</param>
+        /// <param name="reference">业务引用</param>
+        /// <param name="referenceType">业务类型</param>
+        /// <param name="limit">返回数量限制</param>
+        /// <returns>匹配的分类列表</returns>
+        public virtual async Task<List<AttachCatalogueDto>> SearchByFullTextAsync(string searchText, string? reference = null, int? referenceType = null, int limit = 10)
+        {
+            if (string.IsNullOrWhiteSpace(searchText))
+            {
+                throw new UserFriendlyException("搜索文本不能为空");
+            }
+
+            var results = await CatalogueRepository.SearchByFullTextAsync(searchText, reference, referenceType, limit);
+            return ObjectMapper.Map<List<AttachCatalogue>, List<AttachCatalogueDto>>(results);
+        }
+
+        /// <summary>
+        /// 语义检索分类
+        /// </summary>
+        /// <param name="queryEmbedding">查询向量</param>
+        /// <param name="reference">业务引用</param>
+        /// <param name="referenceType">业务类型</param>
+        /// <param name="limit">返回数量限制</param>
+        /// <param name="similarityThreshold">相似度阈值</param>
+        /// <returns>匹配的分类列表</returns>
+        public virtual async Task<List<AttachCatalogueDto>> SearchBySemanticAsync(float[] queryEmbedding, string? reference = null, int? referenceType = null, int limit = 10, float similarityThreshold = 0.7f)
+        {
+            if (queryEmbedding == null || queryEmbedding.Length == 0)
+            {
+                throw new UserFriendlyException("查询向量不能为空");
+            }
+
+            var results = await CatalogueRepository.SearchBySemanticAsync(queryEmbedding, reference, referenceType, limit, similarityThreshold);
+            return ObjectMapper.Map<List<AttachCatalogue>, List<AttachCatalogueDto>>(results);
+        }
+
+        /// <summary>
+        /// 更新分类的语义向量
+        /// </summary>
+        /// <param name="catalogueId">分类ID</param>
+        /// <param name="embedding">语义向量</param>
+        /// <returns>更新后的分类</returns>
+        public virtual async Task<AttachCatalogueDto> UpdateEmbeddingAsync(Guid catalogueId, float[] embedding)
+        {
+            if (embedding == null || embedding.Length == 0)
+            {
+                throw new UserFriendlyException("语义向量不能为空");
+            }
+
+            using var uow = UnitOfWorkManager.Begin();
+            var catalogue = await CatalogueRepository.FindAsync(catalogueId);
+            if (catalogue == null)
+            {
+                throw new UserFriendlyException("分类不存在");
+            }
+
+            catalogue.SetEmbedding(embedding);
+            await CatalogueRepository.UpdateAsync(catalogue);
+            await uow.SaveChangesAsync();
+
+            return ObjectMapper.Map<AttachCatalogue, AttachCatalogueDto>(catalogue);
         }
     }
 }

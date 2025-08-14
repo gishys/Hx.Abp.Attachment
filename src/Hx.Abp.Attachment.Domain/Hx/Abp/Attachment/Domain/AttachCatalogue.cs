@@ -1,19 +1,21 @@
 ﻿using Hx.Abp.Attachment.Domain.Shared;
 using JetBrains.Annotations;
 using System.Collections.ObjectModel;
+using System.ComponentModel.DataAnnotations.Schema;
 using Volo.Abp.Domain.Entities.Auditing;
+using NpgsqlTypes;
 
 namespace Hx.Abp.Attachment.Domain
 {
     /// <summary>
-    /// 附件目录
+    /// 附件分类
     /// </summary>
     public class AttachCatalogue : FullAuditedAggregateRoot<Guid>
     {
         /// <summary>
         /// 业务类型Id
         /// </summary>
-        public virtual string Reference { get; private set; }
+        public virtual string? Reference { get; private set; }
         /// <summary>
         /// 业务类型标识
         /// </summary>
@@ -27,7 +29,7 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual AttachReceiveType AttachReceiveType { get; private set; }
         /// <summary>
-        /// 目录名称
+        /// 分类名称
         /// </summary>
         public virtual string CatalogueName { get; private set; }
         /// <summary>
@@ -58,6 +60,17 @@ namespace Hx.Abp.Attachment.Domain
         /// 静态标识
         /// </summary>
         public virtual bool IsStatic { get; private set; }
+
+        /// <summary>
+        /// 全文检索向量 (仅读取)
+        /// </summary>
+        public virtual NpgsqlTsVector SearchVector { get; private set; }
+
+        /// <summary>
+        /// 语义检索向量
+        /// </summary>
+        public virtual float[]? Embedding { get; private set; }
+
         /// <summary>
         /// 子文件夹
         /// </summary>
@@ -80,7 +93,7 @@ namespace Hx.Abp.Attachment.Domain
             AttachReceiveType attachReceiveType,
             string catologueName,
             int sequenceNumber,
-            string reference,
+            string? reference,
             int referenceType,
             Guid? parentId = null,
             bool isRequired = false,
@@ -158,5 +171,11 @@ namespace Hx.Abp.Attachment.Domain
         public virtual void SetIsVerification(bool isVerification) => IsVerification = isVerification;
         public virtual void SetIsRequired(bool isIsRequired) => IsRequired = isIsRequired;
         public virtual void SetIsStatic(bool isIsStatic) => IsStatic = isIsStatic;
+
+        /// <summary>
+        /// 设置语义检索向量
+        /// </summary>
+        /// <param name="embedding">语义向量</param>
+        public virtual void SetEmbedding(float[]? embedding) => Embedding = embedding;
     }
 }

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace Hx.Abp.Attachment.Domain.Shared
 {
     /// <summary>
-    /// 目录创建方式
+    /// 分类创建方式
     /// </summary>
     public enum CatalogueCreateMode
     {

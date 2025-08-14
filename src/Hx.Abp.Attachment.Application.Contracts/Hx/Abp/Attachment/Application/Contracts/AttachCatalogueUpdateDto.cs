@@ -10,7 +10,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// </summary>
         public required AttachReceiveType AttachReceiveType { get; set; }
         /// <summary>
-        /// 目录名称
+        /// 分类名称
         /// </summary>
         [MaxLength(500)]
         public required string CatalogueName { get; set; }

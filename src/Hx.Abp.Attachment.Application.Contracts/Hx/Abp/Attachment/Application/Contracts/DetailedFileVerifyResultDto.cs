@@ -18,7 +18,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// </summary>
         public required string Reference { get; set; }
         /// <summary>
-        /// 目录名称
+        /// 分类名称
         /// </summary>
         public required string Name { get; set; }
         /// <summary>

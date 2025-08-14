@@ -2,11 +2,13 @@
 using Hx.Abp.Attachment.Domain.Shared;
 using iTextSharp.text.pdf;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using System.Linq;
 using System.Linq.Dynamic.Core;
 using Volo.Abp;
 using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
+using Volo.Abp.ObjectMapping;
 
 namespace Hx.Abp.Attachment.EntityFrameworkCore
 {
@@ -209,6 +211,97 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         {
             return await (await GetDbSetAsync())
                 .FirstOrDefaultAsync(u => u.AttachFiles.Any(d => d.Id == fileId));
+        }
+
+        public async Task<List<AttachCatalogue>> SearchByFullTextAsync(
+            string searchText,
+            string? reference = null,
+            int? referenceType = null,
+            int limit = 10,
+            CancellationToken cancellationToken = default)
+        {
+            // 使用原生SQL查询以支持中文全文搜索和更好的性能
+            var sql = @"
+                SELECT c.*, ts_rank(to_tsvector('chinese', c.""CATALOGUENAME""), plainto_tsquery('chinese', @searchText)) as rank
+                FROM ""ATTACH_CATALOGUES"" c
+                WHERE to_tsvector('chinese', c.""CATALOGUENAME"") @@ plainto_tsquery('chinese', @searchText)";
+
+            var parameters = new List<object> { new NpgsqlParameter("@searchText", searchText) };
+
+            // 添加业务引用过滤
+            if (!string.IsNullOrEmpty(reference))
+            {
+                sql += " AND c.\"REFERENCE\" = @reference";
+                parameters.Add(new NpgsqlParameter("@reference", reference));
+            }
+
+            if (referenceType.HasValue)
+            {
+                sql += " AND c.\"REFERENCETYPE\" = @referenceType";
+                parameters.Add(new NpgsqlParameter("@referenceType", referenceType.Value));
+            }
+
+            sql += " ORDER BY rank DESC LIMIT @limit";
+            parameters.Add(new NpgsqlParameter("@limit", limit));
+
+            // 执行原生SQL查询
+            var dbContext = await GetDbContextAsync();
+            var results = await dbContext.Set<AttachCatalogue>()
+                .FromSqlRaw(sql, parameters.ToArray())
+                .IncludeDetails()
+                .ToListAsync(cancellationToken);
+
+            return results;
+        }
+
+        public async Task<List<AttachCatalogue>> SearchBySemanticAsync(
+            float[] queryEmbedding,
+            string? reference = null,
+            int? referenceType = null,
+            int limit = 10,
+            float similarityThreshold = 0.7f,
+            CancellationToken cancellationToken = default)
+        {
+            // 使用原生SQL查询实现真正的向量相似度搜索
+            var sql = @"
+                SELECT c.*, 1 - (c.embedding <=> @queryEmbedding) as similarity_score
+                FROM ""ATTACH_CATALOGUES"" c
+                WHERE c.embedding IS NOT NULL";
+
+            var parameters = new List<object>();
+
+            // 添加业务引用过滤
+            if (!string.IsNullOrEmpty(reference))
+            {
+                sql += " AND c.\"REFERENCE\" = @reference";
+                parameters.Add(new NpgsqlParameter("@reference", reference));
+            }
+
+            if (referenceType.HasValue)
+            {
+                sql += " AND c.\"REFERENCETYPE\" = @referenceType";
+                parameters.Add(new NpgsqlParameter("@referenceType", referenceType.Value));
+            }
+
+            // 添加相似度过滤 - 使用余弦相似度
+            sql += " AND 1 - (c.embedding <=> @queryEmbedding) >= @similarityThreshold";
+
+            // 按相似度排序并限制结果
+            sql += " ORDER BY c.embedding <=> @queryEmbedding LIMIT @limit";
+
+            // 添加参数
+            parameters.Add(new NpgsqlParameter("@queryEmbedding", queryEmbedding));
+            parameters.Add(new NpgsqlParameter("@similarityThreshold", similarityThreshold));
+            parameters.Add(new NpgsqlParameter("@limit", limit));
+
+            // 执行原生SQL查询
+            var dbContext = await GetDbContextAsync();
+            var results = await dbContext.Set<AttachCatalogue>()
+                .FromSqlRaw(sql, parameters.ToArray())
+                .IncludeDetails()
+                .ToListAsync(cancellationToken);
+
+            return results;
         }
     }
 }

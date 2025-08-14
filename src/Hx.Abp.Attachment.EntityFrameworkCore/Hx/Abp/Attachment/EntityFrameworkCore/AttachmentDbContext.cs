@@ -1,5 +1,6 @@
 ﻿using Hx.Abp.Attachment.Domain;
 using Microsoft.EntityFrameworkCore;
+using Pgvector.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 
 namespace Hx.Abp.Attachment.EntityFrameworkCore
@@ -18,6 +19,9 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             base.OnModelCreating(builder);
 
             builder.ConfigureAttachment();
+            
+            // 启用 pgvector 扩展
+            builder.HasPostgresExtension("vector");
         }
     }
 }

@@ -1,0 +1,33 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch API",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/src/Hx.Abp.Attachment.Api/bin/Debug/net8.0/Hx.Abp.Attachment.Api.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/Hx.Abp.Attachment.Api",
+            "console": "internalConsole",
+            "stopAtEntry": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        },
+        {
+            "name": "Launch Web",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/src/Hx.Abp.Attachment/bin/Debug/net8.0/Hx.Abp.Attachment.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/Hx.Abp.Attachment",
+            "console": "internalConsole",
+            "stopAtEntry": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        }
+    ]
+}

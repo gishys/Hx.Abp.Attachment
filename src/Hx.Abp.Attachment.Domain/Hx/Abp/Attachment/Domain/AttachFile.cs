@@ -1,4 +1,4 @@
-﻿using JetBrains.Annotations;
+using JetBrains.Annotations;
 using Volo.Abp;
 using Volo.Abp.Domain.Entities.Auditing;
 
@@ -104,7 +104,7 @@ namespace Hx.Abp.Attachment.Domain
             DocumentContent = documentContent;
             FileName = fileName;
             FilePath = filePath;
-            FileType = Check.NotNullOrWhiteSpace(filePath, nameof(fileType));
+            FileType = Check.NotNullOrWhiteSpace(fileType, nameof(fileType));
             FileSize = fileSize;
             DownloadTimes = downloadTimes;
         }

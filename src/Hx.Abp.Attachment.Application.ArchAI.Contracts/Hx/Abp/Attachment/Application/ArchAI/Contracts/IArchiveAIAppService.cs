@@ -1,4 +1,4 @@
-﻿using Volo.Abp.Application.Services;
+using Volo.Abp.Application.Services;
 
 namespace Hx.Abp.Attachment.Application.ArchAI.Contracts
 {

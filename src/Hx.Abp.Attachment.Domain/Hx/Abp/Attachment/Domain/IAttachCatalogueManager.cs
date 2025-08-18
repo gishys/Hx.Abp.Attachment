@@ -1,5 +1,4 @@
-﻿using Volo.Abp.Domain.Services;
-using YourNamespace.AttachCatalogues;
+using Volo.Abp.Domain.Services;
 
 namespace Hx.Abp.Attachment.Domain
 {
@@ -7,7 +6,7 @@ namespace Hx.Abp.Attachment.Domain
     {
         Task<AttachCatalogue> GenerateFromTemplateAsync(
             AttachCatalogueTemplate template,
-            string? reference,
+            string reference,
             int referenceType,
             Dictionary<string, object>? contextData = null);
 

@@ -1,7 +1,8 @@
-﻿using Hx.Abp.Attachment.Application;
+using Hx.Abp.Attachment.Application;
 using Hx.Abp.Attachment.Application.ArchAI;
 using Hx.Abp.Attachment.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.OpenApi.Models;
 using Volo.Abp;
 using Volo.Abp.AspNetCore.Mvc;
 using Volo.Abp.Autofac;
@@ -23,6 +24,13 @@ namespace Hx.Abp.Attachment.Api
     {
         public override void ConfigureServices(ServiceConfigurationContext context)
         {
+            context.Services.AddAbpSwaggerGen(
+                options =>
+                {
+                    options.SwaggerDoc("v1", new OpenApiInfo { Title = "BgApp API", Version = "v1" });
+                    options.DocInclusionPredicate((docName, description) => true);
+                    options.CustomSchemaIds(type => type.FullName);
+                });
             Configure<AbpBlobStoringOptions>(options =>
             {
                 options.Containers.Configure<AttachmentContainer>(container =>
@@ -55,12 +63,14 @@ namespace Hx.Abp.Attachment.Api
             var app = context.GetApplicationBuilder();
             var env = context.GetEnvironment();
 
-            // Configure the HTTP request pipeline.
             if (env.IsDevelopment())
             {
+                app.UseSwagger();
+                app.UseSwaggerUI(c =>
+                {
+                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
+                });
                 app.UseExceptionHandler("/Error");
-                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-                app.UseHsts();
             }
 
             //app.UseHttpsRedirection();

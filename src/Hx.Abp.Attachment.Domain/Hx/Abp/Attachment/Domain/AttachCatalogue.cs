@@ -1,9 +1,8 @@
-﻿using Hx.Abp.Attachment.Domain.Shared;
+using Hx.Abp.Attachment.Domain.Shared;
 using JetBrains.Annotations;
-using System.Collections.ObjectModel;
-using System.ComponentModel.DataAnnotations.Schema;
-using Volo.Abp.Domain.Entities.Auditing;
 using NpgsqlTypes;
+using System.Collections.ObjectModel;
+using Volo.Abp.Domain.Entities.Auditing;
 
 namespace Hx.Abp.Attachment.Domain
 {
@@ -15,7 +14,7 @@ namespace Hx.Abp.Attachment.Domain
         /// <summary>
         /// 业务类型Id
         /// </summary>
-        public virtual string? Reference { get; private set; }
+        public virtual string Reference { get; private set; }
         /// <summary>
         /// 业务类型标识
         /// </summary>
@@ -61,14 +60,14 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual bool IsStatic { get; private set; }
 
-        /// <summary>
-        /// 全文检索向量 (仅读取)
-        /// </summary>
-        public virtual NpgsqlTsVector SearchVector { get; private set; }
+        // 全文检索向量 - 不进行数据库映射，仅用于类型定义
+        [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+        public virtual NpgsqlTsVector? SearchVector { get; private set; }
 
         /// <summary>
         /// 语义检索向量
         /// </summary>
+        [System.ComponentModel.DataAnnotations.Schema.NotMapped]
         public virtual float[]? Embedding { get; private set; }
 
         /// <summary>
@@ -93,7 +92,7 @@ namespace Hx.Abp.Attachment.Domain
             AttachReceiveType attachReceiveType,
             string catologueName,
             int sequenceNumber,
-            string? reference,
+            string reference,
             int referenceType,
             Guid? parentId = null,
             bool isRequired = false,

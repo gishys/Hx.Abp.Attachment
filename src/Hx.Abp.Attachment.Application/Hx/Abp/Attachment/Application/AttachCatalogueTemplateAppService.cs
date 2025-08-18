@@ -1,10 +1,9 @@
-﻿using Hx.Abp.Attachment.Application.Contracts;
+using Hx.Abp.Attachment.Application.Contracts;
 using Hx.Abp.Attachment.Domain;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Guids;
-using YourNamespace.AttachCatalogues;
 
 namespace Hx.Abp.Attachment.Application
 {
@@ -53,11 +52,11 @@ namespace Hx.Abp.Attachment.Application
             var structure = new AttachCatalogueStructureDto
             {
                 Root = ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(rootTemplate),
-                Children = new List<AttachCatalogueStructureDto>(),
+                Children = [],
                 History = includeHistory
                     ? ObjectMapper.Map<List<AttachCatalogueTemplate>, List<AttachCatalogueTemplateDto>>(
                         await _templateRepository.GetTemplateHistoryAsync(id))
-                    : new List<AttachCatalogueTemplateDto>()
+                    : []
             };
 
             await BuildTemplateTree(structure, rootTemplate);
@@ -74,10 +73,7 @@ namespace Hx.Abp.Attachment.Application
                     Root = ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(child),
                     Children = []
                 };
-                if (parent.Children != null)
-                {
-                    parent.Children.Add(childDto);
-                }
+                parent.Children?.Add(childDto);
                 await BuildTemplateTree(childDto, child);
             }
         }
@@ -178,8 +174,7 @@ namespace Hx.Abp.Attachment.Application
         public async Task<AttachCatalogueTemplateDto> RollbackToVersionAsync(Guid templateId)
         {
             var versionToRollback = await _templateRepository.GetAsync(templateId);
-            var latestVersion = await _templateRepository.GetLatestVersionAsync(versionToRollback.TemplateName);
-
+            var latestVersion = await _templateRepository.GetLatestVersionAsync(versionToRollback.TemplateName) ?? throw new UserFriendlyException("未找到最新版本，无法回滚");
             if (latestVersion.Id == templateId)
             {
                 throw new UserFriendlyException("此版本已是最新版本");

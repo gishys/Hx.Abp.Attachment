@@ -1,6 +1,6 @@
-﻿using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Domain.Repositories;
 
-namespace YourNamespace.AttachCatalogues
+namespace Hx.Abp.Attachment.Domain
 {
     public interface IAttachCatalogueTemplateRepository : IRepository<AttachCatalogueTemplate, Guid>
     {

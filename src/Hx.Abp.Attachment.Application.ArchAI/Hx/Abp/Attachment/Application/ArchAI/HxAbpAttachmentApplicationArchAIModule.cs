@@ -1,4 +1,4 @@
-﻿using Hx.Abp.Attachment.Application.ArchiAI.Contracts;
+using Hx.Abp.Attachment.Application.ArchAI.Contracts;
 using Volo.Abp.Application;
 using Volo.Abp.Modularity;
 

@@ -1,5 +1,4 @@
-﻿using System.Text.RegularExpressions;
-using YourNamespace.AttachCatalogues;
+using System.Text.RegularExpressions;
 
 namespace Hx.Abp.Attachment.Domain
 {
@@ -8,11 +7,11 @@ namespace Hx.Abp.Attachment.Domain
     /// 使用本地算法提供基本功能
     /// 可替换为真正的AI服务
     /// </summary>
-    public class DefaultSemanticMatcher : ISemanticMatcher
+    public partial class DefaultSemanticMatcher : ISemanticMatcher
     {
         // 简单缓存训练过的模型
         private readonly Dictionary<string, Dictionary<string, string>> _trainedModels =
-            new Dictionary<string, Dictionary<string, string>>();
+            [];
 
         public Task<string> GenerateNameAsync(string modelName, Dictionary<string, object> context)
         {
@@ -39,11 +38,10 @@ namespace Hx.Abp.Attachment.Domain
                 }
             }
 
-            return matches
+            return [.. matches
                 .OrderByDescending(m => m.Score)
                 .Take(topN)
-                .Select(m => m.Template)
-                .ToList();
+                .Select(m => m.Template)];
         }
 
         public Task<double> CalculateSimilarityAsync(string text1, string text2)
@@ -95,9 +93,7 @@ namespace Hx.Abp.Attachment.Domain
             return Task.FromResult(features);
         }
 
-        #region Helper Methods
-
-        private string PreprocessText(string text)
+        private static string PreprocessText(string text)
         {
             if (string.IsNullOrWhiteSpace(text))
                 return string.Empty;
@@ -106,22 +102,21 @@ namespace Hx.Abp.Attachment.Domain
             text = text.ToLowerInvariant();
 
             // 移除非字母数字字符（保留中文等）
-            text = Regex.Replace(text, @"[^\p{L}\p{N}\s]", "");
+            text = GetAlphanumeric().Replace(text, "");
 
             return text.Trim();
         }
 
-        private List<string> Tokenize(string text)
+        private static List<string> Tokenize(string text)
         {
             if (string.IsNullOrWhiteSpace(text))
-                return new List<string>();
+                return [];
 
             // 简单分词：按空格分割
-            return text.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
-                       .Where(t => t.Length > 1) // 过滤掉单字符
-                       .ToList();
+            return [.. text.Split([' ', '\t', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries).Where(t => t.Length > 1)];
         }
 
-        #endregion
+        [GeneratedRegex(@"[^\p{L}\p{N}\s]")]
+        private static partial Regex GetAlphanumeric();
     }
 }

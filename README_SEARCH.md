@@ -86,7 +86,7 @@ var results = await attachCatalogueAppService.SearchBySemanticAsync(
 // 结果按相似度排序，最相似的排在前面
 foreach (var result in results)
 {
-    Console.WriteLine($"分类: {result.CatalogueName}, 相似度: {result.SimilarityScore}");
+    Console.WriteLine($"分类: {result.CATALOGUE_NAME}, 相似度: {result.SimilarityScore}");
 }
 ```
 
@@ -152,9 +152,9 @@ public virtual float[]? Embedding { get; private set; }
 
 ```sql
 -- 中文全文搜索
-SELECT c.*, ts_rank(to_tsvector('chinese', c."CATALOGUENAME"), plainto_tsquery('chinese', @searchText)) as rank
+SELECT c.*, ts_rank(to_tsvector('chinese', c."CATALOGUE_NAME"), plainto_tsquery('chinese', @searchText)) as rank
 FROM "ATTACH_CATALOGUES" c
-WHERE to_tsvector('chinese', c."CATALOGUENAME") @@ plainto_tsquery('chinese', @searchText)
+WHERE to_tsvector('chinese', c."CATALOGUE_NAME") @@ plainto_tsquery('chinese', @searchText)
 ORDER BY rank DESC
 LIMIT @limit
 ```

@@ -1,39 +1,29 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using RulesEngine.Interfaces;
 using RulesEngine.Models;
 using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
 using Volo.Abp.Guids;
-using YourNamespace.AttachCatalogues;
 
 namespace Hx.Abp.Attachment.Domain
 {
-    public class AttachCatalogueManager : DomainService, IAttachCatalogueManager
+    public class AttachCatalogueManager(
+        IRepository<AttachCatalogue, Guid> catalogueRepository,
+        IAttachCatalogueTemplateRepository templateRepository,
+        IRulesEngine rulesEngine,
+        ISemanticMatcher semanticMatcher,
+        IGuidGenerator guidGenerator) : DomainService, IAttachCatalogueManager
     {
-        private readonly IRepository<AttachCatalogue, Guid> _catalogueRepository;
-        private readonly IAttachCatalogueTemplateRepository _templateRepository;
-        private readonly IRulesEngine _rulesEngine;
-        private readonly ISemanticMatcher _semanticMatcher;
-        private readonly IGuidGenerator _guidGenerator;
-
-        public AttachCatalogueManager(
-            IRepository<AttachCatalogue, Guid> catalogueRepository,
-            IAttachCatalogueTemplateRepository templateRepository,
-            IRulesEngine rulesEngine,
-            ISemanticMatcher semanticMatcher,
-            IGuidGenerator guidGenerator)
-        {
-            _catalogueRepository = catalogueRepository;
-            _templateRepository = templateRepository;
-            _rulesEngine = rulesEngine;
-            _semanticMatcher = semanticMatcher;
-            _guidGenerator = guidGenerator;
-        }
+        private readonly IRepository<AttachCatalogue, Guid> _catalogueRepository = catalogueRepository;
+        private readonly IAttachCatalogueTemplateRepository _templateRepository = templateRepository;
+        private readonly IRulesEngine _rulesEngine = rulesEngine;
+        private readonly ISemanticMatcher _semanticMatcher = semanticMatcher;
+        private readonly IGuidGenerator _guidGenerator = guidGenerator;
 
         public async Task<AttachCatalogue> GenerateFromTemplateAsync(
             AttachCatalogueTemplate template,
-            string? reference,
+            string reference,
             int referenceType,
             Dictionary<string, object>? contextData = null)
         {
@@ -90,12 +80,7 @@ namespace Hx.Abp.Attachment.Domain
         /// <returns>更新后的分类</returns>
         public async Task<AttachCatalogue> UpdateCatalogueEmbeddingAsync(Guid catalogueId, float[] embedding)
         {
-            var catalogue = await _catalogueRepository.FindAsync(catalogueId);
-            if (catalogue == null)
-            {
-                throw new BusinessException("分类不存在");
-            }
-
+            var catalogue = await _catalogueRepository.FindAsync(catalogueId) ?? throw new BusinessException("分类不存在");
             catalogue.SetEmbedding(embedding);
             await _catalogueRepository.UpdateAsync(catalogue);
             return catalogue;
@@ -106,14 +91,14 @@ namespace Hx.Abp.Attachment.Domain
             var children = await _templateRepository.GetChildrenAsync(source.Id, false);
             foreach (var child in children)
             {
-                var newChild = await CreateTemplateVersionAsync(child, target.Id);
+                await CreateTemplateVersionAsync(child, target.Id);
             }
         }
 
         private async Task<AttachCatalogue> CreateCatalogueFromTemplate(
             AttachCatalogueTemplate template,
             Guid? parentId,
-            string? reference,
+            string reference,
             int referenceType,
             Dictionary<string, object>? contextData)
         {
@@ -171,7 +156,7 @@ namespace Hx.Abp.Attachment.Domain
         private async Task CreateChildCatalogues(
             AttachCatalogueTemplate parentTemplate,
             AttachCatalogue parentCatalogue,
-            string? reference,
+            string reference,
             int referenceType,
             Dictionary<string, object>? contextData)
         {

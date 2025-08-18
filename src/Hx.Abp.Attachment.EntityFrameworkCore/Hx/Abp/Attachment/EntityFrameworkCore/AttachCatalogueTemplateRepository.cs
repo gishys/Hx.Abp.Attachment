@@ -1,5 +1,4 @@
-﻿using Hx.Abp.Attachment.Domain;
-using Hx.Abp.Attachment.EntityFrameworkCore;
+using Hx.Abp.Attachment.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -10,26 +9,19 @@ using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.Guids;
 
-namespace YourNamespace.AttachCatalogues
+namespace Hx.Abp.Attachment.EntityFrameworkCore
 {
-    public class AttachCatalogueTemplateRepository :
-        EfCoreRepository<AttachmentDbContext, AttachCatalogueTemplate, Guid>,
+    public class AttachCatalogueTemplateRepository(
+        IDbContextProvider<AttachmentDbContext> dbContextProvider,
+        ISemanticMatcher semanticMatcher,
+        IRulesEngine rulesEngine,
+        IGuidGenerator guidGenerator) :
+        EfCoreRepository<AttachmentDbContext, AttachCatalogueTemplate, Guid>(dbContextProvider),
         IAttachCatalogueTemplateRepository
     {
-        private readonly ISemanticMatcher _semanticMatcher;
-        private readonly IRulesEngine _rulesEngine;
-        private readonly IGuidGenerator _guidGenerator;
-
-        public AttachCatalogueTemplateRepository(
-            IDbContextProvider<AttachmentDbContext> dbContextProvider,
-            ISemanticMatcher semanticMatcher,
-            IRulesEngine rulesEngine,
-            IGuidGenerator guidGenerator) : base(dbContextProvider)
-        {
-            _semanticMatcher = semanticMatcher;
-            _rulesEngine = rulesEngine;
-            _guidGenerator = guidGenerator;
-        }
+        private readonly ISemanticMatcher _semanticMatcher = semanticMatcher;
+        private readonly IRulesEngine _rulesEngine = rulesEngine;
+        private readonly IGuidGenerator _guidGenerator = guidGenerator;
 
         public async Task<List<AttachCatalogueTemplate>> FindBySemanticMatchAsync(string query, bool onlyLatest = true)
         {
@@ -72,10 +64,9 @@ namespace YourNamespace.AttachCatalogues
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError(ex, $"Error executing rule for template {template.Id}");
+                    Logger.LogError(ex, "Error executing rule for template {TemplateId}", template.Id);
                 }
             }
-
             return matchedTemplates;
         }
 

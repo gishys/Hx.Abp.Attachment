@@ -1,5 +1,3 @@
-﻿using YourNamespace.AttachCatalogues;
-
 namespace Hx.Abp.Attachment.Domain
 {
     /// <summary>

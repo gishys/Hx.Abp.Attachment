@@ -1,4 +1,4 @@
-﻿namespace Hx.Abp.Attachment.Application.ArchAI.Contracts
+namespace Hx.Abp.Attachment.Application.ArchAI.Contracts
 {
     public class RecognizeCharacterDataDto(float? probability, string? text, RecognizeCharacterDataRectangles textRectangles)
     {

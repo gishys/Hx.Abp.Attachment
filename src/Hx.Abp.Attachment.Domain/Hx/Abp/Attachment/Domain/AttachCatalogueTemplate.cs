@@ -1,9 +1,9 @@
-﻿using Hx.Abp.Attachment.Domain.Shared;
+using Hx.Abp.Attachment.Domain.Shared;
 using JetBrains.Annotations;
 using Volo.Abp;
 using Volo.Abp.Domain.Entities.Auditing;
 
-namespace YourNamespace.AttachCatalogues
+namespace Hx.Abp.Attachment.Domain
 {
     public class AttachCatalogueTemplate : FullAuditedAggregateRoot<Guid>
     {
@@ -101,7 +101,7 @@ namespace YourNamespace.AttachCatalogues
             SemanticModel = semanticModel;
             Version = version;
             IsLatest = isLatest;
-            Children = new List<AttachCatalogueTemplate>();
+            Children = [];
         }
 
         public virtual void Update(

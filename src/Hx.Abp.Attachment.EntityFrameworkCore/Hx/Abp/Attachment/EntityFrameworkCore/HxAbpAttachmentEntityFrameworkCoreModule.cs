@@ -1,6 +1,5 @@
-﻿using Hx.Abp.Attachment.Domain;
+using Hx.Abp.Attachment.Domain;
 using Microsoft.Extensions.DependencyInjection;
-using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.Modularity;
 using Volo.Abp.Users.EntityFrameworkCore;
 
@@ -20,6 +19,9 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
                 options.AddDefaultRepositories(includeAllEntities: true);
             });
+
+            // 注册全文搜索仓储
+            context.Services.AddScoped<IFullTextSearchRepository, FullTextSearchRepository>();
         }
     }
 }

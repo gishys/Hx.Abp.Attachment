@@ -263,3 +263,34 @@ src/Hx.BgApp.Blazor.Tiered/Logs/*
 
 # Use abp install-libs to restore.
 **/wwwroot/libs/*
+
+# Additional Visual Studio and .NET generated files
+*.dtbcache.v2
+*.futdcache.v2
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Assembly info files
+**/obj/**/AssemblyInfo.cs
+**/obj/**/AssemblyInfoInputs.cache
+**/obj/**/*.GeneratedMSBuildEditorConfig.editorconfig
+**/obj/**/*.assets.cache
+**/obj/**/*.csproj.nuget.dgspec.json
+**/obj/**/*.csproj.nuget.g.props
+**/obj/project.assets.json
+**/obj/project.nuget.cache
+
+# Visual Studio 2022 specific files
+.vs/**/DesignTimeBuild/.dtbcache.v2
+.vs/**/v17/.futdcache.v2
+.vs/**/v17/.suo
+
+# .NET Core/5/6/7/8 specific
+**/obj/Debug/
+**/obj/Release/
+**/obj/net*/
+
+# .NET Core Assembly Attributes
+**/obj/**/.NETCoreApp,Version=*.AssemblyAttributes.cs

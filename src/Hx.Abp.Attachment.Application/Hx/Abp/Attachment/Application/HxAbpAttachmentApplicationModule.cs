@@ -1,4 +1,5 @@
 ﻿using Hx.Abp.Attachment.Application.Contracts;
+using Hx.Abp.Attachment.Application.Utils;
 using Hx.Abp.Attachment.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp.AutoMapper;
@@ -30,6 +31,12 @@ namespace Hx.Abp.Attachment.Application
                     container.IsMultiTenant = false;
                 });
             });
+
+            // 注册OCR服务
+            context.Services.AddScoped<IOcrService, OcrService>();
+            
+            // 注册跨平台PDF转图片工具
+            context.Services.AddScoped<CrossPlatformPdfToImageConverter>();
         }
     }
 }

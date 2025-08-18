@@ -2,6 +2,207 @@
   "version": 3,
   "targets": {
     "net8.0": {
+      "AlibabaCloud.DarabonbaNumber/1.0.3": {
+        "type": "package",
+        "dependencies": {
+          "Tea": "1.0.5"
+        },
+        "compile": {
+          "lib/netstandard2.0/AlibabaCloud.DarabonbaNumber.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/AlibabaCloud.DarabonbaNumber.dll": {}
+        }
+      },
+      "AlibabaCloud.EndpointUtil/0.1.1": {
+        "type": "package",
+        "dependencies": {
+          "Newtonsoft.Json": "9.0.1",
+          "Tea": "0.3.2"
+        },
+        "compile": {
+          "lib/netstandard2.0/AlibabaCloud.EndpointUtil.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/AlibabaCloud.EndpointUtil.dll": {}
+        }
+      },
+      "AlibabaCloud.GatewaySpi/0.0.2": {
+        "type": "package",
+        "dependencies": {
+          "Aliyun.Credentials": "1.3.1",
+          "Tea": "1.0.11"
+        },
+        "compile": {
+          "lib/netstandard2.0/AlibabaCloud.GatewaySpi.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/AlibabaCloud.GatewaySpi.dll": {}
+        }
+      },
+      "AlibabaCloud.OpenApiClient/0.1.8": {
+        "type": "package",
+        "dependencies": {
+          "AlibabaCloud.GatewaySpi": "0.0.2",
+          "AlibabaCloud.OpenApiUtil": "1.1.1",
+          "AlibabaCloud.TeaUtil": "0.1.17",
+          "AlibabaCloud.TeaXML": "0.0.5",
+          "Aliyun.Credentials": "1.3.2",
+          "Tea": "1.0.11"
+        },
+        "compile": {
+          "lib/netstandard2.0/AlibabaCloud.OpenApiClient.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/AlibabaCloud.OpenApiClient.dll": {}
+        }
+      },
+      "AlibabaCloud.OpenApiUtil/1.1.1": {
+        "type": "package",
+        "dependencies": {
+          "Newtonsoft.Json": "9.0.1",
+          "Tea": "1.0.11"
+        },
+        "compile": {
+          "lib/netstandard2.0/AlibabaCloud.OpenApiUtil.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/AlibabaCloud.OpenApiUtil.dll": {}
+        }
+      },
+      "AlibabaCloud.OSSUtil/0.0.3": {
+        "type": "package",
+        "dependencies": {
+          "Newtonsoft.Json": "9.0.1",
+          "Tea": "0.2.2"
+        },
+        "compile": {
+          "lib/netstandard2.0/AlibabaCloud.OSSUtil.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/AlibabaCloud.OSSUtil.dll": {}
+        }
+      },
+      "AlibabaCloud.SDK.Common/0.2.5": {
+        "type": "package",
+        "dependencies": {
+          "Newtonsoft.Json": "9.0.1",
+          "Tea": "0.3.3"
+        },
+        "compile": {
+          "lib/netstandard2.0/AlibabaCloud.SDK.Common.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/AlibabaCloud.SDK.Common.dll": {}
+        }
+      },
+      "AlibabaCloud.SDK.Ocr20191230/4.0.0": {
+        "type": "package",
+        "dependencies": {
+          "AlibabaCloud.DarabonbaNumber": "1.0.3",
+          "AlibabaCloud.EndpointUtil": "0.1.1",
+          "AlibabaCloud.OSSUtil": "0.0.3",
+          "AlibabaCloud.OpenApiClient": "0.1.8",
+          "AlibabaCloud.OpenApiUtil": "1.1.1",
+          "AlibabaCloud.SDK.OSS.Client": "1.0.4",
+          "AlibabaCloud.SDK.OpenPlatform20191219": "2.0.0",
+          "AlibabaCloud.SDK.TeaFileform": "0.0.2",
+          "AlibabaCloud.TeaUtil": "0.1.17",
+          "Tea": "1.1.2"
+        },
+        "compile": {
+          "lib/netstandard2.0/AlibabaCloud.SDK.Ocr20191230.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/AlibabaCloud.SDK.Ocr20191230.dll": {}
+        }
+      },
+      "AlibabaCloud.SDK.OpenPlatform20191219/2.0.0": {
+        "type": "package",
+        "dependencies": {
+          "AlibabaCloud.EndpointUtil": "0.1.1",
+          "AlibabaCloud.OpenApiClient": "0.1.4",
+          "AlibabaCloud.OpenApiUtil": "1.0.16",
+          "AlibabaCloud.TeaUtil": "0.1.14",
+          "Tea": "1.0.11"
+        },
+        "compile": {
+          "lib/netstandard2.0/AlibabaCloud.SDK.OpenPlatform20191219.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/AlibabaCloud.SDK.OpenPlatform20191219.dll": {}
+        }
+      },
+      "AlibabaCloud.SDK.OSS.Client/1.0.4": {
+        "type": "package",
+        "dependencies": {
+          "AlibabaCloud.OSSUtil": "0.0.3",
+          "AlibabaCloud.SDK.Common": "0.2.5",
+          "AlibabaCloud.SDK.TeaFileform": "0.0.2",
+          "AlibabaCloud.TeaUtil": "0.1.9",
+          "AlibabaCloud.TeaXML": "0.0.1",
+          "Aliyun.Credentials": "1.3.1",
+          "Tea": "1.0.4"
+        },
+        "compile": {
+          "lib/netstandard2.0/AlibabaCloud.SDK.OSS.Client.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/AlibabaCloud.SDK.OSS.Client.dll": {}
+        }
+      },
+      "AlibabaCloud.SDK.TeaFileform/0.0.2": {
+        "type": "package",
+        "dependencies": {
+          "Tea": "0.2.3"
+        },
+        "compile": {
+          "lib/netstandard2.0/AlibabaCloud.SDK.TeaFileform.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/AlibabaCloud.SDK.TeaFileform.dll": {}
+        }
+      },
+      "AlibabaCloud.TeaUtil/0.1.17": {
+        "type": "package",
+        "dependencies": {
+          "Newtonsoft.Json": "13.0.3",
+          "Tea": "1.0.2"
+        },
+        "compile": {
+          "lib/netstandard2.0/AlibabaCloud.TeaUtil.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/AlibabaCloud.TeaUtil.dll": {}
+        }
+      },
+      "AlibabaCloud.TeaXML/0.0.5": {
+        "type": "package",
+        "dependencies": {
+          "Newtonsoft.Json": "9.0.1",
+          "Tea": "1.0.11"
+        },
+        "compile": {
+          "lib/netstandard2.0/AlibabaCloud.TeaXML.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/AlibabaCloud.TeaXML.dll": {}
+        }
+      },
+      "Aliyun.Credentials/1.3.2": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.CSharp": "4.5.0",
+          "Newtonsoft.Json": "9.0.1",
+          "Tea": "1.0.1"
+        },
+        "compile": {
+          "lib/netstandard2.0/Aliyun.Credentials.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/Aliyun.Credentials.dll": {}
+        }
+      },
       "AsyncKeyedLock/6.3.4": {
         "type": "package",
         "compile": {
@@ -846,6 +1047,55 @@
           }
         }
       },
+      "PdfPig/0.1.8": {
+        "type": "package",
+        "compile": {
+          "lib/net6.0/UglyToad.PdfPig.Core.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/net6.0/UglyToad.PdfPig.DocumentLayoutAnalysis.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/net6.0/UglyToad.PdfPig.Fonts.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/net6.0/UglyToad.PdfPig.Package.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/net6.0/UglyToad.PdfPig.Tokenization.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/net6.0/UglyToad.PdfPig.Tokens.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/net6.0/UglyToad.PdfPig.dll": {
+            "related": ".Core.pdb;.Core.xml;.DocumentLayoutAnalysis.pdb;.DocumentLayoutAnalysis.xml;.Fonts.pdb;.Fonts.xml;.Package.pdb;.Package.xml;.pdb;.Tokenization.pdb;.Tokenization.xml;.Tokens.pdb;.Tokens.xml;.xml"
+          }
+        },
+        "runtime": {
+          "lib/net6.0/UglyToad.PdfPig.Core.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/net6.0/UglyToad.PdfPig.DocumentLayoutAnalysis.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/net6.0/UglyToad.PdfPig.Fonts.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/net6.0/UglyToad.PdfPig.Package.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/net6.0/UglyToad.PdfPig.Tokenization.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/net6.0/UglyToad.PdfPig.Tokens.dll": {
+            "related": ".pdb;.xml"
+          },
+          "lib/net6.0/UglyToad.PdfPig.dll": {
+            "related": ".Core.pdb;.Core.xml;.DocumentLayoutAnalysis.pdb;.DocumentLayoutAnalysis.xml;.Fonts.pdb;.Fonts.xml;.Package.pdb;.Package.xml;.pdb;.Tokenization.pdb;.Tokenization.xml;.Tokens.pdb;.Tokens.xml;.xml"
+          }
+        }
+      },
       "Polly/8.2.0": {
         "type": "package",
         "dependencies": {
@@ -890,6 +1140,19 @@
           "lib/net8.0/RulesEngine.dll": {}
         }
       },
+      "SixLabors.Fonts/2.0.1": {
+        "type": "package",
+        "compile": {
+          "lib/net6.0/SixLabors.Fonts.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net6.0/SixLabors.Fonts.dll": {
+            "related": ".xml"
+          }
+        }
+      },
       "SixLabors.ImageSharp/3.1.5": {
         "type": "package",
         "compile": {
@@ -904,6 +1167,23 @@
         },
         "build": {
           "build/SixLabors.ImageSharp.props": {}
+        }
+      },
+      "SixLabors.ImageSharp.Drawing/2.1.0": {
+        "type": "package",
+        "dependencies": {
+          "SixLabors.Fonts": "2.0.1",
+          "SixLabors.ImageSharp": "3.1.0"
+        },
+        "compile": {
+          "lib/net6.0/SixLabors.ImageSharp.Drawing.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net6.0/SixLabors.ImageSharp.Drawing.dll": {
+            "related": ".xml"
+          }
         }
       },
       "SkiaSharp/2.88.8": {
@@ -1430,6 +1710,18 @@
           "ref/netstandard1.3/System.Threading.Tasks.dll": {
             "related": ".xml"
           }
+        }
+      },
+      "Tea/1.1.2": {
+        "type": "package",
+        "dependencies": {
+          "Newtonsoft.Json": "13.0.3"
+        },
+        "compile": {
+          "lib/netstandard2.0/Tea.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/Tea.dll": {}
         }
       },
       "TimeZoneConverter/6.1.0": {
@@ -2210,6 +2502,36 @@
           }
         }
       },
+      "Hx.Abp.Attachment.Application.ArchAI/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "dependencies": {
+          "AlibabaCloud.SDK.Ocr20191230": "4.0.0",
+          "Hx.Abp.Attachment.Application.ArchAI.Contracts": "1.0.0",
+          "Hx.Abp.Attachment.Domain": "1.0.0",
+          "Volo.Abp.Core": "8.1.1",
+          "Volo.Abp.Ddd.Application": "8.1.1"
+        },
+        "compile": {
+          "bin/placeholder/Hx.Abp.Attachment.Application.ArchAI.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Hx.Abp.Attachment.Application.ArchAI.dll": {}
+        }
+      },
+      "Hx.Abp.Attachment.Application.ArchAI.Contracts/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
+        "dependencies": {
+          "Volo.Abp.Ddd.Application.Contracts": "8.1.1"
+        },
+        "compile": {
+          "bin/placeholder/Hx.Abp.Attachment.Application.ArchAI.Contracts.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Hx.Abp.Attachment.Application.ArchAI.Contracts.dll": {}
+        }
+      },
       "Hx.Abp.Attachment.Application.Contracts/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v8.0",
@@ -2259,6 +2581,188 @@
     }
   },
   "libraries": {
+    "AlibabaCloud.DarabonbaNumber/1.0.3": {
+      "sha512": "h2zvra55UNRS2X64C/RP6p4CI+OipBXZ3/HdASVzVxpFtxHPBUSK4sD0TydxyvXR9UuYjo2/Lnql1npmVYSHow==",
+      "type": "package",
+      "path": "alibabacloud.darabonbanumber/1.0.3",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "alibabacloud.darabonbanumber.1.0.3.nupkg.sha512",
+        "alibabacloud.darabonbanumber.nuspec",
+        "lib/net45/AlibabaCloud.DarabonbaNumber.dll",
+        "lib/netstandard2.0/AlibabaCloud.DarabonbaNumber.dll"
+      ]
+    },
+    "AlibabaCloud.EndpointUtil/0.1.1": {
+      "sha512": "p/vsdJoVIfc1QREW4JX1tpzKdZZcFdw6/qfrylfcFXc0e2BDMQ2kPrv3nkyr2u+p4BF0PmOYl4EDqRtqLiBc+g==",
+      "type": "package",
+      "path": "alibabacloud.endpointutil/0.1.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "alibabacloud.endpointutil.0.1.1.nupkg.sha512",
+        "alibabacloud.endpointutil.nuspec",
+        "lib/net45/AlibabaCloud.EndpointUtil.dll",
+        "lib/netstandard2.0/AlibabaCloud.EndpointUtil.dll"
+      ]
+    },
+    "AlibabaCloud.GatewaySpi/0.0.2": {
+      "sha512": "EQzRziykoEhA6qkUNcgUrSM+Zs8WbOwyxRBM01Uw0J520nfgL+lMmlZVFnx4IRjwxizTIs5ZHprR7Z8pwcTQzQ==",
+      "type": "package",
+      "path": "alibabacloud.gatewayspi/0.0.2",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "alibabacloud.gatewayspi.0.0.2.nupkg.sha512",
+        "alibabacloud.gatewayspi.nuspec",
+        "lib/net45/AlibabaCloud.GatewaySpi.dll",
+        "lib/netstandard2.0/AlibabaCloud.GatewaySpi.dll"
+      ]
+    },
+    "AlibabaCloud.OpenApiClient/0.1.8": {
+      "sha512": "EmBi9bXCHz6a3pXW7QcBMdjpZPKYL/19/MWD4zxBptwzB9q56bA264GbSJte/Cq0vEhqbJUur+46EvvPtOuYBA==",
+      "type": "package",
+      "path": "alibabacloud.openapiclient/0.1.8",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "alibabacloud.openapiclient.0.1.8.nupkg.sha512",
+        "alibabacloud.openapiclient.nuspec",
+        "lib/net45/AlibabaCloud.OpenApiClient.dll",
+        "lib/netstandard2.0/AlibabaCloud.OpenApiClient.dll"
+      ]
+    },
+    "AlibabaCloud.OpenApiUtil/1.1.1": {
+      "sha512": "E5s0uhVrAK3Vy6kmLqQRZy5pWJXvsAacXzCoayHyY/1j5Ew7rEb2UOgFkY6LrytZcsrsxN+rCBu1yjPiC0DDCQ==",
+      "type": "package",
+      "path": "alibabacloud.openapiutil/1.1.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "alibabacloud.openapiutil.1.1.1.nupkg.sha512",
+        "alibabacloud.openapiutil.nuspec",
+        "lib/net45/AlibabaCloud.OpenApiUtil.dll",
+        "lib/netstandard2.0/AlibabaCloud.OpenApiUtil.dll"
+      ]
+    },
+    "AlibabaCloud.OSSUtil/0.0.3": {
+      "sha512": "zj83HcxLdBi/d1OoHpCXaydASdyPu4SclD0QV38+ZsUVy7+3ob2kMvyGULHbROJhMrsjn+zYvxNFjlg+DZEulg==",
+      "type": "package",
+      "path": "alibabacloud.ossutil/0.0.3",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "alibabacloud.ossutil.0.0.3.nupkg.sha512",
+        "alibabacloud.ossutil.nuspec",
+        "lib/net45/AlibabaCloud.OSSUtil.dll",
+        "lib/netstandard2.0/AlibabaCloud.OSSUtil.dll"
+      ]
+    },
+    "AlibabaCloud.SDK.Common/0.2.5": {
+      "sha512": "gfZ3nBkEDjwSa91Xq6IQW8fuQ4MHRmAtJV6tT/aB1ZAKr1iflsoJUYFskHOOylQsM72T5rmpkrSEghfeZz2dlw==",
+      "type": "package",
+      "path": "alibabacloud.sdk.common/0.2.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "alibabacloud.sdk.common.0.2.5.nupkg.sha512",
+        "alibabacloud.sdk.common.nuspec",
+        "lib/net45/AlibabaCloud.SDK.Common.dll",
+        "lib/netstandard2.0/AlibabaCloud.SDK.Common.dll"
+      ]
+    },
+    "AlibabaCloud.SDK.Ocr20191230/4.0.0": {
+      "sha512": "42b3yLKVe+fQEqF4ZK0xynvMd6JPaReDHqxg2vVkV0icFtEa97PR86jl+Wa2NMCt5bzsQPz+zQexKCIYJzY/jA==",
+      "type": "package",
+      "path": "alibabacloud.sdk.ocr20191230/4.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "alibabacloud.sdk.ocr20191230.4.0.0.nupkg.sha512",
+        "alibabacloud.sdk.ocr20191230.nuspec",
+        "lib/net45/AlibabaCloud.SDK.Ocr20191230.dll",
+        "lib/netstandard2.0/AlibabaCloud.SDK.Ocr20191230.dll"
+      ]
+    },
+    "AlibabaCloud.SDK.OpenPlatform20191219/2.0.0": {
+      "sha512": "1zaRFnEbTawUZnTMYocU1CjO+YpCb8rRNFGY/VIRPH8E/crn78jKYrB+W6M2SbDLzcULW1ApVK6ffWA2L0yQNA==",
+      "type": "package",
+      "path": "alibabacloud.sdk.openplatform20191219/2.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "alibabacloud.sdk.openplatform20191219.2.0.0.nupkg.sha512",
+        "alibabacloud.sdk.openplatform20191219.nuspec",
+        "lib/net45/AlibabaCloud.SDK.OpenPlatform20191219.dll",
+        "lib/netstandard2.0/AlibabaCloud.SDK.OpenPlatform20191219.dll"
+      ]
+    },
+    "AlibabaCloud.SDK.OSS.Client/1.0.4": {
+      "sha512": "nAzUB7KeS7zjG+nziQvgM+EhUaWHBK4xR3HLtlxCXMwSNaJGevrd3bAT0i/IPVz5wrPZDz5FNdBE5Mgd9h3iEg==",
+      "type": "package",
+      "path": "alibabacloud.sdk.oss.client/1.0.4",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "alibabacloud.sdk.oss.client.1.0.4.nupkg.sha512",
+        "alibabacloud.sdk.oss.client.nuspec",
+        "lib/net45/AlibabaCloud.SDK.OSS.Client.dll",
+        "lib/netstandard2.0/AlibabaCloud.SDK.OSS.Client.dll"
+      ]
+    },
+    "AlibabaCloud.SDK.TeaFileform/0.0.2": {
+      "sha512": "BmJZXRoPiQ62m7JkLZB2er7w0NN5aMujxcgS59mhBfaWTAo6vVXw+ClWTLiFeYT9QmblAx8VzrMYc5pHGXVSaw==",
+      "type": "package",
+      "path": "alibabacloud.sdk.teafileform/0.0.2",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "alibabacloud.sdk.teafileform.0.0.2.nupkg.sha512",
+        "alibabacloud.sdk.teafileform.nuspec",
+        "lib/net45/AlibabaCloud.SDK.TeaFileform.dll",
+        "lib/netstandard2.0/AlibabaCloud.SDK.TeaFileform.dll"
+      ]
+    },
+    "AlibabaCloud.TeaUtil/0.1.17": {
+      "sha512": "IoqtxdJZDgK0CZRKuDBNG/ZknXoOzoIQ/yiZYMU02G6SZgjDFWq28SPF2q6F7lvZJ0hyhQWrlQ3hroig7sAmkA==",
+      "type": "package",
+      "path": "alibabacloud.teautil/0.1.17",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "alibabacloud.teautil.0.1.17.nupkg.sha512",
+        "alibabacloud.teautil.nuspec",
+        "lib/net45/AlibabaCloud.TeaUtil.dll",
+        "lib/netstandard2.0/AlibabaCloud.TeaUtil.dll"
+      ]
+    },
+    "AlibabaCloud.TeaXML/0.0.5": {
+      "sha512": "mHxE6H3eq4jaeqn3hryIYTI0k8quvPZfZdEE+PdU8rw+NGRvev68D8Aei6xjwW/pArZaTG6yPawYu5c0EaZkfw==",
+      "type": "package",
+      "path": "alibabacloud.teaxml/0.0.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "alibabacloud.teaxml.0.0.5.nupkg.sha512",
+        "alibabacloud.teaxml.nuspec",
+        "lib/net45/AlibabaCloud.TeaXML.dll",
+        "lib/netstandard2.0/AlibabaCloud.TeaXML.dll"
+      ]
+    },
+    "Aliyun.Credentials/1.3.2": {
+      "sha512": "Y7eev+WuiFzgP2J8stZNU2R+jAfW4wg2uAekfI0Mywp7JxjPX7on/5JdsCqPCLbyR15wsrftCeac/XrW29THdA==",
+      "type": "package",
+      "path": "aliyun.credentials/1.3.2",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "aliyun.credentials.1.3.2.nupkg.sha512",
+        "aliyun.credentials.nuspec",
+        "lib/net45/Aliyun.Credentials.dll",
+        "lib/netstandard2.0/Aliyun.Credentials.dll"
+      ]
+    },
     "AsyncKeyedLock/6.3.4": {
       "sha512": "+0YPXvamnopzHSgBpv0vg+9/NJH+6jm1ZODuMMs7p43yH7hA/NxNi+/U7T7eazZqW+V+0ZsbreYruhu6i7N4PA==",
       "type": "package",
@@ -3579,6 +4083,186 @@
         "postgresql.png"
       ]
     },
+    "PdfPig/0.1.8": {
+      "sha512": "lrqrQPAwziQV2E5uImAg1i3SpxDn5XdJ8q3sjRBgEdx1quq1ZftnKNyfp3sTY0J7OxpA14ryGBSSUdoGLGCHjw==",
+      "type": "package",
+      "path": "pdfpig/0.1.8",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net451/UglyToad.PdfPig.Core.dll",
+        "lib/net451/UglyToad.PdfPig.Core.pdb",
+        "lib/net451/UglyToad.PdfPig.Core.xml",
+        "lib/net451/UglyToad.PdfPig.DocumentLayoutAnalysis.dll",
+        "lib/net451/UglyToad.PdfPig.DocumentLayoutAnalysis.pdb",
+        "lib/net451/UglyToad.PdfPig.DocumentLayoutAnalysis.xml",
+        "lib/net451/UglyToad.PdfPig.Fonts.dll",
+        "lib/net451/UglyToad.PdfPig.Fonts.pdb",
+        "lib/net451/UglyToad.PdfPig.Fonts.xml",
+        "lib/net451/UglyToad.PdfPig.Package.dll",
+        "lib/net451/UglyToad.PdfPig.Package.pdb",
+        "lib/net451/UglyToad.PdfPig.Package.xml",
+        "lib/net451/UglyToad.PdfPig.Tokenization.dll",
+        "lib/net451/UglyToad.PdfPig.Tokenization.pdb",
+        "lib/net451/UglyToad.PdfPig.Tokenization.xml",
+        "lib/net451/UglyToad.PdfPig.Tokens.dll",
+        "lib/net451/UglyToad.PdfPig.Tokens.pdb",
+        "lib/net451/UglyToad.PdfPig.Tokens.xml",
+        "lib/net451/UglyToad.PdfPig.dll",
+        "lib/net451/UglyToad.PdfPig.pdb",
+        "lib/net451/UglyToad.PdfPig.xml",
+        "lib/net452/UglyToad.PdfPig.Core.dll",
+        "lib/net452/UglyToad.PdfPig.Core.pdb",
+        "lib/net452/UglyToad.PdfPig.Core.xml",
+        "lib/net452/UglyToad.PdfPig.DocumentLayoutAnalysis.dll",
+        "lib/net452/UglyToad.PdfPig.DocumentLayoutAnalysis.pdb",
+        "lib/net452/UglyToad.PdfPig.DocumentLayoutAnalysis.xml",
+        "lib/net452/UglyToad.PdfPig.Fonts.dll",
+        "lib/net452/UglyToad.PdfPig.Fonts.pdb",
+        "lib/net452/UglyToad.PdfPig.Fonts.xml",
+        "lib/net452/UglyToad.PdfPig.Package.dll",
+        "lib/net452/UglyToad.PdfPig.Package.pdb",
+        "lib/net452/UglyToad.PdfPig.Package.xml",
+        "lib/net452/UglyToad.PdfPig.Tokenization.dll",
+        "lib/net452/UglyToad.PdfPig.Tokenization.pdb",
+        "lib/net452/UglyToad.PdfPig.Tokenization.xml",
+        "lib/net452/UglyToad.PdfPig.Tokens.dll",
+        "lib/net452/UglyToad.PdfPig.Tokens.pdb",
+        "lib/net452/UglyToad.PdfPig.Tokens.xml",
+        "lib/net452/UglyToad.PdfPig.dll",
+        "lib/net452/UglyToad.PdfPig.pdb",
+        "lib/net452/UglyToad.PdfPig.xml",
+        "lib/net46/UglyToad.PdfPig.Core.dll",
+        "lib/net46/UglyToad.PdfPig.Core.pdb",
+        "lib/net46/UglyToad.PdfPig.Core.xml",
+        "lib/net46/UglyToad.PdfPig.DocumentLayoutAnalysis.dll",
+        "lib/net46/UglyToad.PdfPig.DocumentLayoutAnalysis.pdb",
+        "lib/net46/UglyToad.PdfPig.DocumentLayoutAnalysis.xml",
+        "lib/net46/UglyToad.PdfPig.Fonts.dll",
+        "lib/net46/UglyToad.PdfPig.Fonts.pdb",
+        "lib/net46/UglyToad.PdfPig.Fonts.xml",
+        "lib/net46/UglyToad.PdfPig.Package.dll",
+        "lib/net46/UglyToad.PdfPig.Package.pdb",
+        "lib/net46/UglyToad.PdfPig.Package.xml",
+        "lib/net46/UglyToad.PdfPig.Tokenization.dll",
+        "lib/net46/UglyToad.PdfPig.Tokenization.pdb",
+        "lib/net46/UglyToad.PdfPig.Tokenization.xml",
+        "lib/net46/UglyToad.PdfPig.Tokens.dll",
+        "lib/net46/UglyToad.PdfPig.Tokens.pdb",
+        "lib/net46/UglyToad.PdfPig.Tokens.xml",
+        "lib/net46/UglyToad.PdfPig.dll",
+        "lib/net46/UglyToad.PdfPig.pdb",
+        "lib/net46/UglyToad.PdfPig.xml",
+        "lib/net461/UglyToad.PdfPig.Core.dll",
+        "lib/net461/UglyToad.PdfPig.Core.pdb",
+        "lib/net461/UglyToad.PdfPig.Core.xml",
+        "lib/net461/UglyToad.PdfPig.DocumentLayoutAnalysis.dll",
+        "lib/net461/UglyToad.PdfPig.DocumentLayoutAnalysis.pdb",
+        "lib/net461/UglyToad.PdfPig.DocumentLayoutAnalysis.xml",
+        "lib/net461/UglyToad.PdfPig.Fonts.dll",
+        "lib/net461/UglyToad.PdfPig.Fonts.pdb",
+        "lib/net461/UglyToad.PdfPig.Fonts.xml",
+        "lib/net461/UglyToad.PdfPig.Package.dll",
+        "lib/net461/UglyToad.PdfPig.Package.pdb",
+        "lib/net461/UglyToad.PdfPig.Package.xml",
+        "lib/net461/UglyToad.PdfPig.Tokenization.dll",
+        "lib/net461/UglyToad.PdfPig.Tokenization.pdb",
+        "lib/net461/UglyToad.PdfPig.Tokenization.xml",
+        "lib/net461/UglyToad.PdfPig.Tokens.dll",
+        "lib/net461/UglyToad.PdfPig.Tokens.pdb",
+        "lib/net461/UglyToad.PdfPig.Tokens.xml",
+        "lib/net461/UglyToad.PdfPig.dll",
+        "lib/net461/UglyToad.PdfPig.pdb",
+        "lib/net461/UglyToad.PdfPig.xml",
+        "lib/net462/UglyToad.PdfPig.Core.dll",
+        "lib/net462/UglyToad.PdfPig.Core.pdb",
+        "lib/net462/UglyToad.PdfPig.Core.xml",
+        "lib/net462/UglyToad.PdfPig.DocumentLayoutAnalysis.dll",
+        "lib/net462/UglyToad.PdfPig.DocumentLayoutAnalysis.pdb",
+        "lib/net462/UglyToad.PdfPig.DocumentLayoutAnalysis.xml",
+        "lib/net462/UglyToad.PdfPig.Fonts.dll",
+        "lib/net462/UglyToad.PdfPig.Fonts.pdb",
+        "lib/net462/UglyToad.PdfPig.Fonts.xml",
+        "lib/net462/UglyToad.PdfPig.Package.dll",
+        "lib/net462/UglyToad.PdfPig.Package.pdb",
+        "lib/net462/UglyToad.PdfPig.Package.xml",
+        "lib/net462/UglyToad.PdfPig.Tokenization.dll",
+        "lib/net462/UglyToad.PdfPig.Tokenization.pdb",
+        "lib/net462/UglyToad.PdfPig.Tokenization.xml",
+        "lib/net462/UglyToad.PdfPig.Tokens.dll",
+        "lib/net462/UglyToad.PdfPig.Tokens.pdb",
+        "lib/net462/UglyToad.PdfPig.Tokens.xml",
+        "lib/net462/UglyToad.PdfPig.dll",
+        "lib/net462/UglyToad.PdfPig.pdb",
+        "lib/net462/UglyToad.PdfPig.xml",
+        "lib/net47/UglyToad.PdfPig.Core.dll",
+        "lib/net47/UglyToad.PdfPig.Core.pdb",
+        "lib/net47/UglyToad.PdfPig.Core.xml",
+        "lib/net47/UglyToad.PdfPig.DocumentLayoutAnalysis.dll",
+        "lib/net47/UglyToad.PdfPig.DocumentLayoutAnalysis.pdb",
+        "lib/net47/UglyToad.PdfPig.DocumentLayoutAnalysis.xml",
+        "lib/net47/UglyToad.PdfPig.Fonts.dll",
+        "lib/net47/UglyToad.PdfPig.Fonts.pdb",
+        "lib/net47/UglyToad.PdfPig.Fonts.xml",
+        "lib/net47/UglyToad.PdfPig.Package.dll",
+        "lib/net47/UglyToad.PdfPig.Package.pdb",
+        "lib/net47/UglyToad.PdfPig.Package.xml",
+        "lib/net47/UglyToad.PdfPig.Tokenization.dll",
+        "lib/net47/UglyToad.PdfPig.Tokenization.pdb",
+        "lib/net47/UglyToad.PdfPig.Tokenization.xml",
+        "lib/net47/UglyToad.PdfPig.Tokens.dll",
+        "lib/net47/UglyToad.PdfPig.Tokens.pdb",
+        "lib/net47/UglyToad.PdfPig.Tokens.xml",
+        "lib/net47/UglyToad.PdfPig.dll",
+        "lib/net47/UglyToad.PdfPig.pdb",
+        "lib/net47/UglyToad.PdfPig.xml",
+        "lib/net6.0/UglyToad.PdfPig.Core.dll",
+        "lib/net6.0/UglyToad.PdfPig.Core.pdb",
+        "lib/net6.0/UglyToad.PdfPig.Core.xml",
+        "lib/net6.0/UglyToad.PdfPig.DocumentLayoutAnalysis.dll",
+        "lib/net6.0/UglyToad.PdfPig.DocumentLayoutAnalysis.pdb",
+        "lib/net6.0/UglyToad.PdfPig.DocumentLayoutAnalysis.xml",
+        "lib/net6.0/UglyToad.PdfPig.Fonts.dll",
+        "lib/net6.0/UglyToad.PdfPig.Fonts.pdb",
+        "lib/net6.0/UglyToad.PdfPig.Fonts.xml",
+        "lib/net6.0/UglyToad.PdfPig.Package.dll",
+        "lib/net6.0/UglyToad.PdfPig.Package.pdb",
+        "lib/net6.0/UglyToad.PdfPig.Package.xml",
+        "lib/net6.0/UglyToad.PdfPig.Tokenization.dll",
+        "lib/net6.0/UglyToad.PdfPig.Tokenization.pdb",
+        "lib/net6.0/UglyToad.PdfPig.Tokenization.xml",
+        "lib/net6.0/UglyToad.PdfPig.Tokens.dll",
+        "lib/net6.0/UglyToad.PdfPig.Tokens.pdb",
+        "lib/net6.0/UglyToad.PdfPig.Tokens.xml",
+        "lib/net6.0/UglyToad.PdfPig.dll",
+        "lib/net6.0/UglyToad.PdfPig.pdb",
+        "lib/net6.0/UglyToad.PdfPig.xml",
+        "lib/netstandard2.0/UglyToad.PdfPig.Core.dll",
+        "lib/netstandard2.0/UglyToad.PdfPig.Core.pdb",
+        "lib/netstandard2.0/UglyToad.PdfPig.Core.xml",
+        "lib/netstandard2.0/UglyToad.PdfPig.DocumentLayoutAnalysis.dll",
+        "lib/netstandard2.0/UglyToad.PdfPig.DocumentLayoutAnalysis.pdb",
+        "lib/netstandard2.0/UglyToad.PdfPig.DocumentLayoutAnalysis.xml",
+        "lib/netstandard2.0/UglyToad.PdfPig.Fonts.dll",
+        "lib/netstandard2.0/UglyToad.PdfPig.Fonts.pdb",
+        "lib/netstandard2.0/UglyToad.PdfPig.Fonts.xml",
+        "lib/netstandard2.0/UglyToad.PdfPig.Package.dll",
+        "lib/netstandard2.0/UglyToad.PdfPig.Package.pdb",
+        "lib/netstandard2.0/UglyToad.PdfPig.Package.xml",
+        "lib/netstandard2.0/UglyToad.PdfPig.Tokenization.dll",
+        "lib/netstandard2.0/UglyToad.PdfPig.Tokenization.pdb",
+        "lib/netstandard2.0/UglyToad.PdfPig.Tokenization.xml",
+        "lib/netstandard2.0/UglyToad.PdfPig.Tokens.dll",
+        "lib/netstandard2.0/UglyToad.PdfPig.Tokens.pdb",
+        "lib/netstandard2.0/UglyToad.PdfPig.Tokens.xml",
+        "lib/netstandard2.0/UglyToad.PdfPig.dll",
+        "lib/netstandard2.0/UglyToad.PdfPig.pdb",
+        "lib/netstandard2.0/UglyToad.PdfPig.xml",
+        "pdfpig.0.1.8.nupkg.sha512",
+        "pdfpig.nuspec",
+        "pdfpig.png"
+      ]
+    },
     "Polly/8.2.0": {
       "sha512": "KZm8iG29y6Mse7YntYYJSf5fGWuhYLliWgZaG/8NcuXS4gN7SPdtPYpjCxQlHqxvMGubkWVrGp3MvUaI7SkyKA==",
       "type": "package",
@@ -3645,6 +4329,21 @@
         "rulesengine.nuspec"
       ]
     },
+    "SixLabors.Fonts/2.0.1": {
+      "sha512": "ubgkOt7Eb5garmLMigeWAAAMyZF6JWuT09RApHouncPZeML2nRJahm2JJUkw3HLB+XbYJfBfOTCMvbsdCO5LDw==",
+      "type": "package",
+      "path": "sixlabors.fonts/2.0.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE",
+        "lib/net6.0/SixLabors.Fonts.dll",
+        "lib/net6.0/SixLabors.Fonts.xml",
+        "sixlabors.fonts.128.png",
+        "sixlabors.fonts.2.0.1.nupkg.sha512",
+        "sixlabors.fonts.nuspec"
+      ]
+    },
     "SixLabors.ImageSharp/3.1.5": {
       "sha512": "lNtlq7dSI/QEbYey+A0xn48z5w4XHSffF8222cC4F4YwTXfEImuiBavQcWjr49LThT/pRmtWJRcqA/PlL+eJ6g==",
       "type": "package",
@@ -3659,6 +4358,21 @@
         "sixlabors.imagesharp.128.png",
         "sixlabors.imagesharp.3.1.5.nupkg.sha512",
         "sixlabors.imagesharp.nuspec"
+      ]
+    },
+    "SixLabors.ImageSharp.Drawing/2.1.0": {
+      "sha512": "rXisPlS9wEjsW/fYqqmsmtvExcqUIujMEJZQe4WlnH/V+xN5JAv/TqFUWFJ9++1bZNOX7NEFdYadUlo51859BA==",
+      "type": "package",
+      "path": "sixlabors.imagesharp.drawing/2.1.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE",
+        "lib/net6.0/SixLabors.ImageSharp.Drawing.dll",
+        "lib/net6.0/SixLabors.ImageSharp.Drawing.xml",
+        "sixlabors.imagesharp.drawing.128.png",
+        "sixlabors.imagesharp.drawing.2.1.0.nupkg.sha512",
+        "sixlabors.imagesharp.drawing.nuspec"
       ]
     },
     "SkiaSharp/2.88.8": {
@@ -5491,6 +6205,19 @@
         "system.threading.tasks.nuspec"
       ]
     },
+    "Tea/1.1.2": {
+      "sha512": "iYgLT7XCU1ncc1QTU5cAtEbXEnyDyQtFoLj6TyQJeJVqQDLl8e/yoo5fVvmASy5YlNgSxD8mDqNeLwoU6CwQqg==",
+      "type": "package",
+      "path": "tea/1.1.2",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net45/Tea.dll",
+        "lib/netstandard2.0/Tea.dll",
+        "tea.1.1.2.nupkg.sha512",
+        "tea.nuspec"
+      ]
+    },
     "TimeZoneConverter/6.1.0": {
       "sha512": "UGdtyKWJqXXinyvGB9X6NVoIYbTAidoZYmn3aXzxeEYC9+OL8vF36eDt1qjb6RqBkWDl4v7iE84ecI+dFhA80A==",
       "type": "package",
@@ -6464,6 +7191,16 @@
         "volo.abp.virtualfilesystem.nuspec"
       ]
     },
+    "Hx.Abp.Attachment.Application.ArchAI/1.0.0": {
+      "type": "project",
+      "path": "../Hx.Abp.Attachment.Application.ArchAI/Hx.Abp.Attachment.Application.ArchAI.csproj",
+      "msbuildProject": "../Hx.Abp.Attachment.Application.ArchAI/Hx.Abp.Attachment.Application.ArchAI.csproj"
+    },
+    "Hx.Abp.Attachment.Application.ArchAI.Contracts/1.0.0": {
+      "type": "project",
+      "path": "../Hx.Abp.Attachment.Application.ArchAI.Contracts/Hx.Abp.Attachment.Application.ArchAI.Contracts.csproj",
+      "msbuildProject": "../Hx.Abp.Attachment.Application.ArchAI.Contracts/Hx.Abp.Attachment.Application.ArchAI.Contracts.csproj"
+    },
     "Hx.Abp.Attachment.Application.Contracts/1.0.0": {
       "type": "project",
       "path": "../Hx.Abp.Attachment.Application.Contracts/Hx.Abp.Attachment.Application.Contracts.csproj",
@@ -6482,11 +7219,15 @@
   },
   "projectFileDependencyGroups": {
     "net8.0": [
+      "AlibabaCloud.SDK.Ocr20191230 >= 4.0.0",
+      "Hx.Abp.Attachment.Application.ArchAI >= 1.0.0",
       "Hx.Abp.Attachment.Application.Contracts >= 1.0.0",
       "Hx.Abp.Attachment.Domain >= 1.0.0",
+      "PdfPig >= 0.1.8",
       "SixLabors.ImageSharp >= 3.1.5",
+      "SixLabors.ImageSharp.Drawing >= 2.1.0",
       "Volo.Abp.AutoMapper >= 8.1.1",
-      "Volo.Abp.BlobStoring.FileSystem >= 8.1.1"
+      "Volo.Abp.Ddd.Application >= 8.1.1"
     ]
   },
   "packageFolders": {
@@ -6496,11 +7237,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application\\Hx.Abp.Attachment.Application.csproj",
+      "projectUniqueName": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Application\\Hx.Abp.Attachment.Application.csproj",
       "projectName": "Hx.Abp.Attachment.Application",
-      "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application\\Hx.Abp.Attachment.Application.csproj",
+      "projectPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Application\\Hx.Abp.Attachment.Application.csproj",
       "packagesPath": "C:\\Users\\24383\\.nuget\\packages\\",
-      "outputPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application\\obj\\",
+      "outputPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Application\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -6522,11 +7263,14 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "projectReferences": {
-            "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.Contracts\\Hx.Abp.Attachment.Application.Contracts.csproj": {
-              "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Application.Contracts\\Hx.Abp.Attachment.Application.Contracts.csproj"
+            "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Application.ArchAI\\Hx.Abp.Attachment.Application.ArchAI.csproj": {
+              "projectPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Application.ArchAI\\Hx.Abp.Attachment.Application.ArchAI.csproj"
             },
-            "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj": {
-              "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj"
+            "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Application.Contracts\\Hx.Abp.Attachment.Application.Contracts.csproj": {
+              "projectPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Application.Contracts\\Hx.Abp.Attachment.Application.Contracts.csproj"
+            },
+            "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj": {
+              "projectPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj"
             }
           }
         }
@@ -6547,15 +7291,27 @@
       "net8.0": {
         "targetAlias": "net8.0",
         "dependencies": {
+          "AlibabaCloud.SDK.Ocr20191230": {
+            "target": "Package",
+            "version": "[4.0.0, )"
+          },
+          "PdfPig": {
+            "target": "Package",
+            "version": "[0.1.8, )"
+          },
           "SixLabors.ImageSharp": {
             "target": "Package",
             "version": "[3.1.5, )"
+          },
+          "SixLabors.ImageSharp.Drawing": {
+            "target": "Package",
+            "version": "[2.1.0, )"
           },
           "Volo.Abp.AutoMapper": {
             "target": "Package",
             "version": "[8.1.1, )"
           },
-          "Volo.Abp.BlobStoring.FileSystem": {
+          "Volo.Abp.Ddd.Application": {
             "target": "Package",
             "version": "[8.1.1, )"
           }

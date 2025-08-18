@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Hx.Abp.Attachment.Domain\Hx.Abp.Attachment.Domain.csproj" />
+    <ProjectReference Include="..\Hx.Abp.Attachment.Dmain.Shared\Hx.Abp.Attachment.Dmain.Shared.csproj" />
   </ItemGroup>
 
 </Project>

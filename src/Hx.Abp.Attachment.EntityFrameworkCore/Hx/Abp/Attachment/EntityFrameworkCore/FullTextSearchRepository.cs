@@ -33,8 +33,17 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
             var sql = $@"
                 SELECT * FROM ""{nameof(_context.AttachCatalogues)}"" 
-                WHERE to_tsvector('chinese_fts', ""{nameof(AttachCatalogue.CatalogueName)}"") @@ plainto_tsquery('chinese_fts', @query)
-                ORDER BY ts_rank(to_tsvector('chinese_fts', ""{nameof(AttachCatalogue.CatalogueName)}""), plainto_tsquery('chinese_fts', @query)) DESC
+                WHERE to_tsvector('chinese_fts', 
+                    COALESCE(""{nameof(AttachCatalogue.CatalogueName)}"", '') || ' ' || 
+                    COALESCE(""{nameof(AttachCatalogue.FullTextContent)}"", '')
+                ) @@ plainto_tsquery('chinese_fts', @query)
+                ORDER BY ts_rank(
+                    to_tsvector('chinese_fts', 
+                        COALESCE(""{nameof(AttachCatalogue.CatalogueName)}"", '') || ' ' || 
+                        COALESCE(""{nameof(AttachCatalogue.FullTextContent)}"", '')
+                    ), 
+                    plainto_tsquery('chinese_fts', @query)
+                ) DESC
             ";
 
             try
@@ -62,8 +71,17 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
             var sql = $@"
                 SELECT * FROM ""{nameof(_context.AttachFiles)}"" 
-                WHERE to_tsvector('chinese_fts', ""{nameof(AttachFile.FileName)}"") @@ plainto_tsquery('chinese_fts', @query)
-                ORDER BY ts_rank(to_tsvector('chinese_fts', ""{nameof(AttachFile.FileName)}""), plainto_tsquery('chinese_fts', @query)) DESC
+                WHERE to_tsvector('chinese_fts', 
+                    COALESCE(""{nameof(AttachFile.FileName)}"", '') || ' ' || 
+                    COALESCE(""{nameof(AttachFile.OcrContent)}"", '')
+                ) @@ plainto_tsquery('chinese_fts', @query)
+                ORDER BY ts_rank(
+                    to_tsvector('chinese_fts', 
+                        COALESCE(""{nameof(AttachFile.FileName)}"", '') || ' ' || 
+                        COALESCE(""{nameof(AttachFile.OcrContent)}"", '')
+                    ), 
+                    plainto_tsquery('chinese_fts', @query)
+                ) DESC
             ";
 
             try
@@ -148,14 +166,27 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             }
 
             var catalogueName = nameof(AttachCatalogue.CatalogueName);
+            var fullTextContent = nameof(AttachCatalogue.FullTextContent);
             var sql = $@"
                 SELECT DISTINCT * FROM ""{nameof(_context.AttachCatalogues)}"" 
-                WHERE to_tsvector('chinese_fts', ""{catalogueName}"") @@ plainto_tsquery('chinese_fts', @query)
+                WHERE to_tsvector('chinese_fts', 
+                    COALESCE(""{catalogueName}"", '') || ' ' || 
+                    COALESCE(""{fullTextContent}"", '')
+                ) @@ plainto_tsquery('chinese_fts', @query)
                    OR ""{catalogueName}"" % @query
                 ORDER BY 
                     CASE 
-                        WHEN to_tsvector('chinese_fts', ""{catalogueName}"") @@ plainto_tsquery('chinese_fts', @query) 
-                        THEN ts_rank(to_tsvector('chinese_fts', ""{catalogueName}""), plainto_tsquery('chinese_fts', @query))
+                        WHEN to_tsvector('chinese_fts', 
+                            COALESCE(""{catalogueName}"", '') || ' ' || 
+                            COALESCE(""{fullTextContent}"", '')
+                        ) @@ plainto_tsquery('chinese_fts', @query) 
+                        THEN ts_rank(
+                            to_tsvector('chinese_fts', 
+                                COALESCE(""{catalogueName}"", '') || ' ' || 
+                                COALESCE(""{fullTextContent}"", '')
+                            ), 
+                            plainto_tsquery('chinese_fts', @query)
+                        )
                         ELSE 0 
                     END DESC,
                     similarity(""{catalogueName}"", @query) DESC
@@ -185,14 +216,27 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             }
 
             var fileName = nameof(AttachFile.FileName);
+            var ocrContent = nameof(AttachFile.OcrContent);
             var sql = $@"
                 SELECT DISTINCT * FROM ""{nameof(_context.AttachFiles)}"" 
-                WHERE to_tsvector('chinese_fts', ""{fileName}"") @@ plainto_tsquery('chinese_fts', @query)
+                WHERE to_tsvector('chinese_fts', 
+                    COALESCE(""{fileName}"", '') || ' ' || 
+                    COALESCE(""{ocrContent}"", '')
+                ) @@ plainto_tsquery('chinese_fts', @query)
                    OR ""{fileName}"" % @query
                 ORDER BY 
                     CASE 
-                        WHEN to_tsvector('chinese_fts', ""{fileName}"") @@ plainto_tsquery('chinese_fts', @query) 
-                        THEN ts_rank(to_tsvector('chinese_fts', ""{fileName}""), plainto_tsquery('chinese_fts', @query))
+                        WHEN to_tsvector('chinese_fts', 
+                            COALESCE(""{fileName}"", '') || ' ' || 
+                            COALESCE(""{ocrContent}"", '')
+                        ) @@ plainto_tsquery('chinese_fts', @query) 
+                        THEN ts_rank(
+                            to_tsvector('chinese_fts', 
+                                COALESCE(""{fileName}"", '') || ' ' || 
+                                COALESCE(""{ocrContent}"", '')
+                            ), 
+                            plainto_tsquery('chinese_fts', @query)
+                        )
                         ELSE 0 
                     END DESC,
                     similarity(""{fileName}"", @query) DESC

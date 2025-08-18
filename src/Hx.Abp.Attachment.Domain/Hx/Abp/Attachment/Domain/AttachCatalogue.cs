@@ -60,6 +60,16 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual bool IsStatic { get; private set; }
 
+        /// <summary>
+        /// 全文内容 - 存储分类下所有文件的OCR提取内容
+        /// </summary>
+        public virtual string? FullTextContent { get; private set; }
+
+        /// <summary>
+        /// 全文内容更新时间
+        /// </summary>
+        public virtual DateTime? FullTextContentUpdatedTime { get; private set; }
+
         // 全文检索向量 - 不进行数据库映射，仅用于类型定义
         [System.ComponentModel.DataAnnotations.Schema.NotMapped]
         public virtual NpgsqlTsVector? SearchVector { get; private set; }
@@ -176,5 +186,52 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         /// <param name="embedding">语义向量</param>
         public virtual void SetEmbedding(float[]? embedding) => Embedding = embedding;
+
+        /// <summary>
+        /// 设置全文内容
+        /// </summary>
+        /// <param name="fullTextContent">全文内容</param>
+        public virtual void SetFullTextContent(string? fullTextContent)
+        {
+            FullTextContent = fullTextContent;
+            FullTextContentUpdatedTime = DateTime.UtcNow;
+        }
+
+        /// <summary>
+        /// 更新全文内容（追加模式）
+        /// </summary>
+        /// <param name="additionalContent">追加的内容</param>
+        public virtual void AppendFullTextContent(string additionalContent)
+        {
+            if (string.IsNullOrWhiteSpace(additionalContent))
+                return;
+
+            FullTextContent = string.IsNullOrWhiteSpace(FullTextContent) 
+                ? additionalContent 
+                : $"{FullTextContent}\n{additionalContent}";
+            FullTextContentUpdatedTime = DateTime.UtcNow;
+        }
+
+        /// <summary>
+        /// 重新生成全文内容（基于所有附件文件）
+        /// </summary>
+        public virtual void RegenerateFullTextContent()
+        {
+            if (AttachFiles == null || !AttachFiles.Any())
+            {
+                FullTextContent = null;
+                FullTextContentUpdatedTime = DateTime.UtcNow;
+                return;
+            }
+
+            // 收集所有文件的OCR内容
+            var contentParts = AttachFiles
+                .Where(f => !string.IsNullOrWhiteSpace(f.OcrContent))
+                .Select(f => f.OcrContent)
+                .ToList();
+
+            FullTextContent = contentParts.Any() ? string.Join("\n", contentParts) : null;
+            FullTextContentUpdatedTime = DateTime.UtcNow;
+        }
     }
 }

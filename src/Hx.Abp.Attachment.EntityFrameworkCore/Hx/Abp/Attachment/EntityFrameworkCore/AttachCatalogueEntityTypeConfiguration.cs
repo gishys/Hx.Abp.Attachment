@@ -36,6 +36,10 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.Property(d => d.ParentId).HasColumnName("PARENT_ID");
             builder.Property(d => d.IsStatic).HasColumnName("IS_STATIC").HasDefaultValue(false);
 
+            // 全文内容字段配置
+            builder.Property(d => d.FullTextContent).HasColumnName("FULL_TEXT_CONTENT").HasColumnType("text");
+            builder.Property(d => d.FullTextContentUpdatedTime).HasColumnName("FULL_TEXT_CONTENT_UPDATED_TIME");
+
             // 审计字段配置
             builder.Property(p => p.ExtraProperties).HasColumnName("EXTRA_PROPERTIES");
             builder.Property(p => p.ConcurrencyStamp).HasColumnName("CONCURRENCY_STAMP")
@@ -79,6 +83,15 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .HasFilter("\"IS_DELETED\" = false") // 软删除过滤
                 .IsUnique()
                 .HasAnnotation("ConcurrencyCheck", true);
+
+            // 全文搜索索引 - 通过原生SQL创建
+            // CREATE INDEX CONCURRENTLY IF NOT EXISTS IDX_ATTACH_CATALOGUES_FULLTEXT 
+            // ON "APPATTACH_CATALOGUES" USING GIN (
+            //     to_tsvector('chinese_fts', 
+            //         COALESCE("CATALOGUE_NAME", '') || ' ' || 
+            //         COALESCE("FULL_TEXT_CONTENT", '')
+            //     )
+            // );
 
             // 关系配置
             builder.HasMany(d => d.AttachFiles)

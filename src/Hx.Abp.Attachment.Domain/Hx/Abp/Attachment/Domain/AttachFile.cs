@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using Volo.Abp;
 using Volo.Abp.Domain.Entities.Auditing;
+using Hx.Abp.Attachment.Domain.Shared;
 
 namespace Hx.Abp.Attachment.Domain
 {
@@ -45,6 +46,21 @@ namespace Hx.Abp.Attachment.Domain
         /// 下载次数
         /// </summary>
         public virtual int DownloadTimes { get; protected set; }
+
+        /// <summary>
+        /// OCR提取的文本内容
+        /// </summary>
+        public virtual string? OcrContent { get; protected set; }
+
+        /// <summary>
+        /// OCR处理状态
+        /// </summary>
+        public virtual OcrProcessStatus OcrProcessStatus { get; protected set; }
+
+        /// <summary>
+        /// OCR处理时间
+        /// </summary>
+        public virtual DateTime? OcrProcessedTime { get; protected set; }
         /// <summary>
         /// 提供给ORM用来从数据库中获取实体，
         /// 无需初始化子集合因为它会被来自数据库的值覆盖
@@ -120,6 +136,43 @@ namespace Hx.Abp.Attachment.Domain
         {
             DocumentContent = documentContent;
         }
+
+        /// <summary>
+        /// 设置OCR内容
+        /// </summary>
+        /// <param name="ocrContent">OCR提取的文本内容</param>
+        public virtual void SetOcrContent(string? ocrContent)
+        {
+            OcrContent = ocrContent;
+            OcrProcessStatus = string.IsNullOrWhiteSpace(ocrContent) 
+                ? OcrProcessStatus.Failed 
+                : OcrProcessStatus.Completed;
+            OcrProcessedTime = DateTime.UtcNow;
+        }
+
+        /// <summary>
+        /// 设置OCR处理状态
+        /// </summary>
+        /// <param name="status">处理状态</param>
+        public virtual void SetOcrProcessStatus(OcrProcessStatus status)
+        {
+            OcrProcessStatus = status;
+            if (status == OcrProcessStatus.Completed)
+            {
+                OcrProcessedTime = DateTime.UtcNow;
+            }
+        }
+
+        /// <summary>
+        /// 清除OCR内容
+        /// </summary>
+        public virtual void ClearOcrContent()
+        {
+            OcrContent = null;
+            OcrProcessStatus = OcrProcessStatus.NotProcessed;
+            OcrProcessedTime = null;
+        }
+
         public virtual void Download()
         {
             DownloadTimes++;

@@ -1,4 +1,4 @@
-﻿using Hx.Abp.Attachment.Application.ArchAI.Contracts;
+using Hx.Abp.Attachment.Application.ArchAI.Contracts;
 using System.Text.RegularExpressions;
 
 namespace OcrTextComposer

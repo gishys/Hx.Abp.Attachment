@@ -1,9 +1,6 @@
 using Hx.Abp.Attachment.Application.Contracts;
-using Hx.Abp.Attachment.Domain;
 using Microsoft.AspNetCore.Mvc;
-using Volo.Abp;
 using Volo.Abp.AspNetCore.Mvc;
-using Volo.Abp.Domain.Repositories;
 
 namespace Hx.Abp.Attachment.Api.Controllers
 {
@@ -12,21 +9,10 @@ namespace Hx.Abp.Attachment.Api.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    public class OcrController : AbpController
+    public class OcrController(
+        IOcrService ocrService) : AbpController
     {
-        private readonly IOcrService _ocrService;
-        private readonly IRepository<AttachFile, Guid> _fileRepository;
-        private readonly IRepository<AttachCatalogue, Guid> _catalogueRepository;
-
-        public OcrController(
-            IOcrService ocrService,
-            IRepository<AttachFile, Guid> fileRepository,
-            IRepository<AttachCatalogue, Guid> catalogueRepository)
-        {
-            _ocrService = ocrService;
-            _fileRepository = fileRepository;
-            _catalogueRepository = catalogueRepository;
-        }
+        private readonly IOcrService _ocrService = ocrService;
 
         /// <summary>
         /// 处理单个文件的OCR
@@ -53,7 +39,7 @@ namespace Hx.Abp.Attachment.Api.Controllers
         {
             try
             {
-                if (fileIds == null || !fileIds.Any())
+                if (fileIds == null || fileIds.Count == 0)
                     return BadRequest("文件ID列表不能为空");
 
                 var results = await _ocrService.ProcessFilesAsync(fileIds);

@@ -6,9 +6,10 @@
 
 1. **PDF 转图片** - 使用 PdfPig + ImageSharp 跨平台将 PDF 转换为高质量图片
 2. **阿里云 OCR** - 使用真实的阿里云 OCR 服务进行文本识别
-3. **全文内容存储** - 在目录级别存储所有文件的 OCR 内容
-4. **全文搜索** - 基于 PostgreSQL 的全文搜索功能
-5. **批量处理** - 支持批量 OCR 处理和并发控制
+3. **URL 访问验证** - 通过 HTTP 请求验证文件 URL 可访问性
+4. **全文内容存储** - 在目录级别存储所有文件的 OCR 内容
+5. **全文搜索** - 基于 PostgreSQL 的全文搜索功能
+6. **批量处理** - 支持批量 OCR 处理和并发控制
 
 ## 功能特性
 
@@ -27,14 +28,21 @@
 -   智能文本组合和排序
 -   错误处理和重试机制
 
-### 3. 全文搜索
+### 3. URL 访问验证
+
+-   通过 HTTP HEAD 请求验证文件 URL 可访问性
+-   设置超时控制（默认 10 秒）
+-   详细的错误日志记录
+-   支持文件服务器架构
+
+### 4. 全文搜索
 
 -   基于 PostgreSQL 的`to_tsvector`和`plainto_tsquery`
 -   中文文本支持
 -   相关性排序
 -   高性能索引
 
-### 4. 批量处理
+### 5. 批量处理
 
 -   并发控制（最多 3 个并发）
 -   进度跟踪和状态管理
@@ -50,6 +58,7 @@ OcrService (OCR服务)
 ├── CrossPlatformPdfToImageConverter (跨平台PDF转图片)
 ├── UniversalTextRecognitionHelper (阿里云OCR)
 ├── OcrComposer (文本组合)
+├── IsUrlAccessibleAsync (URL访问验证)
 └── FullTextSearchRepository (全文搜索)
 ```
 
@@ -57,7 +66,7 @@ OcrService (OCR服务)
 
 ```
 PDF文件 → PDF转图片 → 阿里云OCR → 文本组合 → 存储到数据库
-图片文件 → 阿里云OCR → 文本组合 → 存储到数据库
+图片文件 → URL构建 → URL验证 → 阿里云OCR → 文本组合 → 存储到数据库
 ```
 
 ## 安装和配置
@@ -72,6 +81,9 @@ PDF文件 → PDF转图片 → 阿里云OCR → 文本组合 → 存储到数据
 
 <!-- 阿里云OCR SDK -->
 <PackageReference Include="AlibabaCloud.SDK.Ocr20191230" Version="2.0.24" />
+
+<!-- HTTP客户端支持 -->
+<PackageReference Include="System.Net.Http" />
 ```
 
 ### 2. 环境变量配置
@@ -88,8 +100,10 @@ ALIBABA_CLOUD_ACCESS_KEY_SECRET=your_access_key_secret
 {
     "FileServer": {
         "BaseUrl": "http://localhost:5000",
-        "BasePath": "D:/files",
-        "AttachmentPath": "host/attachment"
+        "BasePath": "D:/files"
+    },
+    "AppGlobalProperties": {
+        "FileServerBasePath": "D:/files"
     },
     "Ocr": {
         "PdfToImage": {
@@ -100,6 +114,9 @@ ALIBABA_CLOUD_ACCESS_KEY_SECRET=your_access_key_secret
         "AliyunOcr": {
             "MinConfidence": 0.8,
             "TimeoutSeconds": 30
+        },
+        "UrlValidation": {
+            "TimeoutSeconds": 10
         }
     }
 }
@@ -167,13 +184,24 @@ GET /api/ocr/catalogues/{catalogueId}/content
 
 ## 使用示例
 
-### 1. 处理 PDF 文件 OCR
+### 1. 处理图片文件 OCR（URL 方式）
 
 ```csharp
 // 注入服务
 private readonly IOcrService _ocrService;
 
-// 处理PDF文件
+// 处理图片文件（使用URL访问）
+public async Task<OcrResult> ProcessImageFile(Guid fileId)
+{
+    var result = await _ocrService.ProcessFileAsync(fileId);
+    return result;
+}
+```
+
+### 2. 处理 PDF 文件 OCR
+
+```csharp
+// 处理PDF文件（本地文件路径）
 public async Task<OcrResult> ProcessPdfFile(Guid fileId)
 {
     var result = await _ocrService.ProcessFileAsync(fileId);
@@ -181,7 +209,7 @@ public async Task<OcrResult> ProcessPdfFile(Guid fileId)
 }
 ```
 
-### 2. 批量处理文件 OCR
+### 3. 批量处理文件 OCR
 
 ```csharp
 public async Task<List<OcrResult>> ProcessMultipleFiles(List<Guid> fileIds)
@@ -191,7 +219,7 @@ public async Task<List<OcrResult>> ProcessMultipleFiles(List<Guid> fileIds)
 }
 ```
 
-### 3. 处理目录 OCR 并更新全文内容
+### 4. 处理目录 OCR 并更新全文内容
 
 ```csharp
 public async Task<CatalogueOcrResult> ProcessCatalogueOcr(Guid catalogueId)
@@ -201,7 +229,7 @@ public async Task<CatalogueOcrResult> ProcessCatalogueOcr(Guid catalogueId)
 }
 ```
 
-### 4. 获取文件 OCR 状态
+### 5. 获取文件 OCR 状态
 
 ```csharp
 public async Task<FileOcrStatusDto> GetFileOcrStatus(Guid fileId)
@@ -211,7 +239,7 @@ public async Task<FileOcrStatusDto> GetFileOcrStatus(Guid fileId)
 }
 ```
 
-### 5. 获取文件 OCR 内容
+### 6. 获取文件 OCR 内容
 
 ```csharp
 public async Task<FileOcrContentDto> GetFileOcrContent(Guid fileId)
@@ -221,7 +249,7 @@ public async Task<FileOcrContentDto> GetFileOcrContent(Guid fileId)
 }
 ```
 
-### 6. 获取目录全文内容
+### 7. 获取目录全文内容
 
 ```csharp
 public async Task<CatalogueFullTextDto> GetCatalogueFullText(Guid catalogueId)
@@ -231,7 +259,7 @@ public async Task<CatalogueFullTextDto> GetCatalogueFullText(Guid catalogueId)
 }
 ```
 
-### 4. 控制器使用示例
+### 8. 控制器使用示例
 
 ```csharp
 [ApiController]
@@ -282,6 +310,152 @@ public class DocumentController : AbpController
 }
 ```
 
+## 核心实现细节
+
+### 1. URL 访问验证
+
+```csharp
+/// <summary>
+/// 验证URL是否可访问
+/// </summary>
+private async Task<bool> IsUrlAccessibleAsync(string url)
+{
+    try
+    {
+        using var httpClient = new HttpClient();
+        httpClient.Timeout = TimeSpan.FromSeconds(10); // 设置10秒超时
+        
+        var response = await httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Head, url));
+        return response.IsSuccessStatusCode;
+    }
+    catch (Exception ex)
+    {
+        _logger.LogWarning(ex, "URL访问检查失败: {Url}", url);
+        return false;
+    }
+}
+```
+
+### 2. 图片文件处理（URL 方式）
+
+```csharp
+/// <summary>
+/// 处理图片文件
+/// </summary>
+private async Task<string?> ProcessImageFileAsync(AttachFile attachFile)
+{
+    try
+    {
+        // 构建文件URL
+        var fileServerBaseUrl = _configuration["FileServer:BaseUrl"] 
+            ?? throw new InvalidOperationException("配置项 FileServer:BaseUrl 不能为空");
+        var imageUrl = $"{fileServerBaseUrl.TrimEnd('/')}/host/attachment/{attachFile.FilePath.Replace('\\', '/')}";
+
+        // 验证URL是否可访问
+        if (!await IsUrlAccessibleAsync(imageUrl))
+        {
+            throw new FileNotFoundException($"图片文件URL不可访问: {imageUrl}");
+        }
+
+        // 使用阿里云OCR处理图片
+        var extractedText = await ProcessImageWithAliyunOcrAsync(imageUrl);
+        
+        _logger.LogInformation("图片文件 {FileName} 处理完成，提取文本长度: {TextLength}", 
+            attachFile.FileName, extractedText?.Length ?? 0);
+
+        return extractedText;
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "图片文件 {FileName} 处理失败", attachFile.FileName);
+        throw;
+    }
+}
+```
+
+### 3. PDF 文件处理（本地路径）
+
+```csharp
+/// <summary>
+/// 处理PDF文件
+/// </summary>
+private async Task<string?> ProcessPdfFileAsync(AttachFile attachFile)
+{
+    try
+    {
+        // 使用本地文件路径
+        var fileServerBasePath = _configuration[AppGlobalProperties.FileServerBasePath]
+            ?? throw new InvalidOperationException($"配置项 {AppGlobalProperties.FileServerBasePath} 不能为空");
+        var fullFilePath = Path.Combine(fileServerBasePath, "host", "attachment", attachFile.FilePath);
+
+        if (!File.Exists(fullFilePath))
+        {
+            throw new FileNotFoundException($"PDF文件不存在: {fullFilePath}");
+        }
+
+        // 创建临时目录
+        var tempDir = Path.Combine(Path.GetTempPath(), "pdf_ocr", Guid.NewGuid().ToString());
+        Directory.CreateDirectory(tempDir);
+        List<string> imagePaths = [];
+
+        try
+        {
+            // 将PDF转换为图片
+            imagePaths = await _pdfConverter.ConvertPdfToImagesAsync(fullFilePath, tempDir, "jpg", 300);
+            
+            if (imagePaths.Count == 0)
+            {
+                _logger.LogWarning("PDF文件 {FileName} 转换图片失败", attachFile.FileName);
+                return null;
+            }
+
+            // 对每个图片进行OCR处理
+            var allTexts = new List<string>();
+            foreach (var imagePath in imagePaths)
+            {
+                var imageText = await ProcessImageWithAliyunOcrAsync(imagePath);
+                if (!string.IsNullOrWhiteSpace(imageText))
+                {
+                    allTexts.Add(imageText);
+                }
+            }
+
+            // 合并所有页面的文本
+            var combinedText = string.Join("\n\n--- 页面分隔 ---\n\n", allTexts);
+            
+            _logger.LogInformation("PDF文件 {FileName} 处理完成，共 {PageCount} 页，提取文本长度: {TextLength}", 
+                attachFile.FileName, imagePaths.Count, combinedText.Length);
+
+            return combinedText;
+        }
+        finally
+        {
+            // 清理临时文件
+            if (imagePaths.Count != 0)
+            {
+                await _pdfConverter.CleanupTempImagesAsync(imagePaths);
+            }
+            try
+            {
+                if (Directory.Exists(tempDir))
+                {
+                    Directory.Delete(tempDir, true);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "清理临时目录失败: {TempDir}", tempDir);
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "PDF文件 {FileName} 处理失败", attachFile.FileName);
+        throw;
+    }
+}
+```
+
 ## 性能优化
 
 ### 1. 并发控制
@@ -290,19 +464,25 @@ public class DocumentController : AbpController
 -   避免过度占用系统资源
 -   可配置并发数量
 
-### 2. 临时文件管理
+### 2. URL 访问优化
+
+-   使用 HEAD 请求只获取响应头，不下载文件内容
+-   设置合理的超时时间（10 秒）
+-   详细的错误日志记录
+
+### 3. 临时文件管理
 
 -   自动创建和清理临时目录
 -   使用 GUID 避免文件名冲突
 -   异常情况下的资源清理
 
-### 3. 错误处理
+### 4. 错误处理
 
 -   详细的错误日志记录
 -   优雅的异常处理
 -   状态跟踪和恢复
 
-### 4. 缓存策略
+### 5. 缓存策略
 
 -   OCR 结果缓存
 -   避免重复处理
@@ -329,12 +509,14 @@ public class DocumentController : AbpController
 -   OCR 处理时间统计
 -   文件大小和处理时间关系
 -   成功率统计
+-   URL 访问成功率监控
 
 ### 3. 错误监控
 
 -   OCR 失败原因分析
 -   文件格式支持统计
 -   网络连接问题监控
+-   URL 访问失败统计
 
 ## 故障排除
 
@@ -353,6 +535,13 @@ public class DocumentController : AbpController
 -   确认网络连接
 -   验证文件 URL 可访问性
 
+#### URL 访问验证失败
+
+-   检查 FileServer:BaseUrl 配置
+-   确认文件服务器是否正常运行
+-   验证网络连接和防火墙设置
+-   检查文件路径是否正确
+
 #### 内存不足
 
 -   减少并发数量
@@ -366,6 +555,15 @@ public class DocumentController : AbpController
 ```csharp
 // 在代码中启用详细日志
 _logger.LogDebug("处理文件: {FileName}, 类型: {FileType}", file.FileName, file.FileType);
+_logger.LogDebug("构建URL: {Url}", imageUrl);
+```
+
+#### 检查 URL 访问
+
+```csharp
+// 测试URL访问
+var isAccessible = await IsUrlAccessibleAsync(testUrl);
+_logger.LogInformation("URL访问测试: {Url} -> {Result}", testUrl, isAccessible);
 ```
 
 #### 检查临时文件
@@ -410,6 +608,12 @@ var testResult = await UniversalTextRecognitionHelper.JpgUniversalTextRecognitio
 -   进度通知
 -   结果回调
 
+### 5. 高级 URL 验证
+
+-   支持多种认证方式
+-   自定义请求头
+-   重试机制
+
 ## 部署指南
 
 ### 1. 生产环境配置
@@ -418,8 +622,10 @@ var testResult = await UniversalTextRecognitionHelper.JpgUniversalTextRecognitio
 {
     "FileServer": {
         "BaseUrl": "https://your-domain.com",
-        "BasePath": "/app/files",
-        "AttachmentPath": "host/attachment"
+        "BasePath": "/app/files"
+    },
+    "AppGlobalProperties": {
+        "FileServerBasePath": "/app/files"
     },
     "Ocr": {
         "PdfToImage": {
@@ -431,6 +637,9 @@ var testResult = await UniversalTextRecognitionHelper.JpgUniversalTextRecognitio
         "AliyunOcr": {
             "MinConfidence": 0.8,
             "TimeoutSeconds": 60
+        },
+        "UrlValidation": {
+            "TimeoutSeconds": 15
         }
     }
 }
@@ -450,6 +659,13 @@ export ALIBABA_CLOUD_ACCESS_KEY_SECRET=your_production_key_secret
 -   PostgreSQL 12+
 -   足够的内存（建议 4GB+）
 -   网络连接到阿里云
+-   文件服务器可访问
+
+### 4. 网络配置
+
+-   确保应用服务器可以访问文件服务器
+-   配置适当的防火墙规则
+-   设置合理的超时时间
 
 ## 总结
 
@@ -457,9 +673,10 @@ export ALIBABA_CLOUD_ACCESS_KEY_SECRET=your_production_key_secret
 
 1. **完整的 PDF 处理流程** - 从 PDF 到图片到文本
 2. **真实的 OCR 服务** - 基于阿里云 OCR 的高质量识别
-3. **高效的批量处理** - 并发控制和资源管理
-4. **完善的错误处理** - 详细的日志和异常处理
-5. **灵活的配置** - 支持多种配置选项
-6. **丰富的 API 接口** - 完整的 RESTful API
+3. **URL 访问验证** - 通过 HTTP 请求验证文件可访问性
+4. **高效的批量处理** - 并发控制和资源管理
+5. **完善的错误处理** - 详细的日志和异常处理
+6. **灵活的配置** - 支持多种配置选项
+7. **丰富的 API 接口** - 完整的 RESTful API
 
-通过这个解决方案，您可以轻松实现企业级的文档 OCR 处理和全文搜索功能，提高文档管理效率和用户体验。
+通过这个解决方案，您可以轻松实现企业级的文档 OCR 处理和全文搜索功能，提高文档管理效率和用户体验。URL 访问验证确保了在分布式架构中文件访问的可靠性。

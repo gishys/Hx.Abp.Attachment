@@ -1,27 +1,32 @@
+using Hx.Abp.Attachment.Application.ArchAI;
 using Hx.Abp.Attachment.Application.Contracts;
 using Hx.Abp.Attachment.Application.Utils;
-using Hx.Abp.Attachment.Application.ArchAI;
-using Hx.Abp.Attachment.Application.ArchAI.Contracts;
 using Hx.Abp.Attachment.Domain;
 using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using OcrTextComposer;
+using System.Net.Http;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
-using OcrTextComposer;
 
 namespace Hx.Abp.Attachment.Application
 {
     /// <summary>
     /// OCR服务实现
     /// </summary>
-    public class OcrService : DomainService, IOcrService
+    public class OcrService(
+        IRepository<AttachCatalogue, Guid> catalogueRepository,
+        IRepository<AttachFile, Guid> fileRepository,
+        ILogger<OcrService> logger,
+        IConfiguration configuration,
+        CrossPlatformPdfToImageConverter pdfConverter) : DomainService, IOcrService
     {
-        private readonly IRepository<AttachCatalogue, Guid> _catalogueRepository;
-        private readonly IRepository<AttachFile, Guid> _fileRepository;
-        private readonly ILogger<OcrService> _logger;
-        private readonly IConfiguration _configuration;
-        private readonly CrossPlatformPdfToImageConverter _pdfConverter;
+        private readonly IRepository<AttachCatalogue, Guid> _catalogueRepository = catalogueRepository;
+        private readonly IRepository<AttachFile, Guid> _fileRepository = fileRepository;
+        private readonly ILogger<OcrService> _logger = logger;
+        private readonly IConfiguration _configuration = configuration;
+        private readonly CrossPlatformPdfToImageConverter _pdfConverter = pdfConverter;
 
         // 支持OCR的文件类型
         private static readonly HashSet<string> SupportedImageTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -33,20 +38,6 @@ namespace Hx.Abp.Attachment.Application
         {
             ".pdf"
         };
-
-        public OcrService(
-            IRepository<AttachCatalogue, Guid> catalogueRepository,
-            IRepository<AttachFile, Guid> fileRepository,
-            ILogger<OcrService> logger,
-            IConfiguration configuration,
-            CrossPlatformPdfToImageConverter pdfConverter)
-        {
-            _catalogueRepository = catalogueRepository;
-            _fileRepository = fileRepository;
-            _logger = logger;
-            _configuration = configuration;
-            _pdfConverter = pdfConverter;
-        }
 
         /// <summary>
         /// 检查文件是否支持OCR
@@ -138,8 +129,9 @@ namespace Hx.Abp.Attachment.Application
         {
             try
             {
-                // 获取文件完整路径
-                var fileServerBasePath = _configuration[AppGlobalProperties.FileServerBasePath];
+                // 在使用Path.Combine前，确保fileServerBasePath不为null，否则抛出异常
+                var fileServerBasePath = _configuration[AppGlobalProperties.FileServerBasePath]
+                    ?? throw new InvalidOperationException($"配置项 {AppGlobalProperties.FileServerBasePath} 不能为空");
                 var fullFilePath = Path.Combine(fileServerBasePath, "host", "attachment", attachFile.FilePath);
 
                 if (!File.Exists(fullFilePath))
@@ -150,14 +142,14 @@ namespace Hx.Abp.Attachment.Application
                 // 创建临时目录
                 var tempDir = Path.Combine(Path.GetTempPath(), "pdf_ocr", Guid.NewGuid().ToString());
                 Directory.CreateDirectory(tempDir);
-                List<string> imagePaths = new();
+                List<string> imagePaths = [];
 
                 try
                 {
                     // 将PDF转换为图片
                     imagePaths = await _pdfConverter.ConvertPdfToImagesAsync(fullFilePath, tempDir, "jpg", 300);
                     
-                    if (!imagePaths.Any())
+                    if (imagePaths.Count == 0)
                     {
                         _logger.LogWarning("PDF文件 {FileName} 转换图片失败", attachFile.FileName);
                         return null;
@@ -185,7 +177,7 @@ namespace Hx.Abp.Attachment.Application
                 finally
                 {
                     // 清理临时文件
-                    if (imagePaths.Any())
+                    if (imagePaths.Count != 0)
                     {
                         await _pdfConverter.CleanupTempImagesAsync(imagePaths);
                     }
@@ -216,17 +208,19 @@ namespace Hx.Abp.Attachment.Application
         {
             try
             {
-                // 获取文件完整路径
-                var fileServerBasePath = _configuration[AppGlobalProperties.FileServerBasePath];
-                var fullFilePath = Path.Combine(fileServerBasePath, "host", "attachment", attachFile.FilePath);
+                // 构建文件URL
+                var fileServerBaseUrl = _configuration[AppGlobalProperties.FileServerBasePath] 
+                    ?? throw new InvalidOperationException("配置项 FileServer:BaseUrl 不能为空");
+                var imageUrl = $"{fileServerBaseUrl.TrimEnd('/')}/host/attachment/{attachFile.FilePath.Replace('\\', '/')}";
 
-                if (!File.Exists(fullFilePath))
+                // 验证URL是否可访问
+                if (!await IsUrlAccessibleAsync(imageUrl))
                 {
-                    throw new FileNotFoundException($"图片文件不存在: {fullFilePath}");
+                    throw new FileNotFoundException($"图片文件URL不可访问: {imageUrl}");
                 }
 
                 // 使用阿里云OCR处理图片
-                var extractedText = await ProcessImageWithAliyunOcrAsync(fullFilePath);
+                var extractedText = await ProcessImageWithAliyunOcrAsync(imageUrl);
                 
                 _logger.LogInformation("图片文件 {FileName} 处理完成，提取文本长度: {TextLength}", 
                     attachFile.FileName, extractedText?.Length ?? 0);
@@ -243,24 +237,21 @@ namespace Hx.Abp.Attachment.Application
         /// <summary>
         /// 使用阿里云OCR处理图片
         /// </summary>
-        private async Task<string?> ProcessImageWithAliyunOcrAsync(string imagePath)
+        private async Task<string?> ProcessImageWithAliyunOcrAsync(string imageUrl)
         {
             try
             {
                 // 获取阿里云OCR配置
-                var accessKeyId = Environment.GetEnvironmentVariable("ALIBABA_CLOUD_ACCESS_KEY_ID") 
+                var accessKeyId = Environment.GetEnvironmentVariable("ALIBABA_CLOUD_ACCESS_KEY_ID")
                     ?? throw new InvalidOperationException("缺少环境变量 ALIBABA_CLOUD_ACCESS_KEY_ID");
-                var accessKeySecret = Environment.GetEnvironmentVariable("ALIBABA_CLOUD_ACCESS_KEY_SECRET") 
+                var accessKeySecret = Environment.GetEnvironmentVariable("ALIBABA_CLOUD_ACCESS_KEY_SECRET")
                     ?? throw new InvalidOperationException("缺少环境变量 ALIBABA_CLOUD_ACCESS_KEY_SECRET");
-
-                // 将本地文件路径转换为URL（这里假设有文件服务器）
-                var imageUrl = ConvertLocalPathToUrl(imagePath);
 
                 // 调用阿里云OCR
                 var ocrResult = await UniversalTextRecognitionHelper.JpgUniversalTextRecognition(
                     accessKeyId, accessKeySecret, imageUrl);
 
-                if (ocrResult?.Results?.Any() == true)
+                if (ocrResult?.Results?.Count > 0)
                 {
                     // 使用OcrComposer组合文本
                     var composedText = OcrComposer.Compose(ocrResult);
@@ -271,7 +262,7 @@ namespace Hx.Abp.Attachment.Application
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "阿里云OCR处理失败: {ImagePath}", imagePath);
+                _logger.LogError(ex, "阿里云OCR处理失败: {ImageUrl}", imageUrl);
                 throw;
             }
         }
@@ -289,12 +280,32 @@ namespace Hx.Abp.Attachment.Application
             var fileServerBasePath = _configuration[AppGlobalProperties.FileServerBasePath];
             if (!string.IsNullOrEmpty(fileServerBasePath) && localPath.StartsWith(fileServerBasePath))
             {
-                var relativePath = localPath.Substring(fileServerBasePath.Length).Replace('\\', '/');
+                var relativePath = localPath[fileServerBasePath.Length..].Replace('\\', '/');
                 return $"{fileServerBaseUrl.TrimEnd('/')}{relativePath}";
             }
 
             // 如果无法转换，返回原始路径（假设已经是URL）
             return localPath;
+        }
+
+        /// <summary>
+        /// 验证URL是否可访问
+        /// </summary>
+        private async Task<bool> IsUrlAccessibleAsync(string url)
+        {
+            try
+            {
+                using var httpClient = new HttpClient();
+                httpClient.Timeout = TimeSpan.FromSeconds(10); // 设置10秒超时
+                
+                var response = await httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Head, url));
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "URL访问检查失败: {Url}", url);
+                return false;
+            }
         }
 
         /// <summary>
@@ -344,10 +355,10 @@ namespace Hx.Abp.Attachment.Application
                     return result;
                 }
 
-                var files = catalogue.AttachFiles?.ToList() ?? new List<AttachFile>();
+                var files = catalogue.AttachFiles?.ToList() ?? [];
                 result.ProcessedFilesCount = files.Count;
 
-                if (!files.Any())
+                if (files.Count == 0)
                 {
                     result.IsSuccess = true;
                     result.CombinedFullText = null;
@@ -371,7 +382,7 @@ namespace Hx.Abp.Attachment.Application
                     .Select(r => r.ExtractedText)
                     .ToList();
 
-                if (successfulTexts.Any())
+                if (successfulTexts.Count != 0)
                 {
                     result.CombinedFullText = string.Join("\n\n--- 文件分隔 ---\n\n", successfulTexts);
                     catalogue.SetFullTextContent(result.CombinedFullText);
@@ -405,12 +416,7 @@ namespace Hx.Abp.Attachment.Application
         /// </summary>
         public async Task<FileOcrStatusDto> GetFileOcrStatusAsync(Guid fileId)
         {
-            var attachFile = await _fileRepository.GetAsync(fileId);
-            if (attachFile == null)
-            {
-                throw new InvalidOperationException($"文件不存在: {fileId}");
-            }
-
+            var attachFile = await _fileRepository.GetAsync(fileId) ?? throw new InvalidOperationException($"文件不存在: {fileId}");
             return new FileOcrStatusDto
             {
                 FileId = attachFile.Id,
@@ -427,12 +433,7 @@ namespace Hx.Abp.Attachment.Application
         /// </summary>
         public async Task<FileOcrContentDto> GetFileOcrContentAsync(Guid fileId)
         {
-            var attachFile = await _fileRepository.GetAsync(fileId);
-            if (attachFile == null)
-            {
-                throw new InvalidOperationException($"文件不存在: {fileId}");
-            }
-
+            var attachFile = await _fileRepository.GetAsync(fileId) ?? throw new InvalidOperationException($"文件不存在: {fileId}");
             return new FileOcrContentDto
             {
                 FileId = attachFile.Id,
@@ -448,12 +449,7 @@ namespace Hx.Abp.Attachment.Application
         /// </summary>
         public async Task<CatalogueFullTextDto> GetCatalogueFullTextAsync(Guid catalogueId)
         {
-            var catalogue = await _catalogueRepository.GetAsync(catalogueId);
-            if (catalogue == null)
-            {
-                throw new InvalidOperationException($"目录不存在: {catalogueId}");
-            }
-
+            var catalogue = await _catalogueRepository.GetAsync(catalogueId) ?? throw new InvalidOperationException($"目录不存在: {catalogueId}");
             return new CatalogueFullTextDto
             {
                 CatalogueId = catalogue.Id,

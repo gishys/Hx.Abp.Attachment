@@ -1,4 +1,4 @@
-﻿using Hx.Abp.Attachment.Domain.Shared;
+using Hx.Abp.Attachment.Domain.Shared;
 using Volo.Abp.Domain.Repositories;
 
 namespace Hx.Abp.Attachment.Domain
@@ -33,5 +33,58 @@ namespace Hx.Abp.Attachment.Domain
             CancellationToken cancellationToken = default);
         Task<AttachCatalogue?> GetAsync(Guid? parentId, string catalogueName, string reference, int referenceType);
         Task<AttachCatalogue?> GetByFileIdAsync(Guid fileId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 全文检索分类
+        /// </summary>
+        /// <param name="searchText">搜索文本</param>
+        /// <param name="reference">业务引用</param>
+        /// <param name="referenceType">业务类型</param>
+        /// <param name="limit">返回数量限制</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>匹配的分类列表</returns>
+        Task<List<AttachCatalogue>> SearchByFullTextAsync(
+                    string searchText,
+                    string? reference = null,
+                    int? referenceType = null,
+                    int limit = 10,
+                    CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 语义检索分类
+        /// </summary>
+        /// <param name="queryEmbedding">查询向量</param>
+        /// <param name="reference">业务引用</param>
+        /// <param name="referenceType">业务类型</param>
+        /// <param name="limit">返回数量限制</param>
+        /// <param name="similarityThreshold">相似度阈值</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>匹配的分类列表</returns>
+        Task<List<AttachCatalogue>> SearchBySemanticAsync(
+            float[] queryEmbedding,
+            string? reference = null,
+            int? referenceType = null,
+            int limit = 10,
+            float similarityThreshold = 0.7f,
+            CancellationToken cancellationToken = default);
+        /// <summary>
+        /// 混合搜索：结合全文检索和语义检索
+        /// </summary>
+        /// <param name="searchText">搜索文本</param>
+        /// <param name="reference">业务引用</param>
+        /// <param name="referenceType">业务类型</param>
+        /// <param name="limit">返回数量限制</param>
+        /// <param name="queryEmbedding">语义向量</param>
+        /// <param name="similarityThreshold">相似度阈值</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>匹配的分类列表</returns>
+        Task<List<AttachCatalogue>> SearchByHybridAsync(
+            string searchText,
+            string? reference = null,
+            int? referenceType = null,
+            int limit = 10,
+            float[]? queryEmbedding = null,
+            float similarityThreshold = 0.7f,
+            CancellationToken cancellationToken = default);
     }
 }

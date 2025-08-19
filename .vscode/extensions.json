@@ -1,0 +1,16 @@
+{
+    "recommendations": [
+        "ms-dotnettools.csharp",
+        "ms-dotnettools.vscode-dotnet-runtime",
+        "ms-dotnettools.csdevkit",
+        "ms-vscode.vscode-json",
+        "ms-vscode.powershell",
+        "formulahendry.dotnet-test-explorer",
+        "kreativ-software.csharpextensions",
+        "adrianwilczynski.namespace",
+        "ms-vscode.vscode-typescript-next",
+        "bradlc.vscode-tailwindcss",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-eslint"
+    ]
+}

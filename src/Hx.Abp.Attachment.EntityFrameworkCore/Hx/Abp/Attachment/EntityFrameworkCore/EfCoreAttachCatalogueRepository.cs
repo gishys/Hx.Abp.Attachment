@@ -1,8 +1,8 @@
-﻿using Hx.Abp.Attachment.Domain;
+using Hx.Abp.Attachment.Domain;
 using Hx.Abp.Attachment.Domain.Shared;
-using iTextSharp.text.pdf;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
+using Npgsql;
+using NpgsqlTypes;
 using System.Linq.Dynamic.Core;
 using Volo.Abp;
 using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
@@ -73,7 +73,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     d.CatalogueName == input.CatalogueName);
                 }
             }
-            queryable = queryable.Where(predicate);
+            queryable = queryable.Where(predicate!);
             return await queryable.OrderBy(d => d.Reference)
              .ThenBy(d => d.SequenceNumber)
              .ToListAsync(cancellationToken);
@@ -95,10 +95,10 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             {
                 throw new UserFriendlyException("输入条件不能为空！");
             }
-            queryable = queryable.Where(predicate);
+            queryable = queryable.Where(predicate!);
             var ids = await queryable.Select(d => d.Id)
             .ToListAsync(cancellationToken);
-            await DeleteManyAsync(ids);
+            await DeleteManyAsync(ids, cancellationToken: cancellationToken);
         }
         public async Task<List<AttachCatalogue>> VerifyUploadAsync(
             List<GetAttachListInput> inputs,
@@ -107,7 +107,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         {
             var queryable = (await GetDbSetAsync()).IncludeDetails(includeDetails);
             var predicate = GetCataloguesByReference(inputs);
-            queryable = queryable.Where(predicate);
+            queryable = queryable.Where(predicate!);
             return await queryable.OrderBy(d => d.Reference)
              .ThenBy(d => d.SequenceNumber)
              .ToListAsync(cancellationToken);
@@ -149,7 +149,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             {
                 throw new UserFriendlyException("输入条件不能为空！");
             }
-            return await (await GetDbSetAsync()).IncludeDetails(details).Where(predicate).OrderBy(d => d.SequenceNumber).ToListAsync();
+            return await (await GetDbSetAsync()).IncludeDetails(details).Where(predicate!).OrderBy(d => d.SequenceNumber).ToListAsync();
         }
         public async Task DeleteRootCatalogueAsync(List<GetCatalogueInput> inputs)
         {
@@ -167,7 +167,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             {
                 throw new UserFriendlyException("输入条件不能为空！");
             }
-            queryable = queryable.Where(predicate);
+            queryable = queryable.Where(predicate!);
             var ids = await queryable.Select(d => d.Id).ToListAsync();
             await DeleteManyAsync(ids);
         }
@@ -178,7 +178,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .OrderByDescending(d => d.SequenceNumber)
                 .Select(d => d.SequenceNumber).FirstOrDefaultAsync();
         }
-        private ExpressionStarter<AttachCatalogue> GetCataloguesByReference(List<GetAttachListInput> inputs)
+        private static ExpressionStarter<AttachCatalogue> GetCataloguesByReference(List<GetAttachListInput> inputs)
         {
             var predicate = PredicateBuilder.New<AttachCatalogue>(true);
             foreach (var input in inputs)
@@ -208,7 +208,241 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         public async Task<AttachCatalogue?> GetByFileIdAsync(Guid fileId, CancellationToken cancellationToken = default)
         {
             return await (await GetDbSetAsync())
-                .FirstOrDefaultAsync(u => u.AttachFiles.Any(d => d.Id == fileId));
+                .FirstOrDefaultAsync(u => u.AttachFiles.Any(d => d.Id == fileId), cancellationToken: cancellationToken);
+        }
+
+        // 当前已有的全文搜索方法保持不变
+        public async Task<List<AttachCatalogue>> SearchByFullTextAsync(
+            string searchText,
+            string? reference = null,
+            int? referenceType = null,
+            int limit = 10,
+            CancellationToken cancellationToken = default)
+        {
+            // 保持现有实现不变
+            try
+            {
+                // 基础SQL，仅包含全文搜索
+                var sql = @"
+                    WITH RankedResults AS (
+                        SELECT c.*, 
+                            ts_rank_cd(
+                                setweight(to_tsvector('chinese', coalesce(c.""CATALOGUE_NAME"",'')), 'A') || 
+                                setweight(to_tsvector('chinese', coalesce(c.""REFERENCE"",'')), 'B'),
+                                to_tsquery('chinese', @searchQuery)
+                            ) as rank
+                        FROM ""ATTACH_CATALOGUES"" c
+                        WHERE (
+                            setweight(to_tsvector('chinese', coalesce(c.""CATALOGUE_NAME"",'')), 'A') ||
+                            setweight(to_tsvector('chinese', coalesce(c.""REFERENCE"",'')), 'B')
+                        ) @@ to_tsquery('chinese', @searchQuery)
+                    )
+                    SELECT * FROM RankedResults 
+                    WHERE rank > 0";
+
+                // 转换搜索文本为tsquery格式
+                var searchQuery = string.Join(" & ", 
+                    searchText.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(term => term + ":*")); // 使用前缀匹配
+
+                var parameters = new List<object> { 
+                    new NpgsqlParameter("@searchQuery", searchQuery)
+                };
+
+                // 添加业务引用过滤
+                if (!string.IsNullOrEmpty(reference))
+                {
+                    sql += " AND c.\"REFERENCE\" = @reference";
+                    parameters.Add(new NpgsqlParameter("@reference", reference));
+                }
+
+                if (referenceType.HasValue)
+                {
+                    sql += " AND c.\"REFERENCETYPE\" = @referenceType";
+                    parameters.Add(new NpgsqlParameter("@referenceType", referenceType.Value));
+                }
+
+                // 按全文搜索分数降序排列并限制结果数量
+                sql += @" 
+                    ORDER BY rank DESC
+                    LIMIT @limit";
+                
+                parameters.Add(new NpgsqlParameter("@limit", limit));
+
+                var dbContext = await GetDbContextAsync();
+                var results = await dbContext.Set<AttachCatalogue>()
+                    .FromSqlRaw(sql, [.. parameters])
+                    .IncludeDetails()
+                    .ToListAsync(cancellationToken);
+
+                return results;
+            }
+            catch (Exception ex)
+            {
+                throw new UserFriendlyException("全文搜索执行失败", ex.Message);
+            }
+        }
+
+        // 当前已有的语义搜索方法保持不变
+        public async Task<List<AttachCatalogue>> SearchBySemanticAsync(
+            float[] queryEmbedding,
+            string? reference = null,
+            int? referenceType = null,
+            int limit = 10,
+            float similarityThreshold = 0.7f,
+            CancellationToken cancellationToken = default)
+        {
+            // 保持现有实现不变
+            var sql = @"
+                SELECT c.*, 1 - (c.embedding <=> @queryEmbedding) as similarity_score
+                FROM ""ATTACH_CATALOGUES"" c
+                WHERE c.embedding IS NOT NULL";
+
+            var parameters = new List<object> {
+                new NpgsqlParameter("@queryEmbedding", queryEmbedding) 
+                { NpgsqlDbType = NpgsqlDbType.Real | NpgsqlDbType.Array }
+            };
+
+            // 添加业务引用过滤
+            if (!string.IsNullOrEmpty(reference))
+            {
+                sql += " AND c.\"REFERENCE\" = @reference";
+                parameters.Add(new NpgsqlParameter("@reference", reference));
+            }
+
+            if (referenceType.HasValue)
+            {
+                sql += " AND c.\"REFERENCETYPE\" = @referenceType";
+                parameters.Add(new NpgsqlParameter("@referenceType", referenceType.Value));
+            }
+
+            // 添加相似度过滤和排序
+            sql += @" 
+                AND 1 - (c.embedding <=> @queryEmbedding) >= @similarityThreshold
+                ORDER BY c.embedding <=> @queryEmbedding
+                LIMIT @limit";
+
+            parameters.Add(new NpgsqlParameter("@similarityThreshold", similarityThreshold));
+            parameters.Add(new NpgsqlParameter("@limit", limit));
+
+            var dbContext = await GetDbContextAsync();
+            var results = await dbContext.Set<AttachCatalogue>()
+                .FromSqlRaw(sql, [.. parameters])
+                .IncludeDetails()
+                .ToListAsync(cancellationToken);
+
+            return results;
+        }
+
+        /// <summary>
+        /// 混合搜索：结合全文检索和语义检索
+        /// </summary>
+        /// <param name="searchText">搜索文本</param>
+        /// <param name="reference">业务引用</param>
+        /// <param name="referenceType">业务类型</param>
+        /// <param name="limit">返回数量限制</param>
+        /// <param name="queryEmbedding">语义向量</param>
+        /// <param name="similarityThreshold">相似度阈值</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>匹配的分类列表</returns>
+        public async Task<List<AttachCatalogue>> SearchByHybridAsync(
+            string searchText,
+            string? reference = null,
+            int? referenceType = null,
+            int limit = 10,
+            float[]? queryEmbedding = null,
+            float similarityThreshold = 0.7f,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                // 基础SQL，包含全文搜索和向量相似度计算
+                var sql = @"
+                    WITH RankedResults AS (
+                        SELECT c.*, 
+                            CASE 
+                                WHEN @hasEmbedding::boolean = true THEN
+                                    (1 - (c.embedding <=> @queryEmbedding::real[])) * 0.6 + -- 向量相似度权重60%
+                                    ts_rank_cd(
+                                        setweight(to_tsvector('chinese', coalesce(c.""CATALOGUE_NAME"",'')), 'A') || 
+                                        setweight(to_tsvector('chinese', coalesce(c.""REFERENCE"",'')), 'B'),
+                                        to_tsquery('chinese', @searchQuery)
+                                    ) * 0.4 -- 全文搜索权重40%
+                                ELSE
+                                    ts_rank_cd(
+                                        setweight(to_tsvector('chinese', coalesce(c.""CATALOGUE_NAME"",'')), 'A') || 
+                                        setweight(to_tsvector('chinese', coalesce(c.""REFERENCE"",'')), 'B'),
+                                        to_tsquery('chinese', @searchQuery)
+                                    )
+                            END as rank
+                        FROM ""ATTACH_CATALOGUES"" c
+                        WHERE (
+                            setweight(to_tsvector('chinese', coalesce(c.""CATALOGUE_NAME"",'')), 'A') ||
+                            setweight(to_tsvector('chinese', coalesce(c.""REFERENCE"",'')), 'B')
+                        ) @@ to_tsquery('chinese', @searchQuery)
+                        AND (@hasEmbedding::boolean = false OR 
+                             (c.embedding IS NOT NULL AND 1 - (c.embedding <=> @queryEmbedding::real[]) >= @similarityThreshold))
+                    )
+                    SELECT * FROM RankedResults 
+                    WHERE rank > 0";
+
+                // 转换搜索文本为tsquery格式
+                var searchQuery = string.Join(" & ", 
+                    searchText.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(term => term + ":*")); // 使用前缀匹配
+
+                var parameters = new List<object> { 
+                    new NpgsqlParameter("@searchQuery", searchQuery),
+                    new NpgsqlParameter("@hasEmbedding", queryEmbedding != null),
+                    new NpgsqlParameter("@queryEmbedding", 
+                        queryEmbedding ?? []) { NpgsqlDbType = NpgsqlDbType.Real | NpgsqlDbType.Array },
+                    new NpgsqlParameter("@similarityThreshold", similarityThreshold)
+                };
+
+                // 添加业务引用过滤
+                if (!string.IsNullOrEmpty(reference))
+                {
+                    sql += " AND c.\"REFERENCE\" = @reference";
+                    parameters.Add(new NpgsqlParameter("@reference", reference));
+                }
+
+                if (referenceType.HasValue)
+                {
+                    sql += " AND c.\"REFERENCETYPE\" = @referenceType";
+                    parameters.Add(new NpgsqlParameter("@referenceType", referenceType.Value));
+                }
+
+                // 按综合排序分数降序排列并限制结果数量
+                sql += @" 
+                    ORDER BY rank DESC
+                    LIMIT @limit";
+                
+                parameters.Add(new NpgsqlParameter("@limit", limit));
+
+                var dbContext = await GetDbContextAsync();
+                var results = await dbContext.Set<AttachCatalogue>()
+                    .FromSqlRaw(sql, [.. parameters])
+                    .IncludeDetails()
+                    .ToListAsync(cancellationToken);
+
+                return results;
+            }
+            catch (Exception ex)
+            {
+                throw new UserFriendlyException("混合搜索执行失败", ex.Message);
+            }
         }
     }
 }
+
+//-- 需要添加向量运算符支持
+//CREATE EXTENSION IF NOT EXISTS vector;
+
+//-- 创建混合索引
+//CREATE INDEX idx_attach_catalogues_hybrid ON "ATTACH_CATALOGUES" USING gin(
+//    (
+//        setweight(to_tsvector('chinese', coalesce("CATALOGUE_NAME",'')), 'A') ||
+//        setweight(to_tsvector('chinese', coalesce("REFERENCE",'')), 'B')
+//    )
+//);
+//CREATE INDEX idx_attach_catalogues_embedding ON "ATTACH_CATALOGUES" USING ivfflat (embedding vector_cosine_ops);

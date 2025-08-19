@@ -1,4 +1,4 @@
-﻿namespace Hx.Abp.Attachment.Application.Contracts
+namespace Hx.Abp.Attachment.Application.Contracts
 {
     public class AttachFileDto
     {
@@ -11,12 +11,12 @@
         /// </summary>
         public int SequenceNumber { get; set; }
         public Guid Id { get; set; }
-        public string FilePath { get; set; }
-        public string FileName { get; set; }
+        public required string FilePath { get; set; }
+        public required string FileName { get; set; }
         /// <summary>
         /// 文件类型
         /// </summary>
-        public string FileType { get; set; }
+        public required string FileType { get; set; }
         /// <summary>
         /// 文件大小
         /// </summary>

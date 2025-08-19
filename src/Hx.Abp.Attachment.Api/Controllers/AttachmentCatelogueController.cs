@@ -40,7 +40,7 @@ namespace Hx.Abp.Attachment.Api.Controllers
         }
         [Route("uploadfiles")]
         [HttpPost]
-        public virtual async Task<List<AttachFileDto>> CreateFilesAsync(Guid id)
+        public virtual async Task<List<AttachFileDto>> CreateFilesAsync(Guid? id, string? prefix)
         {
             var files = Request.Form.Files;
             if (files.Count > 0)
@@ -58,7 +58,7 @@ namespace Hx.Abp.Attachment.Api.Controllers
                     var attachFile = new AttachFileCreateDto() { DocumentContent = fileBytes, FileAlias = file.FileName };
                     inputs.Add(attachFile);
                 }
-                return await AttachCatalogueAppService.CreateFilesAsync(id, inputs);
+                return await AttachCatalogueAppService.CreateFilesAsync(id, inputs, prefix);
             }
             throw new UserFriendlyException("上传文件为空！");
         }

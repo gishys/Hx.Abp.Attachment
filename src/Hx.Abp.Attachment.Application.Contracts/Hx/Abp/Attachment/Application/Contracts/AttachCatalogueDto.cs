@@ -19,7 +19,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// </summary>
         public int ReferenceType { get; set; }
         /// <summary>
-        /// 目录名称
+        /// 分类名称
         /// </summary>
         public required string CatalogueName { get; set; }
         /// <summary>
@@ -54,6 +54,12 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// 核验通过
         /// </summary>
         public bool VerificationPassed { get; set; }
+
+        /// <summary>
+        /// 语义检索向量
+        /// </summary>
+        public float[]? Embedding { get; set; }
+
         /// <summary>
         /// 子文件夹
         /// </summary>

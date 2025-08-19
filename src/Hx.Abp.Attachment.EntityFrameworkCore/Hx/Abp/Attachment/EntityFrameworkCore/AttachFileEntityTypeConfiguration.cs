@@ -1,4 +1,5 @@
 ﻿using Hx.Abp.Attachment.Domain;
+using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Volo.Abp.EntityFrameworkCore.Modeling;
@@ -28,6 +29,11 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.Property(d => d.FileType).HasColumnName("FILETYPE").HasMaxLength(10);
             builder.Property(d => d.FileSize).HasColumnName("FILESIZE").HasDefaultValue(0);
             builder.Property(d => d.DownloadTimes).HasColumnName("DOWNLOADTIMES").HasDefaultValue(0);
+
+            // OCR相关字段配置
+            builder.Property(d => d.OcrContent).HasColumnName("OCR_CONTENT").HasColumnType("text");
+            builder.Property(d => d.OcrProcessStatus).HasColumnName("OCR_PROCESS_STATUS").HasDefaultValue(OcrProcessStatus.NotProcessed);
+            builder.Property(d => d.OcrProcessedTime).HasColumnName("OCR_PROCESSED_TIME");
 
             builder.Property(p => p.ExtraProperties).HasColumnName("EXTRAPROPERTIES");
             builder.Property(p => p.ConcurrencyStamp).HasColumnName("CONCURRENCYSTAMP");

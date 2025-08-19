@@ -1,4 +1,4 @@
-﻿using Hx.Abp.Attachment.Domain.Shared;
+using Hx.Abp.Attachment.Domain.Shared;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Entities.Events;
@@ -6,15 +6,11 @@ using Volo.Abp.EventBus;
 
 namespace Hx.Abp.Attachment.Domain
 {
-    public class AttachFileDeletedHandler : ILocalEventHandler<EntityDeletedEventData<AttachFile>>, ITransientDependency
+    public class AttachFileDeletedHandler(IEfCoreAttachCatalogueRepository catalogueRepository, IBlobContainerFactory blobContainerFactory) : ILocalEventHandler<EntityDeletedEventData<AttachFile>>, ITransientDependency
     {
-        private readonly IEfCoreAttachCatalogueRepository CatalogueRepository;
-        private readonly IBlobContainer BlobContainer;
-        public AttachFileDeletedHandler(IEfCoreAttachCatalogueRepository catalogueRepository, IBlobContainerFactory blobContainerFactory)
-        {
-            CatalogueRepository = catalogueRepository;
-            BlobContainer = blobContainerFactory.Create("attachment");
-        }
+        private readonly IEfCoreAttachCatalogueRepository CatalogueRepository = catalogueRepository;
+        private readonly IBlobContainer BlobContainer = blobContainerFactory.Create("attachment");
+
         public async Task HandleEventAsync(EntityDeletedEventData<AttachFile> eventData)
         {
             if (eventData.Entity.AttachCatalogueId.HasValue)

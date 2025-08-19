@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\work\\attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx.Abp.Attachment.EntityFrameworkCore.csproj": {}
+    "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx.Abp.Attachment.EntityFrameworkCore.csproj": {}
   },
   "projects": {
-    "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj": {
+    "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj",
+        "projectUniqueName": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj",
         "projectName": "Hx.Abp.Attachment.Dmain.Shared",
-        "projectPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj",
+        "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj",
         "packagesPath": "C:\\Users\\24383\\.nuget\\packages\\",
-        "outputPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\obj\\",
+        "outputPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -39,12 +39,22 @@
           "warnAsError": [
             "NU1605"
           ]
-        }
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
       },
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
+            "RulesEngine": {
+              "target": "Package",
+              "version": "[6.0.0, )"
+            },
             "SixLabors.ImageSharp": {
               "target": "Package",
               "version": "[3.1.5, )"
@@ -70,18 +80,18 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.100/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj": {
+    "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj",
+        "projectUniqueName": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj",
         "projectName": "Hx.Abp.Attachment.Domain",
-        "projectPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj",
+        "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj",
         "packagesPath": "C:\\Users\\24383\\.nuget\\packages\\",
-        "outputPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Domain\\obj\\",
+        "outputPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Domain\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -103,8 +113,8 @@
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj": {
-                "projectPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj"
+              "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj": {
+                "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj"
               }
             }
           }
@@ -113,19 +123,33 @@
           "warnAsError": [
             "NU1605"
           ]
-        }
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
       },
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
+            "Newtonsoft.Json": {
+              "target": "Package",
+              "version": "[13.0.3, )"
+            },
+            "Npgsql.EntityFrameworkCore.PostgreSQL": {
+              "target": "Package",
+              "version": "[8.0.2, )"
+            },
             "Volo.Abp.BlobStoring.FileSystem": {
               "target": "Package",
               "version": "[8.1.1, )"
             },
             "Volo.Abp.Ddd.Domain": {
               "target": "Package",
-              "version": "[8.1.3, )"
+              "version": "[8.1.1, )"
             }
           },
           "imports": [
@@ -144,18 +168,18 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.100/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "D:\\work\\attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx.Abp.Attachment.EntityFrameworkCore.csproj": {
+    "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx.Abp.Attachment.EntityFrameworkCore.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx.Abp.Attachment.EntityFrameworkCore.csproj",
+        "projectUniqueName": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx.Abp.Attachment.EntityFrameworkCore.csproj",
         "projectName": "Hx.Abp.Attachment.EntityFrameworkCore",
-        "projectPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx.Abp.Attachment.EntityFrameworkCore.csproj",
+        "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx.Abp.Attachment.EntityFrameworkCore.csproj",
         "packagesPath": "C:\\Users\\24383\\.nuget\\packages\\",
-        "outputPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\obj\\",
+        "outputPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -177,8 +201,11 @@
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj": {
-                "projectPath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj"
+              "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj": {
+                "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj"
+              },
+              "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj": {
+                "projectPath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Domain\\Hx.Abp.Attachment.Domain.csproj"
               }
             }
           }
@@ -187,7 +214,13 @@
           "warnAsError": [
             "NU1605"
           ]
-        }
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
       },
       "frameworks": {
         "net8.0": {
@@ -196,6 +229,18 @@
             "LinqKit": {
               "target": "Package",
               "version": "[1.3.0, )"
+            },
+            "Newtonsoft.Json": {
+              "target": "Package",
+              "version": "[13.0.3, )"
+            },
+            "Npgsql.EntityFrameworkCore.PostgreSQL": {
+              "target": "Package",
+              "version": "[8.0.2, )"
+            },
+            "Pgvector.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[0.2.0, )"
             },
             "Volo.Abp.Users.EntityFrameworkCore": {
               "target": "Package",
@@ -218,7 +263,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.100/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

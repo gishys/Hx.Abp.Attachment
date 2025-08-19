@@ -1,0 +1,21 @@
+{
+    "dotnet.defaultSolution": "Hx.Abp.Attachment.sln",
+    "omnisharp.enableEditorConfigSupport": true,
+    "omnisharp.enableImportCompletion": true,
+    "omnisharp.enableRoslynAnalyzers": true,
+    "csharp.format.enable": true,
+    "csharp.semanticHighlighting.enabled": true,
+    "files.associations": {
+        "*.cs": "csharp"
+    },
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.fixAll": "explicit",
+        "source.organizeImports": "explicit"
+    },
+    "files.exclude": {
+        "**/bin": true,
+        "**/obj": true,
+        "**/.vs": true
+    }
+}

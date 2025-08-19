@@ -8,6 +8,7 @@
     ".NETCoreApp,Version=v8.0": {
       "Hx.Abp.Attachment.Dmain.Shared/1.0.0": {
         "dependencies": {
+          "RulesEngine": "6.0.0",
           "SixLabors.ImageSharp": "3.1.5",
           "iTextSharp.LGPLv2.Core": "3.4.20"
         },
@@ -23,6 +24,22 @@
           }
         }
       },
+      "FastExpressionCompiler/5.0.2": {
+        "runtime": {
+          "lib/net8.0/FastExpressionCompiler.dll": {
+            "assemblyVersion": "5.0.2.0",
+            "fileVersion": "5.0.2.0"
+          }
+        }
+      },
+      "FluentValidation/11.11.0": {
+        "runtime": {
+          "lib/net8.0/FluentValidation.dll": {
+            "assemblyVersion": "11.0.0.0",
+            "fileVersion": "11.11.0.0"
+          }
+        }
+      },
       "iTextSharp.LGPLv2.Core/3.4.20": {
         "dependencies": {
           "BouncyCastle.Cryptography": "2.3.1",
@@ -33,6 +50,20 @@
           "lib/netstandard2.0/iTextSharp.LGPLv2.Core.dll": {
             "assemblyVersion": "3.4.20.0",
             "fileVersion": "3.4.20.0"
+          }
+        }
+      },
+      "RulesEngine/6.0.0": {
+        "dependencies": {
+          "FastExpressionCompiler": "5.0.2",
+          "FluentValidation": "11.11.0",
+          "System.Linq.Dynamic.Core": "1.6.0.1",
+          "System.Text.Json": "9.0.1"
+        },
+        "runtime": {
+          "lib/net8.0/RulesEngine.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.0.0"
           }
         }
       },
@@ -84,7 +115,51 @@
           }
         }
       },
-      "System.Text.Encoding.CodePages/8.0.0": {}
+      "System.IO.Pipelines/9.0.1": {
+        "runtime": {
+          "lib/net8.0/System.IO.Pipelines.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.124.61010"
+          }
+        }
+      },
+      "System.Linq.Dynamic.Core/1.6.0.1": {
+        "runtime": {
+          "lib/net8.0/System.Linq.Dynamic.Core.dll": {
+            "assemblyVersion": "1.6.0.1",
+            "fileVersion": "1.6.0.1"
+          }
+        }
+      },
+      "System.Text.Encoding.CodePages/8.0.0": {},
+      "System.Text.Encodings.Web/9.0.1": {
+        "runtime": {
+          "lib/net8.0/System.Text.Encodings.Web.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.124.61010"
+          }
+        },
+        "runtimeTargets": {
+          "runtimes/browser/lib/net8.0/System.Text.Encodings.Web.dll": {
+            "rid": "browser",
+            "assetType": "runtime",
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.124.61010"
+          }
+        }
+      },
+      "System.Text.Json/9.0.1": {
+        "dependencies": {
+          "System.IO.Pipelines": "9.0.1",
+          "System.Text.Encodings.Web": "9.0.1"
+        },
+        "runtime": {
+          "lib/net8.0/System.Text.Json.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.124.61010"
+          }
+        }
+      }
     }
   },
   "libraries": {
@@ -100,12 +175,33 @@
       "path": "bouncycastle.cryptography/2.3.1",
       "hashPath": "bouncycastle.cryptography.2.3.1.nupkg.sha512"
     },
+    "FastExpressionCompiler/5.0.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-8YlhS7OVs93Pp8ZHKFDsP/S0DkwDwYz3s3ns5LpourkJdFiFXsgLiiFhvLoKhKCMR7+kApkir7Qrc24AtwA8wA==",
+      "path": "fastexpressioncompiler/5.0.2",
+      "hashPath": "fastexpressioncompiler.5.0.2.nupkg.sha512"
+    },
+    "FluentValidation/11.11.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-cyIVdQBwSipxWG8MA3Rqox7iNbUNUTK5bfJi9tIdm4CAfH71Oo5ABLP4/QyrUwuakqpUEPGtE43BDddvEehuYw==",
+      "path": "fluentvalidation/11.11.0",
+      "hashPath": "fluentvalidation.11.11.0.nupkg.sha512"
+    },
     "iTextSharp.LGPLv2.Core/3.4.20": {
       "type": "package",
       "serviceable": true,
       "sha512": "sha512-gnT/kBjgdWW/S+I1b7jrxw7NZPxw6eCro9TX3NL76uKgIqqsU+3jfbCwMjUzgjX9fcg3lCOGju5WiIoGrKHBfg==",
       "path": "itextsharp.lgplv2.core/3.4.20",
       "hashPath": "itextsharp.lgplv2.core.3.4.20.nupkg.sha512"
+    },
+    "RulesEngine/6.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-DVNW7aI8KqEOR56Gt0pdiirOxMg+uuEQApW+qm7dhqtvZ1bjVBoZn9snTXndlPO+nKy7QdRBB8gSfeeWH2fz/Q==",
+      "path": "rulesengine/6.0.0",
+      "hashPath": "rulesengine.6.0.0.nupkg.sha512"
     },
     "SixLabors.ImageSharp/3.1.5": {
       "type": "package",
@@ -135,12 +231,40 @@
       "path": "skiasharp.nativeassets.win32/2.88.8",
       "hashPath": "skiasharp.nativeassets.win32.2.88.8.nupkg.sha512"
     },
+    "System.IO.Pipelines/9.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-uXf5o8eV/gtzDQY4lGROLFMWQvcViKcF8o4Q6KpIOjloAQXrnscQSu6gTxYJMHuNJnh7szIF9AzkaEq+zDLoEg==",
+      "path": "system.io.pipelines/9.0.1",
+      "hashPath": "system.io.pipelines.9.0.1.nupkg.sha512"
+    },
+    "System.Linq.Dynamic.Core/1.6.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-u1ome4HL3OS5lq2QbxIAmHv+i5uewSf2hqosGr8O5FjkseqSx4Fmt1Pn+8fjyex7/rQOOYrXk+iTkxxEgSc9yA==",
+      "path": "system.linq.dynamic.core/1.6.0.1",
+      "hashPath": "system.linq.dynamic.core.1.6.0.1.nupkg.sha512"
+    },
     "System.Text.Encoding.CodePages/8.0.0": {
       "type": "package",
       "serviceable": true,
       "sha512": "sha512-OZIsVplFGaVY90G2SbpgU7EnCoOO5pw1t4ic21dBF3/1omrJFpAGoNAVpPyMVOC90/hvgkGG3VFqR13YgZMQfg==",
       "path": "system.text.encoding.codepages/8.0.0",
       "hashPath": "system.text.encoding.codepages.8.0.0.nupkg.sha512"
+    },
+    "System.Text.Encodings.Web/9.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-XkspqduP2t1e1x2vBUAD/xZ5ZDvmywuUwsmB93MvyQLospJfqtX0GsR/kU0vUL2h4kmvf777z3txV2W4NrQ9Qg==",
+      "path": "system.text.encodings.web/9.0.1",
+      "hashPath": "system.text.encodings.web.9.0.1.nupkg.sha512"
+    },
+    "System.Text.Json/9.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-eqWHDZqYPv1PvuvoIIx5pF74plL3iEOZOl/0kQP+Y0TEbtgNnM2W6k8h8EPYs+LTJZsXuWa92n5W5sHTWvE3VA==",
+      "path": "system.text.json/9.0.1",
+      "hashPath": "system.text.json.9.0.1.nupkg.sha512"
     }
   }
 }

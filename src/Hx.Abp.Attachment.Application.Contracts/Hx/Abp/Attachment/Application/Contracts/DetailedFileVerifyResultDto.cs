@@ -1,9 +1,3 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace Hx.Abp.Attachment.Application.Contracts
 {
     public class DetailedFileVerifyResultDto
@@ -18,7 +12,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// </summary>
         public required string Reference { get; set; }
         /// <summary>
-        /// 目录名称
+        /// 分类名称
         /// </summary>
         public required string Name { get; set; }
         /// <summary>

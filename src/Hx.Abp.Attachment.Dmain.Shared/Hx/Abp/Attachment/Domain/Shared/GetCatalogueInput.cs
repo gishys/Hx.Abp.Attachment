@@ -1,9 +1,3 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace Hx.Abp.Attachment.Domain.Shared
 {
     public class GetCatalogueInput
@@ -17,7 +11,7 @@ namespace Hx.Abp.Attachment.Domain.Shared
         /// </summary>
         public int ReferenceType { get; set; }
         /// <summary>
-        /// 目录名称
+        /// 分类名称
         /// </summary>
         public required string CatalogueName { get; set; }
         /// <summary>

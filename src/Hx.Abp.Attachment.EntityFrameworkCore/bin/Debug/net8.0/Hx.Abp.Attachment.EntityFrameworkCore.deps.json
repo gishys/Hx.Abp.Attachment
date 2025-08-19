@@ -8,8 +8,12 @@
     ".NETCoreApp,Version=v8.0": {
       "Hx.Abp.Attachment.EntityFrameworkCore/1.0.0": {
         "dependencies": {
+          "Hx.Abp.Attachment.Dmain.Shared": "1.0.0",
           "Hx.Abp.Attachment.Domain": "1.0.0",
           "LinqKit": "1.3.0",
+          "Newtonsoft.Json": "13.0.3",
+          "Npgsql.EntityFrameworkCore.PostgreSQL": "8.0.2",
+          "Pgvector.EntityFrameworkCore": "0.2.0",
           "Volo.Abp.Users.EntityFrameworkCore": "8.1.1"
         },
         "runtime": {
@@ -48,6 +52,22 @@
           "lib/netstandard2.1/EntityFramework.dll": {
             "assemblyVersion": "6.0.0.0",
             "fileVersion": "6.500.24.31301"
+          }
+        }
+      },
+      "FastExpressionCompiler/5.0.2": {
+        "runtime": {
+          "lib/net8.0/FastExpressionCompiler.dll": {
+            "assemblyVersion": "5.0.2.0",
+            "fileVersion": "5.0.2.0"
+          }
+        }
+      },
+      "FluentValidation/11.11.0": {
+        "runtime": {
+          "lib/net8.0/FluentValidation.dll": {
+            "assemblyVersion": "11.0.0.0",
+            "fileVersion": "11.11.0.0"
           }
         }
       },
@@ -101,38 +121,38 @@
         }
       },
       "Microsoft.CSharp/4.7.0": {},
-      "Microsoft.EntityFrameworkCore/8.0.0": {
+      "Microsoft.EntityFrameworkCore/8.0.2": {
         "dependencies": {
-          "Microsoft.EntityFrameworkCore.Abstractions": "8.0.0",
-          "Microsoft.EntityFrameworkCore.Analyzers": "8.0.0",
+          "Microsoft.EntityFrameworkCore.Abstractions": "8.0.2",
+          "Microsoft.EntityFrameworkCore.Analyzers": "8.0.2",
           "Microsoft.Extensions.Caching.Memory": "8.0.0",
           "Microsoft.Extensions.Logging": "8.0.0"
         },
         "runtime": {
           "lib/net8.0/Microsoft.EntityFrameworkCore.dll": {
-            "assemblyVersion": "8.0.0.0",
-            "fileVersion": "8.0.23.53103"
+            "assemblyVersion": "8.0.2.0",
+            "fileVersion": "8.0.224.6803"
           }
         }
       },
-      "Microsoft.EntityFrameworkCore.Abstractions/8.0.0": {
+      "Microsoft.EntityFrameworkCore.Abstractions/8.0.2": {
         "runtime": {
           "lib/net8.0/Microsoft.EntityFrameworkCore.Abstractions.dll": {
-            "assemblyVersion": "8.0.0.0",
-            "fileVersion": "8.0.23.53103"
+            "assemblyVersion": "8.0.2.0",
+            "fileVersion": "8.0.224.6803"
           }
         }
       },
-      "Microsoft.EntityFrameworkCore.Analyzers/8.0.0": {},
-      "Microsoft.EntityFrameworkCore.Relational/8.0.0": {
+      "Microsoft.EntityFrameworkCore.Analyzers/8.0.2": {},
+      "Microsoft.EntityFrameworkCore.Relational/8.0.2": {
         "dependencies": {
-          "Microsoft.EntityFrameworkCore": "8.0.0",
+          "Microsoft.EntityFrameworkCore": "8.0.2",
           "Microsoft.Extensions.Configuration.Abstractions": "8.0.0"
         },
         "runtime": {
           "lib/net8.0/Microsoft.EntityFrameworkCore.Relational.dll": {
-            "assemblyVersion": "8.0.0.0",
-            "fileVersion": "8.0.23.53103"
+            "assemblyVersion": "8.0.2.0",
+            "fileVersion": "8.0.224.6803"
           }
         }
       },
@@ -241,7 +261,7 @@
           "Microsoft.Extensions.Configuration.Abstractions": "8.0.0",
           "Microsoft.Extensions.Configuration.FileExtensions": "8.0.0",
           "Microsoft.Extensions.FileProviders.Abstractions": "8.0.0",
-          "System.Text.Json": "8.0.0"
+          "System.Text.Json": "9.0.1"
         },
         "runtime": {
           "lib/net8.0/Microsoft.Extensions.Configuration.Json.dll": {
@@ -471,6 +491,14 @@
           }
         }
       },
+      "Newtonsoft.Json/13.0.3": {
+        "runtime": {
+          "lib/net6.0/Newtonsoft.Json.dll": {
+            "assemblyVersion": "13.0.0.0",
+            "fileVersion": "13.0.3.27908"
+          }
+        }
+      },
       "Nito.AsyncEx.Context/5.1.2": {
         "dependencies": {
           "Nito.AsyncEx.Tasks": "5.1.2"
@@ -504,6 +532,54 @@
           }
         }
       },
+      "Npgsql/8.0.2": {
+        "dependencies": {
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.0"
+        },
+        "runtime": {
+          "lib/net8.0/Npgsql.dll": {
+            "assemblyVersion": "8.0.2.0",
+            "fileVersion": "8.0.2.0"
+          }
+        }
+      },
+      "Npgsql.EntityFrameworkCore.PostgreSQL/8.0.2": {
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "8.0.2",
+          "Microsoft.EntityFrameworkCore.Abstractions": "8.0.2",
+          "Microsoft.EntityFrameworkCore.Relational": "8.0.2",
+          "Npgsql": "8.0.2"
+        },
+        "runtime": {
+          "lib/net8.0/Npgsql.EntityFrameworkCore.PostgreSQL.dll": {
+            "assemblyVersion": "8.0.2.0",
+            "fileVersion": "8.0.2.0"
+          }
+        }
+      },
+      "Pgvector/0.2.0": {
+        "dependencies": {
+          "Npgsql": "8.0.2"
+        },
+        "runtime": {
+          "lib/net6.0/Pgvector.dll": {
+            "assemblyVersion": "0.2.0.0",
+            "fileVersion": "0.2.0.0"
+          }
+        }
+      },
+      "Pgvector.EntityFrameworkCore/0.2.0": {
+        "dependencies": {
+          "Npgsql.EntityFrameworkCore.PostgreSQL": "8.0.2",
+          "Pgvector": "0.2.0"
+        },
+        "runtime": {
+          "lib/net8.0/Pgvector.EntityFrameworkCore.dll": {
+            "assemblyVersion": "0.2.0.0",
+            "fileVersion": "0.2.0.0"
+          }
+        }
+      },
       "Polly/8.2.0": {
         "dependencies": {
           "Polly.Core": "8.2.0"
@@ -520,6 +596,20 @@
           "lib/net8.0/Polly.Core.dll": {
             "assemblyVersion": "8.0.0.0",
             "fileVersion": "8.2.0.2702"
+          }
+        }
+      },
+      "RulesEngine/6.0.0": {
+        "dependencies": {
+          "FastExpressionCompiler": "5.0.2",
+          "FluentValidation": "11.11.0",
+          "System.Linq.Dynamic.Core": "1.6.0.1",
+          "System.Text.Json": "9.0.1"
+        },
+        "runtime": {
+          "lib/net8.0/RulesEngine.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.0.0"
           }
         }
       },
@@ -710,6 +800,14 @@
           "System.Threading.Tasks": "4.3.0"
         }
       },
+      "System.IO.Pipelines/9.0.1": {
+        "runtime": {
+          "lib/net8.0/System.IO.Pipelines.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.124.61010"
+          }
+        }
+      },
       "System.Linq/4.3.0": {
         "dependencies": {
           "System.Collections": "4.3.0",
@@ -719,11 +817,11 @@
           "System.Runtime.Extensions": "4.3.0"
         }
       },
-      "System.Linq.Dynamic.Core/1.3.5": {
+      "System.Linq.Dynamic.Core/1.6.0.1": {
         "runtime": {
-          "lib/net7.0/System.Linq.Dynamic.Core.dll": {
-            "assemblyVersion": "1.3.5.0",
-            "fileVersion": "1.3.5.0"
+          "lib/net8.0/System.Linq.Dynamic.Core.dll": {
+            "assemblyVersion": "1.6.0.1",
+            "fileVersion": "1.6.0.1"
           }
         }
       },
@@ -890,10 +988,32 @@
         }
       },
       "System.Text.Encoding.CodePages/8.0.0": {},
-      "System.Text.Encodings.Web/8.0.0": {},
-      "System.Text.Json/8.0.0": {
+      "System.Text.Encodings.Web/9.0.1": {
+        "runtime": {
+          "lib/net8.0/System.Text.Encodings.Web.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.124.61010"
+          }
+        },
+        "runtimeTargets": {
+          "runtimes/browser/lib/net8.0/System.Text.Encodings.Web.dll": {
+            "rid": "browser",
+            "assetType": "runtime",
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.124.61010"
+          }
+        }
+      },
+      "System.Text.Json/9.0.1": {
         "dependencies": {
-          "System.Text.Encodings.Web": "8.0.0"
+          "System.IO.Pipelines": "9.0.1",
+          "System.Text.Encodings.Web": "9.0.1"
+        },
+        "runtime": {
+          "lib/net8.0/System.Text.Json.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.124.61010"
+          }
         }
       },
       "System.Threading/4.3.0": {
@@ -936,50 +1056,50 @@
           }
         }
       },
-      "Volo.Abp.Auditing/8.1.3": {
+      "Volo.Abp.Auditing/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Auditing.Contracts": "8.1.3",
-          "Volo.Abp.Data": "8.1.3",
-          "Volo.Abp.Json": "8.1.3",
-          "Volo.Abp.MultiTenancy": "8.1.3",
-          "Volo.Abp.Security": "8.1.3",
-          "Volo.Abp.Threading": "8.1.3",
-          "Volo.Abp.Timing": "8.1.3"
+          "Volo.Abp.Auditing.Contracts": "8.1.1",
+          "Volo.Abp.Data": "8.1.1",
+          "Volo.Abp.Json": "8.1.1",
+          "Volo.Abp.MultiTenancy": "8.1.1",
+          "Volo.Abp.Security": "8.1.1",
+          "Volo.Abp.Threading": "8.1.1",
+          "Volo.Abp.Timing": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Auditing.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.Auditing.Contracts/8.1.3": {
+      "Volo.Abp.Auditing.Contracts/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Core": "8.1.3"
+          "Volo.Abp.Core": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Auditing.Contracts.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.BackgroundWorkers/8.1.3": {
+      "Volo.Abp.BackgroundWorkers/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Threading": "8.1.3"
+          "Volo.Abp.Threading": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.BackgroundWorkers.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
       "Volo.Abp.BlobStoring/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Core": "8.1.3",
-          "Volo.Abp.MultiTenancy": "8.1.3",
-          "Volo.Abp.Threading": "8.1.3"
+          "Volo.Abp.Core": "8.1.1",
+          "Volo.Abp.MultiTenancy": "8.1.1",
+          "Volo.Abp.Threading": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.BlobStoring.dll": {
@@ -1000,22 +1120,22 @@
           }
         }
       },
-      "Volo.Abp.Caching/8.1.3": {
+      "Volo.Abp.Caching/8.1.1": {
         "dependencies": {
           "Microsoft.Extensions.Caching.Memory": "8.0.0",
-          "Volo.Abp.Json": "8.1.3",
-          "Volo.Abp.MultiTenancy": "8.1.3",
-          "Volo.Abp.Serialization": "8.1.3",
-          "Volo.Abp.Threading": "8.1.3"
+          "Volo.Abp.Json": "8.1.1",
+          "Volo.Abp.MultiTenancy": "8.1.1",
+          "Volo.Abp.Serialization": "8.1.1",
+          "Volo.Abp.Threading": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Caching.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.Core/8.1.3": {
+      "Volo.Abp.Core/8.1.1": {
         "dependencies": {
           "JetBrains.Annotations": "2023.3.0",
           "Microsoft.Extensions.Configuration.CommandLine": "8.0.0",
@@ -1029,82 +1149,82 @@
           "Microsoft.Extensions.Options.ConfigurationExtensions": "8.0.0",
           "Nito.AsyncEx.Context": "5.1.2",
           "System.Collections.Immutable": "8.0.0",
-          "System.Linq.Dynamic.Core": "1.3.5",
+          "System.Linq.Dynamic.Core": "1.6.0.1",
           "System.Linq.Queryable": "4.3.0",
           "System.Runtime.Loader": "4.3.0",
-          "System.Text.Encodings.Web": "8.0.0"
+          "System.Text.Encodings.Web": "9.0.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Core.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.Data/8.1.3": {
+      "Volo.Abp.Data/8.1.1": {
         "dependencies": {
-          "Volo.Abp.EventBus.Abstractions": "8.1.3",
-          "Volo.Abp.ObjectExtending": "8.1.3",
-          "Volo.Abp.Uow": "8.1.3"
+          "Volo.Abp.EventBus.Abstractions": "8.1.1",
+          "Volo.Abp.ObjectExtending": "8.1.1",
+          "Volo.Abp.Uow": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Data.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.Ddd.Domain/8.1.3": {
+      "Volo.Abp.Ddd.Domain/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Auditing": "8.1.3",
-          "Volo.Abp.Caching": "8.1.3",
-          "Volo.Abp.Data": "8.1.3",
-          "Volo.Abp.Ddd.Domain.Shared": "8.1.3",
-          "Volo.Abp.EventBus": "8.1.3",
-          "Volo.Abp.ExceptionHandling": "8.1.3",
-          "Volo.Abp.Guids": "8.1.3",
-          "Volo.Abp.ObjectMapping": "8.1.3",
-          "Volo.Abp.Specifications": "8.1.3",
-          "Volo.Abp.Timing": "8.1.3"
+          "Volo.Abp.Auditing": "8.1.1",
+          "Volo.Abp.Caching": "8.1.1",
+          "Volo.Abp.Data": "8.1.1",
+          "Volo.Abp.Ddd.Domain.Shared": "8.1.1",
+          "Volo.Abp.EventBus": "8.1.1",
+          "Volo.Abp.ExceptionHandling": "8.1.1",
+          "Volo.Abp.Guids": "8.1.1",
+          "Volo.Abp.ObjectMapping": "8.1.1",
+          "Volo.Abp.Specifications": "8.1.1",
+          "Volo.Abp.Timing": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Ddd.Domain.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.Ddd.Domain.Shared/8.1.3": {
+      "Volo.Abp.Ddd.Domain.Shared/8.1.1": {
         "dependencies": {
-          "Volo.Abp.EventBus.Abstractions": "8.1.3",
-          "Volo.Abp.MultiTenancy.Abstractions": "8.1.3"
+          "Volo.Abp.EventBus.Abstractions": "8.1.1",
+          "Volo.Abp.MultiTenancy.Abstractions": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Ddd.Domain.Shared.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.DistributedLocking.Abstractions/8.1.3": {
+      "Volo.Abp.DistributedLocking.Abstractions/8.1.1": {
         "dependencies": {
           "AsyncKeyedLock": "6.3.4",
           "Microsoft.Bcl.AsyncInterfaces": "8.0.0",
-          "Volo.Abp.Core": "8.1.3"
+          "Volo.Abp.Core": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.DistributedLocking.Abstractions.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
       "Volo.Abp.EntityFrameworkCore/8.1.1": {
         "dependencies": {
-          "Microsoft.EntityFrameworkCore": "8.0.0",
-          "Microsoft.EntityFrameworkCore.Relational": "8.0.0",
-          "Volo.Abp.Ddd.Domain": "8.1.3",
-          "Volo.Abp.Json": "8.1.3"
+          "Microsoft.EntityFrameworkCore": "8.0.2",
+          "Microsoft.EntityFrameworkCore.Relational": "8.0.2",
+          "Volo.Abp.Ddd.Domain": "8.1.1",
+          "Volo.Abp.Json": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.EntityFrameworkCore.dll": {
@@ -1113,253 +1233,253 @@
           }
         }
       },
-      "Volo.Abp.EventBus/8.1.3": {
+      "Volo.Abp.EventBus/8.1.1": {
         "dependencies": {
-          "Volo.Abp.BackgroundWorkers": "8.1.3",
-          "Volo.Abp.DistributedLocking.Abstractions": "8.1.3",
-          "Volo.Abp.EventBus.Abstractions": "8.1.3",
-          "Volo.Abp.Guids": "8.1.3",
-          "Volo.Abp.Json": "8.1.3",
-          "Volo.Abp.MultiTenancy": "8.1.3"
+          "Volo.Abp.BackgroundWorkers": "8.1.1",
+          "Volo.Abp.DistributedLocking.Abstractions": "8.1.1",
+          "Volo.Abp.EventBus.Abstractions": "8.1.1",
+          "Volo.Abp.Guids": "8.1.1",
+          "Volo.Abp.Json": "8.1.1",
+          "Volo.Abp.MultiTenancy": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.EventBus.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.EventBus.Abstractions/8.1.3": {
+      "Volo.Abp.EventBus.Abstractions/8.1.1": {
         "dependencies": {
-          "Volo.Abp.ObjectExtending": "8.1.3"
+          "Volo.Abp.ObjectExtending": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.EventBus.Abstractions.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.ExceptionHandling/8.1.3": {
+      "Volo.Abp.ExceptionHandling/8.1.1": {
         "dependencies": {
           "Microsoft.Extensions.FileProviders.Embedded": "8.0.0",
-          "Volo.Abp.Data": "8.1.3",
-          "Volo.Abp.Localization": "8.1.3"
+          "Volo.Abp.Data": "8.1.1",
+          "Volo.Abp.Localization": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.ExceptionHandling.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.Guids/8.1.3": {
+      "Volo.Abp.Guids/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Core": "8.1.3"
+          "Volo.Abp.Core": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Guids.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.Json/8.1.3": {
+      "Volo.Abp.Json/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Json.SystemTextJson": "8.1.3"
+          "Volo.Abp.Json.SystemTextJson": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Json.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.Json.Abstractions/8.1.3": {
+      "Volo.Abp.Json.Abstractions/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Core": "8.1.3"
+          "Volo.Abp.Core": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Json.Abstractions.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.Json.SystemTextJson/8.1.3": {
+      "Volo.Abp.Json.SystemTextJson/8.1.1": {
         "dependencies": {
-          "System.Text.Json": "8.0.0",
-          "Volo.Abp.Data": "8.1.3",
-          "Volo.Abp.Json.Abstractions": "8.1.3",
-          "Volo.Abp.Timing": "8.1.3"
+          "System.Text.Json": "9.0.1",
+          "Volo.Abp.Data": "8.1.1",
+          "Volo.Abp.Json.Abstractions": "8.1.1",
+          "Volo.Abp.Timing": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Json.SystemTextJson.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.Localization/8.1.3": {
+      "Volo.Abp.Localization/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Localization.Abstractions": "8.1.3",
-          "Volo.Abp.Settings": "8.1.3",
-          "Volo.Abp.Threading": "8.1.3",
-          "Volo.Abp.VirtualFileSystem": "8.1.3"
+          "Volo.Abp.Localization.Abstractions": "8.1.1",
+          "Volo.Abp.Settings": "8.1.1",
+          "Volo.Abp.Threading": "8.1.1",
+          "Volo.Abp.VirtualFileSystem": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Localization.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.Localization.Abstractions/8.1.3": {
+      "Volo.Abp.Localization.Abstractions/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Core": "8.1.3"
+          "Volo.Abp.Core": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Localization.Abstractions.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.MultiTenancy/8.1.3": {
+      "Volo.Abp.MultiTenancy/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Data": "8.1.3",
-          "Volo.Abp.EventBus.Abstractions": "8.1.3",
-          "Volo.Abp.MultiTenancy.Abstractions": "8.1.3",
-          "Volo.Abp.Security": "8.1.3",
-          "Volo.Abp.Settings": "8.1.3"
+          "Volo.Abp.Data": "8.1.1",
+          "Volo.Abp.EventBus.Abstractions": "8.1.1",
+          "Volo.Abp.MultiTenancy.Abstractions": "8.1.1",
+          "Volo.Abp.Security": "8.1.1",
+          "Volo.Abp.Settings": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.MultiTenancy.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.MultiTenancy.Abstractions/8.1.3": {
+      "Volo.Abp.MultiTenancy.Abstractions/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Localization": "8.1.3",
-          "Volo.Abp.VirtualFileSystem": "8.1.3"
+          "Volo.Abp.Localization": "8.1.1",
+          "Volo.Abp.VirtualFileSystem": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.MultiTenancy.Abstractions.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.ObjectExtending/8.1.3": {
+      "Volo.Abp.ObjectExtending/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Localization.Abstractions": "8.1.3",
-          "Volo.Abp.Validation.Abstractions": "8.1.3"
+          "Volo.Abp.Localization.Abstractions": "8.1.1",
+          "Volo.Abp.Validation.Abstractions": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.ObjectExtending.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.ObjectMapping/8.1.3": {
+      "Volo.Abp.ObjectMapping/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Core": "8.1.3"
+          "Volo.Abp.Core": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.ObjectMapping.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.Security/8.1.3": {
+      "Volo.Abp.Security/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Core": "8.1.3"
+          "Volo.Abp.Core": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Security.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.Serialization/8.1.3": {
+      "Volo.Abp.Serialization/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Core": "8.1.3"
+          "Volo.Abp.Core": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Serialization.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.Settings/8.1.3": {
+      "Volo.Abp.Settings/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Data": "8.1.3",
-          "Volo.Abp.Localization.Abstractions": "8.1.3",
-          "Volo.Abp.Security": "8.1.3"
+          "Volo.Abp.Data": "8.1.1",
+          "Volo.Abp.Localization.Abstractions": "8.1.1",
+          "Volo.Abp.Security": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Settings.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.Specifications/8.1.3": {
+      "Volo.Abp.Specifications/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Core": "8.1.3"
+          "Volo.Abp.Core": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Specifications.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.Threading/8.1.3": {
+      "Volo.Abp.Threading/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Core": "8.1.3"
+          "Volo.Abp.Core": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Threading.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.Timing/8.1.3": {
+      "Volo.Abp.Timing/8.1.1": {
         "dependencies": {
           "TimeZoneConverter": "6.1.0",
-          "Volo.Abp.Localization": "8.1.3",
-          "Volo.Abp.Settings": "8.1.3"
+          "Volo.Abp.Localization": "8.1.1",
+          "Volo.Abp.Settings": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Timing.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.Uow/8.1.3": {
+      "Volo.Abp.Uow/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Core": "8.1.3"
+          "Volo.Abp.Core": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Uow.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
       "Volo.Abp.Users.Abstractions/8.1.1": {
         "dependencies": {
-          "Volo.Abp.EventBus": "8.1.3",
-          "Volo.Abp.MultiTenancy": "8.1.3"
+          "Volo.Abp.EventBus": "8.1.1",
+          "Volo.Abp.MultiTenancy": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Users.Abstractions.dll": {
@@ -1370,7 +1490,7 @@
       },
       "Volo.Abp.Users.Domain/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Ddd.Domain": "8.1.3",
+          "Volo.Abp.Ddd.Domain": "8.1.1",
           "Volo.Abp.Users.Abstractions": "8.1.1",
           "Volo.Abp.Users.Domain.Shared": "8.1.1"
         },
@@ -1383,7 +1503,7 @@
       },
       "Volo.Abp.Users.Domain.Shared/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Core": "8.1.3"
+          "Volo.Abp.Core": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Users.Domain.Shared.dll": {
@@ -1404,48 +1524,57 @@
           }
         }
       },
-      "Volo.Abp.Validation.Abstractions/8.1.3": {
+      "Volo.Abp.Validation.Abstractions/8.1.1": {
         "dependencies": {
-          "Volo.Abp.Core": "8.1.3"
+          "Volo.Abp.Core": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.Validation.Abstractions.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
-      "Volo.Abp.VirtualFileSystem/8.1.3": {
+      "Volo.Abp.VirtualFileSystem/8.1.1": {
         "dependencies": {
           "Microsoft.Extensions.FileProviders.Composite": "8.0.0",
           "Microsoft.Extensions.FileProviders.Embedded": "8.0.0",
           "Microsoft.Extensions.FileProviders.Physical": "8.0.0",
-          "Volo.Abp.Core": "8.1.3"
+          "Volo.Abp.Core": "8.1.1"
         },
         "runtime": {
           "lib/net8.0/Volo.Abp.VirtualFileSystem.dll": {
-            "assemblyVersion": "8.1.3.0",
-            "fileVersion": "8.1.3.0"
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
       "Hx.Abp.Attachment.Dmain.Shared/1.0.0": {
         "dependencies": {
+          "RulesEngine": "6.0.0",
           "SixLabors.ImageSharp": "3.1.5",
           "iTextSharp.LGPLv2.Core": "3.4.20"
         },
         "runtime": {
-          "Hx.Abp.Attachment.Dmain.Shared.dll": {}
+          "Hx.Abp.Attachment.Dmain.Shared.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
         }
       },
       "Hx.Abp.Attachment.Domain/1.0.0": {
         "dependencies": {
           "Hx.Abp.Attachment.Dmain.Shared": "1.0.0",
+          "Newtonsoft.Json": "13.0.3",
+          "Npgsql.EntityFrameworkCore.PostgreSQL": "8.0.2",
           "Volo.Abp.BlobStoring.FileSystem": "8.1.1",
-          "Volo.Abp.Ddd.Domain": "8.1.3"
+          "Volo.Abp.Ddd.Domain": "8.1.1"
         },
         "runtime": {
-          "Hx.Abp.Attachment.Domain.dll": {}
+          "Hx.Abp.Attachment.Domain.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
         }
       }
     }
@@ -1476,6 +1605,20 @@
       "sha512": "sha512-tkFMdLBBLKODe5uXkrDrBmpj5NRTg8Z3lnZz/uvyFIWQhVaYkbn+n8dlPk9OWpxeWS1OAjQDjT2uNOjpyzMOrA==",
       "path": "entityframework/6.5.0",
       "hashPath": "entityframework.6.5.0.nupkg.sha512"
+    },
+    "FastExpressionCompiler/5.0.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-8YlhS7OVs93Pp8ZHKFDsP/S0DkwDwYz3s3ns5LpourkJdFiFXsgLiiFhvLoKhKCMR7+kApkir7Qrc24AtwA8wA==",
+      "path": "fastexpressioncompiler/5.0.2",
+      "hashPath": "fastexpressioncompiler.5.0.2.nupkg.sha512"
+    },
+    "FluentValidation/11.11.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-cyIVdQBwSipxWG8MA3Rqox7iNbUNUTK5bfJi9tIdm4CAfH71Oo5ABLP4/QyrUwuakqpUEPGtE43BDddvEehuYw==",
+      "path": "fluentvalidation/11.11.0",
+      "hashPath": "fluentvalidation.11.11.0.nupkg.sha512"
     },
     "iTextSharp.LGPLv2.Core/3.4.20": {
       "type": "package",
@@ -1519,33 +1662,33 @@
       "path": "microsoft.csharp/4.7.0",
       "hashPath": "microsoft.csharp.4.7.0.nupkg.sha512"
     },
-    "Microsoft.EntityFrameworkCore/8.0.0": {
+    "Microsoft.EntityFrameworkCore/8.0.2": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-SoODat83pGQUpWB9xULdMX6tuKpq/RTXDuJ2WeC1ldUKcKzLkaFJD1n+I0nOLY58odez/e7z8b6zdp235G/kyg==",
-      "path": "microsoft.entityframeworkcore/8.0.0",
-      "hashPath": "microsoft.entityframeworkcore.8.0.0.nupkg.sha512"
+      "sha512": "sha512-6QlvBx4rdawW3AkkCsGVV+8qRLk34aknV5JD40s1hbVR18vKmT2KDl2DW83nHcPX7f4oebQ3BD1UMNCI/gkE0g==",
+      "path": "microsoft.entityframeworkcore/8.0.2",
+      "hashPath": "microsoft.entityframeworkcore.8.0.2.nupkg.sha512"
     },
-    "Microsoft.EntityFrameworkCore.Abstractions/8.0.0": {
+    "Microsoft.EntityFrameworkCore.Abstractions/8.0.2": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-VR22s3+zoqlVI7xauFKn1znSIFHO8xuILT+noSwS8bZCKcHz0ydkTDQMuaxSa5WBaQrZmwtTz9rmRvJ7X8mSPQ==",
-      "path": "microsoft.entityframeworkcore.abstractions/8.0.0",
-      "hashPath": "microsoft.entityframeworkcore.abstractions.8.0.0.nupkg.sha512"
+      "sha512": "sha512-DjDKp++BTKFZmX+xLTow7grQTY+pImKfhGW68Zf8myiL3zyJ3b8RZbnLsWGNCqKQIF6hJIz/zA/zmERobFwV0A==",
+      "path": "microsoft.entityframeworkcore.abstractions/8.0.2",
+      "hashPath": "microsoft.entityframeworkcore.abstractions.8.0.2.nupkg.sha512"
     },
-    "Microsoft.EntityFrameworkCore.Analyzers/8.0.0": {
+    "Microsoft.EntityFrameworkCore.Analyzers/8.0.2": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-ZXxEeLs2zoZ1TA+QoMMcw4f3Tirf8PzgdDax8RoWo0dxI2KmqiEGWYjhm2B/XyWfglc6+mNRyB8rZiQSmxCpeg==",
-      "path": "microsoft.entityframeworkcore.analyzers/8.0.0",
-      "hashPath": "microsoft.entityframeworkcore.analyzers.8.0.0.nupkg.sha512"
+      "sha512": "sha512-LI7awhc0fiAKvcUemsqxXUWqzAH9ywTSyM1rpC1un4p5SE1bhr5nRLvyRVbKRzKakmnNNY3to8NPDnoySEkxVw==",
+      "path": "microsoft.entityframeworkcore.analyzers/8.0.2",
+      "hashPath": "microsoft.entityframeworkcore.analyzers.8.0.2.nupkg.sha512"
     },
-    "Microsoft.EntityFrameworkCore.Relational/8.0.0": {
+    "Microsoft.EntityFrameworkCore.Relational/8.0.2": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-fFKkr24cYc7Zw5T6DC4tEyOEPgPbq23BBmym1r9kn4ET9F3HKaetpOeQtV2RryYyUxEeNkJuxgfiZHTisqZc+A==",
-      "path": "microsoft.entityframeworkcore.relational/8.0.0",
-      "hashPath": "microsoft.entityframeworkcore.relational.8.0.0.nupkg.sha512"
+      "sha512": "sha512-NoGfcq2OPw0z8XAPf74YFwGlTKjedWdsIEJqq4SvKcPjcu+B+/XDDNrDRxTvILfz4Ug8POSF49s1jz1JvUqTAg==",
+      "path": "microsoft.entityframeworkcore.relational/8.0.2",
+      "hashPath": "microsoft.entityframeworkcore.relational.8.0.2.nupkg.sha512"
     },
     "Microsoft.Extensions.Caching.Abstractions/8.0.0": {
       "type": "package",
@@ -1757,6 +1900,13 @@
       "path": "microsoft.win32.systemevents/6.0.0",
       "hashPath": "microsoft.win32.systemevents.6.0.0.nupkg.sha512"
     },
+    "Newtonsoft.Json/13.0.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-HrC5BXdl00IP9zeV+0Z848QWPAoCr9P3bDEZguI+gkLcBKAOxix/tLEAAHC+UvDNPv4a2d18lOReHMOagPa+zQ==",
+      "path": "newtonsoft.json/13.0.3",
+      "hashPath": "newtonsoft.json.13.0.3.nupkg.sha512"
+    },
     "Nito.AsyncEx.Context/5.1.2": {
       "type": "package",
       "serviceable": true,
@@ -1778,6 +1928,34 @@
       "path": "nito.disposables/2.2.1",
       "hashPath": "nito.disposables.2.2.1.nupkg.sha512"
     },
+    "Npgsql/8.0.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-MuJzLoWCaQhQAR3oh66YR0Ir6mxuezncGX3f8wxvAc21g0+9HICktJQlqMoODhxztZKXE5k9GxRxqUAN+vPb4g==",
+      "path": "npgsql/8.0.2",
+      "hashPath": "npgsql.8.0.2.nupkg.sha512"
+    },
+    "Npgsql.EntityFrameworkCore.PostgreSQL/8.0.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-eoZPynwkZTWFTgnocvXORuCL2yFZtscrUdqVhjxiRULpC7BMg9zhLM5oDZAU5PoX1PgN77hmkKE4a3PQiHqh7Q==",
+      "path": "npgsql.entityframeworkcore.postgresql/8.0.2",
+      "hashPath": "npgsql.entityframeworkcore.postgresql.8.0.2.nupkg.sha512"
+    },
+    "Pgvector/0.2.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-LDG8LAxOn6Ifgvg9S3gyQCFYGLVMQPYwnQiiHCDpCMfnVDm9b7J3DPsEDA2J3/qBwHUYKB6fWqNpqh91ztiILQ==",
+      "path": "pgvector/0.2.0",
+      "hashPath": "pgvector.0.2.0.nupkg.sha512"
+    },
+    "Pgvector.EntityFrameworkCore/0.2.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-0PrrlCvCJZA8hqJ7AUmcVnrbEv3ptP2Z1aIqRIouoeX+ki0YFk2rUsiDsBhVwMI4srds1vUjkKtIHXrLOeUArw==",
+      "path": "pgvector.entityframeworkcore/0.2.0",
+      "hashPath": "pgvector.entityframeworkcore.0.2.0.nupkg.sha512"
+    },
     "Polly/8.2.0": {
       "type": "package",
       "serviceable": true,
@@ -1791,6 +1969,13 @@
       "sha512": "sha512-gnKp3+mxGFmkFs4eHcD9aex0JOF8zS1Y18c2A5ckXXTVqbs6XLcDyLKgSa/mUFqAnH3mn9+uVIM0RhAec/d3kA==",
       "path": "polly.core/8.2.0",
       "hashPath": "polly.core.8.2.0.nupkg.sha512"
+    },
+    "RulesEngine/6.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-DVNW7aI8KqEOR56Gt0pdiirOxMg+uuEQApW+qm7dhqtvZ1bjVBoZn9snTXndlPO+nKy7QdRBB8gSfeeWH2fz/Q==",
+      "path": "rulesengine/6.0.0",
+      "hashPath": "rulesengine.6.0.0.nupkg.sha512"
     },
     "runtime.native.System.Data.SqlClient.sni/4.7.0": {
       "type": "package",
@@ -1925,6 +2110,13 @@
       "path": "system.io/4.3.0",
       "hashPath": "system.io.4.3.0.nupkg.sha512"
     },
+    "System.IO.Pipelines/9.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-uXf5o8eV/gtzDQY4lGROLFMWQvcViKcF8o4Q6KpIOjloAQXrnscQSu6gTxYJMHuNJnh7szIF9AzkaEq+zDLoEg==",
+      "path": "system.io.pipelines/9.0.1",
+      "hashPath": "system.io.pipelines.9.0.1.nupkg.sha512"
+    },
     "System.Linq/4.3.0": {
       "type": "package",
       "serviceable": true,
@@ -1932,12 +2124,12 @@
       "path": "system.linq/4.3.0",
       "hashPath": "system.linq.4.3.0.nupkg.sha512"
     },
-    "System.Linq.Dynamic.Core/1.3.5": {
+    "System.Linq.Dynamic.Core/1.6.0.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-G8aRAVHSQ/Jmt6dekX+z4K3L6ecX3CizaIYSQoDUolPRIPBYmBCabT+/pq5fMAFM57aOchFn8PUufuVfLjvEZQ==",
-      "path": "system.linq.dynamic.core/1.3.5",
-      "hashPath": "system.linq.dynamic.core.1.3.5.nupkg.sha512"
+      "sha512": "sha512-u1ome4HL3OS5lq2QbxIAmHv+i5uewSf2hqosGr8O5FjkseqSx4Fmt1Pn+8fjyex7/rQOOYrXk+iTkxxEgSc9yA==",
+      "path": "system.linq.dynamic.core/1.6.0.1",
+      "hashPath": "system.linq.dynamic.core.1.6.0.1.nupkg.sha512"
     },
     "System.Linq.Expressions/4.3.0": {
       "type": "package",
@@ -2079,19 +2271,19 @@
       "path": "system.text.encoding.codepages/8.0.0",
       "hashPath": "system.text.encoding.codepages.8.0.0.nupkg.sha512"
     },
-    "System.Text.Encodings.Web/8.0.0": {
+    "System.Text.Encodings.Web/9.0.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-yev/k9GHAEGx2Rg3/tU6MQh4HGBXJs70y7j1LaM1i/ER9po+6nnQ6RRqTJn1E7Xu0fbIFK80Nh5EoODxrbxwBQ==",
-      "path": "system.text.encodings.web/8.0.0",
-      "hashPath": "system.text.encodings.web.8.0.0.nupkg.sha512"
+      "sha512": "sha512-XkspqduP2t1e1x2vBUAD/xZ5ZDvmywuUwsmB93MvyQLospJfqtX0GsR/kU0vUL2h4kmvf777z3txV2W4NrQ9Qg==",
+      "path": "system.text.encodings.web/9.0.1",
+      "hashPath": "system.text.encodings.web.9.0.1.nupkg.sha512"
     },
-    "System.Text.Json/8.0.0": {
+    "System.Text.Json/9.0.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-OdrZO2WjkiEG6ajEFRABTRCi/wuXQPxeV6g8xvUJqdxMvvuCCEk86zPla8UiIQJz3durtUEbNyY/3lIhS0yZvQ==",
-      "path": "system.text.json/8.0.0",
-      "hashPath": "system.text.json.8.0.0.nupkg.sha512"
+      "sha512": "sha512-eqWHDZqYPv1PvuvoIIx5pF74plL3iEOZOl/0kQP+Y0TEbtgNnM2W6k8h8EPYs+LTJZsXuWa92n5W5sHTWvE3VA==",
+      "path": "system.text.json/9.0.1",
+      "hashPath": "system.text.json.9.0.1.nupkg.sha512"
     },
     "System.Threading/4.3.0": {
       "type": "package",
@@ -2121,26 +2313,26 @@
       "path": "timezoneconverter/6.1.0",
       "hashPath": "timezoneconverter.6.1.0.nupkg.sha512"
     },
-    "Volo.Abp.Auditing/8.1.3": {
+    "Volo.Abp.Auditing/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-7cBZVFHuP65pLWLN2oz+dNxADC8JPRzPeXSI/tEhb4ltohhQmVp+FiGvEDCBx7FSASyzI6ftZ9mMDCpLOzjL4A==",
-      "path": "volo.abp.auditing/8.1.3",
-      "hashPath": "volo.abp.auditing.8.1.3.nupkg.sha512"
+      "sha512": "sha512-ft29kbMs2t07jApe3y9e2f9uExIigjIbPzaKkV1SuvdVyVn3TUiTNylrAsZB9WU6WDGgbQSz29/W3MC4EWSeOQ==",
+      "path": "volo.abp.auditing/8.1.1",
+      "hashPath": "volo.abp.auditing.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.Auditing.Contracts/8.1.3": {
+    "Volo.Abp.Auditing.Contracts/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-lsIrNGbUeqViS9tgQ7StpTxC6aQhTIgOGAw6wUKMKVKvq71/i1cvJTqhh0iEKcugR4ECuuL6YLGKiyPuYCe7zw==",
-      "path": "volo.abp.auditing.contracts/8.1.3",
-      "hashPath": "volo.abp.auditing.contracts.8.1.3.nupkg.sha512"
+      "sha512": "sha512-xUk7lOZxcJoQBjPCIiYxZO2D2tavHXpYCIwH3SfG4xOOwb4ro1TqBKCPMki9ermX0yKmaL2eM55wsXT7RRxuLg==",
+      "path": "volo.abp.auditing.contracts/8.1.1",
+      "hashPath": "volo.abp.auditing.contracts.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.BackgroundWorkers/8.1.3": {
+    "Volo.Abp.BackgroundWorkers/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-txRH8+9SvI1zM7pFliPmDWiNxJpFyhiYJkcnDqUsYVYu/bNcW8xjYmva7pRayfNk61KTUPYOy0/9+mMf70oUpA==",
-      "path": "volo.abp.backgroundworkers/8.1.3",
-      "hashPath": "volo.abp.backgroundworkers.8.1.3.nupkg.sha512"
+      "sha512": "sha512-86+vkzHDSKio95VO93bNmpuuRe+usPuQDw+IoRQbwI/4raqFoSyiCGKvGOp/Fnm4pIIutFvqBPpmloexpHdWig==",
+      "path": "volo.abp.backgroundworkers/8.1.1",
+      "hashPath": "volo.abp.backgroundworkers.8.1.1.nupkg.sha512"
     },
     "Volo.Abp.BlobStoring/8.1.1": {
       "type": "package",
@@ -2156,47 +2348,47 @@
       "path": "volo.abp.blobstoring.filesystem/8.1.1",
       "hashPath": "volo.abp.blobstoring.filesystem.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.Caching/8.1.3": {
+    "Volo.Abp.Caching/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-HsyDbmeIN/SKzA+GihIt9tcRwsKFnHRHrE+qN7OG3SxJMm79zx2FaBUZEbxfeB1Mfcq4JRK5toQj/Z+hiaa1Zw==",
-      "path": "volo.abp.caching/8.1.3",
-      "hashPath": "volo.abp.caching.8.1.3.nupkg.sha512"
+      "sha512": "sha512-C+GEspeakR12qItw0QVQah+e4p5TPSPe4My5CyPIrzZwN5YKa3pEYvytjGpGvQ4+hcbPkHh5HN2lxLg44G0acQ==",
+      "path": "volo.abp.caching/8.1.1",
+      "hashPath": "volo.abp.caching.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.Core/8.1.3": {
+    "Volo.Abp.Core/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-MlHZGM85Mxrq8Wdzvn4blrqRw1wocYD2w85k4yX6NPpsfST+10kaW/g1gbXMc9/8TE9RlYLn/gocvIJawYAWAw==",
-      "path": "volo.abp.core/8.1.3",
-      "hashPath": "volo.abp.core.8.1.3.nupkg.sha512"
+      "sha512": "sha512-sNtdDe2/EWSz5tyHHWTJv8s2znVHVEP3019F6vXkoPYeL3kNYjSMX1W+ibH/TP5jmowaRZc9AZbfjHUb2bnHkQ==",
+      "path": "volo.abp.core/8.1.1",
+      "hashPath": "volo.abp.core.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.Data/8.1.3": {
+    "Volo.Abp.Data/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-K/ONzKQljhEUOYzpMo6kYoJWONOMEZIIOWqQ6ZdYIR3nVKwqsoWykj0H4tluBGjEbNX0GwCMTvJI/V5hJ6+RKw==",
-      "path": "volo.abp.data/8.1.3",
-      "hashPath": "volo.abp.data.8.1.3.nupkg.sha512"
+      "sha512": "sha512-FkGUAlgMFel85sUAVLBSI2K8nt9eEbyZCp9GT8ZVxGLKHnvUNfotefb7MJZSYSpwpmA1Xg8REkd2IQsqsGgzbw==",
+      "path": "volo.abp.data/8.1.1",
+      "hashPath": "volo.abp.data.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.Ddd.Domain/8.1.3": {
+    "Volo.Abp.Ddd.Domain/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-GIa/GknGdJksXWXUXmtA6Ynmm5fEuHCTH4AJdW/mkFFg6n+vGEepZEF6uI7CzPVrITXSkF5QJz5HMSfUMG89Xg==",
-      "path": "volo.abp.ddd.domain/8.1.3",
-      "hashPath": "volo.abp.ddd.domain.8.1.3.nupkg.sha512"
+      "sha512": "sha512-M+V9JrSUpwD0Es/2mM0CcIox5iT3c4dLgJghignnKRXl41YvhVcWllh/rezFoXCVqgRVSe3212zlQaCsyq5ZCw==",
+      "path": "volo.abp.ddd.domain/8.1.1",
+      "hashPath": "volo.abp.ddd.domain.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.Ddd.Domain.Shared/8.1.3": {
+    "Volo.Abp.Ddd.Domain.Shared/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-1lrZDVn2YWTbtX3CNN+OFde+96+x3JiOnU9ZmOIDCORqKkCqsNvPt0ghI89Az72OGmMa5FObkaEdl/Zh+QSPdA==",
-      "path": "volo.abp.ddd.domain.shared/8.1.3",
-      "hashPath": "volo.abp.ddd.domain.shared.8.1.3.nupkg.sha512"
+      "sha512": "sha512-y4BBDgdwHtGBds5Ek0Tz84a361uMdI4x5OVqnLphnOqbphHB74KoyJ8uOET8spX9SolhWM57gLNSnVT7tkg5qA==",
+      "path": "volo.abp.ddd.domain.shared/8.1.1",
+      "hashPath": "volo.abp.ddd.domain.shared.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.DistributedLocking.Abstractions/8.1.3": {
+    "Volo.Abp.DistributedLocking.Abstractions/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-aCfUiE/h0xrC0ebQFNXCb1bg9K7ePo11vClH4alY+eCgGpjmaCJb57+xdXlUY91mzYN5crhzR+JYetTq55Uc2Q==",
-      "path": "volo.abp.distributedlocking.abstractions/8.1.3",
-      "hashPath": "volo.abp.distributedlocking.abstractions.8.1.3.nupkg.sha512"
+      "sha512": "sha512-Tdnb/kPLbDmmU5ullLX//3gIBAJ0Et7OuYADydW6a22NHwHsxPhs9w++UEsjkxFKz+0Fy97MkJLOt65xcNjAZA==",
+      "path": "volo.abp.distributedlocking.abstractions/8.1.1",
+      "hashPath": "volo.abp.distributedlocking.abstractions.8.1.1.nupkg.sha512"
     },
     "Volo.Abp.EntityFrameworkCore/8.1.1": {
       "type": "package",
@@ -2205,145 +2397,145 @@
       "path": "volo.abp.entityframeworkcore/8.1.1",
       "hashPath": "volo.abp.entityframeworkcore.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.EventBus/8.1.3": {
+    "Volo.Abp.EventBus/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-RF2QXw1EDeyUOtM/aJUj6qx4+G1VRj57uBwwuX6fDW5qo7PyUPk34oxrDMPmeQts1txtrg4R3W4QP6RNPshcoA==",
-      "path": "volo.abp.eventbus/8.1.3",
-      "hashPath": "volo.abp.eventbus.8.1.3.nupkg.sha512"
+      "sha512": "sha512-h/SrkDEK6t54x4A6HnRzNqco+5oB5rf8V8rRJExFDgUxte+OuAEneDcFUm41HtOkIXgDKQiAeYHSDoIe63OnIQ==",
+      "path": "volo.abp.eventbus/8.1.1",
+      "hashPath": "volo.abp.eventbus.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.EventBus.Abstractions/8.1.3": {
+    "Volo.Abp.EventBus.Abstractions/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-RxgJt1PuIavlNKdXy+ciEbILD2GMCcl4ZuD0NBfvfLCktkCxJ9yHggLqaKznHxHd+EtsXZrEE7q5Iav8SCVXxw==",
-      "path": "volo.abp.eventbus.abstractions/8.1.3",
-      "hashPath": "volo.abp.eventbus.abstractions.8.1.3.nupkg.sha512"
+      "sha512": "sha512-CX13/KxRTEJ9aio/dQd/gtTy00pq8f93p4YNbrmvhAuw9NpWc4rRPuNkRdm7TkpvXX2rezQBzNEZYzanB41KIA==",
+      "path": "volo.abp.eventbus.abstractions/8.1.1",
+      "hashPath": "volo.abp.eventbus.abstractions.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.ExceptionHandling/8.1.3": {
+    "Volo.Abp.ExceptionHandling/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-4i+ek6wdwRolO7RmKSHlWZ+Lp8wNKcQKbpqxw5cCBP8ivq8txJFbu0laUCi/xgI9quqEXZrQF3WZ5vwsa9bf1Q==",
-      "path": "volo.abp.exceptionhandling/8.1.3",
-      "hashPath": "volo.abp.exceptionhandling.8.1.3.nupkg.sha512"
+      "sha512": "sha512-AZhRYR5THspYRyLFc7lnLPNQkI0Bn4j3tcsXJAiwpQkvPmivLgOL66C9gGBuM42Q9v6Tk6Y6RIy/G70pJbKc9g==",
+      "path": "volo.abp.exceptionhandling/8.1.1",
+      "hashPath": "volo.abp.exceptionhandling.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.Guids/8.1.3": {
+    "Volo.Abp.Guids/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-zpGJkV8+JOFaGmqj6r8vkYGJHBmF/4jGavise/tYS/YMjANt77AihYeChelOuNN0Y/zsLOMs6kg6oRO+LnJ07Q==",
-      "path": "volo.abp.guids/8.1.3",
-      "hashPath": "volo.abp.guids.8.1.3.nupkg.sha512"
+      "sha512": "sha512-3nnNnffKkIKrzl14xlhaPads4GVzPneFSf59w+wKkzTjnbC6cmsWmC+6W7qcVAYFpwioXUpBQLMZj1BQgREwew==",
+      "path": "volo.abp.guids/8.1.1",
+      "hashPath": "volo.abp.guids.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.Json/8.1.3": {
+    "Volo.Abp.Json/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-YEPzgmD6ePK1hnSCdGBC1PYjG/tPU0+so77MQbNTcM9/C85TWktc6Z1HjlsiZ8722fxv2Poz/KAGE9VwE7+7iQ==",
-      "path": "volo.abp.json/8.1.3",
-      "hashPath": "volo.abp.json.8.1.3.nupkg.sha512"
+      "sha512": "sha512-PIEnmql9AbeGTph1kOhCnUqB+f00iFaujFwxp68Cx/5d3D7PO5zpzIgLVlASV29++BTmbMZaSzNctEozj0pdrg==",
+      "path": "volo.abp.json/8.1.1",
+      "hashPath": "volo.abp.json.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.Json.Abstractions/8.1.3": {
+    "Volo.Abp.Json.Abstractions/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-ep/IhG/JdTQ7ffxvts+5LrAzjPFCd7Iu1LoI+b7IsJycadML6Xnfn5meF5Z7kPHCXSGTODS/11eGX5sFnqu2CQ==",
-      "path": "volo.abp.json.abstractions/8.1.3",
-      "hashPath": "volo.abp.json.abstractions.8.1.3.nupkg.sha512"
+      "sha512": "sha512-vn4bXF9KWkcKOz3MjOrn3blA1GAxd0ePCBW29LQHg6GKTUuzvhcV75vNb5NdspErDBbXSL8tY0ujr9/kvCmD+A==",
+      "path": "volo.abp.json.abstractions/8.1.1",
+      "hashPath": "volo.abp.json.abstractions.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.Json.SystemTextJson/8.1.3": {
+    "Volo.Abp.Json.SystemTextJson/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-b8yGYnghE0xD4/nJIFEVVYMaWef0Hw9feI21vkT1HsC/eKkDvzg2hY1TKT5Hxoq7Ea57sJOYIuukJCi1c0BEMQ==",
-      "path": "volo.abp.json.systemtextjson/8.1.3",
-      "hashPath": "volo.abp.json.systemtextjson.8.1.3.nupkg.sha512"
+      "sha512": "sha512-xtnaPqGReRFFTTiGy5QaMB3kNqd2Ydz9VTqrGouLvc1AaqUF9+KhOOCh9kVA18HEqESrm5VxKqpS2ZvRnEEHvw==",
+      "path": "volo.abp.json.systemtextjson/8.1.1",
+      "hashPath": "volo.abp.json.systemtextjson.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.Localization/8.1.3": {
+    "Volo.Abp.Localization/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-wvTQxUJERHUEAKn4/dffpESmdmtPUsbgic6KE9ll24Sd+W620PNc8fWHmodKvMYxSwpkNLiS4q28/xmBPCF7wg==",
-      "path": "volo.abp.localization/8.1.3",
-      "hashPath": "volo.abp.localization.8.1.3.nupkg.sha512"
+      "sha512": "sha512-QECnrtfqsPIlVYHVsa4nilgVTnQbEqmOEjd2gD0oKOEdXQd7iIAhYMHeTbvSO0nwXkq9FztAf2qmCRMDtrbUjw==",
+      "path": "volo.abp.localization/8.1.1",
+      "hashPath": "volo.abp.localization.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.Localization.Abstractions/8.1.3": {
+    "Volo.Abp.Localization.Abstractions/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-T9rNc4WhJgzvojTzY/ZeUWXMjvg4U8AoXN42d+zxsPhAUeBwKHr8o9h6migeakQJkrezHPoh9cLQEb8zL8q5nA==",
-      "path": "volo.abp.localization.abstractions/8.1.3",
-      "hashPath": "volo.abp.localization.abstractions.8.1.3.nupkg.sha512"
+      "sha512": "sha512-Or7NaSIj0wizPtguGUeWW7stoaXUpGr61Y3MRtYjmjIGFxAcrIuX3drlwGK9aB5m6Xt5xQNVkqh4Yy8kEkmNVQ==",
+      "path": "volo.abp.localization.abstractions/8.1.1",
+      "hashPath": "volo.abp.localization.abstractions.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.MultiTenancy/8.1.3": {
+    "Volo.Abp.MultiTenancy/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-mb5rhy+rj6gRMytEkf3GwXbtnCNb9RUjOzo+/sx0y6SSOg+s8PKQCc7NC9ti8UXXg8xReEaT2LoXu3bLSpCoXg==",
-      "path": "volo.abp.multitenancy/8.1.3",
-      "hashPath": "volo.abp.multitenancy.8.1.3.nupkg.sha512"
+      "sha512": "sha512-KRh2YuKoFVwUhe0bX6If+ukXGLnez0IudjocwwUTLJiBZ1IWjMb70OBbEy03LunIuvft/3i5m7uwIqdDBYKeVA==",
+      "path": "volo.abp.multitenancy/8.1.1",
+      "hashPath": "volo.abp.multitenancy.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.MultiTenancy.Abstractions/8.1.3": {
+    "Volo.Abp.MultiTenancy.Abstractions/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-TFTXg6hS3u7J1m3I/XzqJQ98TdnZRe+4oGWUi318dtbh7W82F2+Umj2tLuvv7L+6dm8i82dOmwyWrcV20jIDFQ==",
-      "path": "volo.abp.multitenancy.abstractions/8.1.3",
-      "hashPath": "volo.abp.multitenancy.abstractions.8.1.3.nupkg.sha512"
+      "sha512": "sha512-Vvm4oQsq+uRe29VgUEDiCe8eb2ML2dppcc7YNM1tiiNrDAUBG4lYSiBBvUUABXzS+jS/P1zmkEieU07CFaQSqw==",
+      "path": "volo.abp.multitenancy.abstractions/8.1.1",
+      "hashPath": "volo.abp.multitenancy.abstractions.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.ObjectExtending/8.1.3": {
+    "Volo.Abp.ObjectExtending/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-7f+xpVloBVp4utA5Ny2GHvmFthy0aTehjS0m5ZL7Md43kbic+ACKpUQUC9IPFyeHkKhfDMfT5oBAcXCx8LVefg==",
-      "path": "volo.abp.objectextending/8.1.3",
-      "hashPath": "volo.abp.objectextending.8.1.3.nupkg.sha512"
+      "sha512": "sha512-N0K8/fu1xpXcWl2CBCHvf8JP5t9wMt9YMlCjGzaGKP2Y/WQMWtN41yyEeKxYdKCnfcLQ8ZNffZQRPAX6hQKCkQ==",
+      "path": "volo.abp.objectextending/8.1.1",
+      "hashPath": "volo.abp.objectextending.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.ObjectMapping/8.1.3": {
+    "Volo.Abp.ObjectMapping/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-FwUWS6/cuGTySZiJ39vJYCe2wSvRdXupLZZJgMhXphSfxajGFpX2QtqBLSYSqb81g8YReYPE5Cn0fdUAAIc99Q==",
-      "path": "volo.abp.objectmapping/8.1.3",
-      "hashPath": "volo.abp.objectmapping.8.1.3.nupkg.sha512"
+      "sha512": "sha512-8+MT2rY+GaLCc7NsJz4OHy8KiqSqVna3LY+U6Wtg2xPbRnAumUWT/rgOXOLByrplhv40flqw0O77q1yLAO2SJw==",
+      "path": "volo.abp.objectmapping/8.1.1",
+      "hashPath": "volo.abp.objectmapping.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.Security/8.1.3": {
+    "Volo.Abp.Security/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-BCcAkOysfoPl1zMQ2KdWzY7viF6sN6QlN+wOu1eVkjTkcY9tntqS5x1CfymBRLbqubHGz781YEkyqxsDQPXqtQ==",
-      "path": "volo.abp.security/8.1.3",
-      "hashPath": "volo.abp.security.8.1.3.nupkg.sha512"
+      "sha512": "sha512-UfC7k+F5U7mj1uBwBEfbGAbjbyeuJXxPLbYtlEPqBztXBGM9VnaQ2/gLN3vdgfJiU0TDx6fmbZJm5lCzVclGyQ==",
+      "path": "volo.abp.security/8.1.1",
+      "hashPath": "volo.abp.security.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.Serialization/8.1.3": {
+    "Volo.Abp.Serialization/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-InvgAyG4/cFkhpoXCyCu6YD5qqeFjbDBDK4WI/yb9j2LQ6ooa5oxhz83tzTz/ax3DuhUu9ZGrjs86oZrkgJ3PA==",
-      "path": "volo.abp.serialization/8.1.3",
-      "hashPath": "volo.abp.serialization.8.1.3.nupkg.sha512"
+      "sha512": "sha512-dNm7frlMg66PckzHtlXqu3ow7ItWcC1NqE+WKT6NCuSC6MEJhiJj5phn9VzKgjbOUYtjlNVbO1QIAYOoVd1AYg==",
+      "path": "volo.abp.serialization/8.1.1",
+      "hashPath": "volo.abp.serialization.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.Settings/8.1.3": {
+    "Volo.Abp.Settings/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-DAKw614U4gnYphWhzegJR4i7TJGl/w9bP+1HZbGGqFNarKl8CagpVMMrOD839zYOzHPo07C1w9B12VRPmLhsFw==",
-      "path": "volo.abp.settings/8.1.3",
-      "hashPath": "volo.abp.settings.8.1.3.nupkg.sha512"
+      "sha512": "sha512-UT+BsKnvB2y35QCi5+TtFekw66/j8o8GelLLWOwf99uqfi3Xk9ntSRtmvXP/vDij9Kyv/ReGWg/E/kwwqQIblg==",
+      "path": "volo.abp.settings/8.1.1",
+      "hashPath": "volo.abp.settings.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.Specifications/8.1.3": {
+    "Volo.Abp.Specifications/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-/8SCzPb34OP/y1Dt9t1SnOu8AOuDntsPodrJbGv1hrUxC6ohbuHnmOAtiDdZrNvnaktlcB/TXeDGOqIvWy7PAQ==",
-      "path": "volo.abp.specifications/8.1.3",
-      "hashPath": "volo.abp.specifications.8.1.3.nupkg.sha512"
+      "sha512": "sha512-yFTgoNieABKRz19KLR+mIQmS5iRgaE/bbPZVyoGtyr83aLCH7Y84svt1Wpzn7AsOwMXm8njw8I0UEIw5wj6hFQ==",
+      "path": "volo.abp.specifications/8.1.1",
+      "hashPath": "volo.abp.specifications.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.Threading/8.1.3": {
+    "Volo.Abp.Threading/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-gKlERubyfQaff3hTdfpzAOucSNHD6dCGfFmMqckDmLo9hGRtBa8ZtzzZOY/li5iB5xyhZYcsONRvASnSTjUoUw==",
-      "path": "volo.abp.threading/8.1.3",
-      "hashPath": "volo.abp.threading.8.1.3.nupkg.sha512"
+      "sha512": "sha512-mMUfVsOoHE5c7CgYQKacZZoEV7+i0HepXUxiBjUfS+mwAu6KS/SDUN9KMFWtRtIbqYycRObTF+LdAQFr8EDq0Q==",
+      "path": "volo.abp.threading/8.1.1",
+      "hashPath": "volo.abp.threading.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.Timing/8.1.3": {
+    "Volo.Abp.Timing/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-ClShFb1Hr4lmGt5lwu2KbGASZYDkoVmCIx8RjuCp2bXzJqq67+j9+koqjOByCw04hTj9AAS5w2qfNlJvl8LmPQ==",
-      "path": "volo.abp.timing/8.1.3",
-      "hashPath": "volo.abp.timing.8.1.3.nupkg.sha512"
+      "sha512": "sha512-+qmruseshbQ2utykpTu/czIAs9kWWS6FMWkV2/nw98/LYMppveX3Wz7TO9t6QsDCWPXOgvtAOU2xd0IB/aiOlw==",
+      "path": "volo.abp.timing/8.1.1",
+      "hashPath": "volo.abp.timing.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.Uow/8.1.3": {
+    "Volo.Abp.Uow/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-O3kPubsmSd7LrO4PBRtFpLJAHnoD78rikUssvfJEIgK5j58P5Zs85PGVmunQyXqK1fQNFem+vlH5lcwnQa2o4Q==",
-      "path": "volo.abp.uow/8.1.3",
-      "hashPath": "volo.abp.uow.8.1.3.nupkg.sha512"
+      "sha512": "sha512-Jjg0UFya+vJ5omveIuSbXivFqbNuklsUgydpySgRntGMQt4wBxV04ZlqjxzjDi7uCQ8CkRwaxVZNtbIXgdoTbg==",
+      "path": "volo.abp.uow/8.1.1",
+      "hashPath": "volo.abp.uow.8.1.1.nupkg.sha512"
     },
     "Volo.Abp.Users.Abstractions/8.1.1": {
       "type": "package",
@@ -2373,19 +2565,19 @@
       "path": "volo.abp.users.entityframeworkcore/8.1.1",
       "hashPath": "volo.abp.users.entityframeworkcore.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.Validation.Abstractions/8.1.3": {
+    "Volo.Abp.Validation.Abstractions/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-zn3fn0brVKMNyVducxVQAFp6nXc6BdvdxrpcLf+lnPx4Bwd7uxGT2VAvNvyAmlTH4V7wbpRKbLIEXfieX9mCeA==",
-      "path": "volo.abp.validation.abstractions/8.1.3",
-      "hashPath": "volo.abp.validation.abstractions.8.1.3.nupkg.sha512"
+      "sha512": "sha512-lyYP+IY6MGvrCOXM5DPZ3GI4iH3Xc+oXYPzi6kmRrFov8NSYUxCLYfnE2eNC3MqFC2Dw2JUmtumaVJ0g+t/OBQ==",
+      "path": "volo.abp.validation.abstractions/8.1.1",
+      "hashPath": "volo.abp.validation.abstractions.8.1.1.nupkg.sha512"
     },
-    "Volo.Abp.VirtualFileSystem/8.1.3": {
+    "Volo.Abp.VirtualFileSystem/8.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-wvcyF/qHasuL5+IPCQPHfZEMfcMPFK7ov6uH5zmvxV5geWcX5t5yh80WDcMnVk7HXBoI+tQpoviK6fk+z+f5Ew==",
-      "path": "volo.abp.virtualfilesystem/8.1.3",
-      "hashPath": "volo.abp.virtualfilesystem.8.1.3.nupkg.sha512"
+      "sha512": "sha512-K0kwo4iaxVGro7Av3+wot+oIMqzwcC+xRjCODjznTGMH5d2Mao9WMSonQK3sphSkH7q5kukyKwS1VwS+V0Pg1w==",
+      "path": "volo.abp.virtualfilesystem/8.1.1",
+      "hashPath": "volo.abp.virtualfilesystem.8.1.1.nupkg.sha512"
     },
     "Hx.Abp.Attachment.Dmain.Shared/1.0.0": {
       "type": "project",

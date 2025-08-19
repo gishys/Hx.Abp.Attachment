@@ -62,5 +62,13 @@ namespace Hx.Abp.Attachment.Application
         {
             return await _searchRepository.TestFullTextSearchAsync(testText);
         }
+
+        /// <summary>
+        /// 测试模糊搜索功能
+        /// </summary>
+        public async Task<string> TestFuzzySearchAsync(string testText)
+        {
+            return await _searchRepository.TestFuzzySearchAsync(testText);
+        }
     }
 }

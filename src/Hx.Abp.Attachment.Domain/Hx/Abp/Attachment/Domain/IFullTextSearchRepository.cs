@@ -41,5 +41,10 @@ namespace Hx.Abp.Attachment.Domain
         /// 测试全文搜索功能
         /// </summary>
         Task<string> TestFullTextSearchAsync(string testText);
+
+        /// <summary>
+        /// 测试模糊搜索功能
+        /// </summary>
+        Task<string> TestFuzzySearchAsync(string testText);
     }
 }

@@ -1,10 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
 using Hx.Abp.Attachment.Application;
-using Hx.Abp.Attachment.Application.Contracts;
-using Volo.Abp;
+using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.AspNetCore.Mvc;
 
 namespace Hx.Abp.Attachment.Api.Controllers
@@ -112,6 +107,20 @@ namespace Hx.Abp.Attachment.Api.Controllers
                 Input = text, 
                 Result = result,
                 Message = "全文搜索功能测试完成"
+            });
+        }
+
+        /// <summary>
+        /// 测试模糊搜索功能
+        /// </summary>
+        [HttpGet("test/fuzzy")]
+        public async Task<IActionResult> TestFuzzySearch([FromQuery] string text = "测试")
+        {
+            var result = await _searchService.TestFuzzySearchAsync(text);
+            return Ok(new { 
+                Input = text, 
+                Result = result,
+                Message = "模糊搜索功能测试完成"
             });
         }
     }

@@ -113,7 +113,8 @@ namespace Hx.Abp.Attachment.Domain
                 return [];
 
             // 简单分词：按空格分割
-            return [.. text.Split([' ', '\t', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries).Where(t => t.Length > 1)];
+            char[] separators = [' ', '\t', '\n', '\r'];
+            return [.. text.Split(separators, StringSplitOptions.RemoveEmptyEntries).Where(t => t.Length > 1)];
         }
 
         [GeneratedRegex(@"[^\p{L}\p{N}\s]")]

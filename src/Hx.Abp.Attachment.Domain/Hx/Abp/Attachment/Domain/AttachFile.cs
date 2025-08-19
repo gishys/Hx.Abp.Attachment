@@ -2,6 +2,7 @@ using JetBrains.Annotations;
 using Volo.Abp;
 using Volo.Abp.Domain.Entities.Auditing;
 using Hx.Abp.Attachment.Domain.Shared;
+using System.Collections.ObjectModel;
 
 namespace Hx.Abp.Attachment.Domain
 {
@@ -61,6 +62,11 @@ namespace Hx.Abp.Attachment.Domain
         /// OCR处理时间
         /// </summary>
         public virtual DateTime? OcrProcessedTime { get; protected set; }
+
+        /// <summary>
+        /// OCR文本块集合
+        /// </summary>
+        public virtual Collection<OcrTextBlock> OcrTextBlocks { get; private set; }
         /// <summary>
         /// 提供给ORM用来从数据库中获取实体，
         /// 无需初始化子集合因为它会被来自数据库的值覆盖
@@ -68,7 +74,9 @@ namespace Hx.Abp.Attachment.Domain
 #pragma warning disable CS8618 // 在退出构造函数时，不可为 null 的字段必须包含非 null 值。请考虑声明为可以为 null。
         protected AttachFile()
 #pragma warning restore CS8618 // 在退出构造函数时，不可为 null 的字段必须包含非 null 值。请考虑声明为可以为 null。
-        { }
+        {
+            OcrTextBlocks = [];
+        }
         /// <summary>
         /// 创建附件文件，通过文件管理系统持久化
         /// </summary>
@@ -95,6 +103,7 @@ namespace Hx.Abp.Attachment.Domain
             FileSize = fileSize;
             DownloadTimes = downloadTimes;
             AttachCatalogueId = attachCatalogueId;
+            OcrTextBlocks = [];
         }
         /// <summary>
         /// 创建附件文件，通过数据库持久化
@@ -123,6 +132,7 @@ namespace Hx.Abp.Attachment.Domain
             FileType = Check.NotNullOrWhiteSpace(fileType, nameof(fileType));
             FileSize = fileSize;
             DownloadTimes = downloadTimes;
+            OcrTextBlocks = [];
         }
         public virtual void SetFileAlias(string fileAlias)
         {
@@ -171,6 +181,42 @@ namespace Hx.Abp.Attachment.Domain
             OcrContent = null;
             OcrProcessStatus = OcrProcessStatus.NotProcessed;
             OcrProcessedTime = null;
+            OcrTextBlocks.Clear();
+        }
+
+        /// <summary>
+        /// 添加OCR文本块
+        /// </summary>
+        /// <param name="textBlock">文本块</param>
+        public virtual void AddOcrTextBlock(OcrTextBlock textBlock)
+        {
+            if (textBlock != null)
+            {
+                OcrTextBlocks.Add(textBlock);
+            }
+        }
+
+        /// <summary>
+        /// 批量添加OCR文本块
+        /// </summary>
+        /// <param name="textBlocks">文本块集合</param>
+        public virtual void AddOcrTextBlocks(IEnumerable<OcrTextBlock> textBlocks)
+        {
+            if (textBlocks != null)
+            {
+                foreach (var block in textBlocks)
+                {
+                    OcrTextBlocks.Add(block);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 清除所有OCR文本块
+        /// </summary>
+        public virtual void ClearOcrTextBlocks()
+        {
+            OcrTextBlocks.Clear();
         }
 
         public virtual void Download()

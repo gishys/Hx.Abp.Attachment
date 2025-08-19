@@ -1,7 +1,6 @@
 using Hx.Abp.Attachment.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Pgvector.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore.Modeling;
 
 namespace Hx.Abp.Attachment.EntityFrameworkCore

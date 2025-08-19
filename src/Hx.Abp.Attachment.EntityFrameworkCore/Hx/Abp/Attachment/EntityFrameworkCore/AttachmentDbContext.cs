@@ -8,6 +8,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
     {
         public DbSet<AttachCatalogue> AttachCatalogues { get; set; }
         public DbSet<AttachFile> AttachFiles { get; set; }
+        public DbSet<OcrTextBlock> OcrTextBlocks { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

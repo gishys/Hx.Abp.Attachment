@@ -35,6 +35,9 @@ namespace Hx.Abp.Attachment.Application
             // 注册OCR服务
             context.Services.AddScoped<IOcrService, OcrService>();
             
+            // 注册全文搜索应用服务
+            context.Services.AddScoped<IFullTextSearchAppService, FullTextSearchAppService>();
+            
             // 注册跨平台PDF转图片工具
             context.Services.AddScoped<CrossPlatformPdfToImageConverter>();
         }

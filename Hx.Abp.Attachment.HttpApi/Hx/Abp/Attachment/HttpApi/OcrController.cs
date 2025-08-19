@@ -2,7 +2,7 @@ using Hx.Abp.Attachment.Application.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.AspNetCore.Mvc;
 
-namespace Hx.Abp.Attachment.Api.Controllers
+namespace Hx.Abp.Attachment.HttpApi
 {
     /// <summary>
     /// OCR处理控制器
@@ -103,6 +103,61 @@ namespace Hx.Abp.Attachment.Api.Controllers
         }
 
         /// <summary>
+        /// 获取文件的OCR内容（包含文本块信息）
+        /// </summary>
+        [HttpGet("files/{fileId}/content-with-blocks")]
+        public async Task<IActionResult> GetFileOcrContentWithBlocks(Guid fileId)
+        {
+            try
+            {
+                var result = await _ocrService.GetFileOcrContentWithBlocksAsync(fileId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"获取OCR内容失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 获取文件的文本块列表
+        /// </summary>
+        [HttpGet("files/{fileId}/text-blocks")]
+        public async Task<IActionResult> GetFileTextBlocks(Guid fileId)
+        {
+            try
+            {
+                var result = await _ocrService.GetFileTextBlocksAsync(fileId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"获取文本块失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 获取文本块详情
+        /// </summary>
+        [HttpGet("text-blocks/{textBlockId}")]
+        public async Task<IActionResult> GetTextBlock(Guid textBlockId)
+        {
+            try
+            {
+                var result = await _ocrService.GetTextBlockAsync(textBlockId);
+                if (result == null)
+                {
+                    return NotFound($"文本块不存在: {textBlockId}");
+                }
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"获取文本块详情失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// 获取目录的全文内容
         /// </summary>
         [HttpGet("catalogues/{catalogueId}/content")]
@@ -116,6 +171,57 @@ namespace Hx.Abp.Attachment.Api.Controllers
             catch (Exception ex)
             {
                 return BadRequest($"获取全文内容失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 获取目录的OCR内容（包含文本块信息）
+        /// </summary>
+        [HttpGet("catalogues/{catalogueId}/content-with-blocks")]
+        public async Task<IActionResult> GetCatalogueOcrContentWithBlocks(Guid catalogueId)
+        {
+            try
+            {
+                var result = await _ocrService.GetCatalogueOcrContentWithBlocksAsync(catalogueId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"获取目录OCR内容失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 获取OCR统计信息
+        /// </summary>
+        [HttpGet("statistics")]
+        public async Task<IActionResult> GetOcrStatistics()
+        {
+            try
+            {
+                var result = await _ocrService.GetOcrStatisticsAsync();
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"获取OCR统计信息失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 清理孤立的文本块
+        /// </summary>
+        [HttpPost("cleanup")]
+        public async Task<IActionResult> CleanupOrphanedTextBlocks()
+        {
+            try
+            {
+                var result = await _ocrService.CleanupOrphanedTextBlocksAsync();
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"清理孤立文本块失败: {ex.Message}");
             }
         }
     }

@@ -1,20 +1,17 @@
-﻿using Hx.Abp.Attachment.Application.Contracts;
+using Hx.Abp.Attachment.Application.Contracts;
 using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp;
 using Volo.Abp.AspNetCore.Mvc;
 
-namespace Hx.Abp.Attachment.Api.Controllers
+namespace Hx.Abp.Attachment.HttpApi
 {
     [ApiController]
     [Route("api/app/attachment")]
-    public class AttachmentCatalogueController : AbpControllerBase
+    public class AttachmentCatalogueController(IAttachCatalogueAppService attachCatalogueAppService) : AbpControllerBase
     {
-        protected IAttachCatalogueAppService AttachCatalogueAppService { get; }
-        public AttachmentCatalogueController(IAttachCatalogueAppService attachCatalogueAppService)
-        {
-            AttachCatalogueAppService = attachCatalogueAppService;
-        }
+        protected IAttachCatalogueAppService AttachCatalogueAppService { get; } = attachCatalogueAppService;
+
         [HttpPost]
         public virtual Task<AttachCatalogueDto?> CreateAsync(AttachCatalogueCreateDto input, CatalogueCreateMode? mode)
         {

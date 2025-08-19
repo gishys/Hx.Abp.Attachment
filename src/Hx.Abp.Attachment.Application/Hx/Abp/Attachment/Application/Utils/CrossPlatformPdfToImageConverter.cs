@@ -14,14 +14,9 @@ namespace Hx.Abp.Attachment.Application.Utils
     /// <summary>
     /// 跨平台PDF转图片工具类
     /// </summary>
-    public class CrossPlatformPdfToImageConverter
+    public class CrossPlatformPdfToImageConverter(ILogger<CrossPlatformPdfToImageConverter> logger)
     {
-        private readonly ILogger<CrossPlatformPdfToImageConverter> _logger;
-
-        public CrossPlatformPdfToImageConverter(ILogger<CrossPlatformPdfToImageConverter> logger)
-        {
-            _logger = logger;
-        }
+        private readonly ILogger<CrossPlatformPdfToImageConverter> _logger = logger;
 
         /// <summary>
         /// 将PDF文件转换为图片列表
@@ -165,7 +160,7 @@ namespace Hx.Abp.Attachment.Application.Utils
         /// <param name="image">图片</param>
         /// <param name="outputPath">输出路径</param>
         /// <param name="imageFormat">图片格式</param>
-        private async Task SaveImageAsync(Image<Rgba32> image, string outputPath, string imageFormat)
+        private static async Task SaveImageAsync(Image<Rgba32> image, string outputPath, string imageFormat)
         {
             await Task.Run(() =>
             {
@@ -191,21 +186,24 @@ namespace Hx.Abp.Attachment.Application.Utils
         /// <param name="imagePaths">图片文件路径列表</param>
         public async Task CleanupTempImagesAsync(List<string> imagePaths)
         {
-            foreach (var imagePath in imagePaths)
+            await Task.Run(() =>
             {
-                try
+                foreach (var imagePath in imagePaths)
                 {
-                    if (File.Exists(imagePath))
+                    try
                     {
-                        File.Delete(imagePath);
-                        _logger.LogDebug("删除临时图片文件: {ImagePath}", imagePath);
+                        if (File.Exists(imagePath))
+                        {
+                            File.Delete(imagePath);
+                            _logger.LogDebug("删除临时图片文件: {ImagePath}", imagePath);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "删除临时图片文件失败: {ImagePath}", imagePath);
                     }
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "删除临时图片文件失败: {ImagePath}", imagePath);
-                }
-            }
+            });
         }
     }
 }

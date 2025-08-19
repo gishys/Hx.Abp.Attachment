@@ -18,6 +18,9 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 options.AddRepository<AttachFile, EfCoreAttachFileRepository>();
 
                 options.AddDefaultRepositories(includeAllEntities: true);
+            
+            // 注册自定义仓储
+            options.AddRepository<OcrTextBlock, OcrTextBlockRepository>();
             });
 
             // 注册全文搜索仓储

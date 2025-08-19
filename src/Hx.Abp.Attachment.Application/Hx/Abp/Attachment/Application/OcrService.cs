@@ -1,4 +1,5 @@
 using Hx.Abp.Attachment.Application.ArchAI;
+using Hx.Abp.Attachment.Application.ArchAI.Contracts;
 using Hx.Abp.Attachment.Application.Contracts;
 using Hx.Abp.Attachment.Application.Utils;
 using Hx.Abp.Attachment.Domain;
@@ -6,7 +7,7 @@ using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using OcrTextComposer;
-using System.Net.Http;
+using System.Text.Json;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
 
@@ -18,12 +19,14 @@ namespace Hx.Abp.Attachment.Application
     public class OcrService(
         IRepository<AttachCatalogue, Guid> catalogueRepository,
         IRepository<AttachFile, Guid> fileRepository,
+        IOcrTextBlockRepository textBlockRepository,
         ILogger<OcrService> logger,
         IConfiguration configuration,
         CrossPlatformPdfToImageConverter pdfConverter) : DomainService, IOcrService
     {
         private readonly IRepository<AttachCatalogue, Guid> _catalogueRepository = catalogueRepository;
         private readonly IRepository<AttachFile, Guid> _fileRepository = fileRepository;
+        private readonly IOcrTextBlockRepository _textBlockRepository = textBlockRepository;
         private readonly ILogger<OcrService> _logger = logger;
         private readonly IConfiguration _configuration = configuration;
         private readonly CrossPlatformPdfToImageConverter _pdfConverter = pdfConverter;
@@ -83,24 +86,48 @@ namespace Hx.Abp.Attachment.Application
                 await _fileRepository.UpdateAsync(attachFile);
 
                 string? extractedText;
+                List<OcrTextBlock> textBlocks = [];
+                
                 if (SupportedPdfTypes.Contains(attachFile.FileType.ToLowerInvariant()))
                 {
                     // 处理PDF文件
-                    extractedText = await ProcessPdfFileAsync(attachFile);
+                    var (ExtractedText, TextBlocks) = await ProcessPdfFileWithTextBlocksAsync(attachFile);
+                    extractedText = ExtractedText;
+                    textBlocks = TextBlocks;
                 }
                 else
                 {
                     // 处理图片文件
-                    extractedText = await ProcessImageFileAsync(attachFile);
+                    var (ExtractedText, TextBlocks) = await ProcessImageFileWithTextBlocksAsync(attachFile);
+                    extractedText = ExtractedText;
+                    textBlocks = TextBlocks;
                 }
 
                 if (!string.IsNullOrWhiteSpace(extractedText))
                 {
                     attachFile.SetOcrContent(extractedText);
+                    
+                    // 存储文本块
+                    if (textBlocks.Count > 0)
+                    {
+                        // 清除旧的文本块
+                        attachFile.ClearOcrTextBlocks();
+                        
+                        // 添加新的文本块
+                        attachFile.AddOcrTextBlocks(textBlocks);
+                        
+                        // 保存文本块到数据库
+                        foreach (var textBlock in textBlocks)
+                        {
+                            await _textBlockRepository.InsertAsync(textBlock);
+                        }
+                        
+                        _logger.LogInformation("文件 {FileName} OCR处理成功，提取文本长度: {TextLength}，文本块数量: {BlockCount}", 
+                            attachFile.FileName, extractedText.Length, textBlocks.Count);
+                    }
+                    
                     result.IsSuccess = true;
                     result.ExtractedText = extractedText;
-                    _logger.LogInformation("文件 {FileName} OCR处理成功，提取文本长度: {TextLength}", 
-                        attachFile.FileName, extractedText.Length);
                 }
                 else
                 {
@@ -123,9 +150,9 @@ namespace Hx.Abp.Attachment.Application
         }
 
         /// <summary>
-        /// 处理PDF文件
+        /// 处理PDF文件并返回文本块
         /// </summary>
-        private async Task<string?> ProcessPdfFileAsync(AttachFile attachFile)
+        private async Task<(string? ExtractedText, List<OcrTextBlock> TextBlocks)> ProcessPdfFileWithTextBlocksAsync(AttachFile attachFile)
         {
             try
             {
@@ -152,27 +179,66 @@ namespace Hx.Abp.Attachment.Application
                     if (imagePaths.Count == 0)
                     {
                         _logger.LogWarning("PDF文件 {FileName} 转换图片失败", attachFile.FileName);
-                        return null;
+                        // 将
+                        // return null;
+                        // 替换为
+                        return (null, new List<OcrTextBlock>());
                     }
 
                     // 对每个图片进行OCR处理
                     var allTexts = new List<string>();
-                    foreach (var imagePath in imagePaths)
+                    var allTextBlocks = new List<OcrTextBlock>();
+                    var blockOrder = 0;
+                    
+                    for (int pageIndex = 0; pageIndex < imagePaths.Count; pageIndex++)
                     {
-                        var imageText = await ProcessImageWithAliyunOcrAsync(imagePath);
-                        if (!string.IsNullOrWhiteSpace(imageText))
+                        var imagePath = imagePaths[pageIndex];
+                        var imageUrl = ConvertLocalPathToUrl(imagePath);
+                        
+                        // 获取详细的OCR结果
+                        var ocrResult = await ProcessImageWithAliyunOcrDetailedAsync(imageUrl);
+                        if (ocrResult?.Results?.Count > 0)
                         {
-                            allTexts.Add(imageText);
+                            var imageText = OcrComposer.Compose(ocrResult);
+                            if (!string.IsNullOrWhiteSpace(imageText))
+                            {
+                                allTexts.Add(imageText);
+                            }
+                            
+                            // 处理文本块
+                            foreach (var result in ocrResult.Results)
+                            {
+                                if (!string.IsNullOrWhiteSpace(result.Text) && result.TextRectangles != null)
+                                {
+                                    var textBlock = new OcrTextBlock(
+                                        Guid.NewGuid(),
+                                        attachFile.Id,
+                                        result.Text,
+                                        result.Probability ?? 0.0f,
+                                        pageIndex,
+                                        JsonSerializer.Serialize(new TextPosition
+                                        {
+                                            Angle = result.TextRectangles.Angle,
+                                            Height = result.TextRectangles.Height,
+                                            Left = result.TextRectangles.Left,
+                                            Top = result.TextRectangles.Top,
+                                            Width = result.TextRectangles.Width
+                                        }),
+                                        blockOrder++
+                                    );
+                                    allTextBlocks.Add(textBlock);
+                                }
+                            }
                         }
                     }
 
                     // 合并所有页面的文本
                     var combinedText = string.Join("\n\n--- 页面分隔 ---\n\n", allTexts);
                     
-                    _logger.LogInformation("PDF文件 {FileName} 处理完成，共 {PageCount} 页，提取文本长度: {TextLength}", 
-                        attachFile.FileName, imagePaths.Count, combinedText.Length);
+                    _logger.LogInformation("PDF文件 {FileName} 处理完成，共 {PageCount} 页，提取文本长度: {TextLength}，文本块数量: {BlockCount}", 
+                        attachFile.FileName, imagePaths.Count, combinedText.Length, allTextBlocks.Count);
 
-                    return combinedText;
+                    return (combinedText, allTextBlocks);
                 }
                 finally
                 {
@@ -202,9 +268,9 @@ namespace Hx.Abp.Attachment.Application
         }
 
         /// <summary>
-        /// 处理图片文件
+        /// 处理图片文件并返回文本块
         /// </summary>
-        private async Task<string?> ProcessImageFileAsync(AttachFile attachFile)
+        private async Task<(string? ExtractedText, List<OcrTextBlock> TextBlocks)> ProcessImageFileWithTextBlocksAsync(AttachFile attachFile)
         {
             try
             {
@@ -220,12 +286,45 @@ namespace Hx.Abp.Attachment.Application
                 }
 
                 // 使用阿里云OCR处理图片
-                var extractedText = await ProcessImageWithAliyunOcrAsync(imageUrl);
+                var ocrResult = await ProcessImageWithAliyunOcrDetailedAsync(imageUrl);
+                var extractedText = string.Empty;
+                var textBlocks = new List<OcrTextBlock>();
                 
-                _logger.LogInformation("图片文件 {FileName} 处理完成，提取文本长度: {TextLength}", 
-                    attachFile.FileName, extractedText?.Length ?? 0);
+                if (ocrResult?.Results?.Count > 0)
+                {
+                    extractedText = OcrComposer.Compose(ocrResult);
+                    
+                    // 处理文本块
+                    var blockOrder = 0;
+                    foreach (var result in ocrResult.Results)
+                    {
+                        if (!string.IsNullOrWhiteSpace(result.Text) && result.TextRectangles != null)
+                        {
+                            var textBlock = new OcrTextBlock(
+                                Guid.NewGuid(),
+                                attachFile.Id,
+                                result.Text,
+                                result.Probability ?? 0.0f,
+                                0, // 单页图片
+                                JsonSerializer.Serialize(new TextPosition
+                                {
+                                    Angle = result.TextRectangles.Angle,
+                                    Height = result.TextRectangles.Height,
+                                    Left = result.TextRectangles.Left,
+                                    Top = result.TextRectangles.Top,
+                                    Width = result.TextRectangles.Width
+                                }),
+                                blockOrder++
+                            );
+                            textBlocks.Add(textBlock);
+                        }
+                    }
+                }
+                
+                _logger.LogInformation("图片文件 {FileName} 处理完成，提取文本长度: {TextLength}，文本块数量: {BlockCount}", 
+                    attachFile.FileName, extractedText.Length, textBlocks.Count);
 
-                return extractedText;
+                return (extractedText, textBlocks);
             }
             catch (Exception ex)
             {
@@ -235,9 +334,9 @@ namespace Hx.Abp.Attachment.Application
         }
 
         /// <summary>
-        /// 使用阿里云OCR处理图片
+        /// 使用阿里云OCR处理图片并返回详细结果
         /// </summary>
-        private async Task<string?> ProcessImageWithAliyunOcrAsync(string imageUrl)
+        private async Task<RecognizeCharacterDto?> ProcessImageWithAliyunOcrDetailedAsync(string imageUrl)
         {
             try
             {
@@ -251,14 +350,7 @@ namespace Hx.Abp.Attachment.Application
                 var ocrResult = await UniversalTextRecognitionHelper.JpgUniversalTextRecognition(
                     accessKeyId, accessKeySecret, imageUrl);
 
-                if (ocrResult?.Results?.Count > 0)
-                {
-                    // 使用OcrComposer组合文本
-                    var composedText = OcrComposer.Compose(ocrResult);
-                    return composedText;
-                }
-
-                return null;
+                return ocrResult;
             }
             catch (Exception ex)
             {
@@ -458,6 +550,168 @@ namespace Hx.Abp.Attachment.Application
                 FullTextContentUpdatedTime = catalogue.FullTextContentUpdatedTime,
                 AttachCount = catalogue.AttachCount
             };
+        }
+
+        /// <summary>
+        /// 获取文件的OCR内容（包含文本块信息）
+        /// </summary>
+        public async Task<FileOcrContentWithBlocksDto> GetFileOcrContentWithBlocksAsync(Guid fileId)
+        {
+            var attachFile = await _fileRepository.GetAsync(fileId) ?? throw new InvalidOperationException($"文件不存在: {fileId}");
+            
+            // 获取文本块
+            var textBlocks = await GetFileTextBlocksAsync(fileId);
+            
+            return new FileOcrContentWithBlocksDto
+            {
+                FileId = attachFile.Id,
+                FileName = attachFile.FileName,
+                OcrContent = attachFile.OcrContent,
+                OcrProcessStatus = attachFile.OcrProcessStatus,
+                OcrProcessedTime = attachFile.OcrProcessedTime,
+                TextBlocks = textBlocks
+            };
+        }
+
+        /// <summary>
+        /// 获取目录的OCR内容（包含文本块信息）
+        /// </summary>
+        public async Task<CatalogueOcrContentWithBlocksDto> GetCatalogueOcrContentWithBlocksAsync(Guid catalogueId)
+        {
+            var catalogue = await _catalogueRepository.GetAsync(catalogueId) ?? throw new InvalidOperationException($"目录不存在: {catalogueId}");
+            
+            var fileOcrContents = new List<FileOcrContentWithBlocksDto>();
+            
+            if (catalogue.AttachFiles != null)
+            {
+                foreach (var file in catalogue.AttachFiles)
+                {
+                    var fileOcrContent = await GetFileOcrContentWithBlocksAsync(file.Id);
+                    fileOcrContents.Add(fileOcrContent);
+                }
+            }
+            
+            return new CatalogueOcrContentWithBlocksDto
+            {
+                CatalogueId = catalogue.Id,
+                CatalogueName = catalogue.CatalogueName,
+                FullTextContent = catalogue.FullTextContent,
+                FullTextContentUpdatedTime = catalogue.FullTextContentUpdatedTime,
+                AttachCount = catalogue.AttachCount,
+                FileOcrContents = fileOcrContents
+            };
+        }
+
+        /// <summary>
+        /// 获取文件的文本块列表
+        /// </summary>
+        public async Task<List<OcrTextBlockDto>> GetFileTextBlocksAsync(Guid fileId)
+        {
+            // 通过仓储获取 IQueryable
+            var queryable = await _textBlockRepository.GetQueryableAsync();
+            var textBlocks = queryable
+                .Where(tb => tb.AttachFileId == fileId)
+                .OrderBy(tb => tb.PageIndex)
+                .ThenBy(tb => tb.BlockOrder)
+                .ToList();
+
+            return [.. textBlocks.Select(MapToOcrTextBlockDto)];
+        }
+
+        /// <summary>
+        /// 获取文本块详情
+        /// </summary>
+        public async Task<OcrTextBlockDto?> GetTextBlockAsync(Guid textBlockId)
+        {
+            var textBlock = await _textBlockRepository.GetAsync(textBlockId);
+            return textBlock != null ? MapToOcrTextBlockDto(textBlock) : null;
+        }
+
+        /// <summary>
+        /// 映射到OcrTextBlockDto
+        /// </summary>
+        private static OcrTextBlockDto MapToOcrTextBlockDto(OcrTextBlock textBlock)
+        {
+            return new OcrTextBlockDto
+            {
+                Id = textBlock.Id,
+                AttachFileId = textBlock.AttachFileId,
+                Text = textBlock.Text,
+                Probability = textBlock.Probability,
+                PageIndex = textBlock.PageIndex,
+                Position = MapToTextPositionDto(textBlock.GetPosition()),
+                BlockOrder = textBlock.BlockOrder,
+                CreationTime = textBlock.CreationTime
+            };
+        }
+
+        /// <summary>
+        /// 映射到TextPositionDto
+        /// </summary>
+        private static TextPositionDto? MapToTextPositionDto(TextPosition? position)
+        {
+            if (position == null) return null;
+
+            return new TextPositionDto
+            {
+                Angle = position.Angle,
+                Height = position.Height,
+                Left = position.Left,
+                Top = position.Top,
+                Width = position.Width
+            };
+        }
+
+        /// <summary>
+        /// 获取OCR统计信息
+        /// </summary>
+        public async Task<OcrStatisticsDto> GetOcrStatisticsAsync()
+        {
+            try
+            {
+                var statistics = await _textBlockRepository.GetStatisticsAsync();
+                
+                return new OcrStatisticsDto
+                {
+                    TotalTextBlocks = statistics.TotalTextBlocks,
+                    TotalFilesWithOcr = statistics.TotalFilesWithOcr,
+                    AverageProbability = statistics.AverageProbability,
+                    TotalTextLength = statistics.TotalTextLength,
+                    StatisticsTime = DateTime.UtcNow
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取OCR统计信息失败");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 清理孤立的文本块
+        /// </summary>
+        public async Task<CleanupResultDto> CleanupOrphanedTextBlocksAsync()
+        {
+            var result = new CleanupResultDto();
+            
+            try
+            {
+                var deletedCount = await _textBlockRepository.CleanupOrphanedBlocksAsync();
+                
+                result.IsSuccess = true;
+                result.DeletedCount = deletedCount;
+                result.CleanupTime = DateTime.UtcNow;
+                
+                _logger.LogInformation("清理孤立文本块完成，删除了 {DeletedCount} 条记录", deletedCount);
+            }
+            catch (Exception ex)
+            {
+                result.IsSuccess = false;
+                result.ErrorMessage = ex.Message;
+                _logger.LogError(ex, "清理孤立文本块失败");
+            }
+            
+            return result;
         }
     }
 }

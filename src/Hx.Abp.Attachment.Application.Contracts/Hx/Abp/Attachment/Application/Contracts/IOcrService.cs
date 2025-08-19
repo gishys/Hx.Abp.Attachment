@@ -48,11 +48,51 @@ namespace Hx.Abp.Attachment.Application.Contracts
         Task<CatalogueFullTextDto> GetCatalogueFullTextAsync(Guid catalogueId);
 
         /// <summary>
+        /// 获取文件的OCR内容（包含文本块信息）
+        /// </summary>
+        /// <param name="fileId">文件ID</param>
+        /// <returns>文件OCR内容（包含文本块）</returns>
+        Task<FileOcrContentWithBlocksDto> GetFileOcrContentWithBlocksAsync(Guid fileId);
+
+        /// <summary>
+        /// 获取目录的OCR内容（包含文本块信息）
+        /// </summary>
+        /// <param name="catalogueId">目录ID</param>
+        /// <returns>目录OCR内容（包含文本块）</returns>
+        Task<CatalogueOcrContentWithBlocksDto> GetCatalogueOcrContentWithBlocksAsync(Guid catalogueId);
+
+        /// <summary>
+        /// 获取文件的文本块列表
+        /// </summary>
+        /// <param name="fileId">文件ID</param>
+        /// <returns>文本块列表</returns>
+        Task<List<OcrTextBlockDto>> GetFileTextBlocksAsync(Guid fileId);
+
+        /// <summary>
+        /// 获取文本块详情
+        /// </summary>
+        /// <param name="textBlockId">文本块ID</param>
+        /// <returns>文本块详情</returns>
+        Task<OcrTextBlockDto?> GetTextBlockAsync(Guid textBlockId);
+
+        /// <summary>
         /// 检查文件类型是否支持OCR
         /// </summary>
         /// <param name="fileType">文件类型</param>
         /// <returns>是否支持</returns>
         bool IsSupportedFileType(string fileType);
+
+        /// <summary>
+        /// 获取OCR统计信息
+        /// </summary>
+        /// <returns>OCR统计信息</returns>
+        Task<OcrStatisticsDto> GetOcrStatisticsAsync();
+
+        /// <summary>
+        /// 清理孤立的文本块
+        /// </summary>
+        /// <returns>清理结果</returns>
+        Task<CleanupResultDto> CleanupOrphanedTextBlocksAsync();
     }
 
     /// <summary>

@@ -22,6 +22,7 @@
     <ProjectReference Include="..\Hx.Abp.Attachment.Application.Contracts\Hx.Abp.Attachment.Application.Contracts.csproj" />
     <ProjectReference Include="..\Hx.Abp.Attachment.Application\Hx.Abp.Attachment.Application.csproj" />
     <ProjectReference Include="..\Hx.Abp.Attachment.EntityFrameworkCore\Hx.Abp.Attachment.EntityFrameworkCore.csproj" />
+    <ProjectReference Include="..\Hx.Abp.Attachment.HttpApi\Hx.Abp.Attachment.HttpApi.csproj" />
   </ItemGroup>
 
 </Project>

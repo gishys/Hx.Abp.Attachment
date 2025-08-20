@@ -296,3 +296,118 @@ src/Hx.BgApp.Blazor.Tiered/Logs/*
 # Ensure all obj and bin directories are ignored
 **/obj/
 **/bin/
+
+# ABP Framework specific ignores
+**/wwwroot/libs/
+**/wwwroot/assets/
+**/wwwroot/dist/
+**/wwwroot/build/
+
+# Log files
+**/Logs/
+**/*.log
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment files
+*.env
+.env.local
+.env.development
+.env.production
+
+# IDE specific files
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Test coverage reports
+**/coverage/
+**/TestResults/
+*.coverage
+*.coveragexml
+
+# Performance profiling files
+*.vsp
+*.vspx
+*.sap
+
+# Memory dumps
+*.dmp
+*.mdmp
+
+# Symbol files
+*.pdb
+*.pdbstr
+
+# Assembly info files (auto-generated)
+**/obj/**/AssemblyInfo.cs
+**/obj/**/AssemblyInfoInputs.cache
+**/obj/**/*.GeneratedMSBuildEditorConfig.editorconfig
+**/obj/**/*.assets.cache
+**/obj/**/*.csproj.nuget.dgspec.json
+**/obj/**/*.csproj.nuget.g.props
+**/obj/project.assets.json
+**/obj/project.nuget.cache
+**/obj/**/.NETCoreApp,Version=*.AssemblyAttributes.cs
+**/obj/**/*.GlobalUsings.g.cs
+**/obj/**/*.csproj.CopyComplete
+**/obj/**/*.csproj.FileListAbsolute.txt
+**/obj/**/*.Up2Date
+
+# Visual Studio specific files (comprehensive)
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.dtbcache.v2
+*.futdcache.v2
+.vs/**/DesignTimeBuild/.dtbcache.v2
+.vs/**/v17/.futdcache.v2
+.vs/**/v17/.suo
+.vs/**/config/applicationhost.config
+
+# Build artifacts
+**/bin/Debug/
+**/bin/Release/
+**/bin/net*/
+**/obj/Debug/
+**/obj/Release/
+**/obj/net*/
+
+# NuGet packages and restore files
+**/packages/
+*.nupkg
+*.nuget.props
+*.nuget.targets
+**/obj/**/*.csproj.nuget.dgspec.json
+**/obj/**/*.csproj.nuget.g.props
+**/obj/project.assets.json
+**/obj/project.nuget.cache
+
+# SourceLink files
+**/*.sourcelink.json

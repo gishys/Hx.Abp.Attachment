@@ -217,7 +217,7 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual void RegenerateFullTextContent()
         {
-            if (AttachFiles == null || !AttachFiles.Any())
+            if (AttachFiles == null || AttachFiles.Count == 0)
             {
                 FullTextContent = null;
                 FullTextContentUpdatedTime = DateTime.UtcNow;
@@ -230,7 +230,7 @@ namespace Hx.Abp.Attachment.Domain
                 .Select(f => f.OcrContent)
                 .ToList();
 
-            FullTextContent = contentParts.Any() ? string.Join("\n", contentParts) : null;
+            FullTextContent = contentParts.Count != 0 ? string.Join("\n", contentParts) : null;
             FullTextContentUpdatedTime = DateTime.UtcNow;
         }
     }

@@ -23,17 +23,8 @@ namespace OcrTextComposer
             {
                 var rect = block.TextRectangles;
                 if (rect == null) continue;
-
-                // 3. 竖排文字处理（不修改原对象）
                 int angle = rect.Angle;
                 var text = block.Text;
-                if (Math.Abs(angle) is >= 85 and <= 95)
-                {
-#pragma warning disable CS8604 // 引用类型参数可能为 null。
-                    text = RotateVerticalText(text);
-#pragma warning restore CS8604 // 引用类型参数可能为 null。
-                    angle = 0; // 仅用于后续逻辑
-                }
 
                 // 4. 把块加入虚拟行
                 var line = lines.FirstOrDefault(l => l.CanMerge(block, angle));
@@ -55,16 +46,6 @@ namespace OcrTextComposer
             return string.Join(Environment.NewLine,
                                orderedLines.Select(l => l.Compose()));
         }
-
-        /* ---------- 工具函数 ---------- */
-        private static string RotateVerticalText(string text)
-        {
-            if (string.IsNullOrEmpty(text)) return text;
-            var arr = text.ToCharArray();
-            Array.Reverse(arr);
-            return new string(arr);
-        }
-
         /* ---------- 行实现 ---------- */
         private sealed class TextLine
         {
@@ -104,12 +85,9 @@ namespace OcrTextComposer
 
             public string Compose()
             {
-                var angle = _items.FirstOrDefault().Angle;
-                bool isVertical = Math.Abs(angle) is >= 85 and <= 95;
-
-                var ordered = isVertical
-                    ? _items.OrderBy(i => i.Block.TextRectangles.Top)
-                    : _items.OrderBy(i => i.Block.TextRectangles.Left);
+                // 保持阿里云OCR的原始顺序，按照位置坐标排序
+                var ordered = _items.OrderBy(i => i.Block.TextRectangles.Left)
+                                   .ThenBy(i => i.Block.TextRectangles.Top);
 
                 return string.Concat(ordered.Select(i => i.Text));
             }

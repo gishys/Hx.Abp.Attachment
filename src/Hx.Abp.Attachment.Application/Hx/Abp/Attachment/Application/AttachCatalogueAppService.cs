@@ -321,7 +321,7 @@ namespace Hx.Abp.Attachment.Application
                     }
                     else
                     {
-                        fileUrl = $"{prefix ?? ""}/{fileName}";
+                        fileUrl = $"{prefix ?? "uploads"}/{fileName}";
                     }
                     var tempFile = new AttachFile(
                         attachId,

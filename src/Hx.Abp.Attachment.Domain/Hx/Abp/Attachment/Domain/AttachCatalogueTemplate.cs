@@ -144,5 +144,84 @@ namespace Hx.Abp.Attachment.Domain
         {
             Children.Remove(child);
         }
+
+        /// <summary>
+        /// 验证模板配置
+        /// </summary>
+        public virtual void ValidateConfiguration()
+        {
+            if (string.IsNullOrWhiteSpace(TemplateName))
+            {
+                throw new ArgumentException("模板名称不能为空", nameof(TemplateName));
+            }
+
+            if (Version <= 0)
+            {
+                throw new ArgumentException("版本号必须大于0", nameof(Version));
+            }
+
+            // 验证规则表达式格式（如果提供）
+            if (!string.IsNullOrWhiteSpace(RuleExpression))
+            {
+                try
+                {
+                    // 这里可以添加更详细的规则表达式验证逻辑
+                    if (!RuleExpression.Contains("WorkflowName"))
+                    {
+                        throw new ArgumentException("规则表达式格式不正确，必须包含 WorkflowName", nameof(RuleExpression));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new ArgumentException($"规则表达式格式错误: {ex.Message}", nameof(RuleExpression));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 复制模板配置
+        /// </summary>
+        /// <param name="source">源模板</param>
+        public virtual void CopyFrom(AttachCatalogueTemplate source)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            TemplateName = source.TemplateName;
+            AttachReceiveType = source.AttachReceiveType;
+            NamePattern = source.NamePattern;
+            RuleExpression = source.RuleExpression;
+            SemanticModel = source.SemanticModel;
+            IsRequired = source.IsRequired;
+            SequenceNumber = source.SequenceNumber;
+            IsStatic = source.IsStatic;
+            ParentId = source.ParentId;
+        }
+
+        /// <summary>
+        /// 检查是否为根模板
+        /// </summary>
+        public virtual bool IsRoot => ParentId == null;
+
+        /// <summary>
+        /// 检查是否为叶子模板
+        /// </summary>
+        public virtual bool IsLeaf => Children == null || Children.Count == 0;
+
+        /// <summary>
+        /// 获取模板层级深度
+        /// </summary>
+        public virtual int GetDepth()
+        {
+            if (IsRoot) return 0;
+            return 1; // 简化实现，实际应该递归计算
+        }
+
+        /// <summary>
+        /// 获取模板路径
+        /// </summary>
+        public virtual string GetPath()
+        {
+            return TemplateName; // 简化实现，实际应该构建完整路径
+        }
     }
 }

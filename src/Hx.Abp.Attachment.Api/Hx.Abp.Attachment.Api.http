@@ -4,3 +4,122 @@ GET {{Hx.Abp.Attachment.Api_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+### 智能推荐服务测试
+
+### 1. 智能模板推荐
+POST {{baseUrl}}/api/app/intelligent-recommendation/recommend-templates
+Content-Type: application/json
+
+{
+  "query": "财务报表模板",
+  "topN": 5,
+  "threshold": 0.6,
+  "includeHistory": false,
+  "userId": "00000000-0000-0000-0000-000000000001"
+}
+
+### 2. 快速推荐模板
+GET {{baseUrl}}/api/app/intelligent-recommendation/quick-recommend?query=财务报表&topN=3
+
+### 3. 基于现有模板生成新模板
+POST {{baseUrl}}/api/app/intelligent-recommendation/generate-template-from-existing
+Content-Type: application/json
+
+{
+  "baseTemplateId": "00000000-0000-0000-0000-000000000001",
+  "newTemplateName": "财务报表模板_v2",
+  "modificationDescription": "增加新的规则和语义模型",
+  "customProperties": {
+    "NamePattern": "财务报表_{年份}_{月份}",
+    "RuleExpression": "{\"rules\":[{\"ruleName\":\"financial_report\",\"expression\":\"input.businessType == 'finance'\"}]}",
+    "SemanticModel": "financial_report_v2"
+  },
+  "inheritFromParent": true
+}
+
+### 4. 智能分类推荐
+POST {{baseUrl}}/api/app/intelligent-recommendation/recommend-catalogue-structure
+Content-Type: application/json
+
+{
+  "businessDescription": "企业年度财务报表归档",
+  "fileTypes": ["pdf", "xlsx", "docx"],
+  "reference": "financial_archive_2024",
+  "referenceType": 1,
+  "expectedLevels": 3,
+  "includeRequired": true
+}
+
+### 5. 基于业务场景推荐
+GET {{baseUrl}}/api/app/intelligent-recommendation/recommend-by-business?businessDescription=企业年度财务报表归档&fileTypes=pdf,xlsx,docx
+
+### 6. 批量智能推荐
+POST {{baseUrl}}/api/app/intelligent-recommendation/batch-recommend
+Content-Type: application/json
+
+{
+  "queries": [
+    {
+      "query": "财务报表模板",
+      "topN": 3,
+      "threshold": 0.5
+    },
+    {
+      "query": "合同文档模板",
+      "topN": 3,
+      "threshold": 0.5
+    }
+  ],
+  "parallelProcessing": true,
+  "timeoutSeconds": 30
+}
+
+### 7. 学习用户偏好
+POST {{baseUrl}}/api/app/intelligent-recommendation/learn-user-preference
+Content-Type: application/json
+
+{
+  "userId": "00000000-0000-0000-0000-000000000001",
+  "behaviorType": "Select",
+  "templateId": "00000000-0000-0000-0000-000000000001",
+  "query": "财务报表模板",
+  "contextData": {
+    "businessType": "finance",
+    "documentType": "report"
+  },
+  "behaviorTime": "2024-01-15T10:30:00Z"
+}
+
+### 8. 获取推荐统计信息
+GET {{baseUrl}}/api/app/intelligent-recommendation/statistics
+
+### 9. 测试语义匹配功能 - 相似度测试
+POST {{baseUrl}}/api/app/intelligent-recommendation/test-semantic-matching
+Content-Type: application/json
+
+{
+  "text1": "财务报表模板",
+  "text2": "财务报告模板",
+  "testType": "Similarity"
+}
+
+### 10. 测试语义匹配功能 - 特征提取测试
+POST {{baseUrl}}/api/app/intelligent-recommendation/test-semantic-matching
+Content-Type: application/json
+
+{
+  "text1": "财务报表模板",
+  "text2": "",
+  "testType": "FeatureExtraction"
+}
+
+### 11. 测试语义匹配功能 - 模板匹配测试
+POST {{baseUrl}}/api/app/intelligent-recommendation/test-semantic-matching
+Content-Type: application/json
+
+{
+  "text1": "财务报表模板",
+  "text2": "",
+  "testType": "TemplateMatching"
+}

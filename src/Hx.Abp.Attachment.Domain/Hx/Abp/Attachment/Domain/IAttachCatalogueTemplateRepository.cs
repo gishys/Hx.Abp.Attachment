@@ -14,5 +14,53 @@ namespace Hx.Abp.Attachment.Domain
         Task<List<AttachCatalogueTemplate>> GetTemplateHistoryAsync(Guid templateId);
         Task SetAsLatestVersionAsync(Guid templateId);
         Task SetAllOtherVersionsAsNotLatestAsync(string templateName, Guid excludeId);
+        
+        // 新增智能推荐方法
+        Task<List<AttachCatalogueTemplate>> GetIntelligentRecommendationsAsync(
+            string query, 
+            double threshold = 0.3, 
+            int topN = 10, 
+            bool onlyLatest = true,
+            bool includeHistory = false);
+            
+        Task<List<AttachCatalogueTemplate>> GetRecommendationsByBusinessAsync(
+            string businessDescription,
+            List<string> fileTypes,
+            int expectedLevels = 3,
+            bool onlyLatest = true);
+
+        #region 关键字维护方法
+
+        /// <summary>
+        /// 更新模板的 SemanticModel 关键字
+        /// </summary>
+        Task UpdateSemanticModelKeywordsAsync(Guid templateId, List<string> keywords);
+
+        /// <summary>
+        /// 更新模板的 NamePattern 模式
+        /// </summary>
+        Task UpdateNamePatternAsync(Guid templateId, string namePattern);
+
+        /// <summary>
+        /// 基于使用历史自动提取 SemanticModel 关键字
+        /// </summary>
+        Task<List<string>> ExtractSemanticKeywordsFromUsageAsync(Guid templateId);
+
+        /// <summary>
+        /// 基于文件命名模式自动提取 NamePattern
+        /// </summary>
+        Task<string> ExtractNamePatternFromFilesAsync(Guid templateId);
+
+                    /// <summary>
+            /// 智能更新模板关键字（基于使用数据）
+            /// </summary>
+            Task UpdateTemplateKeywordsIntelligentlyAsync(Guid templateId);
+
+            /// <summary>
+            /// 获取模板使用次数
+            /// </summary>
+            Task<int> GetTemplateUsageCountAsync(Guid templateId);
+
+            #endregion
     }
 }

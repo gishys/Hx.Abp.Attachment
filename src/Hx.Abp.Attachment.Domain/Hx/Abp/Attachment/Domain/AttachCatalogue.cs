@@ -61,6 +61,11 @@ namespace Hx.Abp.Attachment.Domain
         public virtual bool IsStatic { get; private set; }
 
         /// <summary>
+        /// 关联的模板ID
+        /// </summary>
+        public virtual Guid? TemplateId { get; private set; }
+
+        /// <summary>
         /// 全文内容 - 存储分类下所有文件的OCR提取内容
         /// </summary>
         public virtual string? FullTextContent { get; private set; }
@@ -110,7 +115,8 @@ namespace Hx.Abp.Attachment.Domain
             bool verificationPassed = false,
             bool isStatic = false,
             int attachCount = 0,
-            int pageCount = 0
+            int pageCount = 0,
+            Guid? templateId = null
             )
         {
             Id = id;
@@ -126,6 +132,7 @@ namespace Hx.Abp.Attachment.Domain
             AttachCount = attachCount;
             PageCount = pageCount;
             IsStatic = isStatic;
+            TemplateId = templateId;
             AttachFiles = [];
             Children = [];
         }
@@ -180,6 +187,12 @@ namespace Hx.Abp.Attachment.Domain
         public virtual void SetIsVerification(bool isVerification) => IsVerification = isVerification;
         public virtual void SetIsRequired(bool isIsRequired) => IsRequired = isIsRequired;
         public virtual void SetIsStatic(bool isIsStatic) => IsStatic = isIsStatic;
+
+        /// <summary>
+        /// 设置关联的模板ID
+        /// </summary>
+        /// <param name="templateId">模板ID</param>
+        public virtual void SetTemplateId(Guid? templateId) => TemplateId = templateId;
 
         /// <summary>
         /// 设置语义检索向量

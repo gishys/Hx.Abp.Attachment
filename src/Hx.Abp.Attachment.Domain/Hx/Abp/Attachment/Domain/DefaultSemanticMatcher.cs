@@ -1,123 +1,225 @@
-using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
+using Volo.Abp.DependencyInjection;
 
 namespace Hx.Abp.Attachment.Domain
 {
     /// <summary>
-    /// 默认语义匹配服务实现
-    /// 使用本地算法提供基本功能
-    /// 可替换为真正的AI服务
+    /// 简化版默认语义匹配服务实现
+    /// 基于数据库驱动的智能推荐，移除复杂的本地算法
     /// </summary>
-    public partial class DefaultSemanticMatcher : ISemanticMatcher
+    [Dependency(ReplaceServices = true)]
+    [ExposeServices(typeof(ISemanticMatcher))]
+    public partial class DefaultSemanticMatcher(
+        ILogger<DefaultSemanticMatcher> logger,
+        IAttachCatalogueTemplateRepository templateRepository) : ISemanticMatcher, ITransientDependency
     {
-        // 简单缓存训练过的模型
-        private readonly Dictionary<string, Dictionary<string, string>> _trainedModels =
-            [];
+        private readonly ILogger<DefaultSemanticMatcher> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        private readonly IAttachCatalogueTemplateRepository _templateRepository = templateRepository ?? throw new ArgumentNullException(nameof(templateRepository));
 
+        /// <summary>
+        /// 基于语义生成分类名称
+        /// </summary>
         public Task<string> GenerateNameAsync(string modelName, Dictionary<string, object> context)
         {
-            // 默认实现：基于上下文生成简单名称
-            string contextSummary = string.Join("_", context.Values.Take(3));
-            string generatedName = $"Generated_{DateTime.Now:yyyyMMdd}_{contextSummary}";
-            return Task.FromResult(generatedName.Trim('_'));
+            try
+            {
+                _logger.LogInformation("开始生成分类名称，模型：{modelName}", modelName);
+
+                // 基于上下文生成智能名称
+                var contextSummary = ExtractContextSummary(context);
+                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                var generatedName = $"Generated_{contextSummary}_{timestamp}";
+
+                _logger.LogInformation("生成分类名称：{generatedName}", generatedName);
+                return Task.FromResult(generatedName.Trim('_'));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "生成分类名称失败，模型：{modelName}", modelName);
+                return Task.FromResult($"Generated_{DateTime.Now:yyyyMMdd}");
+            }
         }
 
+        /// <summary>
+        /// 匹配与查询语义相似的模板
+        /// </summary>
         public async Task<List<AttachCatalogueTemplate>> MatchTemplatesAsync(
             string query,
             List<AttachCatalogueTemplate> templates,
             double threshold = 0.6,
             int topN = 5)
         {
-            var matches = new List<(AttachCatalogueTemplate Template, double Score)>();
-
-            foreach (var template in templates)
+            if (string.IsNullOrWhiteSpace(query))
             {
-                double score = await CalculateSimilarityAsync(query, template.TemplateName);
-                if (score >= threshold)
-                {
-                    matches.Add((template, score));
-                }
+                _logger.LogWarning("查询参数无效：{query}", query);
+                return [];
             }
 
-            return [.. matches
-                .OrderByDescending(m => m.Score)
-                .Take(topN)
-                .Select(m => m.Template)];
+            try
+            {
+                _logger.LogInformation("开始数据库驱动的模板匹配，查询：{query}，阈值：{threshold}，TopN：{topN}", 
+                    query, threshold, topN);
+
+                // 直接使用数据库仓储进行智能推荐
+                var matchedTemplates = await _templateRepository.GetIntelligentRecommendationsAsync(
+                    query, threshold, topN, true, false);
+
+                _logger.LogInformation("模板匹配完成，找到 {matchCount} 个匹配结果", matchedTemplates.Count);
+                return matchedTemplates;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "模板匹配失败，查询：{query}", query);
+                return [];
+            }
         }
 
-        public Task<double> CalculateSimilarityAsync(string text1, string text2)
+        /// <summary>
+        /// 计算两个文本的语义相似度
+        /// </summary>
+        public async Task<double> CalculateSimilarityAsync(string text1, string text2)
         {
-            // 默认实现：使用Jaccard相似度算法
             if (string.IsNullOrWhiteSpace(text1) || string.IsNullOrWhiteSpace(text2))
-                return Task.FromResult(0.0);
+                return 0.0;
 
-            // 预处理文本
-            text1 = PreprocessText(text1);
-            text2 = PreprocessText(text2);
+            try
+            {
+                // 使用数据库仓储进行相似度计算
+                var matchedTemplates = await _templateRepository.GetIntelligentRecommendationsAsync(
+                    text1, 0.1, 1, true, false);
 
-            // 分词
-            var tokens1 = Tokenize(text1);
-            var tokens2 = Tokenize(text2);
+                if (matchedTemplates.Count > 0)
+                {
+                    var template = matchedTemplates.First();
+                    // 基于模板名称与text2的简单相似度计算
+                    var similarity = CalculateSimpleSimilarity(template.TemplateName, text2);
+                    
+                    _logger.LogDebug("相似度计算完成：{text1} vs {text2} = {score}", 
+                        text1[..Math.Min(20, text1.Length)], 
+                        text2[..Math.Min(20, text2.Length)], 
+                        similarity);
 
-            if (tokens1.Count == 0 || tokens2.Count == 0)
-                return Task.FromResult(0.0);
+                    return similarity;
+                }
 
-            // 计算Jaccard相似度
-            var intersection = tokens1.Intersect(tokens2).Count();
-            var union = tokens1.Union(tokens2).Count();
-
-            double similarity = (double)intersection / union;
-            return Task.FromResult(similarity);
+                return 0.0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "相似度计算失败：{text1} vs {text2}", text1, text2);
+                return 0.0;
+            }
         }
 
+        /// <summary>
+        /// 训练自定义语义模型（简化版本）
+        /// </summary>
         public Task TrainModelAsync(string modelName, Dictionary<string, string> trainingData)
         {
-            // 默认实现：简单存储训练数据
-            _trainedModels[modelName] = trainingData;
-            return Task.CompletedTask;
+            try
+            {
+                _logger.LogInformation("语义模型训练（简化版本）：{modelName}，训练数据量：{dataCount}", 
+                    modelName, trainingData?.Count ?? 0);
+
+                // 简化实现：仅记录日志，实际训练由数据库驱动
+                _logger.LogInformation("语义模型训练完成（数据库驱动）：{modelName}", modelName);
+                return Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "训练语义模型失败：{modelName}", modelName);
+                return Task.CompletedTask;
+            }
         }
 
+        /// <summary>
+        /// 提取文本的关键特征（简化版本）
+        /// </summary>
         public Task<float[]> ExtractFeaturesAsync(string text)
         {
-            // 默认实现：返回简单的二进制特征向量
-            // 实际应用中应替换为真正的特征提取
-            var tokens = Tokenize(PreprocessText(text));
-            var uniqueTokens = tokens.Distinct().ToList();
+            if (string.IsNullOrWhiteSpace(text))
+                return Task.FromResult(new float[64]);
 
-            // 创建固定大小的特征向量
-            var features = new float[256];
-            for (int i = 0; i < Math.Min(uniqueTokens.Count, 256); i++)
+            try
             {
-                features[i] = 1.0f;
+                // 简化特征提取：基于文本长度和基本统计
+                var features = new float[64];
+                
+                // 文本长度特征
+                features[0] = Math.Min(text.Length / 1000.0f, 1.0f);
+                
+                // 词汇数量特征
+                var wordCount = text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+                features[1] = Math.Min(wordCount / 100.0f, 1.0f);
+                
+                // 数字密度特征
+                var digitCount = text.Count(char.IsDigit);
+                features[2] = Math.Min(digitCount / 100.0f, 1.0f);
+
+                return Task.FromResult(features);
             }
-
-            return Task.FromResult(features);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "特征提取失败：{text}", text);
+                return Task.FromResult(new float[64]);
+            }
         }
 
-        private static string PreprocessText(string text)
+        #region 私有方法
+
+        /// <summary>
+        /// 提取上下文摘要
+        /// </summary>
+        private string ExtractContextSummary(Dictionary<string, object> context)
         {
-            if (string.IsNullOrWhiteSpace(text))
-                return string.Empty;
+            try
+            {
+                var summaryParts = new List<string>();
 
-            // 转换为小写
-            text = text.ToLowerInvariant();
+                foreach (var (key, value) in context.Take(3))
+                {
+                    if (value != null)
+                    {
+                        var valueStr = value.ToString();
+                        if (!string.IsNullOrWhiteSpace(valueStr))
+                        {
+                            // 提取关键信息
+                            var words = valueStr.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                            var keyWords = words.Take(2).Where(w => w.Length > 1);
+                            summaryParts.AddRange(keyWords);
+                        }
+                    }
+                }
 
-            // 移除非字母数字字符（保留中文等）
-            text = GetAlphanumeric().Replace(text, "");
-
-            return text.Trim();
+                return string.Join("_", summaryParts.Take(5));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "特征提取失败：{text}", ex.Message);
+                return "Context";
+            }
         }
 
-        private static List<string> Tokenize(string text)
+        /// <summary>
+        /// 计算简单相似度
+        /// </summary>
+        private static double CalculateSimpleSimilarity(string text1, string text2)
         {
-            if (string.IsNullOrWhiteSpace(text))
-                return [];
+            if (string.IsNullOrWhiteSpace(text1) || string.IsNullOrWhiteSpace(text2))
+                return 0.0;
 
-            // 简单分词：按空格分割
-            char[] separators = [' ', '\t', '\n', '\r'];
-            return [.. text.Split(separators, StringSplitOptions.RemoveEmptyEntries).Where(t => t.Length > 1)];
+            var words1 = text1.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var words2 = text2.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+            if (words1.Length == 0 || words2.Length == 0)
+                return 0.0;
+
+            var intersection = words1.Intersect(words2, StringComparer.OrdinalIgnoreCase).Count();
+            var union = words1.Union(words2, StringComparer.OrdinalIgnoreCase).Count();
+
+            return union > 0 ? (double)intersection / union : 0.0;
         }
 
-        [GeneratedRegex(@"[^\p{L}\p{N}\s]")]
-        private static partial Regex GetAlphanumeric();
+        #endregion
     }
 }

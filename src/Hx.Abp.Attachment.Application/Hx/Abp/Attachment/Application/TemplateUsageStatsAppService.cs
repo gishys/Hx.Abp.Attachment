@@ -106,7 +106,7 @@ namespace Hx.Abp.Attachment.Application
             catch (Exception ex)
             {
                 _logger.LogError(ex, "获取模板使用趋势失败，模板ID：{templateId}", templateId);
-                return new List<TemplateUsageTrendDto>();
+                return [];
             }
         }
 
@@ -135,7 +135,7 @@ namespace Hx.Abp.Attachment.Application
                         LastUsedTime = result.LastUsedTime,
                         AverageUsagePerDay = result.AverageUsagePerDay
                     },
-                    Trends = new List<TemplateUsageTrendDto>(), // 简化处理，实际应该获取趋势数据
+                    Trends = [], // 简化处理，实际应该获取趋势数据
                     IsSuccess = true
                 }).ToList();
                 
@@ -145,12 +145,12 @@ namespace Hx.Abp.Attachment.Application
             catch (Exception ex)
             {
                 _logger.LogError(ex, "批量获取模板使用统计失败");
-                return input.TemplateIds.Select(id => new BatchTemplateUsageStatsDto
+                return [.. input.TemplateIds.Select(id => new BatchTemplateUsageStatsDto
                 {
                     TemplateId = id,
                     IsSuccess = false,
                     ErrorMessage = ex.Message
-                }).ToList();
+                })];
             }
         }
 
@@ -181,7 +181,7 @@ namespace Hx.Abp.Attachment.Application
             catch (Exception ex)
             {
                 _logger.LogError(ex, "获取热门模板失败");
-                return new ListResultDto<HotTemplateDto>(new List<HotTemplateDto>());
+                return new ListResultDto<HotTemplateDto>([]);
             }
         }
 
@@ -198,10 +198,10 @@ namespace Hx.Abp.Attachment.Application
                 // 映射Domain值对象到DTO格式
                 var overview = new
                 {
-                    TotalTemplates = domainOverview.TotalTemplates,
+                    domainOverview.TotalTemplates,
                     TotalUsage = domainOverview.TotalUsageCount,
                     RecentUsage = 0, // 需要额外计算
-                    AverageUsagePerTemplate = domainOverview.AverageUsagePerTemplate,
+                    domainOverview.AverageUsagePerTemplate,
                     MostActiveTemplate = domainOverview.TopUsedTemplates.FirstOrDefault() != null ? new
                     {
                         domainOverview.TopUsedTemplates.First().TemplateId,
@@ -224,7 +224,7 @@ namespace Hx.Abp.Attachment.Application
         /// <summary>
         /// 更新模板使用统计（内部使用）
         /// </summary>
-        public async Task<bool> UpdateTemplateUsageStatsAsync(Guid templateId)
+        public Task<bool> UpdateTemplateUsageStatsAsync(Guid templateId)
         {
             try
             {
@@ -234,12 +234,12 @@ namespace Hx.Abp.Attachment.Application
                 // 目前只是记录日志，实际实现可以根据需要扩展
                 
                 _logger.LogInformation("更新模板使用统计完成，模板ID：{templateId}", templateId);
-                return true;
+                return Task.FromResult(true);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "更新模板使用统计失败，模板ID：{templateId}", templateId);
-                return false;
+                return Task.FromResult(false);
             }
         }
     }

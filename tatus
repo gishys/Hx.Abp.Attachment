@@ -1,5 +1,0 @@
-[33m66b7638[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32maddtemplate[m[33m)[m 优化全文搜索功能：实现多层次搜索策略，支持长文本内容搜索
-[33m03522d1[m[33m ([m[1;31morigin/addtemplate[m[33m)[m feat: add ocr service and controller
-[33m4c25e4c[m 清理生成的文件，应用新的.gitignore规则
-[33m3a728f0[m 完善.gitignore文件，添加更全面的Visual Studio和.NET Core生成文件忽略规则
-[33me5c180e[m feat: add full test query

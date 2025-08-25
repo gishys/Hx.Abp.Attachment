@@ -9,14 +9,9 @@ namespace Hx.Abp.Attachment.HttpApi
     /// 模板使用统计控制器
     /// </summary>
     [Route("api/app/template-usage-stats")]
-    public class TemplateUsageStatsController : AbpControllerBase, ITemplateUsageStatsAppService
+    public class TemplateUsageStatsController(ITemplateUsageStatsAppService templateUsageStatsAppService) : AbpControllerBase, ITemplateUsageStatsAppService
     {
-        private readonly ITemplateUsageStatsAppService _templateUsageStatsAppService;
-
-        public TemplateUsageStatsController(ITemplateUsageStatsAppService templateUsageStatsAppService)
-        {
-            _templateUsageStatsAppService = templateUsageStatsAppService;
-        }
+        private readonly ITemplateUsageStatsAppService _templateUsageStatsAppService = templateUsageStatsAppService;
 
         /// <summary>
         /// 获取模板使用次数

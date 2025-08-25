@@ -8,5 +8,8 @@ namespace Hx.Abp.Attachment.Application.ArchAI
     [DependsOn(typeof(HxAbpAttachmentApplicationArchAIContractsModule))]
     public class HxAbpAttachmentApplicationArchAIModule : AbpModule
     {
+        public override void ConfigureServices(ServiceConfigurationContext context)
+        {
+        }
     }
 }

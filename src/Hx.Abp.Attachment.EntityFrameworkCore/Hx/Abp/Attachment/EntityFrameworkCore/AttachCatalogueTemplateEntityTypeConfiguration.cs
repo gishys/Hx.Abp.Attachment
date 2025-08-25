@@ -23,6 +23,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .HasMaxLength(256)
                 .UseCollation("und-x-icu")
                 .IsRequired();
+
+            builder.Property(d => d.Id).HasColumnName("ID");
             builder.Property(d => d.Version).HasColumnName("VERSION").HasDefaultValue(1);
             builder.Property(d => d.IsLatest).HasColumnName("IS_LATEST").HasDefaultValue(true);
             builder.Property(d => d.AttachReceiveType).HasColumnName("ATTACH_RECEIVE_TYPE");

@@ -49,7 +49,7 @@ namespace Hx.Abp.Attachment.Domain
             Guid? newParentId = null)
         {
             var allVersions = await _templateRepository.GetTemplateHistoryAsync(baseTemplate.Id);
-            var nextVersion = allVersions.Max(t => t.Version) + 1;
+            var nextVersion = allVersions.Count > 0 ? allVersions.Max(t => t.Version) + 1 : 1;
 
             var newTemplate = new AttachCatalogueTemplate(
                 id: _guidGenerator.Create(),

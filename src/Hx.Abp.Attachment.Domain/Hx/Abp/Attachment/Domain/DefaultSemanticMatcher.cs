@@ -1,20 +1,21 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 
 namespace Hx.Abp.Attachment.Domain
 {
     /// <summary>
-    /// 简化版默认语义匹配服务实现
-    /// 基于数据库驱动的智能推荐，移除复杂的本地算法
+    /// 数据库驱动的语义匹配服务实现
+    /// 使用延迟解析避免循环依赖
     /// </summary>
     [Dependency(ReplaceServices = true)]
     [ExposeServices(typeof(ISemanticMatcher))]
     public partial class DefaultSemanticMatcher(
         ILogger<DefaultSemanticMatcher> logger,
-        IAttachCatalogueTemplateRepository templateRepository) : ISemanticMatcher, ITransientDependency
+        IServiceProvider serviceProvider) : ISemanticMatcher, ITransientDependency
     {
         private readonly ILogger<DefaultSemanticMatcher> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        private readonly IAttachCatalogueTemplateRepository _templateRepository = templateRepository ?? throw new ArgumentNullException(nameof(templateRepository));
+        private readonly IServiceProvider _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
 
         /// <summary>
         /// 基于语义生成分类名称
@@ -60,8 +61,12 @@ namespace Hx.Abp.Attachment.Domain
                 _logger.LogInformation("开始数据库驱动的模板匹配，查询：{query}，阈值：{threshold}，TopN：{topN}", 
                     query, threshold, topN);
 
+                // 使用延迟解析获取仓储服务，避免循环依赖
+                using var scope = _serviceProvider.CreateScope();
+                var templateRepository = scope.ServiceProvider.GetRequiredService<IAttachCatalogueTemplateRepository>();
+
                 // 直接使用数据库仓储进行智能推荐
-                var matchedTemplates = await _templateRepository.GetIntelligentRecommendationsAsync(
+                var matchedTemplates = await templateRepository.GetIntelligentRecommendationsAsync(
                     query, threshold, topN, true, false);
 
                 _logger.LogInformation("模板匹配完成，找到 {matchCount} 个匹配结果", matchedTemplates.Count);
@@ -84,8 +89,12 @@ namespace Hx.Abp.Attachment.Domain
 
             try
             {
+                // 使用延迟解析获取仓储服务，避免循环依赖
+                using var scope = _serviceProvider.CreateScope();
+                var templateRepository = scope.ServiceProvider.GetRequiredService<IAttachCatalogueTemplateRepository>();
+
                 // 使用数据库仓储进行相似度计算
-                var matchedTemplates = await _templateRepository.GetIntelligentRecommendationsAsync(
+                var matchedTemplates = await templateRepository.GetIntelligentRecommendationsAsync(
                     text1, 0.1, 1, true, false);
 
                 if (matchedTemplates.Count > 0)

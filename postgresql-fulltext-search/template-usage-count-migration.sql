@@ -1,9 +1,9 @@
 -- 添加模板使用统计功能 - 数据库迁移脚本
 -- 执行时间：2024年
 
--- 1. 为 AttachCatalogues 表添加 TemplateId 字段
+-- 1. 为 AttachCatalogues 表添加 TemplateId 字段（可空）
 ALTER TABLE "APPATTACH_CATALOGUES" 
-ADD COLUMN "TEMPLATE_ID" uuid;
+ADD COLUMN "TEMPLATE_ID" uuid NULL;
 
 -- 2. 为 TemplateId 字段添加索引以提高查询性能
 CREATE INDEX CONCURRENTLY IF NOT EXISTS "IDX_ATTACH_CATALOGUES_TEMPLATE_ID" 

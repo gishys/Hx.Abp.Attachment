@@ -34,7 +34,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.Property(d => d.SequenceNumber).HasColumnName("SEQUENCE_NUMBER").HasDefaultValue(0);
             builder.Property(d => d.ParentId).HasColumnName("PARENT_ID");
             builder.Property(d => d.IsStatic).HasColumnName("IS_STATIC").HasDefaultValue(false);
-            builder.Property(d => d.TemplateId).HasColumnName("TEMPLATE_ID");
+            builder.Property(d => d.TemplateId).HasColumnName("TEMPLATE_ID").IsRequired(false);
 
             // 全文内容字段配置
             builder.Property(d => d.FullTextContent).HasColumnName("FULL_TEXT_CONTENT").HasColumnType("text");

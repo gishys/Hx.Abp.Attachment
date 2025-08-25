@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using RulesEngine.Interfaces;
 using RulesEngine.Models;
+using System.Linq;
 using System.Linq.Dynamic.Core;
 using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
@@ -44,92 +45,232 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             bool onlyLatest = true,
             bool includeHistory = false)
         {
-            var dbContext = await GetDbContextAsync();
-            var dbSet = await GetDbSetAsync();
-            
-            // 使用 PostgreSQL 的全文搜索和相似度函数进行智能推荐
-            // 优化：分别处理 NamePattern 和 SemanticModel 的匹配
-            var sql = @"
-                SELECT t.*, 
-                       COALESCE(
-                           GREATEST(
-                               -- SemanticModel 语义匹配（权重最高）
-                               CASE WHEN t.""SemanticModel"" IS NOT NULL AND t.""SemanticModel"" != '' 
-                                    THEN (
-                                        similarity(t.""TemplateName"", @query) * 0.4 +
-                                        similarity(t.""SemanticModel"", @query) * 0.6
-                                    ) * 1.3
-                                    ELSE 0 END,
-                               -- NamePattern 模式匹配（权重中等）
-                               CASE WHEN t.""NamePattern"" IS NOT NULL AND t.""NamePattern"" != '' 
-                                    THEN (
-                                        similarity(t.""TemplateName"", @query) * 0.5 +
-                                        similarity(t.""NamePattern"", @query) * 0.5
-                                    ) * 1.1
-                                    ELSE 0 END,
-                               -- RuleExpression 规则匹配（权重较低）
-                               CASE WHEN t.""RuleExpression"" IS NOT NULL AND t.""RuleExpression"" != '' 
-                                    THEN similarity(t.""TemplateName"", @query) * 1.0 
-                                    ELSE 0 END,
-                               -- 基础名称匹配（权重最低）
-                               similarity(t.""TemplateName"", @query) * 0.8
-                           ), 0
-                       ) as match_score
-                FROM ""AttachCatalogueTemplates"" t
-                WHERE (@onlyLatest = false OR t.""IsLatest"" = true)
-                  AND (
-                      -- 基础文本匹配
-                      t.""TemplateName"" ILIKE @queryPattern
-                      OR t.""TemplateName"" % @query
-                      OR @query % t.""TemplateName""
-                      -- SemanticModel 关键字匹配
-                      OR (t.""SemanticModel"" IS NOT NULL AND t.""SemanticModel"" ILIKE @queryPattern)
-                      -- NamePattern 模式匹配
-                      OR (t.""NamePattern"" IS NOT NULL AND t.""NamePattern"" ILIKE @queryPattern)
-                      -- 相似度匹配
-                      OR similarity(t.""TemplateName"", @query) > @threshold
-                  )
-                ORDER BY match_score DESC, t.""SequenceNumber"" ASC
-                LIMIT @topN";
-            
-            var queryPattern = $"%{query}%";
-            var parameters = new[]
+            try
             {
-                new Npgsql.NpgsqlParameter("@query", query),
-                new Npgsql.NpgsqlParameter("@queryPattern", queryPattern),
-                new Npgsql.NpgsqlParameter("@threshold", threshold),
-                new Npgsql.NpgsqlParameter("@topN", topN),
-                new Npgsql.NpgsqlParameter("@onlyLatest", onlyLatest)
-            };
-            
-            // 使用动态查询来获取包含分数的结果
-            var rawResults = await dbContext.Database
-                .SqlQueryRaw<dynamic>(sql, parameters)
-                .ToListAsync();
+                var dbContext = await GetDbContextAsync();
+                var dbSet = await GetDbSetAsync();
                 
-            var results = new List<AttachCatalogueTemplate>();
-            foreach (var rawResult in rawResults)
-            {
-                // 从原始结果中提取模板ID
-                var templateId = Guid.Parse(rawResult.Id.ToString());
+                // 首先检查数据库中是否有数据
+                var totalCount = await dbSet.CountAsync();
+                Logger.LogInformation("数据库中总共有 {totalCount} 个模板", totalCount);
                 
-                // 获取完整的模板实体
-                var template = await dbSet.FindAsync(templateId);
-                if (template != null)
+                if (totalCount == 0)
                 {
-                    // 将数据库计算的分数存储到扩展属性中
-                    if (rawResult.match_score != null)
+                    Logger.LogWarning("数据库中没有模板数据，返回空列表");
+                    return new List<AttachCatalogueTemplate>();
+                }
+                
+                // 恢复原有的复杂业务逻辑，保持精度和准确性
+                var sql = @"
+                    SELECT t.*, 
+                           COALESCE(
+                               GREATEST(
+                                   -- SemanticModel 语义匹配（权重最高）
+                                   CASE WHEN t.""SEMANTIC_MODEL"" IS NOT NULL AND t.""SEMANTIC_MODEL"" != '' 
+                                        THEN (
+                                            COALESCE(similarity(t.""TEMPLATE_NAME"", @query), 0) * 0.4 +
+                                            COALESCE(similarity(t.""SEMANTIC_MODEL"", @query), 0) * 0.6
+                                        ) * 1.3
+                                        ELSE 0 END,
+                                   -- NamePattern 模式匹配（权重中等）
+                                   CASE WHEN t.""NAME_PATTERN"" IS NOT NULL AND t.""NAME_PATTERN"" != '' 
+                                        THEN (
+                                            COALESCE(similarity(t.""TEMPLATE_NAME"", @query), 0) * 0.5 +
+                                            COALESCE(similarity(t.""NAME_PATTERN"", @query), 0) * 0.5
+                                        ) * 1.1
+                                        ELSE 0 END,
+                                   -- RuleExpression 规则匹配（权重较低）
+                                   CASE WHEN t.""RULE_EXPRESSION"" IS NOT NULL AND t.""RULE_EXPRESSION"" != '' 
+                                        THEN COALESCE(similarity(t.""TEMPLATE_NAME"", @query), 0) * 1.0 
+                                        ELSE 0 END,
+                                   -- 基础名称匹配（权重最低）
+                                   COALESCE(similarity(t.""TEMPLATE_NAME"", @query), 0) * 0.8
+                               ), 0
+                           ) as match_score
+                    FROM ""APPATTACH_CATALOGUE_TEMPLATES"" t
+                    WHERE (@onlyLatest = false OR t.""IS_LATEST"" = true)
+                      AND (
+                          -- 基础文本匹配
+                          t.""TEMPLATE_NAME"" ILIKE @queryPattern
+                          OR t.""TEMPLATE_NAME"" % @query
+                          OR @query % t.""TEMPLATE_NAME""
+                          -- SemanticModel 关键字匹配
+                          OR (t.""SEMANTIC_MODEL"" IS NOT NULL AND t.""SEMANTIC_MODEL"" ILIKE @queryPattern)
+                          -- NamePattern 模式匹配
+                          OR (t.""NAME_PATTERN"" IS NOT NULL AND t.""NAME_PATTERN"" ILIKE @queryPattern)
+                          -- 相似度匹配
+                          OR COALESCE(similarity(t.""TEMPLATE_NAME"", @query), 0) > @threshold
+                      )
+                    ORDER BY match_score DESC, t.""SEQUENCE_NUMBER"" ASC
+                    LIMIT @topN";
+                
+                var queryPattern = $"%{query}%";
+                var parameters = new[]
+                {
+                    new Npgsql.NpgsqlParameter("@query", query),
+                    new Npgsql.NpgsqlParameter("@queryPattern", queryPattern),
+                    new Npgsql.NpgsqlParameter("@threshold", threshold),
+                    new Npgsql.NpgsqlParameter("@topN", topN),
+                    new Npgsql.NpgsqlParameter("@onlyLatest", onlyLatest)
+                };
+                
+                // 使用动态查询来获取包含分数的结果
+                var rawResults = await dbContext.Database
+                    .SqlQueryRaw<dynamic>(sql, parameters)
+                    .ToListAsync();
+                    
+                Logger.LogInformation("原始查询返回 {rawCount} 个结果", rawResults?.Count ?? 0);
+                
+                var results = new List<AttachCatalogueTemplate>();
+                
+                // 检查查询结果是否为空
+                if (rawResults == null || rawResults.Count == 0)
+                {
+                    Logger.LogWarning("智能推荐查询没有返回任何结果，查询：{query}", query);
+                    return results;
+                }
+                
+                foreach (var rawResult in rawResults)
+                {
+                    try
                     {
-                        template.ExtraProperties["MatchScore"] = Convert.ToDouble(rawResult.match_score);
+                        // 从原始结果中提取模板ID
+                        var templateId = Guid.Parse(rawResult.Id.ToString());
+                        
+                        // 获取完整的模板实体
+                        var template = await dbSet.FindAsync(templateId);
+                        if (template != null)
+                        {
+                            // 将数据库计算的分数存储到扩展属性中
+                            if (rawResult.match_score != null)
+                            {
+                                template.ExtraProperties["MatchScore"] = Convert.ToDouble(rawResult.match_score);
+                            }
+                            results.Add(template);
+                        }
                     }
-                    results.Add(template);
+                    catch (Exception ex)
+                    {
+                        Logger.LogWarning(ex, "处理查询结果时出错，跳过此结果");
+                    }
+                }
+                    
+                Logger.LogInformation("智能推荐查询完成，查询：{query}，找到 {count} 个匹配模板", 
+                    query, results.Count);
+                    
+                return results;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "智能推荐查询失败，查询：{query}", query);
+                
+                // 如果复杂查询失败，尝试简化的业务逻辑搜索
+                try
+                {
+                    Logger.LogInformation("尝试使用简化业务逻辑搜索作为备选方案");
+                    var dbSet = await GetDbSetAsync();
+                    
+                    // 保持业务逻辑的简化版本
+                    var simpleResults = await dbSet
+                        .Where(t => (!onlyLatest || t.IsLatest))
+                        .ToListAsync();
+                    
+                    // 在内存中进行业务逻辑计算
+                    var scoredResults = new List<(AttachCatalogueTemplate template, double score)>();
+                    foreach (var template in simpleResults)
+                    {
+                        double score = 0;
+                        
+                        // SemanticModel 语义匹配（权重最高）
+                        if (!string.IsNullOrEmpty(template.SemanticModel))
+                        {
+                            var nameSimilarity = CalculateSimpleSimilarity(template.TemplateName, query);
+                            var semanticSimilarity = CalculateSimpleSimilarity(template.SemanticModel, query);
+                            score = Math.Max(score, (nameSimilarity * 0.4 + semanticSimilarity * 0.6) * 1.3);
+                        }
+                        
+                        // NamePattern 模式匹配（权重中等）
+                        if (!string.IsNullOrEmpty(template.NamePattern))
+                        {
+                            var nameSimilarity = CalculateSimpleSimilarity(template.TemplateName, query);
+                            var patternSimilarity = CalculateSimpleSimilarity(template.NamePattern, query);
+                            score = Math.Max(score, (nameSimilarity * 0.5 + patternSimilarity * 0.5) * 1.1);
+                        }
+                        
+                        // RuleExpression 规则匹配（权重较低）
+                        if (!string.IsNullOrEmpty(template.RuleExpression))
+                        {
+                            var nameSimilarity = CalculateSimpleSimilarity(template.TemplateName, query);
+                            score = Math.Max(score, nameSimilarity * 1.0);
+                        }
+                        
+                        // 基础名称匹配（权重最低）
+                        var baseSimilarity = CalculateSimpleSimilarity(template.TemplateName, query);
+                        score = Math.Max(score, baseSimilarity * 0.8);
+                        
+                        // 检查是否满足基本匹配条件
+                        if (template.TemplateName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                            (!string.IsNullOrEmpty(template.SemanticModel) && template.SemanticModel.Contains(query, StringComparison.OrdinalIgnoreCase)) ||
+                            (!string.IsNullOrEmpty(template.NamePattern) && template.NamePattern.Contains(query, StringComparison.OrdinalIgnoreCase)) ||
+                            score > threshold)
+                        {
+                            scoredResults.Add((template, score));
+                        }
+                    }
+                    
+                    // 按分数排序并返回前N个
+                    var finalResults = scoredResults
+                        .OrderByDescending(x => x.score)
+                        .ThenBy(x => x.template.SequenceNumber)
+                        .Take(topN)
+                        .Select(x => 
+                        {
+                            x.template.ExtraProperties["MatchScore"] = x.score;
+                            return x.template;
+                        })
+                        .ToList();
+                    
+                    Logger.LogInformation("简化业务逻辑搜索找到 {count} 个结果", finalResults.Count);
+                    return finalResults;
+                }
+                catch (Exception fallbackEx)
+                {
+                    Logger.LogError(fallbackEx, "备选搜索也失败了");
+                    return new List<AttachCatalogueTemplate>();
                 }
             }
-                
-            Logger.LogInformation("智能推荐查询完成，查询：{query}，找到 {count} 个匹配模板", 
-                query, results.Count);
-                
-            return results;
+        }
+        
+        /// <summary>
+        /// 计算简单文本相似度（用于备选方案）
+        /// </summary>
+        private static double CalculateSimpleSimilarity(string text1, string text2)
+        {
+            if (string.IsNullOrEmpty(text1) || string.IsNullOrEmpty(text2))
+                return 0.0;
+
+            text1 = text1.ToLowerInvariant();
+            text2 = text2.ToLowerInvariant();
+
+            // 完全匹配
+            if (text1 == text2)
+                return 1.0;
+
+            // 包含关系
+            if (text1.Contains(text2) || text2.Contains(text1))
+                return 0.8;
+
+            // 单词匹配
+            var words1 = text1.Split(new[] { ' ', '_', '-', '.', ',', ';', ':', '!', '?' }, StringSplitOptions.RemoveEmptyEntries);
+            var words2 = text2.Split(new[] { ' ', '_', '-', '.', ',', ';', ':', '!', '?' }, StringSplitOptions.RemoveEmptyEntries);
+
+            var commonWords = words1.Intersect(words2, StringComparer.OrdinalIgnoreCase).Count();
+            var totalWords = Math.Max(words1.Length, words2.Length);
+
+            if (totalWords == 0)
+                return 0.0;
+
+            return (double)commonWords / totalWords;
         }
         
         public async Task<List<AttachCatalogueTemplate>> GetRecommendationsByBusinessAsync(
@@ -149,22 +290,22 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 SELECT t.*, 
                        COALESCE(
                            GREATEST(
-                               CASE WHEN t.""SemanticModel"" IS NOT NULL AND t.""SemanticModel"" != '' 
-                                    THEN ts_rank(to_tsvector('chinese', t.""TemplateName""), plainto_tsquery('chinese', @businessQuery)) * 1.2 
+                               CASE WHEN t.""SEMANTIC_MODEL"" IS NOT NULL AND t.""SEMANTIC_MODEL"" != '' 
+                                    THEN ts_rank(to_tsvector('chinese', t.""TEMPLATE_NAME""), plainto_tsquery('chinese', @businessQuery)) * 1.2 
                                     ELSE 0 END,
-                               CASE WHEN t.""RuleExpression"" IS NOT NULL AND t.""RuleExpression"" != '' 
-                                    THEN ts_rank(to_tsvector('chinese', t.""TemplateName""), plainto_tsquery('chinese', @businessQuery)) * 1.1 
+                               CASE WHEN t.""RULE_EXPRESSION"" IS NOT NULL AND t.""RULE_EXPRESSION"" != '' 
+                                    THEN ts_rank(to_tsvector('chinese', t.""TEMPLATE_NAME""), plainto_tsquery('chinese', @businessQuery)) * 1.1 
                                     ELSE 0 END,
-                               ts_rank(to_tsvector('chinese', t.""TemplateName""), plainto_tsquery('chinese', @businessQuery)) * 0.8
+                               ts_rank(to_tsvector('chinese', t.""TEMPLATE_NAME""), plainto_tsquery('chinese', @businessQuery)) * 0.8
                            ), 0
                        ) as business_score
-                FROM ""AttachCatalogueTemplates"" t
-                WHERE (@onlyLatest = false OR t.""IsLatest"" = true)
+                FROM ""APPATTACH_CATALOGUE_TEMPLATES"" t
+                WHERE (@onlyLatest = false OR t.""IS_LATEST"" = true)
                   AND (
-                      ts_rank(to_tsvector('chinese', t.""TemplateName""), plainto_tsquery('chinese', @businessQuery)) > 0.1
-                      OR t.""TemplateName"" ILIKE ANY(@fileTypePatterns)
+                      ts_rank(to_tsvector('chinese', t.""TEMPLATE_NAME""), plainto_tsquery('chinese', @businessQuery)) > 0.1
+                      OR t.""TEMPLATE_NAME"" ILIKE ANY(@fileTypePatterns)
                   )
-                ORDER BY business_score DESC, t.""SequenceNumber"" ASC
+                ORDER BY business_score DESC, t.""SEQUENCE_NUMBER"" ASC
                 LIMIT @expectedLevels";
             
             var businessQuery = string.Join(" ", businessKeywords);
@@ -324,9 +465,9 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             var dbContext = await GetDbContextAsync();
             
             var sql = @"
-                UPDATE ""AttachCatalogueTemplates"" 
-                SET ""SemanticModel"" = @keywords
-                WHERE ""Id"" = @templateId";
+                UPDATE ""APPATTACH_CATALOGUE_TEMPLATES"" 
+                SET ""SEMANTIC_MODEL"" = @keywords
+                WHERE ""ID"" = @templateId";
             
             var parameters = new[]
             {
@@ -348,9 +489,9 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             var dbContext = await GetDbContextAsync();
             
             var sql = @"
-                UPDATE ""AttachCatalogueTemplates"" 
-                SET ""NamePattern"" = @namePattern
-                WHERE ""Id"" = @templateId";
+                UPDATE ""APPATTACH_CATALOGUE_TEMPLATES"" 
+                SET ""NAME_PATTERN"" = @namePattern
+                WHERE ""ID"" = @templateId";
             
             var parameters = new[]
             {
@@ -369,30 +510,51 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         /// </summary>
         public async Task<List<string>> ExtractSemanticKeywordsFromUsageAsync(Guid templateId)
         {
-            var dbContext = await GetDbContextAsync();
-            
-            // 基于模板使用历史提取关键字
-            var sql = @"
-                SELECT DISTINCT 
-                    unnest(string_to_array(t.""SemanticModel"", ',')) as keyword
-                FROM ""AttachCatalogueTemplates"" t
-                WHERE t.""Id"" = @templateId
-                   OR t.""ParentId"" = @templateId
-                UNION
-                SELECT DISTINCT 
-                    unnest(string_to_array(t.""TemplateName"", ' ')) as keyword
-                FROM ""AttachCatalogueTemplates"" t
-                WHERE t.""Id"" = @templateId
-                   OR t.""ParentId"" = @templateId
-                LIMIT 10";
-            
-            var parameters = new[] { new Npgsql.NpgsqlParameter("@templateId", templateId) };
-            
-            var keywords = await dbContext.Database
-                .SqlQueryRaw<string>(sql, parameters)
-                .ToListAsync();
-            
-            return [.. keywords.Where(k => !string.IsNullOrWhiteSpace(k) && k.Length > 1)];
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                
+                // 使用 EF Core 查询替代 SQL
+                var templates = await dbSet
+                    .Where(t => t.Id == templateId || t.ParentId == templateId)
+                    .Select(t => new { t.SemanticModel, t.TemplateName })
+                    .ToListAsync();
+                
+                var keywords = new List<string>();
+                
+                foreach (var template in templates)
+                {
+                    // 从 SemanticModel 提取关键字
+                    if (!string.IsNullOrEmpty(template.SemanticModel))
+                    {
+                        var semanticKeywords = template.SemanticModel
+                            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                            .Select(k => k.Trim())
+                            .Where(k => !string.IsNullOrWhiteSpace(k) && k.Length > 1);
+                        
+                        keywords.AddRange(semanticKeywords);
+                    }
+                    
+                    // 从 TemplateName 提取关键字
+                    if (!string.IsNullOrEmpty(template.TemplateName))
+                    {
+                        var nameKeywords = template.TemplateName
+                            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                            .Select(k => k.Trim())
+                            .Where(k => !string.IsNullOrWhiteSpace(k) && k.Length > 1);
+                        
+                        keywords.AddRange(nameKeywords);
+                    }
+                }
+                
+                // 去重并限制数量
+                return keywords.Distinct().Take(10).ToList();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "提取语义关键字失败，模板ID：{templateId}", templateId);
+                return new List<string>();
+            }
         }
 
         /// <summary>
@@ -400,29 +562,67 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         /// </summary>
         public async Task<string> ExtractNamePatternFromFilesAsync(Guid templateId)
         {
-            var dbContext = await GetDbContextAsync();
+            try
+            {
+                var dbContext = await GetDbContextAsync();
+                
+                // 使用 EF Core 查询替代 SQL
+                var catalogues = await dbContext.Set<AttachCatalogue>()
+                    .Where(ac => ac.TemplateId == templateId && !ac.IsDeleted)
+                    .Include(ac => ac.AttachFiles)
+                    .Select(ac => new { ac.AttachFiles })
+                    .ToListAsync();
+                
+                var fileNames = catalogues
+                    .SelectMany(c => c.AttachFiles)
+                    .Select(af => af.FileName)
+                    .Where(fn => !string.IsNullOrEmpty(fn))
+                    .ToList();
+                
+                if (!fileNames.Any())
+                {
+                    return "{Type}_{ProjectName}_{Date}";
+                }
+                
+                // 分析文件名模式
+                var namePattern = DetermineNamePattern(fileNames);
+                
+                return namePattern;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "提取名称模式失败，模板ID：{templateId}，使用默认模式", templateId);
+                return "{Type}_{ProjectName}_{Date}";
+            }
+        }
+        
+        /// <summary>
+        /// 根据文件名列表确定命名模式
+        /// </summary>
+        private static string DetermineNamePattern(List<string> fileNames)
+        {
+            if (!fileNames.Any())
+                return "{Type}_{ProjectName}_{Date}";
             
-            // 基于关联文件的命名模式提取
-            var sql = @"
-                SELECT DISTINCT 
-                    CASE 
-                        WHEN af.""FileName"" LIKE '%{ProjectName}%' THEN '项目_{ProjectName}_{Date}_{Version}'
-                        WHEN af.""FileName"" LIKE '%{Date}%' THEN '{Type}_{Date}_{Version}'
-                        WHEN af.""FileName"" LIKE '%{Version}%' THEN '{Type}_{ProjectName}_{Version}'
-                        ELSE '{Type}_{ProjectName}_{Date}'
-                    END as name_pattern
-                FROM ""AttachFiles"" af
-                INNER JOIN ""AttachCatalogues"" ac ON af.""CatalogueId"" = ac.""Id""
-                WHERE ac.""TemplateId"" = @templateId
-                LIMIT 1";
+            // 分析文件名中的模式
+            var sampleFileName = fileNames.First();
             
-            var parameters = new[] { new Npgsql.NpgsqlParameter("@templateId", templateId) };
-            
-            var namePattern = await dbContext.Database
-                .SqlQueryRaw<string>(sql, parameters)
-                .FirstOrDefaultAsync();
-            
-            return namePattern ?? "{Type}_{ProjectName}_{Date}";
+            if (sampleFileName.Contains("{ProjectName}") || sampleFileName.Contains("项目"))
+            {
+                return "{Type}_{ProjectName}_{Date}_{Version}";
+            }
+            else if (sampleFileName.Contains("{Date}") || sampleFileName.Contains("日期"))
+            {
+                return "{Type}_{Date}_{Version}";
+            }
+            else if (sampleFileName.Contains("{Version}") || sampleFileName.Contains("版本"))
+            {
+                return "{Type}_{ProjectName}_{Version}";
+            }
+            else
+            {
+                return "{Type}_{ProjectName}_{Date}";
+            }
         }
 
         /// <summary>
@@ -457,25 +657,25 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         /// </summary>
         public async Task<int> GetTemplateUsageCountAsync(Guid templateId)
         {
-            var dbContext = await GetDbContextAsync();
-            
-            // 统计基于该模板创建的分类数量
-            var sql = @"
-                SELECT COUNT(*) as usage_count
-                FROM ""AttachCatalogues"" ac
-                WHERE ac.""TemplateId"" = @templateId
-                  AND ac.""IsDeleted"" = false";
-            
-            var parameters = new[] { new Npgsql.NpgsqlParameter("@templateId", templateId) };
-            
-            var usageCount = await dbContext.Database
-                .SqlQueryRaw<int>(sql, parameters)
-                .FirstOrDefaultAsync();
-            
-            Logger.LogInformation("获取模板使用次数完成，模板ID：{templateId}，使用次数：{usageCount}", 
-                templateId, usageCount);
-            
-            return usageCount;
+            try
+            {
+                var dbContext = await GetDbContextAsync();
+                
+                // 使用 EF Core 查询替代 SQL
+                var usageCount = await dbContext.Set<AttachCatalogue>()
+                    .Where(ac => ac.TemplateId == templateId && !ac.IsDeleted)
+                    .CountAsync();
+                
+                Logger.LogInformation("获取模板使用次数完成，模板ID：{templateId}，使用次数：{usageCount}", 
+                    templateId, usageCount);
+                
+                return usageCount;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取模板使用次数失败，模板ID：{templateId}", templateId);
+                return 0; // 返回0而不是抛出异常，避免影响主流程
+            }
         }
 
         #endregion

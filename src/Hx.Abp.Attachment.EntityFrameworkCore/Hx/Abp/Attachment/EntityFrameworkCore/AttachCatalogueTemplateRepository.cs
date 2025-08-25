@@ -279,59 +279,215 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             int expectedLevels = 3,
             bool onlyLatest = true)
         {
-            var dbSet = await GetDbSetAsync();
-            
-            // 构建业务相关的查询条件
-            var businessKeywords = ExtractBusinessKeywords(businessDescription);
-            var fileTypeKeywords = fileTypes.Select(ft => ft.ToUpper()).ToList();
-            
-            // 使用 PostgreSQL 的全文搜索进行业务匹配
-            var sql = @"
-                SELECT t.*, 
-                       COALESCE(
-                           GREATEST(
-                               CASE WHEN t.""SEMANTIC_MODEL"" IS NOT NULL AND t.""SEMANTIC_MODEL"" != '' 
-                                    THEN ts_rank(to_tsvector('chinese', t.""TEMPLATE_NAME""), plainto_tsquery('chinese', @businessQuery)) * 1.2 
-                                    ELSE 0 END,
-                               CASE WHEN t.""RULE_EXPRESSION"" IS NOT NULL AND t.""RULE_EXPRESSION"" != '' 
-                                    THEN ts_rank(to_tsvector('chinese', t.""TEMPLATE_NAME""), plainto_tsquery('chinese', @businessQuery)) * 1.1 
-                                    ELSE 0 END,
-                               ts_rank(to_tsvector('chinese', t.""TEMPLATE_NAME""), plainto_tsquery('chinese', @businessQuery)) * 0.8
-                           ), 0
-                       ) as business_score
-                FROM ""APPATTACH_CATALOGUE_TEMPLATES"" t
-                WHERE (@onlyLatest = false OR t.""IS_LATEST"" = true)
-                  AND (
-                      ts_rank(to_tsvector('chinese', t.""TEMPLATE_NAME""), plainto_tsquery('chinese', @businessQuery)) > 0.1
-                      OR t.""TEMPLATE_NAME"" ILIKE ANY(@fileTypePatterns)
-                  )
-                ORDER BY business_score DESC, t.""SEQUENCE_NUMBER"" ASC
-                LIMIT @expectedLevels";
-            
-            var businessQuery = string.Join(" ", businessKeywords);
-            var fileTypePatterns = fileTypeKeywords.Select(ft => $"%{ft}%").ToArray();
-            
-            var parameters = new[]
+            try
             {
-                new Npgsql.NpgsqlParameter("@businessQuery", businessQuery),
-                new Npgsql.NpgsqlParameter("@fileTypePatterns", fileTypePatterns),
-                new Npgsql.NpgsqlParameter("@expectedLevels", expectedLevels),
-                new Npgsql.NpgsqlParameter("@onlyLatest", onlyLatest)
-            };
-            
-            var results = await dbSet
-                .FromSqlRaw(sql, parameters)
-                .ToListAsync();
+                var dbContext = await GetDbContextAsync();
+                var dbSet = await GetDbSetAsync();
                 
-            Logger.LogInformation("业务推荐查询完成，业务描述：{description}，文件类型：{fileTypes}，找到 {count} 个匹配模板", 
-                businessDescription, string.Join(", ", fileTypes), results.Count);
+                // 1. 动态提取业务关键词（从数据库中的实际数据）
+                var dynamicKeywords = await ExtractDynamicKeywordsAsync(dbContext, businessDescription);
                 
-            return results;
+                // 2. 构建数据库驱动的查询
+                var sql = @"
+                    WITH template_scores AS (
+                        SELECT 
+                            t.*,
+                            COALESCE(
+                                GREATEST(
+                                    -- 动态关键词匹配（权重最高）
+                                    CASE WHEN @keywords IS NOT NULL AND @keywords != '' 
+                                         THEN (
+                                             COALESCE(similarity(t.""TEMPLATE_NAME"", @businessQuery), 0) * 0.3 +
+                                             COALESCE(similarity(t.""SEMANTIC_MODEL"", @businessQuery), 0) * 0.4 +
+                                             COALESCE(similarity(t.""NAME_PATTERN"", @businessQuery), 0) * 0.3
+                                         ) * 1.5
+                                         ELSE 0 END,
+                                    -- 文件类型匹配（权重中等）
+                                    CASE WHEN @fileTypes IS NOT NULL AND @fileTypes != ''
+                                         THEN (
+                                             CASE WHEN t.""TEMPLATE_NAME"" ILIKE ANY(@fileTypePatterns) THEN 0.4 ELSE 0 END +
+                                             CASE WHEN t.""SEMANTIC_MODEL"" ILIKE ANY(@fileTypePatterns) THEN 0.3 ELSE 0 END +
+                                             CASE WHEN t.""NAME_PATTERN"" ILIKE ANY(@fileTypePatterns) THEN 0.3 ELSE 0 END
+                                         ) * 1.2
+                                         ELSE 0 END,
+                                    -- 使用频率权重（基于实际使用数据）
+                                    CASE WHEN t.""ID"" IN (
+                                        SELECT DISTINCT ""TEMPLATE_ID"" 
+                                        FROM ""APPATTACH_CATALOGUES"" 
+                                        WHERE ""TEMPLATE_ID"" IS NOT NULL 
+                                        AND ""IS_DELETED"" = false
+                                    ) THEN 0.3 ELSE 0 END,
+                                    -- 基础文本相似度
+                                    COALESCE(similarity(t.""TEMPLATE_NAME"", @businessQuery), 0) * 0.8
+                                ), 0
+                            ) as match_score,
+                            -- 使用频率统计
+                            COALESCE((
+                                SELECT COUNT(*) 
+                                FROM ""APPATTACH_CATALOGUES"" ac 
+                                WHERE ac.""TEMPLATE_ID"" = t.""ID"" 
+                                AND ac.""IS_DELETED"" = false
+                            ), 0) as usage_count,
+                            -- 最近使用时间
+                            (
+                                SELECT MAX(ac.""CREATION_TIME"")
+                                FROM ""APPATTACH_CATALOGUES"" ac 
+                                WHERE ac.""TEMPLATE_ID"" = t.""ID"" 
+                                AND ac.""IS_DELETED"" = false
+                            ) as last_used_time
+                        FROM ""APPATTACH_CATALOGUE_TEMPLATES"" t
+                        WHERE (@onlyLatest = false OR t.""IS_LATEST"" = true)
+                          AND t.""IS_DELETED"" = false
+                    )
+                    SELECT 
+                        *,
+                        -- 最终评分：匹配分数 + 使用频率权重 + 时间衰减
+                        (match_score + 
+                         (usage_count * 0.1) + 
+                         CASE WHEN last_used_time IS NOT NULL 
+                              THEN GREATEST(0, 1 - EXTRACT(EPOCH FROM (NOW() - last_used_time)) / (30 * 24 * 3600)) * 0.2
+                              ELSE 0 END
+                        ) as final_score
+                    FROM template_scores
+                    WHERE match_score > 0.1
+                    ORDER BY final_score DESC, ""SEQUENCE_NUMBER"" ASC
+                    LIMIT @expectedLevels";
+                
+                // 3. 准备查询参数
+                var businessQuery = businessDescription.Trim();
+                var dynamicKeywordsStr = string.Join(" ", dynamicKeywords);
+                var fileTypePatterns = fileTypes.Select(ft => $"%{ft.ToUpper()}%").ToArray();
+                
+                var parameters = new[]
+                {
+                    new Npgsql.NpgsqlParameter("@businessQuery", businessQuery),
+                    new Npgsql.NpgsqlParameter("@keywords", dynamicKeywordsStr),
+                    new Npgsql.NpgsqlParameter("@fileTypes", string.Join(",", fileTypes)),
+                    new Npgsql.NpgsqlParameter("@fileTypePatterns", fileTypePatterns),
+                    new Npgsql.NpgsqlParameter("@expectedLevels", expectedLevels),
+                    new Npgsql.NpgsqlParameter("@onlyLatest", onlyLatest)
+                };
+                
+                // 4. 执行查询
+                var rawResults = await dbContext.Database
+                    .SqlQueryRaw<dynamic>(sql, parameters)
+                    .ToListAsync();
+                
+                // 5. 转换结果
+                var results = new List<AttachCatalogueTemplate>();
+                foreach (var rawResult in rawResults)
+                {
+                    try
+                    {
+                        var templateId = Guid.Parse(rawResult.Id.ToString());
+                        var template = await dbSet.FindAsync(templateId);
+                        
+                        if (template != null)
+                        {
+                            // 存储评分信息
+                            template.ExtraProperties["BusinessScore"] = Convert.ToDouble(rawResult.final_score);
+                            template.ExtraProperties["MatchScore"] = Convert.ToDouble(rawResult.match_score);
+                            template.ExtraProperties["UsageCount"] = Convert.ToInt32(rawResult.usage_count);
+                            template.ExtraProperties["LastUsedTime"] = rawResult.last_used_time;
+                            
+                            results.Add(template);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogWarning(ex, "处理查询结果时出错，跳过此结果");
+                    }
+                }
+                
+                Logger.LogInformation("动态业务推荐查询完成，业务描述：{description}，文件类型：{fileTypes}，动态关键词：{keywords}，找到 {count} 个匹配模板", 
+                    businessDescription, string.Join(", ", fileTypes), dynamicKeywordsStr, results.Count);
+                
+                return results;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "动态业务推荐查询失败，业务描述：{description}", businessDescription);
+                
+                // 降级到简化查询
+                return await GetFallbackRecommendationsAsync(businessDescription, fileTypes, expectedLevels, onlyLatest);
+            }
         }
         
-        private static List<string> ExtractBusinessKeywords(string businessDescription)
+        /// <summary>
+        /// 从数据库中动态提取关键词
+        /// </summary>
+        private async Task<List<string>> ExtractDynamicKeywordsAsync(AttachmentDbContext dbContext, string businessDescription)
         {
-            // 简单的关键词提取逻辑
+            try
+            {
+                // 1. 从现有模板中提取高频关键词
+                var templateKeywords = await dbContext.Set<AttachCatalogueTemplate>()
+                    .Where(t => !t.IsDeleted && !string.IsNullOrEmpty(t.SemanticModel))
+                    .Select(t => t.SemanticModel)
+                    .ToListAsync();
+
+                // 2. 从实际使用数据中提取关键词
+                var usageKeywords = await dbContext.Set<AttachCatalogue>()
+                    .Where(ac => !ac.IsDeleted && !string.IsNullOrEmpty(ac.CatalogueName))
+                    .Select(ac => ac.CatalogueName)
+                    .ToListAsync();
+
+                // 3. 合并并分析关键词
+                var allText = string.Join(" ", templateKeywords.Concat(usageKeywords));
+                var keywords = ExtractKeywordsFromText(allText, businessDescription);
+
+                Logger.LogInformation("动态提取关键词完成，业务描述：{description}，提取关键词：{keywords}", 
+                    businessDescription, string.Join(", ", keywords));
+
+                return keywords;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "动态提取关键词失败，使用静态关键词");
+                return ExtractStaticKeywords(businessDescription);
+            }
+        }
+
+        /// <summary>
+        /// 从文本中提取关键词
+        /// </summary>
+        private static List<string> ExtractKeywordsFromText(string text, string businessDescription)
+        {
+            var keywords = new List<string>();
+            
+            // 1. 从业务描述中提取核心词汇
+            var businessWords = businessDescription
+                .Split(new[] { ' ', ',', '，', '、', '；', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Where(w => w.Length > 1)
+                .ToList();
+
+            keywords.AddRange(businessWords);
+
+            // 2. 从历史数据中提取相关词汇
+            var commonPatterns = new[] 
+            { 
+                "合同", "协议", "报告", "申请", "审批", "流程", "文档", "文件", 
+                "项目", "业务", "管理", "系统", "数据", "信息", "记录", "档案",
+                "工程", "建设", "设计", "施工", "监理", "验收", "结算", "决算"
+            };
+
+            foreach (var pattern in commonPatterns)
+            {
+                if (text.Contains(pattern) || businessDescription.Contains(pattern))
+                {
+                    keywords.Add(pattern);
+                }
+            }
+
+            // 3. 去重并限制数量
+            return keywords.Distinct().Take(10).ToList();
+        }
+
+        /// <summary>
+        /// 静态关键词提取（降级方案）
+        /// </summary>
+        private static List<string> ExtractStaticKeywords(string businessDescription)
+        {
             var keywords = new List<string>();
             var commonBusinessTerms = new[] 
             { 
@@ -347,7 +503,6 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 }
             }
             
-            // 如果没有找到预定义关键词，返回原始描述的关键词
             if (keywords.Count == 0)
             {
                 keywords.AddRange(businessDescription.Split(' ', StringSplitOptions.RemoveEmptyEntries)
@@ -356,6 +511,125 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             }
             
             return keywords;
+        }
+
+        /// <summary>
+        /// 降级查询方法（当主查询失败时使用）
+        /// </summary>
+        private async Task<List<AttachCatalogueTemplate>> GetFallbackRecommendationsAsync(
+            string businessDescription,
+            List<string> fileTypes,
+            int expectedLevels,
+            bool onlyLatest)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                var query = dbSet.AsQueryable();
+
+                if (onlyLatest)
+                {
+                    query = query.Where(t => t.IsLatest);
+                }
+
+                // 简化的查询逻辑
+                var templates = await query
+                    .Where(t => !t.IsDeleted)
+                    .ToListAsync();
+
+                var scoredTemplates = new List<(AttachCatalogueTemplate template, double score)>();
+
+                foreach (var template in templates)
+                {
+                    double score = 0;
+
+                    // 基础文本匹配
+                    if (!string.IsNullOrEmpty(template.TemplateName) && 
+                        template.TemplateName.Contains(businessDescription, StringComparison.OrdinalIgnoreCase))
+                    {
+                        score += 0.5;
+                    }
+
+                    // 文件类型匹配
+                    foreach (var fileType in fileTypes)
+                    {
+                        if (template.TemplateName?.Contains(fileType, StringComparison.OrdinalIgnoreCase) == true)
+                        {
+                            score += 0.3;
+                        }
+                    }
+
+                    if (score > 0)
+                    {
+                        scoredTemplates.Add((template, score));
+                    }
+                }
+
+                var results = scoredTemplates
+                    .OrderByDescending(x => x.score)
+                    .ThenBy(x => x.template.SequenceNumber)
+                    .Take(expectedLevels)
+                    .Select(x => 
+                    {
+                        x.template.ExtraProperties["BusinessScore"] = x.score;
+                        x.template.ExtraProperties["FallbackMode"] = true;
+                        return x.template;
+                    })
+                    .ToList();
+
+                Logger.LogInformation("降级查询完成，找到 {count} 个匹配模板", results.Count);
+                return results;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "降级查询也失败了");
+                return new List<AttachCatalogueTemplate>();
+            }
+        }
+
+        /// <summary>
+        /// 计算业务匹配分数（保留用于兼容性）
+        /// </summary>
+        private static double CalculateBusinessMatchScore(string text, List<string> businessKeywords, List<string> fileTypeKeywords)
+        {
+            if (string.IsNullOrEmpty(text))
+                return 0.0;
+
+            text = text.ToLowerInvariant();
+            double score = 0.0;
+
+            // 1. 业务关键词匹配
+            foreach (var keyword in businessKeywords)
+            {
+                if (text.Contains(keyword.ToLowerInvariant()))
+                {
+                    score += 0.3; // 每个关键词匹配增加0.3分
+                }
+            }
+
+            // 2. 文件类型关键词匹配
+            foreach (var fileType in fileTypeKeywords)
+            {
+                if (text.Contains(fileType.ToLowerInvariant()))
+                {
+                    score += 0.2; // 每个文件类型匹配增加0.2分
+                }
+            }
+
+            // 3. 完全匹配加分
+            if (businessKeywords.Any(k => text.Equals(k.ToLowerInvariant())))
+            {
+                score += 0.5; // 完全匹配额外加分
+            }
+
+            // 4. 长度匹配（较长的匹配文本得分更高）
+            var maxKeywordLength = businessKeywords.Concat(fileTypeKeywords).Max(k => k.Length);
+            if (text.Length >= maxKeywordLength)
+            {
+                score += 0.1;
+            }
+
+            return Math.Min(score, 1.0); // 确保分数不超过1.0
         }
 
         public async Task<List<AttachCatalogueTemplate>> FindByRuleMatchAsync(Dictionary<string, object> context, bool onlyLatest = true)
@@ -675,6 +949,269 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             {
                 Logger.LogError(ex, "获取模板使用次数失败，模板ID：{templateId}", templateId);
                 return 0; // 返回0而不是抛出异常，避免影响主流程
+            }
+        }
+
+        /// <summary>
+        /// 获取模板使用统计
+        /// </summary>
+        public async Task<TemplateUsageStats> GetTemplateUsageStatsAsync(Guid templateId)
+        {
+            try
+            {
+                var dbContext = await GetDbContextAsync();
+                var dbSet = await GetDbSetAsync();
+
+                // 获取模板信息
+                var template = await dbSet.FirstOrDefaultAsync(t => t.Id == templateId);
+                if (template == null)
+                {
+                    return new TemplateUsageStats { Id = templateId };
+                }
+
+                // 获取使用统计
+                var usageQuery = dbContext.Set<AttachCatalogue>()
+                    .Where(ac => ac.TemplateId == templateId && !ac.IsDeleted);
+
+                var usageCount = await usageQuery.CountAsync();
+                var uniqueReferences = await usageQuery.Select(ac => ac.Reference).Distinct().CountAsync();
+                var lastUsedTime = await usageQuery.MaxAsync(ac => ac.CreationTime);
+
+                // 计算最近30天使用次数
+                var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
+                var recentUsageCount = await usageQuery
+                    .Where(ac => ac.CreationTime >= thirtyDaysAgo)
+                    .CountAsync();
+
+                // 计算平均使用频率
+                var firstUsageTime = await usageQuery.MinAsync(ac => ac.CreationTime);
+                var totalDays = (DateTime.UtcNow - firstUsageTime).TotalDays;
+                var averageUsagePerDay = totalDays > 0 ? usageCount / totalDays : 0;
+
+                var stats = new TemplateUsageStats
+                {
+                    Id = templateId,
+                    TemplateName = template.TemplateName,
+                    UsageCount = usageCount,
+                    UniqueReferences = uniqueReferences,
+                    LastUsedTime = lastUsedTime,
+                    RecentUsageCount = recentUsageCount,
+                    AverageUsagePerDay = Math.Round(averageUsagePerDay, 2)
+                };
+
+                Logger.LogInformation("获取模板使用统计完成，模板ID：{templateId}，使用次数：{usageCount}", 
+                    templateId, usageCount);
+
+                return stats;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取模板使用统计失败，模板ID：{templateId}", templateId);
+                return new TemplateUsageStats { Id = templateId };
+            }
+        }
+
+        /// <summary>
+        /// 获取模板使用趋势
+        /// </summary>
+        public async Task<List<TemplateUsageTrend>> GetTemplateUsageTrendAsync(Guid templateId, int daysBack = 30)
+        {
+            try
+            {
+                var dbContext = await GetDbContextAsync();
+                var startDate = DateTime.UtcNow.AddDays(-daysBack);
+
+                // 获取指定时间范围内的使用数据
+                var usageData = await dbContext.Set<AttachCatalogue>()
+                    .Where(ac => ac.TemplateId == templateId && !ac.IsDeleted && ac.CreationTime >= startDate)
+                    .GroupBy(ac => ac.CreationTime.Date)
+                    .Select(g => new { Date = g.Key, Count = g.Count() })
+                    .OrderBy(x => x.Date)
+                    .ToListAsync();
+
+                var trends = new List<TemplateUsageTrend>();
+
+                // 生成完整的日期范围
+                for (var date = startDate.Date; date <= DateTime.UtcNow.Date; date = date.AddDays(1))
+                {
+                    var dailyData = usageData.FirstOrDefault(x => x.Date == date);
+                    var dailyCount = dailyData?.Count ?? 0;
+
+                    trends.Add(new TemplateUsageTrend
+                    {
+                        Date = date,
+                        UsageCount = dailyCount,
+                        UniqueReferences = dailyCount // 简化处理，实际应该计算唯一引用数
+                    });
+                }
+
+                Logger.LogInformation("获取模板使用趋势完成，模板ID：{templateId}，天数：{daysBack}", 
+                    templateId, daysBack);
+
+                return trends;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取模板使用趋势失败，模板ID：{templateId}", templateId);
+                return new List<TemplateUsageTrend>();
+            }
+        }
+
+        /// <summary>
+        /// 批量获取模板使用统计
+        /// </summary>
+        public async Task<List<BatchTemplateUsageStats>> GetBatchTemplateUsageStatsAsync(List<Guid> templateIds, int daysBack = 30)
+        {
+            var results = new List<BatchTemplateUsageStats>();
+
+            foreach (var templateId in templateIds)
+            {
+                try
+                {
+                    var stats = await GetTemplateUsageStatsAsync(templateId);
+                    var trends = await GetTemplateUsageTrendAsync(templateId, daysBack);
+
+                    results.Add(new BatchTemplateUsageStats
+                    {
+                        TemplateId = templateId,
+                        TemplateName = stats.TemplateName,
+                        TotalUsageCount = stats.UsageCount,
+                        RecentUsageCount = stats.RecentUsageCount,
+                        LastUsedTime = stats.LastUsedTime,
+                        AverageUsagePerDay = stats.AverageUsagePerDay
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "批量获取模板使用统计失败，模板ID：{templateId}", templateId);
+                    results.Add(new BatchTemplateUsageStats
+                    {
+                        TemplateId = templateId,
+                        TemplateName = string.Empty
+                    });
+                }
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// 获取热门模板
+        /// </summary>
+        public async Task<List<HotTemplate>> GetHotTemplatesAsync(int daysBack = 30, int topN = 10, int minUsageCount = 1)
+        {
+            try
+            {
+                var dbContext = await GetDbContextAsync();
+                var startDate = DateTime.UtcNow.AddDays(-daysBack);
+
+                // 获取热门模板
+                var hotTemplates = await dbContext.Set<AttachCatalogueTemplate>()
+                    .Where(t => !t.IsDeleted)
+                    .Select(t => new
+                    {
+                        t.Id,
+                        t.TemplateName,
+                        UsageCount = dbContext.Set<AttachCatalogue>()
+                            .Where(ac => ac.TemplateId == t.Id && !ac.IsDeleted && ac.CreationTime >= startDate)
+                            .Count()
+                    })
+                    .Where(x => x.UsageCount >= minUsageCount)
+                    .OrderByDescending(x => x.UsageCount)
+                    .Take(topN)
+                    .ToListAsync();
+
+                var result = new List<HotTemplate>();
+
+                foreach (var template in hotTemplates)
+                {
+                    var usageFrequency = daysBack > 0 ? (double)template.UsageCount / daysBack : 0;
+
+                    result.Add(new HotTemplate
+                    {
+                        TemplateId = template.Id,
+                        TemplateName = template.TemplateName,
+                        UsageCount = template.UsageCount,
+                        RecentUsageCount = template.UsageCount,
+                        AverageUsagePerDay = Math.Round(usageFrequency, 2),
+                        LastUsedTime = null // 需要额外查询获取最后使用时间
+                    });
+                }
+
+                Logger.LogInformation("获取热门模板完成，天数：{daysBack}，数量：{topN}", daysBack, topN);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取热门模板失败");
+                return new List<HotTemplate>();
+            }
+        }
+
+        /// <summary>
+        /// 获取模板使用统计概览
+        /// </summary>
+        public async Task<TemplateUsageOverview> GetTemplateUsageOverviewAsync()
+        {
+            try
+            {
+                var dbContext = await GetDbContextAsync();
+                var dbSet = await GetDbSetAsync();
+
+                // 获取总体统计
+                var totalTemplates = await dbSet.Where(t => !t.IsDeleted).CountAsync();
+                var totalUsage = await dbContext.Set<AttachCatalogue>()
+                    .Where(ac => ac.TemplateId != null && !ac.IsDeleted)
+                    .CountAsync();
+
+                // 获取最近30天统计
+                var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
+                var recentUsage = await dbContext.Set<AttachCatalogue>()
+                    .Where(ac => ac.TemplateId != null && !ac.IsDeleted && ac.CreationTime >= thirtyDaysAgo)
+                    .CountAsync();
+
+                // 获取最活跃的模板
+                var topUsedTemplates = await dbContext.Set<AttachCatalogueTemplate>()
+                    .Where(t => !t.IsDeleted)
+                    .Select(t => new
+                    {
+                        t.Id,
+                        t.TemplateName,
+                        UsageCount = dbContext.Set<AttachCatalogue>()
+                            .Where(ac => ac.TemplateId == t.Id && !ac.IsDeleted)
+                            .Count()
+                    })
+                    .OrderByDescending(x => x.UsageCount)
+                    .Take(10)
+                    .ToListAsync();
+
+                var overview = new TemplateUsageOverview
+                {
+                    TotalTemplates = totalTemplates,
+                    ActiveTemplates = totalTemplates, // 简化处理
+                    TotalUsageCount = totalUsage,
+                    AverageUsagePerTemplate = totalTemplates > 0 ? Math.Round((double)totalUsage / totalTemplates, 2) : 0,
+                    TopUsedTemplates = topUsedTemplates.Select(t => new HotTemplate
+                    {
+                        TemplateId = t.Id,
+                        TemplateName = t.TemplateName,
+                        UsageCount = t.UsageCount,
+                        RecentUsageCount = 0, // 需要额外查询
+                        AverageUsagePerDay = 0, // 需要额外计算
+                        LastUsedTime = null // 需要额外查询
+                    }).ToList(),
+                    UsageByMonth = new Dictionary<string, int>() // 需要额外查询
+                };
+
+                Logger.LogInformation("获取模板使用统计概览完成");
+
+                return overview;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取模板使用统计概览失败");
+                return new TemplateUsageOverview();
             }
         }
 

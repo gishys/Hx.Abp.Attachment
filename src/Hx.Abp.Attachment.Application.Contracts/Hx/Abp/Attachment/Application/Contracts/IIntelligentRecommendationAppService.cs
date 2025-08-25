@@ -266,6 +266,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
     /// </summary>
     public class RecommendedCatalogueDto
     {
+        public Guid? Id { get; set; }
         /// <summary>
         /// 分类名称
         /// </summary>

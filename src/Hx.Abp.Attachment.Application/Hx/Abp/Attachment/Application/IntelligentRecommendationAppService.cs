@@ -790,6 +790,7 @@ namespace Hx.Abp.Attachment.Application
                 var template = matchedTemplates[i];
                 var catalogue = new RecommendedCatalogueDto
                 {
+                    Id = template.Id,
                     CatalogueName = template.TemplateName,
                     Description = $"基于模板 '{template.TemplateName}' 的分类",
                     IsRequired = input.IncludeRequired && i == 0,
@@ -820,22 +821,6 @@ namespace Hx.Abp.Attachment.Application
 
                     catalogues.Add(catalogue);
                 }
-            }
-
-            // 添加通用分类（如果需要）
-            if (catalogues.Count < input.ExpectedLevels)
-            {
-                var generalCatalogue = new RecommendedCatalogueDto
-                {
-                    CatalogueName = "其他文件",
-                    Description = "包含其他格式的文件",
-                    IsRequired = false,
-                    SequenceNumber = catalogues.Count + 1,
-                    Score = 0.5,
-                    Children = []
-                };
-
-                catalogues.Add(generalCatalogue);
             }
 
             return catalogues;

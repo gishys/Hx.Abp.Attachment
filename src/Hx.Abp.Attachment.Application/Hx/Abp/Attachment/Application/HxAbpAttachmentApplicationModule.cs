@@ -40,6 +40,9 @@ namespace Hx.Abp.Attachment.Application
             
             // 注册跨平台PDF转图片工具
             context.Services.AddScoped<CrossPlatformPdfToImageConverter>();
+            
+            // 注册模板使用统计服务
+            context.Services.AddScoped<ITemplateUsageStatsAppService, TemplateUsageStatsAppService>();
         }
     }
 }

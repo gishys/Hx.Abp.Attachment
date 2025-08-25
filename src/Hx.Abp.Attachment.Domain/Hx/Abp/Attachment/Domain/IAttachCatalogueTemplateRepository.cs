@@ -61,6 +61,31 @@ namespace Hx.Abp.Attachment.Domain
             /// </summary>
             Task<int> GetTemplateUsageCountAsync(Guid templateId);
 
+            /// <summary>
+            /// 获取模板使用统计
+            /// </summary>
+            Task<TemplateUsageStats> GetTemplateUsageStatsAsync(Guid templateId);
+
+            /// <summary>
+            /// 获取模板使用趋势
+            /// </summary>
+            Task<List<TemplateUsageTrend>> GetTemplateUsageTrendAsync(Guid templateId, int daysBack = 30);
+
+            /// <summary>
+            /// 批量获取模板使用统计
+            /// </summary>
+            Task<List<BatchTemplateUsageStats>> GetBatchTemplateUsageStatsAsync(List<Guid> templateIds, int daysBack = 30);
+
+            /// <summary>
+            /// 获取热门模板
+            /// </summary>
+            Task<List<HotTemplate>> GetHotTemplatesAsync(int daysBack = 30, int topN = 10, int minUsageCount = 1);
+
+            /// <summary>
+            /// 获取模板使用统计概览
+            /// </summary>
+            Task<TemplateUsageOverview> GetTemplateUsageOverviewAsync();
+
             #endregion
     }
 }

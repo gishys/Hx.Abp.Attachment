@@ -1,0 +1,58 @@
+### 模板使用统计 API 测试
+
+### 1. 获取模板使用次数
+GET {{baseUrl}}/api/app/template-usage-stats/usage-count/{{templateId}}
+Content-Type: application/json
+
+### 2. 获取模板使用统计
+POST {{baseUrl}}/api/app/template-usage-stats/stats
+Content-Type: application/json
+
+{
+  "templateId": "{{templateId}}",
+  "daysBack": 30,
+  "includeTrends": true
+}
+
+### 3. 获取模板使用趋势
+GET {{baseUrl}}/api/app/template-usage-stats/trend/{{templateId}}?daysBack=30
+Content-Type: application/json
+
+### 4. 批量获取模板使用统计
+POST {{baseUrl}}/api/app/template-usage-stats/batch-stats
+Content-Type: application/json
+
+{
+  "templateIds": [
+    "{{templateId1}}",
+    "{{templateId2}}",
+    "{{templateId3}}"
+  ],
+  "daysBack": 30,
+  "includeTrends": true
+}
+
+### 5. 获取热门模板
+POST {{baseUrl}}/api/app/template-usage-stats/hot-templates
+Content-Type: application/json
+
+{
+  "daysBack": 30,
+  "topN": 10,
+  "minUsageCount": 1
+}
+
+### 6. 获取模板使用统计概览
+GET {{baseUrl}}/api/app/template-usage-stats/overview
+Content-Type: application/json
+
+### 7. 更新模板使用统计（内部使用）
+POST {{baseUrl}}/api/app/template-usage-stats/update/{{templateId}}
+Content-Type: application/json
+
+### 变量定义
+@baseUrl = https://localhost:7001
+@templateId = 3a1bf0eb-9e5d-743f-3961-c9e0e7a5d05c
+@templateId1 = 3a1bf0eb-9e5d-743f-3961-c9e0e7a5d05c
+@templateId2 = 4b2cf1fc-8e6e-854g-5072-d0f1f8b6e16d
+@templateId3 = 5c3dg2gd-9f7f-965h-6183-e1g2g9c7f27e

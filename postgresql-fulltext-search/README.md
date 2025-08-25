@@ -8,10 +8,7 @@
 
 ### 🔧 技术文档
 
--   **[🔄 EF Core 迁移指南](./EF_CORE_MIGRATION.md)** - SQL 查询迁移到 EF Core 的详细说明
--   **[🐛 SQL 查询修复](./SQL_QUERY_FIXES.md)** - 常见 SQL 查询问题的修复方案
--   **[📋 模板 ID 可空修复](./TEMPLATE_ID_NULLABLE_FIX.md)** - 模板 ID 字段可空性问题的解决方案
--   **[📊 模板使用统计](./template-usage-count-migration.sql)** - 模板使用次数统计的 SQL 脚本
+-   **[📊 模板使用统计API指南](./TEMPLATE_USAGE_STATS_API_GUIDE.md)** - 模板使用统计功能的API使用指南
 -   **[🧠 动态搜索指南](./DYNAMIC_SEARCH_GUIDE.md)** - 基于数据库内容的动态智能匹配功能
 
 ### 🗄️ 数据库脚本
@@ -21,6 +18,7 @@
 -   **[🔍 OCR 文本块迁移](./ocr-text-blocks-migration.sql)** - OCR 文本块相关的数据库迁移
 -   **[🔍 模糊搜索调试](./fuzzy-search-debug.sql)** - 模糊搜索功能的调试脚本
 -   **[🧠 动态搜索迁移](./dynamic-search-migration.sql)** - 动态搜索功能的数据库迁移脚本
+-   **[📊 模板使用统计](./template-usage-count-migration.sql)** - 模板使用次数统计的 SQL 脚本
 
 ### 📖 功能指南
 
@@ -128,8 +126,7 @@ public override void ConfigureServices(ServiceConfigurationContext context)
 
 1. [完整解决方案指南](./INTEGRATED_SOLUTION_GUIDE.md)
 2. [故障排除章节](./INTEGRATED_SOLUTION_GUIDE.md#故障排除)
-3. [中文文本搜索修复指南](./CHINESE_TEXT_SEARCH_FIX.md)
-4. 相关技术文档
+3. 相关技术文档
 
 ---
 

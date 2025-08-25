@@ -83,52 +83,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
--- 12. 创建函数：获取模板使用统计
-CREATE OR REPLACE FUNCTION get_template_usage_stats(template_id uuid)
-RETURNS TABLE(
-    usage_count bigint,
-    last_used_time timestamp,
-    recent_usage_count bigint
-) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT 
-        COUNT(*)::bigint as usage_count,
-        MAX(ac."CREATION_TIME") as last_used_time,
-        COUNT(CASE WHEN ac."CREATION_TIME" >= NOW() - INTERVAL '30 days' THEN 1 END)::bigint as recent_usage_count
-    FROM "APPATTACH_CATALOGUES" ac
-    WHERE ac."TEMPLATE_ID" = template_id 
-    AND ac."IS_DELETED" = false;
-END;
-$$ LANGUAGE plpgsql STABLE;
-
--- 13. 创建视图：模板推荐统计视图
-CREATE OR REPLACE VIEW template_recommendation_stats AS
-SELECT 
-    t."ID" as template_id,
-    t."TEMPLATE_NAME",
-    t."SEMANTIC_MODEL",
-    t."NAME_PATTERN",
-    t."SEQUENCE_NUMBER",
-    t."IS_LATEST",
-    COALESCE(usage_stats.usage_count, 0) as usage_count,
-    usage_stats.last_used_time,
-    COALESCE(usage_stats.recent_usage_count, 0) as recent_usage_count,
-    CASE 
-        WHEN usage_stats.last_used_time IS NOT NULL 
-        THEN GREATEST(0, 1 - EXTRACT(EPOCH FROM (NOW() - usage_stats.last_used_time)) / (30 * 24 * 3600))
-        ELSE 0 
-    END as time_decay_factor
-FROM "APPATTACH_CATALOGUE_TEMPLATES" t
-LEFT JOIN LATERAL get_template_usage_stats(t."ID") usage_stats ON true
-WHERE t."IS_DELETED" = false;
-
--- 14. 添加注释
-COMMENT ON FUNCTION calculate_template_similarity IS '计算模板与查询文本的相似度';
-COMMENT ON FUNCTION get_template_usage_stats IS '获取模板使用统计信息';
-COMMENT ON VIEW template_recommendation_stats IS '模板推荐统计视图，包含使用频率和时间衰减因子';
-
--- 15. 验证索引创建
+-- 12. 验证索引创建
 SELECT 
     schemaname,
     tablename,

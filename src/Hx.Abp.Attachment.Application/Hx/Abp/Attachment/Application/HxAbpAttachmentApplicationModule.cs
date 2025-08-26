@@ -1,5 +1,6 @@
 ﻿using Hx.Abp.Attachment.Application.Contracts;
 using Hx.Abp.Attachment.Application.Utils;
+using Hx.Abp.Attachment.Application.ArchAI;
 using Hx.Abp.Attachment.Domain;
 using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp.AutoMapper;
@@ -14,6 +15,7 @@ namespace Hx.Abp.Attachment.Application
     [DependsOn(typeof(AbpBlobStoringModule))]
     [DependsOn(typeof(AbpBlobStoringFileSystemModule))]
     [DependsOn(typeof(HxAbpAttachmentApplicationContractsModule))]
+    [DependsOn(typeof(HxAbpAttachmentApplicationArchAIModule))]
     public class HxAbpAttachmentApplicationModule : AbpModule
     {
         public override void ConfigureServices(ServiceConfigurationContext context)

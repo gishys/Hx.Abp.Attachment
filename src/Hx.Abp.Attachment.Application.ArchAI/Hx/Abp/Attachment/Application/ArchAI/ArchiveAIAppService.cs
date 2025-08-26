@@ -10,11 +10,13 @@ namespace Hx.Abp.Attachment.Application.ArchAI
     public class ArchiveAIAppService(
         IConfiguration configuration,
         IEfCoreAttachFileRepository efCoreAttachFileRepository,
-        TextAnalysisService textAnalysisService) : ApplicationService, IArchiveAIAppService
+        TextAnalysisService textAnalysisService,
+        TextClassificationService textClassificationService) : ApplicationService, IArchiveAIAppService
     {
         private readonly IConfiguration _configuration = configuration;
         private readonly IEfCoreAttachFileRepository _efCoreAttachFileRepository = efCoreAttachFileRepository;
         private readonly TextAnalysisService _textAnalysisService = textAnalysisService;
+        private readonly TextClassificationService _textClassificationService = textClassificationService;
 
         public async Task<List<RecognizeCharacterDto>> OcrFullTextAsync(List<Guid> ids)
         {
@@ -36,6 +38,11 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         public async Task<TextAnalysisDto> AnalyzeTextAsync(TextAnalysisInputDto input)
         {
             return await _textAnalysisService.AnalyzeTextAsync(input);
+        }
+
+        public async Task<TextAnalysisDto> ExtractClassificationFeaturesAsync(TextClassificationInputDto input)
+        {
+            return await _textClassificationService.ExtractClassificationFeaturesAsync(input);
         }
     }
 }

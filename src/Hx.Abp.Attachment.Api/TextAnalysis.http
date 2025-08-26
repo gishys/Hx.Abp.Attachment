@@ -1,0 +1,156 @@
+### 文本分析API测试文件
+
+### 1. 单个文档分析测试
+
+POST {{baseUrl}}/api/app/attachmentai/analyze-text
+Content-Type: application/json
+
+{
+  "text": "准格尔旗信力机械工程有限责任公司（统一社会信用代码：91150622761059189D）在准格尔旗农村信用合作联社办理的1300万元贷款已于2023年5月31日结清全部本金及利息。",
+  "keywordCount": 5,
+  "maxSummaryLength": 200,
+  "analysisType": 1,
+  "generateSemanticVector": true,
+  "extractEntities": true,
+  "context": {
+    "businessType": "金融服务",
+    "documentCategory": "证明文件"
+  }
+}
+
+###
+
+### 2. 文本分类特征提取测试
+
+POST {{baseUrl}}/api/app/attachmentai/extract-classification-features
+Content-Type: application/json
+
+{
+  "classificationName": "结清证明",
+  "textSamples": [
+    "准格尔旗信力机械工程有限责任公司办理的1300万元贷款已于2023年5月31日结清全部本金及利息。",
+    "内蒙古某建筑公司在我行办理的500万元贷款已于2024年1月15日结清全部本金及利息。",
+    "某科技公司在农村信用社办理的200万元贷款已于2023年12月31日结清全部本金及利息。"
+  ],
+  "keywordCount": 5,
+  "maxSummaryLength": 200,
+  "generateSemanticVector": true,
+  "context": {
+    "businessType": "金融服务",
+    "documentCategory": "证明文件"
+  }
+}
+
+###
+
+### 3. 合同文档分析测试
+
+POST {{baseUrl}}/api/app/attachmentai/analyze-text
+Content-Type: application/json
+
+{
+  "text": "甲方：北京科技有限公司，乙方：上海软件开发公司。双方经友好协商，就技术转让事宜达成如下协议：一、转让内容：乙方将其拥有的某项专利技术转让给甲方；二、转让费用：人民币500万元；三、付款方式：分期付款，首付200万元，余款在技术交付后支付。",
+  "keywordCount": 8,
+  "maxSummaryLength": 300,
+  "analysisType": 1,
+  "generateSemanticVector": true,
+  "extractEntities": true
+}
+
+###
+
+### 4. 合同分类特征提取测试
+
+POST {{baseUrl}}/api/app/attachmentai/extract-classification-features
+Content-Type: application/json
+
+{
+  "classificationName": "技术转让合同",
+  "textSamples": [
+    "甲方：北京科技有限公司，乙方：上海软件开发公司。双方经友好协商，就技术转让事宜达成如下协议：一、转让内容：乙方将其拥有的某项专利技术转让给甲方；二、转让费用：人民币500万元；三、付款方式：分期付款，首付200万元，余款在技术交付后支付。",
+    "甲方：某制造企业，乙方：某研究所。双方就技术转让事宜签订本合同：一、转让技术：新型材料制备技术；二、转让金额：300万元；三、支付方式：一次性支付。",
+    "甲方：某电子公司，乙方：某大学。双方就知识产权转让达成协议：一、转让标的：集成电路设计技术；二、转让价格：800万元；三、付款条件：按进度支付。"
+  ],
+  "keywordCount": 6,
+  "maxSummaryLength": 250,
+  "generateSemanticVector": true
+}
+
+###
+
+### 5. 发票文档分析测试
+
+POST {{baseUrl}}/api/app/attachmentai/analyze-text
+Content-Type: application/json
+
+{
+  "text": "发票号码：12345678，开票日期：2024年1月15日，购买方：北京科技有限公司，纳税人识别号：91110000123456789X，销售方：上海软件开发公司，纳税人识别号：91310000123456789Y，货物或应税劳务、服务名称：软件开发服务，金额：100000元，税率：6%，税额：6000元，价税合计：106000元。",
+  "keywordCount": 6,
+  "maxSummaryLength": 200,
+  "analysisType": 1,
+  "generateSemanticVector": true,
+  "extractEntities": true
+}
+
+###
+
+### 6. 发票分类特征提取测试
+
+POST {{baseUrl}}/api/app/attachmentai/extract-classification-features
+Content-Type: application/json
+
+{
+  "classificationName": "增值税专用发票",
+  "textSamples": [
+    "发票号码：12345678，开票日期：2024年1月15日，购买方：北京科技有限公司，纳税人识别号：91110000123456789X，销售方：上海软件开发公司，纳税人识别号：91310000123456789Y，货物或应税劳务、服务名称：软件开发服务，金额：100000元，税率：6%，税额：6000元，价税合计：106000元。",
+    "发票号码：87654321，开票日期：2024年1月20日，购买方：某制造企业，纳税人识别号：91110000987654321X，销售方：某贸易公司，纳税人识别号：91310000987654321Y，货物或应税劳务、服务名称：原材料采购，金额：50000元，税率：13%，税额：6500元，价税合计：56500元。",
+    "发票号码：11223344，开票日期：2024年1月25日，购买方：某服务公司，纳税人识别号：9111000011223344X，销售方：某咨询公司，纳税人识别号：9131000011223344Y，货物或应税劳务、服务名称：咨询服务，金额：20000元，税率：6%，税额：1200元，价税合计：21200元。"
+  ],
+  "keywordCount": 5,
+  "maxSummaryLength": 200,
+  "generateSemanticVector": true
+}
+
+###
+
+### 7. 错误测试 - 缺少必填参数
+
+POST {{baseUrl}}/api/app/attachmentai/analyze-text
+Content-Type: application/json
+
+{
+  "keywordCount": 5,
+  "maxSummaryLength": 200
+}
+
+###
+
+### 8. 错误测试 - 参数超出范围
+
+POST {{baseUrl}}/api/app/attachmentai/analyze-text
+Content-Type: application/json
+
+{
+  "text": "测试文本",
+  "keywordCount": 25,
+  "maxSummaryLength": 600
+}
+
+###
+
+### 9. 错误测试 - 分类样本为空
+
+POST {{baseUrl}}/api/app/attachmentai/extract-classification-features
+Content-Type: application/json
+
+{
+  "classificationName": "测试分类",
+  "textSamples": []
+}
+
+###
+
+### 环境变量配置
+# 在 .http 文件顶部或环境文件中设置
+# @baseUrl = http://localhost:5000
+# @baseUrl = https://your-api-domain.com

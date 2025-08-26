@@ -9,14 +9,14 @@ using Volo.Abp.DependencyInjection;
 namespace Hx.Abp.Attachment.Application.ArchAI
 {
     /// <summary>
-    /// 文本分析服务
+    /// 文本分类服务
     /// </summary>
-    public class TextAnalysisService(
-        ILogger<TextAnalysisService> logger,
+    public class TextClassificationService(
+        ILogger<TextClassificationService> logger,
         HttpClient httpClient,
         SemanticVectorService semanticVectorService) : IScopedDependency
     {
-        private readonly ILogger<TextAnalysisService> _logger = logger;
+        private readonly ILogger<TextClassificationService> _logger = logger;
         private readonly HttpClient _httpClient = httpClient;
         private readonly SemanticVectorService _semanticVectorService = semanticVectorService;
         private readonly string _apiKey = Environment.GetEnvironmentVariable("DEEPSEEK_API_KEY")
@@ -32,29 +32,30 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         };
 
         /// <summary>
-        /// 分析文本并生成摘要和关键词
+        /// 提取文本分类特征
         /// </summary>
-        /// <param name="input">文本分析输入参数</param>
-        /// <returns>文本分析结果</returns>
-        public async Task<TextAnalysisDto> AnalyzeTextAsync(TextAnalysisInputDto input)
+        /// <param name="input">文本分类输入参数</param>
+        /// <returns>文本分类特征结果</returns>
+        public async Task<TextAnalysisDto> ExtractClassificationFeaturesAsync(TextClassificationInputDto input)
         {
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             
             try
             {
-                _logger.LogInformation("开始分析文本，长度: {TextLength}", input.Text.Length);
+                _logger.LogInformation("开始提取文本分类特征，分类名称: {ClassificationName}, 样本数量: {SampleCount}", 
+                    input.ClassificationName, input.TextSamples.Count);
 
-                var prompt = BuildAnalysisPrompt(input);
+                var prompt = BuildClassificationPrompt(input);
                 var requestData = new DeepSeekRequest
                 {
                     Model = "deepseek-chat",
                     Messages =
                     [
                         new() { Role = "system", Content = prompt },
-                        new() { Role = "user", Content = input.Text }
+                        new() { Role = "user", Content = BuildSampleText(input.TextSamples) }
                     ],
                     Temperature = 0.3,
-                    MaxTokens = 800
+                    MaxTokens = 1000
                 };
 
                 var jsonContent = JsonSerializer.Serialize(requestData, JsonOptions);
@@ -69,17 +70,15 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
                     _logger.LogError("API调用失败: {StatusCode}, {ErrorContent}", response.StatusCode, errorContent);
-                    throw new UserFriendlyException($"文本分析服务暂时不可用，请稍后再试。错误代码: {response.StatusCode}");
+                    throw new UserFriendlyException($"文本分类特征提取服务暂时不可用，请稍后再试。错误代码: {response.StatusCode}");
                 }
 
                 var responseContent = await response.Content.ReadAsStringAsync();
-                _logger.LogDebug("API响应内容: {ResponseContent}", responseContent);
-
                 var apiResponse = JsonSerializer.Deserialize<DeepSeekResponse>(responseContent, JsonOptions);
 
                 if (apiResponse?.Choices?.FirstOrDefault()?.Message?.Content == null)
                 {
-                    throw new UserFriendlyException("文本分析服务返回结果为空");
+                    throw new UserFriendlyException("文本分类特征提取服务返回结果为空");
                 }
 
                 var result = ParseAnalysisResult(apiResponse.Choices[0].Message.Content);
@@ -89,7 +88,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                 stopwatch.Stop();
                 result.Metadata = new AnalysisMetadata
                 {
-                    TextLength = input.Text.Length,
+                    TextLength = input.TextSamples.Sum(s => s.Length),
                     ProcessingTimeMs = stopwatch.ElapsedMilliseconds,
                     Model = apiResponse.Model,
                     ApiUsage = apiResponse.Usage != null ? new ApiUsageInfo
@@ -100,14 +99,8 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                     } : null
                 };
 
-                // 提取实体信息
-                if (input.ExtractEntities)
-                {
-                    result.Entities = ExtractEntities(input.Text, result.Keywords);
-                }
-
                 // 识别文档类型和业务领域
-                result.DocumentType = IdentifyDocumentType(result.Summary, result.Keywords);
+                result.DocumentType = input.ClassificationName;
                 result.BusinessDomain = IdentifyBusinessDomain(result.Summary, result.Keywords);
 
                 // 生成语义向量
@@ -124,8 +117,8 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                     }
                 }
 
-                _logger.LogInformation("文本分析完成，提取关键词数量: {KeywordCount}, 置信度: {Confidence}, 处理时间: {ProcessingTime}ms", 
-                    result.Keywords.Count, result.Confidence, stopwatch.ElapsedMilliseconds);
+                _logger.LogInformation("文本分类特征提取完成，分类名称: {ClassificationName}, 提取关键词数量: {KeywordCount}, 置信度: {Confidence}, 处理时间: {ProcessingTime}ms", 
+                    input.ClassificationName, result.Keywords.Count, result.Confidence, stopwatch.ElapsedMilliseconds);
                 return result;
             }
             catch (UserFriendlyException)
@@ -134,81 +127,16 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "文本分析过程中发生错误");
-                throw new UserFriendlyException("文本分析服务暂时不可用，请稍后再试");
+                _logger.LogError(ex, "文本分类特征提取过程中发生错误");
+                throw new UserFriendlyException("文本分类特征提取服务暂时不可用，请稍后再试");
             }
         }
 
         /// <summary>
-        /// 构建分析提示词
+        /// 构建分类提示词
         /// </summary>
-        private static string BuildAnalysisPrompt(TextAnalysisInputDto input)
+        private static string BuildClassificationPrompt(TextClassificationInputDto input)
         {
-            return input.AnalysisType == TextAnalysisType.TextClassification 
-                ? BuildClassificationPrompt(input) 
-                : BuildSingleDocumentPrompt(input);
-        }
-
-        /// <summary>
-        /// 构建单个文档分析提示词
-        /// </summary>
-        private static string BuildSingleDocumentPrompt(TextAnalysisInputDto input)
-        {
-            return $@"
-# 文本分析专家指令
-
-## 任务要求
-请对输入的文本进行深度分析，生成结构化的摘要和关键词提取结果，用于后续的语义匹配和模板分类。
-
-## 输出格式要求
-请严格按照以下JSON格式返回结果，不要包含任何其他内容：
-
-{{
-  ""summary"": ""文本摘要内容，控制在{input.MaxSummaryLength}字符以内，突出核心信息和主要观点"",
-  ""keywords"": [""关键词1"", ""关键词2"", ""关键词3"", ""关键词4"", ""关键词5""],
-  ""confidence"": 0.95
-}}
-
-## 分析指导原则
-1. **摘要生成**：
-   - 提取文本的核心信息和主要观点
-   - 保持逻辑清晰，语言简洁
-   - 确保摘要完整表达原文主旨
-   - 重点关注实体名称、时间、金额、地点等关键信息
-
-2. **关键词提取**：
-   - 提取{input.KeywordCount}个最重要的关键词
-   - 关键词应具有代表性，能体现文本主题
-   - 包含实体名词、专业术语、核心概念等
-   - 按重要性排序，优先提取：
-     * 公司/机构名称
-     * 文档类型（如：结清证明、合同、报告等）
-     * 关键业务术语
-     * 重要时间节点
-     * 金额信息
-
-3. **置信度评估**：
-   - 基于文本清晰度、信息完整性评估
-   - 范围0.0-1.0，0.9以上表示高置信度
-   - 考虑文本结构、信息密度、专业术语使用等因素
-
-## 注意事项
-- 只返回JSON格式结果，不要包含解释文字
-- 确保JSON格式正确，可以被直接解析
-- 关键词应该是单个词或短语，不要包含标点符号
-- 摘要应该客观准确，避免主观判断
-- 重点关注对后续语义匹配有用的信息";
-        }
-
-        /// <summary>
-        /// 构建文本分类分析提示词
-        /// </summary>
-        private static string BuildClassificationPrompt(TextAnalysisInputDto input)
-        {
-            var classificationName = !string.IsNullOrEmpty(input.ClassificationName) 
-                ? $"（{input.ClassificationName}）" 
-                : "";
-
             return $@"
 # 文本分类特征提取专家指令
 
@@ -266,6 +194,26 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         }
 
         /// <summary>
+        /// 构建样本文本
+        /// </summary>
+        private static string BuildSampleText(List<string> textSamples)
+        {
+            var sampleText = new StringBuilder();
+            sampleText.AppendLine("以下是该类文本的样本：");
+            sampleText.AppendLine();
+
+            for (int i = 0; i < textSamples.Count; i++)
+            {
+                sampleText.AppendLine($"样本{i + 1}：");
+                sampleText.AppendLine(textSamples[i]);
+                sampleText.AppendLine();
+            }
+
+            sampleText.AppendLine("请基于以上样本，提取该类文本的通用特征。");
+            return sampleText.ToString();
+        }
+
+        /// <summary>
         /// 解析分析结果
         /// </summary>
         private static TextAnalysisDto ParseAnalysisResult(string content)
@@ -281,7 +229,6 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             }
             catch (JsonException ex)
             {
-                // 记录JSON解析错误，继续尝试其他方法
                 System.Diagnostics.Debug.WriteLine($"直接JSON解析失败: {ex.Message}");
             }
 
@@ -330,7 +277,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         {
             var result = new TextAnalysisDto
             {
-                Summary = "文本分析完成",
+                Summary = "文本分类特征提取完成",
                 Keywords = [],
                 Confidence = 0.8
             };
@@ -348,78 +295,6 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             result.Keywords.AddRange(words);
 
             return result;
-        }
-
-        /// <summary>
-        /// 提取实体信息
-        /// </summary>
-        private static List<EntityInfo> ExtractEntities(string text, List<string> keywords)
-        {
-            var entities = new List<EntityInfo>();
-            
-            // 简单的实体提取逻辑
-            foreach (var keyword in keywords)
-            {
-                var entityType = DetermineEntityType(keyword, text);
-                if (!string.IsNullOrEmpty(entityType))
-                {
-                    entities.Add(new EntityInfo
-                    {
-                        Name = keyword,
-                        Type = entityType,
-                        Value = keyword,
-                        Confidence = 0.8
-                    });
-                }
-            }
-
-            return entities;
-        }
-
-        /// <summary>
-        /// 确定实体类型
-        /// </summary>
-        private static string DetermineEntityType(string keyword, string text)
-        {
-            // 简单的规则匹配
-            if (keyword.Contains("公司") || keyword.Contains("有限") || keyword.Contains("股份"))
-                return "Organization";
-            
-            if (keyword.Contains("证明") || keyword.Contains("合同") || keyword.Contains("报告"))
-                return "DocumentType";
-            
-            if (keyword.Contains("万元") || keyword.Contains('元') || keyword.Contains('万'))
-                return "Amount";
-            
-            if (keyword.Contains('年') && keyword.Contains('月') && keyword.Contains('日'))
-                return "Date";
-            
-            if (keyword.Contains("银行") || keyword.Contains("联社") || keyword.Contains("信用社"))
-                return "FinancialInstitution";
-
-            return string.Empty;
-        }
-
-        /// <summary>
-        /// 识别文档类型
-        /// </summary>
-        private static string IdentifyDocumentType(string summary, List<string> keywords)
-        {
-            var text = (summary + " " + string.Join(" ", keywords)).ToLower();
-            
-            if (text.Contains("结清证明") || text.Contains("结清"))
-                return "结清证明";
-            
-            if (text.Contains("合同") || text.Contains("协议"))
-                return "合同协议";
-            
-            if (text.Contains("报告") || text.Contains("分析"))
-                return "分析报告";
-            
-            if (text.Contains("证明") || text.Contains("证书"))
-                return "证明证书";
-            
-            return "其他文档";
         }
 
         /// <summary>
@@ -443,101 +318,5 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             
             return "其他领域";
         }
-    }
-
-    /// <summary>
-    /// DeepSeek API请求模型
-    /// </summary>
-    public class DeepSeekRequest
-    {
-        [JsonPropertyName("model")]
-        public string Model { get; set; } = string.Empty;
-
-        [JsonPropertyName("messages")]
-        public List<Message> Messages { get; set; } = [];
-
-        [JsonPropertyName("temperature")]
-        public double Temperature { get; set; }
-
-        [JsonPropertyName("max_tokens")]
-        public int MaxTokens { get; set; }
-    }
-
-    /// <summary>
-    /// DeepSeek API响应模型
-    /// </summary>
-    public class DeepSeekResponse
-    {
-        [JsonPropertyName("id")]
-        public string Id { get; set; } = string.Empty;
-
-        [JsonPropertyName("object")]
-        public string Object { get; set; } = string.Empty;
-
-        [JsonPropertyName("created")]
-        public long Created { get; set; }
-
-        [JsonPropertyName("model")]
-        public string Model { get; set; } = string.Empty;
-
-        [JsonPropertyName("choices")]
-        public List<Choice> Choices { get; set; } = [];
-
-        [JsonPropertyName("usage")]
-        public Usage? Usage { get; set; }
-
-        [JsonPropertyName("system_fingerprint")]
-        public string? SystemFingerprint { get; set; }
-    }
-
-    public class Choice
-    {
-        [JsonPropertyName("index")]
-        public int Index { get; set; }
-
-        [JsonPropertyName("message")]
-        public Message Message { get; set; } = new();
-
-        [JsonPropertyName("logprobs")]
-        public object? Logprobs { get; set; }
-
-        [JsonPropertyName("finish_reason")]
-        public string? FinishReason { get; set; }
-    }
-
-    public class Message
-    {
-        [JsonPropertyName("role")]
-        public string Role { get; set; } = string.Empty;
-
-        [JsonPropertyName("content")]
-        public string Content { get; set; } = string.Empty;
-    }
-
-    public class Usage
-    {
-        [JsonPropertyName("prompt_tokens")]
-        public int PromptTokens { get; set; }
-
-        [JsonPropertyName("completion_tokens")]
-        public int CompletionTokens { get; set; }
-
-        [JsonPropertyName("total_tokens")]
-        public int TotalTokens { get; set; }
-
-        [JsonPropertyName("prompt_tokens_details")]
-        public PromptTokensDetails? PromptTokensDetails { get; set; }
-
-        [JsonPropertyName("prompt_cache_hit_tokens")]
-        public int? PromptCacheHitTokens { get; set; }
-
-        [JsonPropertyName("prompt_cache_miss_tokens")]
-        public int? PromptCacheMissTokens { get; set; }
-    }
-
-    public class PromptTokensDetails
-    {
-        [JsonPropertyName("cached_tokens")]
-        public int CachedTokens { get; set; }
     }
 }

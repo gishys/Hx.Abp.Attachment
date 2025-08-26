@@ -1,10 +1,7 @@
 using Hx.Abp.Attachment.Application.ArchAI.Contracts;
 using Microsoft.Extensions.Logging;
-using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Volo.Abp;
-using Volo.Abp.DependencyInjection;
 
 namespace Hx.Abp.Attachment.Application.ArchAI
 {
@@ -14,22 +11,8 @@ namespace Hx.Abp.Attachment.Application.ArchAI
     public class TextAnalysisService(
         ILogger<TextAnalysisService> logger,
         HttpClient httpClient,
-        SemanticVectorService semanticVectorService) : IScopedDependency
+        SemanticVectorService semanticVectorService) : BaseTextAnalysisService(logger, httpClient, semanticVectorService)
     {
-        private readonly ILogger<TextAnalysisService> _logger = logger;
-        private readonly HttpClient _httpClient = httpClient;
-        private readonly SemanticVectorService _semanticVectorService = semanticVectorService;
-        private readonly string _apiKey = Environment.GetEnvironmentVariable("DEEPSEEK_API_KEY")
-                ?? throw new UserFriendlyException("缺少环境变量 DEEPSEEK_API_KEY");
-        private readonly string _apiUrl = "https://api.deepseek.com/chat/completions";
-        
-        // JSON序列化选项
-        private static readonly JsonSerializerOptions JsonOptions = new()
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            WriteIndented = false
-        };
 
         /// <summary>
         /// 分析文本并生成摘要和关键词
@@ -45,60 +28,13 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                 _logger.LogInformation("开始分析文本，长度: {TextLength}", input.Text.Length);
 
                 var prompt = BuildAnalysisPrompt(input);
-                var requestData = new DeepSeekRequest
-                {
-                    Model = "deepseek-chat",
-                    Messages =
-                    [
-                        new() { Role = "system", Content = prompt },
-                        new() { Role = "user", Content = input.Text }
-                    ],
-                    Temperature = 0.3,
-                    MaxTokens = 800
-                };
-
-                var jsonContent = JsonSerializer.Serialize(requestData, JsonOptions);
-                var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-
-                _httpClient.DefaultRequestHeaders.Authorization =
-                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiKey);
-
-                var response = await _httpClient.PostAsync(_apiUrl, content);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogError("API调用失败: {StatusCode}, {ErrorContent}", response.StatusCode, errorContent);
-                    throw new UserFriendlyException($"文本分析服务暂时不可用，请稍后再试。错误代码: {response.StatusCode}");
-                }
-
-                var responseContent = await response.Content.ReadAsStringAsync();
-                _logger.LogDebug("API响应内容: {ResponseContent}", responseContent);
-
-                var apiResponse = JsonSerializer.Deserialize<DeepSeekResponse>(responseContent, JsonOptions);
-
-                if (apiResponse?.Choices?.FirstOrDefault()?.Message?.Content == null)
-                {
-                    throw new UserFriendlyException("文本分析服务返回结果为空");
-                }
-
+                var apiResponse = await CallAIApiAsync(prompt, input.Text, 800);
                 var result = ParseAnalysisResult(apiResponse.Choices[0].Message.Content);
                 result.AnalysisTime = DateTime.Now;
 
                 // 添加元数据
                 stopwatch.Stop();
-                result.Metadata = new AnalysisMetadata
-                {
-                    TextLength = input.Text.Length,
-                    ProcessingTimeMs = stopwatch.ElapsedMilliseconds,
-                    Model = apiResponse.Model,
-                    ApiUsage = apiResponse.Usage != null ? new ApiUsageInfo
-                    {
-                        PromptTokens = apiResponse.Usage.PromptTokens,
-                        CompletionTokens = apiResponse.Usage.CompletionTokens,
-                        TotalTokens = apiResponse.Usage.TotalTokens
-                    } : null
-                };
+                AddMetadata(result, apiResponse, input.Text.Length, stopwatch.ElapsedMilliseconds);
 
                 // 提取实体信息
                 if (input.ExtractEntities)
@@ -113,15 +49,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                 // 生成语义向量
                 if (input.GenerateSemanticVector)
                 {
-                    try
-                    {
-                        var vectorText = $"{result.Summary} {string.Join(" ", result.Keywords)}";
-                        result.SemanticVector = await _semanticVectorService.GenerateVectorAsync(vectorText);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "生成语义向量失败，继续处理其他功能");
-                    }
+                    result.SemanticVector = await GenerateSemanticVectorAsync(result.Summary, result.Keywords);
                 }
 
                 _logger.LogInformation("文本分析完成，提取关键词数量: {KeywordCount}, 置信度: {Confidence}, 处理时间: {ProcessingTime}ms", 
@@ -150,21 +78,21 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         }
 
         /// <summary>
-        /// 构建单个文档分析提示词
+        /// 构建通用分析提示词
         /// </summary>
-        private static string BuildSingleDocumentPrompt(TextAnalysisInputDto input)
+        private static new string BuildGenericPrompt(int keywordCount, int maxSummaryLength, string taskDescription)
         {
             return $@"
-# 文本分析专家指令
+# 通用文本分析专家指令
 
 ## 任务要求
-请对输入的文本进行深度分析，生成结构化的摘要和关键词提取结果，用于后续的语义匹配和模板分类。
+{taskDescription}
 
 ## 输出格式要求
 请严格按照以下JSON格式返回结果，不要包含任何其他内容：
 
 {{
-  ""summary"": ""文本摘要内容，控制在{input.MaxSummaryLength}字符以内，突出核心信息和主要观点"",
+  ""summary"": ""文本摘要内容，控制在{maxSummaryLength}字符以内，突出核心信息和主要观点"",
   ""keywords"": [""关键词1"", ""关键词2"", ""关键词3"", ""关键词4"", ""关键词5""],
   ""confidence"": 0.95
 }}
@@ -177,15 +105,15 @@ namespace Hx.Abp.Attachment.Application.ArchAI
    - 重点关注实体名称、时间、金额、地点等关键信息
 
 2. **关键词提取**：
-   - 提取{input.KeywordCount}个最重要的关键词
+   - 提取{keywordCount}个最重要的关键词
    - 关键词应具有代表性，能体现文本主题
    - 包含实体名词、专业术语、核心概念等
    - 按重要性排序，优先提取：
-     * 公司/机构名称
-     * 文档类型（如：结清证明、合同、报告等）
+     * 实体名称（公司、机构、人名、地名等）
+     * 文档类型标识
      * 关键业务术语
      * 重要时间节点
-     * 金额信息
+     * 数值信息（金额、数量等）
 
 3. **置信度评估**：
    - 基于文本清晰度、信息完整性评估
@@ -201,6 +129,15 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         }
 
         /// <summary>
+        /// 构建单个文档分析提示词
+        /// </summary>
+        private static string BuildSingleDocumentPrompt(TextAnalysisInputDto input)
+        {
+            var taskDescription = "请对输入的文本进行深度分析，生成结构化的摘要和关键词提取结果，用于后续的语义匹配和模板分类。";
+            return BuildGenericPrompt(input.KeywordCount, input.MaxSummaryLength, taskDescription);
+        }
+
+        /// <summary>
         /// 构建文本分类分析提示词
         /// </summary>
         private static string BuildClassificationPrompt(TextAnalysisInputDto input)
@@ -209,66 +146,14 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                 ? $"（{input.ClassificationName}）" 
                 : "";
 
-            return $@"
-# 文本分类特征提取专家指令
-
-## 任务要求
-请对输入的多个同类文本样本进行深度分析，提取该类文本的通用特征，生成结构化的分类描述和特征关键词，用于文本分类和模板匹配。
-
-## 输出格式要求
-请严格按照以下JSON格式返回结果，不要包含任何其他内容：
-
-{{
-  ""summary"": ""该类文本的通用特征描述，控制在{input.MaxSummaryLength}字符以内，突出该类文本的核心特征和识别要点"",
-  ""keywords"": [""特征关键词1"", ""特征关键词2"", ""特征关键词3"", ""特征关键词4"", ""特征关键词5""],
-  ""confidence"": 0.95
-}}
-
-## 分析指导原则
-1. **分类特征描述**：
-   - 提取该类文本的通用特征和识别要点
-   - 描述该类文本的典型内容、结构、格式特征
-   - 突出该类文本区别于其他类型文本的关键特征
-   - 重点关注：
-     * 文档类型特征（如：结清证明、合同、报告等）
-     * 业务领域特征（如：金融服务、制造业、房地产等）
-     * 内容结构特征（如：包含哪些典型信息块）
-     * 语言表达特征（如：常用术语、表达方式）
-
-2. **特征关键词提取**：
-   - 提取{input.KeywordCount}个最能代表该类文本的特征关键词
-   - 关键词应具有通用性，能代表该类文本的典型特征
-   - 按重要性排序，优先提取：
-     * 文档类型标识词（如：证明、合同、报告、证书等）
-     * 业务领域术语（如：贷款、结清、抵押、登记等）
-     * 典型实体类型（如：公司、银行、金额、日期等）
-     * 关键动作词（如：办理、结清、注销、登记等）
-     * 特征性表达（如：同意、确认、证明等）
-
-3. **置信度评估**：
-   - 基于样本的代表性、特征的一致性评估
-   - 范围0.0-1.0，0.9以上表示高置信度
-   - 考虑样本数量、特征清晰度、分类准确性等因素
-
-## 分类特征提取策略
-- **通用性优先**：提取的特征应适用于该类文本的所有实例
-- **区分性优先**：优先提取能区分该类文本与其他类型文本的特征
-- **稳定性优先**：优先提取在该类文本中稳定出现的特征
-- **可识别性优先**：优先提取便于自动识别和匹配的特征
-
-## 注意事项
-- 只返回JSON格式结果，不要包含解释文字
-- 确保JSON格式正确，可以被直接解析
-- 关键词应该是通用特征词，不要包含具体的人名、地名、金额等
-- 摘要应该描述该类文本的通用特征，而不是具体内容
-- 重点关注对文本分类和模板匹配有用的特征
-- 避免过于具体或过于抽象的描述，保持适度的通用性";
+            var taskDescription = $"请对输入的多个同类文本样本进行深度分析，提取该类文本{classificationName}的通用特征，生成结构化的分类描述和特征关键词，用于文本分类和模板匹配。";
+            return BuildGenericPrompt(input.KeywordCount, input.MaxSummaryLength, taskDescription);
         }
 
         /// <summary>
         /// 解析分析结果
         /// </summary>
-        private static TextAnalysisDto ParseAnalysisResult(string content)
+        private static new TextAnalysisDto ParseAnalysisResult(string content)
         {
             try
             {
@@ -381,23 +266,161 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         /// </summary>
         private static string DetermineEntityType(string keyword, string text)
         {
-            // 简单的规则匹配
-            if (keyword.Contains("公司") || keyword.Contains("有限") || keyword.Contains("股份"))
+            // 组织实体识别
+            if (IsOrganizationEntity(keyword, text))
                 return "Organization";
             
-            if (keyword.Contains("证明") || keyword.Contains("合同") || keyword.Contains("报告"))
+            // 文档类型识别
+            if (IsDocumentTypeEntity(keyword, text))
                 return "DocumentType";
             
-            if (keyword.Contains("万元") || keyword.Contains('元') || keyword.Contains('万'))
+            // 金额实体识别
+            if (IsAmountEntity(keyword, text))
                 return "Amount";
             
-            if (keyword.Contains('年') && keyword.Contains('月') && keyword.Contains('日'))
+            // 日期实体识别
+            if (IsDateEntity(keyword, text))
                 return "Date";
             
-            if (keyword.Contains("银行") || keyword.Contains("联社") || keyword.Contains("信用社"))
+            // 金融机构识别
+            if (IsFinancialInstitutionEntity(keyword, text))
                 return "FinancialInstitution";
+            
+            // 地点实体识别
+            if (IsLocationEntity(keyword, text))
+                return "Location";
+            
+            // 人名实体识别
+            if (IsPersonEntity(keyword, text))
+                return "Person";
 
             return string.Empty;
+        }
+
+        /// <summary>
+        /// 判断是否为组织实体
+        /// </summary>
+        private static bool IsOrganizationEntity(string keyword, string text)
+        {
+            // 基础关键词匹配
+            var isOrgKeyword = TextAnalysisConfiguration.EntityTypeRules["Organization"].Any(k => keyword.Contains(k));
+            if (!isOrgKeyword) return false;
+
+            // 上下文验证：检查周围是否有组织相关的上下文
+            var contextKeywords = TextAnalysisConfiguration.EntityContextKeywords["Organization"];
+            var hasContext = contextKeywords.Any(k => text.Contains(k));
+            
+            return hasContext;
+        }
+
+        /// <summary>
+        /// 判断是否为文档类型实体
+        /// </summary>
+        private static bool IsDocumentTypeEntity(string keyword, string text)
+        {
+            // 基础关键词匹配
+            var isDocKeyword = TextAnalysisConfiguration.EntityTypeRules["DocumentType"].Any(k => keyword.Contains(k));
+            if (!isDocKeyword) return false;
+
+            // 上下文验证：检查周围是否有文档相关的上下文
+            var contextKeywords = TextAnalysisConfiguration.EntityContextKeywords["DocumentType"];
+            var hasContext = contextKeywords.Any(k => text.Contains(k));
+            
+            return hasContext;
+        }
+
+        /// <summary>
+        /// 判断是否为金额实体
+        /// </summary>
+        private static bool IsAmountEntity(string keyword, string text)
+        {
+            // 基础关键词匹配
+            var isAmountKeyword = TextAnalysisConfiguration.EntityTypeRules["Amount"].Any(k => keyword.Contains(k));
+            var isAmountPattern = System.Text.RegularExpressions.Regex.IsMatch(keyword, TextAnalysisConfiguration.AmountRegexPattern);
+            
+            if (!isAmountKeyword && !isAmountPattern) return false;
+
+            // 上下文验证：检查周围是否有金额相关的上下文
+            var contextKeywords = TextAnalysisConfiguration.EntityContextKeywords["Amount"];
+            var hasContext = contextKeywords.Any(k => text.Contains(k));
+            
+            return hasContext;
+        }
+
+        /// <summary>
+        /// 判断是否为日期实体
+        /// </summary>
+        private static bool IsDateEntity(string keyword, string text)
+        {
+            var dateKeywords = TextAnalysisConfiguration.EntityTypeRules["Date"];
+            var hasDateKeywords = dateKeywords.Count(k => keyword.Contains(k)) >= 2;
+            var isDatePattern = System.Text.RegularExpressions.Regex.IsMatch(keyword, TextAnalysisConfiguration.DateRegexPattern);
+            
+            if (!hasDateKeywords && !isDatePattern) return false;
+
+            // 上下文验证：检查周围是否有日期相关的上下文
+            var contextKeywords = TextAnalysisConfiguration.EntityContextKeywords["Date"];
+            var hasContext = contextKeywords.Any(k => text.Contains(k));
+            
+            return hasContext;
+        }
+
+        /// <summary>
+        /// 判断是否为金融机构实体
+        /// </summary>
+        private static bool IsFinancialInstitutionEntity(string keyword, string text)
+        {
+            // 基础关键词匹配
+            var isFinKeyword = TextAnalysisConfiguration.EntityTypeRules["FinancialInstitution"].Any(k => keyword.Contains(k));
+            if (!isFinKeyword) return false;
+
+            // 上下文验证：检查周围是否有金融相关的上下文
+            var contextKeywords = TextAnalysisConfiguration.EntityContextKeywords["FinancialInstitution"];
+            var hasContext = contextKeywords.Any(k => text.Contains(k));
+            
+            return hasContext;
+        }
+
+        /// <summary>
+        /// 判断是否为地点实体
+        /// </summary>
+        private static bool IsLocationEntity(string keyword, string text)
+        {
+            // 基础关键词匹配
+            var isLocationKeyword = TextAnalysisConfiguration.EntityTypeRules["Location"].Any(k => keyword.Contains(k));
+            if (!isLocationKeyword) return false;
+
+            // 上下文验证：检查周围是否有地点相关的上下文
+            var contextKeywords = TextAnalysisConfiguration.EntityContextKeywords["Location"];
+            var hasContext = contextKeywords.Any(k => text.Contains(k));
+            
+            return hasContext;
+        }
+
+        /// <summary>
+        /// 判断是否为人名实体
+        /// </summary>
+        private static bool IsPersonEntity(string keyword, string text)
+        {
+            var personKeywords = TextAnalysisConfiguration.EntityTypeRules["Person"];
+            var hasPersonKeyword = personKeywords.Any(k => keyword.Contains(k));
+            var isNameLength = keyword.Length >= TextAnalysisConfiguration.PersonNameLength.Min && 
+                              keyword.Length <= TextAnalysisConfiguration.PersonNameLength.Max;
+            
+            if (!hasPersonKeyword && !isNameLength) return false;
+
+            // 上下文验证：检查周围是否有人名相关的上下文
+            var contextKeywords = TextAnalysisConfiguration.EntityContextKeywords["Person"];
+            var hasContext = contextKeywords.Any(k => text.Contains(k));
+            
+            // 如果有关键词匹配，直接返回true
+            if (hasPersonKeyword) return true;
+            
+            // 如果是姓名长度且没有组织或文档类型特征，且有上下文支持，则认为是人名
+            return isNameLength && 
+                   !IsOrganizationEntity(keyword, text) && 
+                   !IsDocumentTypeEntity(keyword, text) && 
+                   hasContext;
         }
 
         /// <summary>
@@ -407,17 +430,13 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         {
             var text = (summary + " " + string.Join(" ", keywords)).ToLower();
             
-            if (text.Contains("结清证明") || text.Contains("结清"))
-                return "结清证明";
-            
-            if (text.Contains("合同") || text.Contains("协议"))
-                return "合同协议";
-            
-            if (text.Contains("报告") || text.Contains("分析"))
-                return "分析报告";
-            
-            if (text.Contains("证明") || text.Contains("证书"))
-                return "证明证书";
+            foreach (var rule in TextAnalysisConfiguration.DocumentTypeRules)
+            {
+                if (rule.Value.Any(keyword => text.Contains(keyword)))
+                {
+                    return rule.Key;
+                }
+            }
             
             return "其他文档";
         }
@@ -425,119 +444,34 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         /// <summary>
         /// 识别业务领域
         /// </summary>
-        private static string IdentifyBusinessDomain(string summary, List<string> keywords)
+        private static new string IdentifyBusinessDomain(string summary, List<string> keywords)
         {
             var text = (summary + " " + string.Join(" ", keywords)).ToLower();
             
-            if (text.Contains("银行") || text.Contains("贷款") || text.Contains("金融"))
-                return "金融服务";
-            
-            if (text.Contains("工程") || text.Contains("机械") || text.Contains("制造"))
-                return "制造业";
-            
-            if (text.Contains("房地产") || text.Contains("房产") || text.Contains("不动产"))
-                return "房地产";
-            
-            if (text.Contains("政府") || text.Contains("政务") || text.Contains("行政"))
-                return "政务服务";
+            // 定义业务领域识别规则
+            var businessDomainRules = new Dictionary<string, string[]>
+            {
+                ["金融服务"] = ["银行", "贷款", "金融", "保险", "证券", "基金", "理财", "信贷", "投资", "融资", "担保", "抵押"],
+                ["制造业"] = ["工程", "机械", "制造", "生产", "加工", "装配", "设备", "工艺", "技术", "质量", "检测"],
+                ["房地产"] = ["房地产", "房产", "不动产", "房屋", "建筑", "楼盘", "物业", "地产", "土地", "开发", "建设"],
+                ["政务服务"] = ["政府", "政务", "行政", "机关", "部门", "机构", "审批", "许可", "登记", "备案", "监管"],
+                ["教育文化"] = ["教育", "学校", "培训", "文化", "艺术", "媒体", "出版", "新闻", "广播", "电视", "网络"],
+                ["医疗卫生"] = ["医疗", "卫生", "医院", "诊所", "药品", "治疗", "诊断", "护理", "保健", "康复", "防疫"],
+                ["交通运输"] = ["交通", "运输", "物流", "快递", "货运", "客运", "车辆", "道路", "桥梁", "港口", "机场"],
+                ["能源环保"] = ["能源", "环保", "电力", "石油", "天然气", "煤炭", "新能源", "节能", "减排", "污染", "治理"],
+                ["信息技术"] = ["信息", "技术", "软件", "硬件", "网络", "数据", "系统", "平台", "应用", "开发", "维护"],
+                ["商业贸易"] = ["商业", "贸易", "销售", "采购", "供应", "零售", "批发", "进出口", "市场", "营销", "品牌"]
+            };
+
+            foreach (var rule in businessDomainRules)
+            {
+                if (rule.Value.Any(keyword => text.Contains(keyword)))
+                {
+                    return rule.Key;
+                }
+            }
             
             return "其他领域";
         }
-    }
-
-    /// <summary>
-    /// DeepSeek API请求模型
-    /// </summary>
-    public class DeepSeekRequest
-    {
-        [JsonPropertyName("model")]
-        public string Model { get; set; } = string.Empty;
-
-        [JsonPropertyName("messages")]
-        public List<Message> Messages { get; set; } = [];
-
-        [JsonPropertyName("temperature")]
-        public double Temperature { get; set; }
-
-        [JsonPropertyName("max_tokens")]
-        public int MaxTokens { get; set; }
-    }
-
-    /// <summary>
-    /// DeepSeek API响应模型
-    /// </summary>
-    public class DeepSeekResponse
-    {
-        [JsonPropertyName("id")]
-        public string Id { get; set; } = string.Empty;
-
-        [JsonPropertyName("object")]
-        public string Object { get; set; } = string.Empty;
-
-        [JsonPropertyName("created")]
-        public long Created { get; set; }
-
-        [JsonPropertyName("model")]
-        public string Model { get; set; } = string.Empty;
-
-        [JsonPropertyName("choices")]
-        public List<Choice> Choices { get; set; } = [];
-
-        [JsonPropertyName("usage")]
-        public Usage? Usage { get; set; }
-
-        [JsonPropertyName("system_fingerprint")]
-        public string? SystemFingerprint { get; set; }
-    }
-
-    public class Choice
-    {
-        [JsonPropertyName("index")]
-        public int Index { get; set; }
-
-        [JsonPropertyName("message")]
-        public Message Message { get; set; } = new();
-
-        [JsonPropertyName("logprobs")]
-        public object? Logprobs { get; set; }
-
-        [JsonPropertyName("finish_reason")]
-        public string? FinishReason { get; set; }
-    }
-
-    public class Message
-    {
-        [JsonPropertyName("role")]
-        public string Role { get; set; } = string.Empty;
-
-        [JsonPropertyName("content")]
-        public string Content { get; set; } = string.Empty;
-    }
-
-    public class Usage
-    {
-        [JsonPropertyName("prompt_tokens")]
-        public int PromptTokens { get; set; }
-
-        [JsonPropertyName("completion_tokens")]
-        public int CompletionTokens { get; set; }
-
-        [JsonPropertyName("total_tokens")]
-        public int TotalTokens { get; set; }
-
-        [JsonPropertyName("prompt_tokens_details")]
-        public PromptTokensDetails? PromptTokensDetails { get; set; }
-
-        [JsonPropertyName("prompt_cache_hit_tokens")]
-        public int? PromptCacheHitTokens { get; set; }
-
-        [JsonPropertyName("prompt_cache_miss_tokens")]
-        public int? PromptCacheMissTokens { get; set; }
-    }
-
-    public class PromptTokensDetails
-    {
-        [JsonPropertyName("cached_tokens")]
-        public int CachedTokens { get; set; }
     }
 }

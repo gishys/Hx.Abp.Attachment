@@ -43,5 +43,10 @@ namespace Hx.Abp.Attachment.Application.ArchAI.Contracts
         /// 业务上下文信息
         /// </summary>
         public Dictionary<string, object>? Context { get; set; }
+
+        /// <summary>
+        /// 指定使用的AI服务类型（可选，默认使用配置的默认服务）
+        /// </summary>
+        public AIServiceType? PreferredAIService { get; set; }
     }
 }

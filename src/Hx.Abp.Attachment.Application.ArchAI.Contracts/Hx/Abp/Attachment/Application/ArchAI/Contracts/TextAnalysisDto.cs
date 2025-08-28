@@ -176,6 +176,11 @@ namespace Hx.Abp.Attachment.Application.ArchAI.Contracts
         /// 文本分类名称（当AnalysisType为TextClassification时使用）
         /// </summary>
         public string? ClassificationName { get; set; }
+
+        /// <summary>
+        /// 指定使用的AI服务类型（可选，默认使用配置的默认服务）
+        /// </summary>
+        public AIServiceType? PreferredAIService { get; set; }
     }
 
     /// <summary>

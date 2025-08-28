@@ -14,6 +14,11 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             // 注册 HttpClient
             context.Services.AddHttpClient();
             
+            // 注册 AI 服务
+            context.Services.AddScoped<AliyunAIService>();
+            context.Services.AddScoped<DeepSeekTextAnalysisService>();
+            context.Services.AddScoped<AIServiceFactory>();
+            
             // 注册 TextAnalysisService
             context.Services.AddScoped<TextAnalysisService>();
             

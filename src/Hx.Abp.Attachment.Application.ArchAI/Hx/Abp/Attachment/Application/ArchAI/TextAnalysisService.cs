@@ -11,7 +11,8 @@ namespace Hx.Abp.Attachment.Application.ArchAI
     public class TextAnalysisService(
         ILogger<TextAnalysisService> logger,
         HttpClient httpClient,
-        SemanticVectorService semanticVectorService) : BaseTextAnalysisService(logger, httpClient, semanticVectorService)
+        SemanticVectorService semanticVectorService,
+        AIServiceFactory aiServiceFactory) : BaseTextAnalysisService(logger, httpClient, semanticVectorService)
     {
 
         /// <summary>
@@ -27,14 +28,15 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             {
                 _logger.LogInformation("开始分析文本，长度: {TextLength}", input.Text.Length);
 
-                var prompt = BuildAnalysisPrompt(input);
-                var apiResponse = await CallAIApiAsync(prompt, input.Text, 800);
-                var result = ParseAnalysisResult(apiResponse.Choices[0].Message.Content);
-                result.AnalysisTime = DateTime.Now;
+                // 使用AI服务工厂获取AI服务
+                var aiProvider = input.PreferredAIService.HasValue 
+                    ? aiServiceFactory.GetService(input.PreferredAIService.Value)
+                    : aiServiceFactory.GetDefaultService();
+                var result = await aiProvider.AnalyzeTextAsync(input);
 
                 // 添加元数据
                 stopwatch.Stop();
-                AddMetadata(result, apiResponse, input.Text.Length, stopwatch.ElapsedMilliseconds);
+                AddBasicMetadata(result, input.Text.Length, stopwatch.ElapsedMilliseconds);
 
                 // 提取实体信息
                 if (input.ExtractEntities)

@@ -12,7 +12,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
     /// 基础文本分析服务 - 提取公共逻辑
     /// </summary>
     public abstract class BaseTextAnalysisService(
-        ILogger logger,
+        ILogger<BaseTextAnalysisService> logger,
         HttpClient httpClient,
         SemanticVectorService semanticVectorService) : IScopedDependency
     {
@@ -30,7 +30,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             WriteIndented = false
         };
 
-        protected async Task<DeepSeekResponse> CallAIApiAsync(string prompt, string userContent, int maxTokens = 800)
+        protected async Task<DeepSeekResponse> CallAIApiAsync(string prompt, string userContent, int maxTokens = 50000)
         {
             var requestData = new DeepSeekRequest
             {
@@ -40,7 +40,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                     new() { Role = "system", Content = prompt },
                     new() { Role = "user", Content = userContent }
                 ],
-                Temperature = 0.3,
+                Temperature = 1,
                 MaxTokens = maxTokens
             };
 
@@ -70,7 +70,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             return apiResponse;
         }
 
-        protected static TextAnalysisDto ParseAnalysisResult(string content)
+        public static TextAnalysisDto ParseAnalysisResult(string content)
         {
             try
             {
@@ -134,7 +134,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             return result;
         }
 
-        protected static string BuildGenericPrompt(int keywordCount, int maxSummaryLength, string taskDescription)
+        public static string BuildGenericPrompt(int keywordCount, int maxSummaryLength, string taskDescription)
         {
             return $@"
 # 通用文本分析专家指令
@@ -195,6 +195,20 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                     CompletionTokens = apiResponse.Usage.CompletionTokens,
                     TotalTokens = apiResponse.Usage.TotalTokens
                 } : null
+            };
+        }
+
+        /// <summary>
+        /// 添加基础元数据（用于非DeepSeek服务）
+        /// </summary>
+        protected static void AddBasicMetadata(TextAnalysisDto result, int textLength, long processingTimeMs)
+        {
+            result.Metadata = new AnalysisMetadata
+            {
+                TextLength = textLength,
+                ProcessingTimeMs = processingTimeMs,
+                Model = "AI-Service",
+                ApiUsage = null
             };
         }
 

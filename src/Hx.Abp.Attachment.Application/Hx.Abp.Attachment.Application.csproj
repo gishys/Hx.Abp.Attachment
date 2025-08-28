@@ -25,7 +25,6 @@
 
     
     <!-- 阿里云OCR SDK -->
-    <PackageReference Include="AlibabaCloud.SDK.Ocr20191230" Version="4.0.0" />
   </ItemGroup>
 
 </Project>

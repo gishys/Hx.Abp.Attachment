@@ -11,7 +11,8 @@ namespace Hx.Abp.Attachment.Application.ArchAI
     public class TextClassificationService(
         ILogger<TextClassificationService> logger,
         HttpClient httpClient,
-        SemanticVectorService semanticVectorService) : BaseTextAnalysisService(logger, httpClient, semanticVectorService)
+        SemanticVectorService semanticVectorService,
+        AIServiceFactory aiServiceFactory) : BaseTextAnalysisService(logger, httpClient, semanticVectorService)
     {
         /// <summary>
         /// 提取文本分类特征
@@ -26,19 +27,32 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                 _logger.LogInformation("开始提取文本分类特征，分类名称: {ClassificationName}, 样本数量: {SampleCount}", 
                     input.ClassificationName, input.TextSamples.Count);
 
-                var taskDescription = $"请对输入的多个同类文本样本进行深度分析，提取该类文本（{input.ClassificationName}）的通用特征，生成结构化的分类描述和特征关键词，用于文本分类和模板匹配。";
-                var prompt = BuildGenericPrompt(input.KeywordCount, input.MaxSummaryLength, taskDescription);
-                var userContent = BuildSampleText(input.TextSamples);
+                // 构建分类分析输入
+                var analysisInput = new TextAnalysisInputDto
+                {
+                    Text = BuildSampleText(input.TextSamples),
+                    KeywordCount = input.KeywordCount,
+                    MaxSummaryLength = input.MaxSummaryLength,
+                    GenerateSemanticVector = input.GenerateSemanticVector,
+                    ExtractEntities = false,
+                    AnalysisType = TextAnalysisType.TextClassification,
+                    ClassificationName = input.ClassificationName
+                };
 
-                var apiResponse = await CallAIApiAsync(prompt, userContent, 1000);
-                var result = ParseAnalysisResult(apiResponse.Choices[0].Message.Content);
-                result.AnalysisTime = DateTime.Now;
+                // 使用AI服务工厂获取AI服务
+                var aiProvider = input.PreferredAIService.HasValue 
+                    ? aiServiceFactory.GetService(input.PreferredAIService.Value)
+                    : aiServiceFactory.GetDefaultService();
+                var result = await aiProvider.AnalyzeTextAsync(analysisInput);
+
                 // 添加元数据
                 stopwatch.Stop();
-                AddMetadata(result, apiResponse, input.TextSamples.Sum(s => s.Length), stopwatch.ElapsedMilliseconds);
+                AddBasicMetadata(result, input.TextSamples.Sum(s => s.Length), stopwatch.ElapsedMilliseconds);
+                
                 // 识别文档类型和业务领域
                 result.DocumentType = input.ClassificationName;
                 result.BusinessDomain = IdentifyBusinessDomain(result.Summary, result.Keywords);
+                
                 // 生成语义向量
                 if (input.GenerateSemanticVector)
                 {

@@ -39,11 +39,9 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                     ClassificationName = input.ClassificationName
                 };
 
-                // 使用AI服务工厂获取AI服务
-                var aiProvider = input.PreferredAIService.HasValue 
-                    ? aiServiceFactory.GetService(input.PreferredAIService.Value)
-                    : aiServiceFactory.GetDefaultService();
-                var result = await aiProvider.AnalyzeTextAsync(analysisInput);
+                // 使用新的文档智能分析服务
+                var documentAnalysisService = aiServiceFactory.GetDocumentAnalysisService();
+                var result = await documentAnalysisService.AnalyzeDocumentAsync(analysisInput);
 
                 // 添加元数据
                 stopwatch.Stop();

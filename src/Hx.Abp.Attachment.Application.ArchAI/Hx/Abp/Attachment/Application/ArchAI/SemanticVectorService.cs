@@ -81,7 +81,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             var validTexts = texts.Where(t => !string.IsNullOrWhiteSpace(t)).ToList();
             if (validTexts.Count == 0)
             {
-                return Enumerable.Repeat(new List<double>(), texts.Count).ToList();
+                return [.. Enumerable.Repeat(new List<double>(), texts.Count)];
             }
 
             var allVectors = new List<List<double>>();

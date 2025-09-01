@@ -1,14 +1,14 @@
+using Hx.Abp.Attachment.Application.ArchAI.Contracts;
 using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Volo.Abp;
 using Volo.Abp.DependencyInjection;
 
 namespace Hx.Abp.Attachment.Application.ArchAI
 {
     /// <summary>
-    /// 阿里云AI服务 - 使用HTTP API调用
+    /// 阿里云AI服务 - 使用OpenNLU进行智能文本分析
     /// </summary>
     public partial class AliyunAIService(ILogger<AliyunAIService> logger, HttpClient httpClient) : IScopedDependency
     {
@@ -22,7 +22,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         private readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = true };
 
         /// <summary>
-        /// 生成文本摘要
+        /// 生成文本摘要 - 适用于AttachCatalogue智能查询
         /// </summary>
         /// <param name="content">文本内容</param>
         /// <param name="maxLength">最大长度</param>
@@ -40,7 +40,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                     {
                         Sentence = content,
                         Task = "extraction",
-                        Labels = "摘要"
+                        Labels = "摘要,核心内容,主要信息"
                     }
                 };
 
@@ -67,7 +67,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         }
 
         /// <summary>
-        /// 提取关键词
+        /// 提取关键词 - 适用于AttachCatalogue智能查询
         /// </summary>
         /// <param name="content">文本内容</param>
         /// <param name="keywordCount">关键词数量</param>
@@ -86,7 +86,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                     {
                         Sentence = content,
                         Task = "extraction",
-                        Labels = "关键词"
+                        Labels = "关键词,重要词汇,核心概念,实体名称"
                     }
                 };
 
@@ -109,6 +109,98 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             {
                 _logger.LogError(ex, "阿里云AI关键词提取失败");
                 throw new UserFriendlyException("阿里云AI关键词提取服务暂时不可用，请稍后再试");
+            }
+        }
+
+        /// <summary>
+        /// 智能分类推荐 - 适用于AttachCatalogueTemplate智能推荐
+        /// </summary>
+        /// <param name="content">文本内容</param>
+        /// <param name="categoryOptions">可选分类列表</param>
+        /// <returns>推荐分类结果</returns>
+        public async Task<ClassificationResult> ClassifyTextAsync(string content, List<string> categoryOptions)
+        {
+            try
+            {
+                _logger.LogInformation("开始调用阿里云AI进行智能分类，文本长度: {TextLength}, 分类选项数量: {CategoryCount}",
+                    content.Length, categoryOptions.Count);
+
+                if (categoryOptions.Count == 0)
+                {
+                    throw new UserFriendlyException("分类选项不能为空");
+                }
+
+                var request = new AliyunNLURequest
+                {
+                    Model = "opennlu-v1",
+                    Input = new AliyunNLUInput
+                    {
+                        Sentence = content,
+                        Task = "classification",
+                        Labels = string.Join(",", categoryOptions)
+                    }
+                };
+
+                var response = await CallAliyunNLUApiAsync(request);
+                
+                if (!string.IsNullOrEmpty(response.Output?.Text))
+                {
+                    var result = ParseClassificationResponse(response.Output.Text, categoryOptions);
+                    _logger.LogInformation("阿里云AI智能分类成功，推荐分类: {RecommendedCategory}", result.RecommendedCategory);
+                    return result;
+                }
+
+                _logger.LogWarning("阿里云AI智能分类响应为空或解析失败");
+                throw new UserFriendlyException("阿里云AI返回的分类结果为空");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "阿里云AI智能分类失败");
+                throw new UserFriendlyException("阿里云AI智能分类服务暂时不可用，请稍后再试");
+            }
+        }
+
+        /// <summary>
+        /// 综合分析 - 同时进行摘要、关键词提取和分类推荐
+        /// </summary>
+        /// <param name="content">文本内容</param>
+        /// <param name="categoryOptions">可选分类列表</param>
+        /// <param name="maxSummaryLength">摘要最大长度</param>
+        /// <param name="keywordCount">关键词数量</param>
+        /// <returns>综合分析结果</returns>
+        public async Task<ComprehensiveAnalysisResult> AnalyzeComprehensivelyAsync(
+            string content, 
+            List<string> categoryOptions, 
+            int maxSummaryLength = 500, 
+            int keywordCount = 5)
+        {
+            try
+            {
+                _logger.LogInformation("开始进行综合分析，文本长度: {TextLength}", content.Length);
+
+                // 并行执行所有分析任务
+                var summaryTask = GenerateSummaryAsync(content, maxSummaryLength);
+                var keywordsTask = ExtractKeywordsAsync(content, keywordCount);
+                var classificationTask = ClassifyTextAsync(content, categoryOptions);
+
+                await Task.WhenAll(summaryTask, keywordsTask, classificationTask);
+
+                var result = new ComprehensiveAnalysisResult
+                {
+                    Summary = summaryTask.Result,
+                    Keywords = keywordsTask.Result,
+                    Classification = classificationTask.Result,
+                    AnalysisTime = DateTime.Now,
+                    Confidence = 0.9
+                };
+
+                _logger.LogInformation("综合分析完成");
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "综合分析失败");
+                throw new UserFriendlyException("综合分析服务暂时不可用，请稍后再试");
             }
         }
 
@@ -179,17 +271,17 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             {
                 var summary = summaryMatch.Groups[1].Value.Trim();
                 // 清理制表符和多余空格
-                summary = System.Text.RegularExpressions.Regex.Replace(summary, @"\s+", " ");
+                summary = AliyunAIService.WhitespaceRegex().Replace(summary, " ");
                 return summary;
             }
 
             // 如果没有找到摘要字段，尝试提取整个文本作为摘要
-            var textMatch = System.Text.RegularExpressions.Regex.Match(responseText, @"text""\s*:\s*""([^""]+)""");
+            var textMatch = AliyunAIService.TextFieldRegex().Match(responseText);
             if (textMatch.Success)
             {
                 var text = textMatch.Groups[1].Value.Trim();
                 // 清理制表符和多余空格
-                text = System.Text.RegularExpressions.Regex.Replace(text, @"\s+", " ");
+                text = AliyunAIService.WhitespaceRegex().Replace(text, " ");
                 return text;
             }
 
@@ -210,7 +302,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                 return keywords;
 
             // 尝试提取关键词字段
-            var keywordMatch = System.Text.RegularExpressions.Regex.Match(responseText, @"关键词:\s*([^;]+)");
+            var keywordMatch = AliyunAIService.KeywordsFieldRegex().Match(responseText);
             if (keywordMatch.Success)
             {
                 var keywordText = keywordMatch.Groups[1].Value.Trim();
@@ -231,7 +323,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                 var remainingCount = keywordCount - keywords.Count;
                 
                 // 尝试从重要词汇字段提取
-                var importantMatch = System.Text.RegularExpressions.Regex.Match(responseText, @"重要词汇:\s*([^;]+)");
+                var importantMatch = AliyunAIService.ImportantWordsFieldRegex().Match(responseText);
                 if (importantMatch.Success)
                 {
                     var importantText = importantMatch.Groups[1].Value.Trim();
@@ -249,7 +341,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                 // 尝试从核心概念字段提取
                 if (remainingCount > 0)
                 {
-                    var conceptMatch = System.Text.RegularExpressions.Regex.Match(responseText, @"核心概念:\s*([^;]+)");
+                    var conceptMatch = AliyunAIService.CoreConceptFieldRegex().Match(responseText);
                     if (conceptMatch.Success)
                     {
                         var conceptText = conceptMatch.Groups[1].Value.Trim();
@@ -268,83 +360,103 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             return keywords;
         }
 
+        /// <summary>
+        /// 解析智能分类响应
+        /// </summary>
+        /// <param name="responseText">API响应文本</param>
+        /// <param name="categoryOptions">可选分类列表</param>
+        /// <returns>分类结果</returns>
+        private static ClassificationResult ParseClassificationResponse(string responseText, List<string> categoryOptions)
+        {
+            var result = new ClassificationResult();
+
+            if (string.IsNullOrWhiteSpace(responseText) || categoryOptions.Count == 0)
+            {
+                result.RecommendedCategory = categoryOptions.FirstOrDefault();
+                result.Confidence = 0.0;
+                return result;
+            }
+
+            try
+            {
+                // 尝试提取分类字段
+                var classificationMatch = ClassificationFieldRegex().Match(responseText);
+                if (classificationMatch.Success)
+                {
+                    var categoryText = classificationMatch.Groups[1].Value.Trim();
+                    var categoryPairs = categoryText
+                        .Split(['\t', ',', '，', ';', '；', ' '], StringSplitOptions.RemoveEmptyEntries)
+                        .Select(pair => pair.Trim().Split(':', 2))
+                        .Where(pair => pair.Length == 2)
+                        .ToDictionary(pair => pair[0].Trim(), pair => double.Parse(pair[1].Trim()));
+
+                    // 找到推荐分类 - 优先从提供的分类选项中选择
+                    var validCategoryPairs = categoryPairs
+                        .Where(pair => categoryOptions.Contains(pair.Key))
+                        .OrderByDescending(c => c.Value)
+                        .ToList();
+
+                    if (validCategoryPairs.Count > 0)
+                    {
+                        var recommendedCategory = validCategoryPairs.First();
+                        result.RecommendedCategory = recommendedCategory.Key;
+                        result.Confidence = recommendedCategory.Value;
+                    }
+                    else
+                    {
+                        // 如果没有匹配的分类选项，选择置信度最高的
+                        var recommendedCategory = categoryPairs.OrderByDescending(c => c.Value).FirstOrDefault();
+                        if (recommendedCategory.Key != null)
+                        {
+                            result.RecommendedCategory = recommendedCategory.Key;
+                            result.Confidence = recommendedCategory.Value;
+                        }
+                        else
+                        {
+                            result.RecommendedCategory = categoryOptions.FirstOrDefault();
+                            result.Confidence = 0.0;
+                        }
+                    }
+                }
+                else
+                {
+                    // 如果没有找到分类字段，尝试从响应文本中直接匹配分类选项
+                    var matchedCategory = categoryOptions.FirstOrDefault(category => 
+                        responseText.Contains(category, StringComparison.OrdinalIgnoreCase));
+                    
+                    result.RecommendedCategory = matchedCategory ?? categoryOptions.FirstOrDefault();
+                    result.Confidence = matchedCategory != null ? 0.7 : 0.0;
+                }
+            }
+            catch (Exception)
+            {
+                // 解析失败时返回默认结果
+                result.RecommendedCategory = categoryOptions.FirstOrDefault();
+                result.Confidence = 0.0;
+            }
+
+            return result;
+        }
+
         [System.Text.RegularExpressions.GeneratedRegex(@"摘要:\s*([^;]+)")]
         private static partial System.Text.RegularExpressions.Regex SummaryRegex();
-    }
 
-    /// <summary>
-    /// 阿里云NLU API请求模型
-    /// </summary>
-    public class AliyunNLURequest
-    {
-        [JsonPropertyName("model")]
-        public string Model { get; set; } = "opennlu-v1";
-        [JsonPropertyName("input")]
-        public AliyunNLUInput Input { get; set; } = new();
-        [JsonPropertyName("parameters")]
-        public Dictionary<string, object>? Parameters { get; set; }
-    }
+        [System.Text.RegularExpressions.GeneratedRegex(@"\s+")]
+        private static partial System.Text.RegularExpressions.Regex WhitespaceRegex();
 
-    /// <summary>
-    /// 阿里云NLU API输入参数
-    /// </summary>
-    public class AliyunNLUInput
-    {
-        [JsonPropertyName("sentence")]
-        public string Sentence { get; set; } = string.Empty;
-        [JsonPropertyName("task")]
-        public string Task { get; set; } = "extraction";
-        [JsonPropertyName("labels")]
-        public string Labels { get; set; } = string.Empty;
-    }
+        [System.Text.RegularExpressions.GeneratedRegex(@"text""\s*:\s*""([^""]+)""")]
+        private static partial System.Text.RegularExpressions.Regex TextFieldRegex();
 
-    /// <summary>
-    /// 阿里云NLU API响应模型
-    /// </summary>
-    public class AliyunNLUResponse
-    {
-        [JsonPropertyName("output")]
-        public AliyunNLUOutput? Output { get; set; }
-        [JsonPropertyName("usage")]
-        public AliyunNLUUsage? Usage { get; set; }
-        [JsonPropertyName("request_id")]
-        public string? RequestId { get; set; }
-    }
+        [System.Text.RegularExpressions.GeneratedRegex(@"关键词:\s*([^;]+)")]
+        private static partial System.Text.RegularExpressions.Regex KeywordsFieldRegex();
 
-    /// <summary>
-    /// 阿里云NLU API输出
-    /// </summary>
-    public class AliyunNLUOutput
-    {
-        [JsonPropertyName("rt")]
-        public decimal? Rt { get; set; }
-        [JsonPropertyName("text")]
-        public string? Text { get; set; }
-    }
+        [System.Text.RegularExpressions.GeneratedRegex(@"重要词汇:\s*([^;]+)")]
+        private static partial System.Text.RegularExpressions.Regex ImportantWordsFieldRegex();
 
-    /// <summary>
-    /// 阿里云NLU API使用量统计
-    /// </summary>
-    public class AliyunNLUUsage
-    {
-        [JsonPropertyName("output_tokens")]
-        public int OutputTokens { get; set; }
-        [JsonPropertyName("input_tokens")]
-        public int InputTokens { get; set; }
-        [JsonPropertyName("total_tokens")]
-        public int TotalTokens { get; set; }
-    }
+        [System.Text.RegularExpressions.GeneratedRegex(@"核心概念:\s*([^;]+)")]
+        private static partial System.Text.RegularExpressions.Regex CoreConceptFieldRegex();
 
-    /// <summary>
-    /// 阿里云错误响应模型
-    /// </summary>
-    public class AliyunErrorResponse
-    {
-        [JsonPropertyName("code")]
-        public string? Code { get; set; }
-        [JsonPropertyName("message")]
-        public string? Message { get; set; }
-        [JsonPropertyName("requestId")]
-        public string? RequestId { get; set; }
+        [System.Text.RegularExpressions.GeneratedRegex(@"分类:\s*([^;]+)")]
+        private static partial System.Text.RegularExpressions.Regex ClassificationFieldRegex();
     }
 }

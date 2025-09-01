@@ -28,11 +28,9 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             {
                 _logger.LogInformation("开始分析文本，长度: {TextLength}", input.Text.Length);
 
-                // 使用AI服务工厂获取AI服务
-                var aiProvider = input.PreferredAIService.HasValue 
-                    ? aiServiceFactory.GetService(input.PreferredAIService.Value)
-                    : aiServiceFactory.GetDefaultService();
-                var result = await aiProvider.AnalyzeTextAsync(input);
+                // 使用新的文档智能分析服务
+                var documentAnalysisService = aiServiceFactory.GetDocumentAnalysisService();
+                var result = await documentAnalysisService.AnalyzeDocumentAsync(input);
 
                 // 添加元数据
                 stopwatch.Stop();

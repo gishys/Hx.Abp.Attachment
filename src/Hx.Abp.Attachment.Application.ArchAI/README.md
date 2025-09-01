@@ -1,193 +1,277 @@
-# Hx.Abp.Attachment.Application.ArchAI
+# AI 智能分析服务架构说明
 
-## 项目概述
+## 概述
 
-AI 文本分析服务模块，支持多 AI 提供商（DeepSeek、阿里云）的灵活切换，提供文本摘要生成、关键词提取、语义向量计算等功能。
-
-## 核心功能
-
--   **多 AI 提供商支持**：DeepSeek（高质量）、阿里云（快速响应）
--   **文本分析**：摘要生成、关键词提取、实体识别
--   **语义向量**：文本向量化、相似度计算
--   **文本分类**：基于样本的智能分类
--   **工厂模式**：灵活的 AI 服务切换
-
-## 环境配置
-
-### 必需环境变量
-
-```bash
-# DeepSeek配置
-DEEPSEEK_API_KEY=your_deepseek_api_key_here
-
-# 阿里云配置
-ALIYUN_API_KEY=your_aliyun_api_key_here
-ALIYUN_WORKSPACE_ID=ws_QTggmeAxxxxx
-
-# 默认AI服务类型
-DEFAULT_AI_SERVICE_TYPE=DeepSeek
-```
-
-## 快速使用
-
-### 基本文本分析
-
-```csharp
-// 注入服务
-private readonly TextAnalysisService _textAnalysisService;
-
-// 分析文本
-var input = new TextAnalysisInputDto
-{
-    Text = "这是一份贷款结清证明，证明借款人已按时还清所有贷款本息。",
-    KeywordCount = 5,
-    MaxSummaryLength = 200,
-    GenerateSemanticVector = true,
-    ExtractEntities = true
-};
-
-var result = await _textAnalysisService.AnalyzeTextAsync(input);
-```
-
-### 指定 AI 服务
-
-```csharp
-// 使用阿里云AI（快速）
-input.PreferredAIService = AIServiceType.Aliyun;
-
-// 使用DeepSeek（高质量）
-input.PreferredAIService = AIServiceType.DeepSeek;
-```
-
-### 文本分类
-
-```csharp
-// 注入服务
-private readonly TextClassificationService _textClassificationService;
-
-// 提取分类特征
-var input = new TextClassificationInputDto
-{
-    ClassificationName = "结清证明",
-    TextSamples = new List<string> { "样本1", "样本2" },
-    KeywordCount = 5,
-    MaxSummaryLength = 200,
-    GenerateSemanticVector = true
-};
-
-var result = await _textClassificationService.ExtractClassificationFeaturesAsync(input);
-```
-
-## 服务特点对比
-
-| 特性       | DeepSeek             | 阿里云 AI          |
-| ---------- | -------------------- | ------------------ |
-| 响应速度   | 10-15 秒             | 2-5 秒             |
-| 摘要质量   | 高质量，结构化       | 高质量，简洁       |
-| 关键词提取 | 智能提取，上下文相关 | 准确提取，数量可控 |
-| 成本       | 按 token 计费        | 按调用次数计费     |
-| 适用场景   | 复杂文档，高质量要求 | 快速处理，简单文档 |
+本项目基于阿里云 OpenNLU 服务，提供智能文档分析和分类推荐能力，适用于附件管理系统的智能查询和分类推荐场景。
 
 ## 架构设计
 
-### 核心组件
+### 核心服务接口
 
--   **AIServiceFactory**：AI 服务工厂，管理不同 AI 提供商
--   **ITextAnalysisProvider**：统一文本分析接口
--   **AliyunAIService**：阿里云 AI 服务实现（HTTP API）
--   **DeepSeekTextAnalysisProvider**：DeepSeek 服务适配器
--   **TextAnalysisService**：主文本分析服务
--   **TextClassificationService**：文本分类服务
--   **SemanticVectorService**：语义向量服务
+#### 1. IDocumentAnalysisService - 文档智能分析服务
 
-### 设计模式
+**适用场景**: AttachCatalogue 文档内容分析
+**主要功能**:
 
--   **工厂模式**：AIServiceFactory 管理 AI 服务实例
--   **策略模式**：通过接口实现 AI 服务策略切换
--   **适配器模式**：将不同 AI 服务 API 适配到统一接口
--   **依赖注入**：使用构造函数注入，避免服务定位器
-
-## 性能优化
-
--   **并行处理**：摘要和关键词提取并行调用
--   **HTTP 连接复用**：使用 HttpClient 连接池
--   **智能缓存**：语义向量计算结果缓存
--   **错误重试**：网络异常自动重试机制
-
-## 扩展性
-
-### 添加新 AI 提供商
-
-1. 实现`ITextAnalysisProvider`接口
-2. 在`AIServiceType`枚举中添加新类型
-3. 在`AIServiceFactory`中添加创建逻辑
+-   文档摘要生成
+-   关键词提取
+-   文档内容智能分析
 
 ```csharp
-public class NewAITextAnalysisProvider : ITextAnalysisProvider
+// 获取服务实例
+var documentAnalysisService = aiServiceFactory.GetDocumentAnalysisService();
+
+// 分析文档
+var result = await documentAnalysisService.AnalyzeDocumentAsync(input);
+
+// 单独生成摘要
+var summary = await documentAnalysisService.GenerateDocumentSummaryAsync(content, 500);
+
+// 单独提取关键词
+var keywords = await documentAnalysisService.ExtractDocumentKeywordsAsync(content, 5);
+```
+
+#### 2. IIntelligentClassificationService - 智能分类推荐服务
+
+**适用场景**: AttachCatalogueTemplate 分类推荐
+**主要功能**:
+
+-   智能分类推荐
+-   批量分类推荐
+-   分类置信度评估
+
+```csharp
+// 获取服务实例
+var classificationService = aiServiceFactory.GetIntelligentClassificationService();
+
+// 推荐单个文档分类
+var result = await classificationService.RecommendDocumentCategoryAsync(content, categoryOptions);
+
+// 批量推荐分类
+var results = await classificationService.BatchRecommendCategoriesAsync(documents, categoryOptions);
+```
+
+#### 3. IFullStackAnalysisService - 全栈智能分析服务
+
+**适用场景**: 需要同时进行文档分析和分类推荐的场景
+**主要功能**:
+
+-   全栈文档分析
+-   批量全栈分析
+-   综合分析结果
+
+```csharp
+// 获取服务实例
+var fullStackService = aiServiceFactory.GetFullStackAnalysisService();
+
+// 全栈分析单个文档
+var result = await fullStackService.AnalyzeDocumentComprehensivelyAsync(
+    content, categoryOptions, 500, 5);
+
+// 批量全栈分析
+var results = await fullStackService.BatchAnalyzeComprehensivelyAsync(
+    documents, categoryOptions, 500, 5);
+```
+
+### 业务场景枚举
+
+```csharp
+public enum BusinessScenario
 {
-    public async Task<TextAnalysisDto> AnalyzeTextAsync(TextAnalysisInputDto input)
+    /// <summary>
+    /// 文档分析场景 - 适用于AttachCatalogue
+    /// </summary>
+    DocumentAnalysis,
+
+    /// <summary>
+    /// 分类推荐场景 - 适用于AttachCatalogueTemplate
+    /// </summary>
+    ClassificationRecommendation,
+
+    /// <summary>
+    /// 全栈分析场景 - 同时支持文档分析和分类推荐
+    /// </summary>
+    FullStackAnalysis
+}
+```
+
+### 便捷访问方法
+
+```csharp
+// 根据业务场景获取合适的服务
+var service = aiServiceFactory.GetAnalysisServiceByScenario(BusinessScenario.DocumentAnalysis);
+
+// 获取默认服务（推荐使用）
+var defaultService = aiServiceFactory.GetDefaultDocumentAnalysisService();
+```
+
+## 使用示例
+
+### 场景 1: AttachCatalogue 智能查询
+
+```csharp
+public class AttachCatalogueService
+{
+    private readonly AIServiceFactory _aiServiceFactory;
+
+    public AttachCatalogueService(AIServiceFactory aiServiceFactory)
     {
-        // 实现具体AI服务调用逻辑
+        _aiServiceFactory = aiServiceFactory;
+    }
+
+    public async Task<TextAnalysisDto> AnalyzeAttachmentContentAsync(string content)
+    {
+        // 使用文档分析服务
+        var documentAnalysisService = _aiServiceFactory.GetDocumentAnalysisService();
+
+        var input = new TextAnalysisInputDto
+        {
+            Text = content,
+            MaxSummaryLength = 500,
+            KeywordCount = 5
+        };
+
+        return await documentAnalysisService.AnalyzeDocumentAsync(input);
     }
 }
 ```
 
-## 故障排除
+### 场景 2: AttachCatalogueTemplate 智能推荐
 
-### 常见错误
+```csharp
+public class AttachCatalogueTemplateService
+{
+    private readonly AIServiceFactory _aiServiceFactory;
 
-1. **缺少环境变量**
+    public AttachCatalogueTemplateService(AIServiceFactory aiServiceFactory)
+    {
+        _aiServiceFactory = aiServiceFactory;
+    }
 
-    - 错误：`缺少环境变量 DEEPSEEK_API_KEY`
-    - 解决：设置正确的 API 密钥
+    public async Task<ClassificationResult> RecommendTemplateCategoryAsync(string content, List<string> availableCategories)
+    {
+        // 使用智能分类推荐服务
+        var classificationService = _aiServiceFactory.GetIntelligentClassificationService();
 
-2. **阿里云认证失败**
+        return await classificationService.RecommendDocumentCategoryAsync(content, availableCategories);
+    }
 
-    - 错误：`缺少环境变量 ALIYUN_API_KEY`
-    - 解决：设置正确的阿里云 API 密钥
+    public async Task<List<ClassificationResult>> BatchRecommendCategoriesAsync(List<string> documents, List<string> availableCategories)
+    {
+        // 批量分类推荐
+        var classificationService = _aiServiceFactory.GetIntelligentClassificationService();
 
-3. **服务不可用**
-    - 错误：`AI服务暂时不可用`
-    - 解决：检查网络连接和 API 配额
+        return await classificationService.BatchRecommendCategoriesAsync(documents, availableCategories);
+    }
+}
+```
 
-## 测试接口
+### 场景 3: 综合分析场景
+
+```csharp
+public class ComprehensiveAnalysisService
+{
+    private readonly AIServiceFactory _aiServiceFactory;
+
+    public ComprehensiveAnalysisService(AIServiceFactory aiServiceFactory)
+    {
+        _aiServiceFactory = aiServiceFactory;
+    }
+
+    public async Task<ComprehensiveAnalysisResult> AnalyzeComprehensivelyAsync(string content, List<string> categories)
+    {
+        // 使用全栈智能分析服务
+        var fullStackService = _aiServiceFactory.GetFullStackAnalysisService();
+
+        return await fullStackService.AnalyzeDocumentComprehensivelyAsync(
+            content, categories, 500, 5);
+    }
+}
+```
+
+## 阿里云 OpenNLU 服务配置
+
+### 环境变量配置
 
 ```bash
-# 测试阿里云AI服务
-POST /api/aliyun-ai-test/test
+# 阿里云API密钥
+DASHSCOPE_API_KEY=your_api_key_here
 
-# 测试文本分析服务
-POST /api/text-analysis/test
+# 阿里云工作空间ID
+ALIYUN_WORKSPACE_ID=your_workspace_id_here
+```
 
-# 测试文本分类服务
-POST /api/text-classification/test
+### API 参数说明
+
+-   **Model**: `opennlu-v1` (开箱即用的文本理解大模型)
+-   **Task**:
+    -   `extraction` - 信息抽取任务
+    -   `classification` - 文本分类任务
+-   **Labels**: 根据任务类型设置相应的标签
+
+## 错误处理
+
+所有服务都实现了优雅的错误处理：
+
+1. **AI 服务调用失败**: 返回默认结果，不中断业务流程
+2. **网络异常**: 自动降级到本地处理
+3. **API 限流**: 返回缓存结果或默认值
+
+## 性能优化
+
+1. **并行处理**: 摘要生成和关键词提取并行执行
+2. **批量处理**: 支持批量文档分析，提高处理效率
+3. **缓存机制**: 可配置的结果缓存，减少重复 API 调用
+
+## 扩展性
+
+### 添加新的 AI 服务提供商
+
+```csharp
+public class NewAIProvider : IDocumentAnalysisService
+{
+    public string ServiceName => "新AI服务提供商";
+    public string ServiceDescription => "新AI服务的描述";
+
+    public async Task<TextAnalysisDto> AnalyzeDocumentAsync(TextAnalysisInputDto input)
+    {
+        // 实现新的AI服务逻辑
+    }
+
+    // 实现其他接口方法...
+}
+```
+
+### 自定义业务场景
+
+```csharp
+public enum CustomBusinessScenario
+{
+    DocumentAnalysis,
+    ClassificationRecommendation,
+    FullStackAnalysis,
+    CustomScenario // 新增自定义场景
+}
 ```
 
 ## 最佳实践
 
-1. **服务选择**：对速度要求高用阿里云 AI，对质量要求高用 DeepSeek
-2. **参数设置**：关键词数量建议 5-10 个，摘要长度建议 100-300 字符
-3. **批量处理**：大量文档考虑批量处理提高效率
-4. **错误处理**：实现服务降级机制，添加重试和超时控制
+1. **服务选择**: 根据具体业务场景选择最合适的服务
+2. **错误处理**: 始终处理可能的异常情况
+3. **性能考虑**: 对于大量文档，使用批量处理方法
+4. **配置管理**: 通过配置文件管理 AI 服务参数
+5. **监控日志**: 记录 AI 服务调用情况和性能指标
 
-## 依赖包
+## 兼容性说明
 
-```xml
-<PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
-<PackageReference Include="Volo.Abp.Core" Version="8.1.1" />
-<PackageReference Include="Volo.Abp.Ddd.Application" Version="8.1.1" />
+为了保持向后兼容，旧版本的接口仍然可用，但已标记为过时：
+
+```csharp
+[Obsolete("请使用 IDocumentAnalysisService 替代")]
+public interface ITextAnalysisProvider
+{
+    Task<TextAnalysisDto> AnalyzeTextAsync(TextAnalysisInputDto input);
+}
 ```
 
-## 更新日志
-
-### v2.0.0 - HTTP API 重构
-
--   移除阿里云 SDK 依赖，改用 HTTP API 调用
--   提升响应速度，从 10-15 秒降低到 2-5 秒
--   简化项目依赖，提高稳定性
-
-### v1.0.0 - 初始版本
-
--   支持 DeepSeek 和阿里云 AI 服务
--   实现文本分析、分类、语义向量功能
--   采用工厂模式和策略模式设计
+建议逐步迁移到新的接口设计。

@@ -2,6 +2,7 @@ using Hx.Abp.Attachment.Domain.Shared;
 using JetBrains.Annotations;
 using Volo.Abp;
 using Volo.Abp.Domain.Entities.Auditing;
+using System.Text.Json;
 
 namespace Hx.Abp.Attachment.Domain
 {
@@ -92,6 +93,11 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual int VectorDimension { get; private set; } = 0;
 
+        /// <summary>
+        /// 权限集合（JSONB格式，存储权限值对象数组）
+        /// </summary>
+        public virtual ICollection<AttachCatalogueTemplatePermission> Permissions { get; private set; }
+
 #pragma warning disable CS8618 // 在退出构造函数时，不可为 null 的字段必须包含非 null 值。请考虑声明为可以为 null。
         protected AttachCatalogueTemplate() { }
 #pragma warning restore CS8618 // 在退出构造函数时，不可为 null 的字段必须包含非 null 值。请考虑声明为可以为 null。
@@ -129,6 +135,7 @@ namespace Hx.Abp.Attachment.Domain
             TemplatePurpose = templatePurpose;
             SetTextVector(textVector);
             Children = [];
+            Permissions = [];
         }
 
         public virtual void Update(
@@ -270,6 +277,7 @@ namespace Hx.Abp.Attachment.Domain
             TemplateType = source.TemplateType;
             TemplatePurpose = source.TemplatePurpose;
             SetTextVector(source.TextVector);
+            Permissions = source.Permissions.Select(p => new AttachCatalogueTemplatePermission(p.PermissionType, p.PermissionTarget, p.Action, p.Effect, p.AttributeConditions, p.EffectiveTime, p.ExpirationTime, p.Description)).ToList();
         }
 
         /// <summary>
@@ -340,5 +348,101 @@ namespace Hx.Abp.Attachment.Domain
         /// 检查是否为专业领域模板
         /// </summary>
         public virtual bool IsProfessionalTemplate => TemplateType == TemplateType.Professional;
+
+        /// <summary>
+        /// 添加权限
+        /// </summary>
+        public virtual void AddPermission(AttachCatalogueTemplatePermission permission)
+        {
+            ArgumentNullException.ThrowIfNull(permission);
+            
+            if (Permissions == null)
+                Permissions = new List<AttachCatalogueTemplatePermission>();
+                
+            Permissions.Add(permission);
+        }
+
+        /// <summary>
+        /// 移除权限
+        /// </summary>
+        public virtual void RemovePermission(AttachCatalogueTemplatePermission permission)
+        {
+            ArgumentNullException.ThrowIfNull(permission);
+            
+            if (Permissions != null)
+            {
+                Permissions.Remove(permission);
+            }
+        }
+
+        /// <summary>
+        /// 根据类型和操作获取权限
+        /// </summary>
+        public virtual AttachCatalogueTemplatePermission? GetPermission(PermissionAction action, string permissionType, string permissionTarget)
+        {
+            return Permissions?.FirstOrDefault(p => 
+                p.Action == action && 
+                p.PermissionType == permissionType && 
+                p.PermissionTarget == permissionTarget);
+        }
+
+        /// <summary>
+        /// 根据操作获取所有权限
+        /// </summary>
+        public virtual IEnumerable<AttachCatalogueTemplatePermission> GetPermissionsByAction(PermissionAction action)
+        {
+            return Permissions?.Where(p => p.Action == action) ?? Enumerable.Empty<AttachCatalogueTemplatePermission>();
+        }
+
+        /// <summary>
+        /// 根据类型获取所有权限
+        /// </summary>
+        public virtual IEnumerable<AttachCatalogueTemplatePermission> GetPermissionsByType(string permissionType)
+        {
+            return Permissions?.Where(p => p.PermissionType == permissionType) ?? Enumerable.Empty<AttachCatalogueTemplatePermission>();
+        }
+
+        /// <summary>
+        /// 检查用户是否具有指定权限
+        /// </summary>
+        public virtual bool HasPermission(Guid userId, PermissionAction action)
+        {
+            if (Permissions == null || !Permissions.Any())
+                return false;
+
+            // 检查直接权限
+            var directPermissions = Permissions
+                .Where(p => p.IsEffective() && p.Action == action)
+                .ToList();
+
+            if (directPermissions.Any())
+            {
+                // 如果有拒绝权限，直接拒绝
+                if (directPermissions.Any(p => p.Effect == PermissionEffect.Deny))
+                    return false;
+                
+                // 如果有允许权限，返回允许
+                return directPermissions.Any(p => p.Effect == PermissionEffect.Allow);
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 获取权限摘要
+        /// </summary>
+        public virtual string GetPermissionSummary()
+        {
+            if (Permissions == null || !Permissions.Any())
+                return "无权限配置";
+
+            var summary = $"权限数量: {Permissions.Count}";
+            var enabledCount = Permissions.Count(p => p.IsEnabled);
+            var effectiveCount = Permissions.Count(p => p.IsEffective());
+            
+            summary += $", 启用: {enabledCount}, 有效: {effectiveCount}";
+            
+            return summary;
+        }
     }
 }

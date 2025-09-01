@@ -92,6 +92,30 @@ namespace Hx.Abp.Attachment.HttpApi
                 request.MaxSummaryLength, 
                 request.KeywordCount);
         }
+
+        /// <summary>
+        /// 实体识别 - 从文本中识别指定类型的实体
+        /// </summary>
+        /// <param name="input">实体识别输入参数</param>
+        /// <returns>实体识别结果</returns>
+        [HttpPost]
+        [Route("entity-recognition")]
+        public async Task<EntityRecognitionResultDto> RecognizeEntitiesAsync([FromBody] EntityRecognitionInputDto input)
+        {
+            return await _archiveAIAppService.RecognizeEntitiesAsync(input);
+        }
+
+        /// <summary>
+        /// 分类名称推荐 - 基于文档内容推荐合适的分类名称
+        /// </summary>
+        /// <param name="input">分类名称推荐输入参数</param>
+        /// <returns>分类名称推荐结果</returns>
+        [HttpPost]
+        [Route("category-name-recommendation")]
+        public async Task<CategoryNameRecommendationResultDto> RecommendCategoryNamesAsync([FromBody] CategoryNameRecommendationInputDto input)
+        {
+            return await _archiveAIAppService.RecommendCategoryNamesAsync(input);
+        }
     }
 
     #region 请求模型

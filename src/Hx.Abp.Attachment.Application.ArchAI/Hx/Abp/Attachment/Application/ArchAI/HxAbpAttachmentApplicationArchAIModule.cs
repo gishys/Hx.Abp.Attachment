@@ -19,9 +19,6 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             context.Services.AddScoped<DeepSeekTextAnalysisService>();
             context.Services.AddScoped<AIServiceFactory>();
             
-            // 注册 TextAnalysisService
-            context.Services.AddScoped<TextAnalysisService>();
-            
             // 注册 TextClassificationService
             context.Services.AddScoped<TextClassificationService>();
             

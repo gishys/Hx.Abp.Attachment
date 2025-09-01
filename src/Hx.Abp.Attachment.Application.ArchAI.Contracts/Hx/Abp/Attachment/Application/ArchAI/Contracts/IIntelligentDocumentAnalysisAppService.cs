@@ -58,5 +58,19 @@ namespace Hx.Abp.Attachment.Application.ArchAI.Contracts
             List<string> documents, 
             int maxSummaryLength = 500, 
             int keywordCount = 5);
+
+        /// <summary>
+        /// 实体识别 - 从文本中识别指定类型的实体
+        /// </summary>
+        /// <param name="input">实体识别输入参数</param>
+        /// <returns>实体识别结果</returns>
+        Task<EntityRecognitionResultDto> RecognizeEntitiesAsync(EntityRecognitionInputDto input);
+
+        /// <summary>
+        /// 分类名称推荐 - 基于文档内容推荐合适的分类名称
+        /// </summary>
+        /// <param name="input">分类名称推荐输入参数</param>
+        /// <returns>分类名称推荐结果</returns>
+        Task<CategoryNameRecommendationResultDto> RecommendCategoryNamesAsync(CategoryNameRecommendationInputDto input);
     }
 }

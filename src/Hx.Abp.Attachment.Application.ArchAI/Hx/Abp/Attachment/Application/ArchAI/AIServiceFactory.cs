@@ -41,6 +41,24 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             return new AliyunFullStackAnalysisService(_aliyunAIService);
         }
 
+        /// <summary>
+        /// 获取实体识别服务 - 专门用于从文本中识别各种类型的实体
+        /// </summary>
+        /// <returns>实体识别服务</returns>
+        public IEntityRecognitionService GetEntityRecognitionService()
+        {
+            return new AliyunEntityRecognitionService(_aliyunAIService);
+        }
+
+        /// <summary>
+        /// 获取分类名称推荐服务 - 专门用于推荐合适的分类名称
+        /// </summary>
+        /// <returns>分类名称推荐服务</returns>
+        public ICategoryNameRecommendationService GetCategoryNameRecommendationService()
+        {
+            return new AliyunCategoryNameRecommendationService(_aliyunAIService);
+        }
+
         #endregion
 
         #region 便捷访问方法
@@ -67,6 +85,8 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                 BusinessScenario.DocumentAnalysis => GetDocumentAnalysisService(),
                 BusinessScenario.ClassificationRecommendation => GetIntelligentClassificationService(),
                 BusinessScenario.FullStackAnalysis => GetFullStackAnalysisService(),
+                BusinessScenario.EntityRecognition => GetEntityRecognitionService(),
+                BusinessScenario.CategoryNameRecommendation => GetCategoryNameRecommendationService(),
                 _ => GetDefaultDocumentAnalysisService()
             };
         }
@@ -94,7 +114,17 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         /// <summary>
         /// 全栈分析场景 - 同时支持文档分析和分类推荐
         /// </summary>
-        FullStackAnalysis
+        FullStackAnalysis,
+
+        /// <summary>
+        /// 实体识别场景 - 适用于文档内容结构化分析
+        /// </summary>
+        EntityRecognition,
+
+        /// <summary>
+        /// 分类名称推荐场景 - 适用于智能分类体系构建
+        /// </summary>
+        CategoryNameRecommendation
     }
 
     #endregion
@@ -202,6 +232,58 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             int keywordCount = 5);
     }
 
+    /// <summary>
+    /// 实体识别服务接口 - 专门用于从文本中识别各种类型的实体
+    /// </summary>
+    public interface IEntityRecognitionService : IAnalysisService
+    {
+        /// <summary>
+        /// 识别文本中的实体
+        /// </summary>
+        /// <param name="input">实体识别输入参数</param>
+        /// <returns>实体识别结果</returns>
+        Task<EntityRecognitionResultDto> RecognizeEntitiesAsync(EntityRecognitionInputDto input);
+
+        /// <summary>
+        /// 批量实体识别
+        /// </summary>
+        /// <param name="texts">文本列表</param>
+        /// <param name="entityTypes">实体类型列表</param>
+        /// <param name="includePosition">是否包含位置信息</param>
+        /// <returns>批量实体识别结果</returns>
+        Task<List<EntityRecognitionResultDto>> BatchRecognizeEntitiesAsync(
+            List<string> texts, 
+            List<string> entityTypes, 
+            bool includePosition = false);
+    }
+
+    /// <summary>
+    /// 分类名称推荐服务接口 - 专门用于推荐合适的分类名称
+    /// </summary>
+    public interface ICategoryNameRecommendationService : IAnalysisService
+    {
+        /// <summary>
+        /// 推荐分类名称
+        /// </summary>
+        /// <param name="input">分类名称推荐输入参数</param>
+        /// <returns>分类名称推荐结果</returns>
+        Task<CategoryNameRecommendationResultDto> RecommendCategoryNamesAsync(CategoryNameRecommendationInputDto input);
+
+        /// <summary>
+        /// 批量分类名称推荐
+        /// </summary>
+        /// <param name="contents">文档内容列表</param>
+        /// <param name="businessDomain">业务领域</param>
+        /// <param name="documentType">文档类型</param>
+        /// <param name="recommendationCount">推荐数量</param>
+        /// <returns>批量分类名称推荐结果</returns>
+        Task<List<CategoryNameRecommendationResultDto>> BatchRecommendCategoryNamesAsync(
+            List<string> contents,
+            string? businessDomain = null,
+            string? documentType = null,
+            int recommendationCount = 5);
+    }
+
     #endregion
 
     #region 阿里云服务实现
@@ -226,13 +308,21 @@ namespace Hx.Abp.Attachment.Application.ArchAI
 
                 await Task.WhenAll(summaryTask, keywordsTask);
 
-                return new TextAnalysisDto
+                var result = new TextAnalysisDto
                 {
                     Summary = summaryTask.Result,
                     Keywords = keywordsTask.Result,
                     Confidence = 0.9,
                     AnalysisTime = DateTime.Now
                 };
+
+                // 生成语义向量
+                if (input.GenerateSemanticVector)
+                {
+                    result.SemanticVector = await _aliyunAIService.GenerateSemanticVectorAsync(result.Summary, result.Keywords);
+                }
+
+                return result;
             }
             catch (Exception)
             {
@@ -389,6 +479,175 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                         },
                         AnalysisTime = DateTime.Now,
                         Confidence = 0.0
+                    });
+                }
+            }
+
+            return results;
+        }
+    }
+
+    /// <summary>
+    /// 阿里云实体识别服务实现
+    /// </summary>
+    public class AliyunEntityRecognitionService(AliyunAIService aliyunAIService) : IEntityRecognitionService
+    {
+        private readonly AliyunAIService _aliyunAIService = aliyunAIService;
+
+        public string ServiceName => "阿里云实体识别服务";
+        public string ServiceDescription => "基于OpenNLU的实体识别，支持多种实体类型的智能识别";
+
+        public async Task<EntityRecognitionResultDto> RecognizeEntitiesAsync(EntityRecognitionInputDto input)
+        {
+            try
+            {
+                return await _aliyunAIService.RecognizeEntitiesAsync(
+                    input.Text, 
+                    input.EntityTypes, 
+                    input.IncludePosition);
+            }
+            catch (Exception)
+            {
+                // 如果AI服务调用失败，返回默认结果
+                return new EntityRecognitionResultDto
+                {
+                    Entities = [],
+                    Confidence = 0.0,
+                    RecognitionTime = DateTime.Now,
+                    EntityTypeCounts = input.EntityTypes.ToDictionary(et => et, _ => 0),
+                    Metadata = new EntityRecognitionMetadata
+                    {
+                        TextLength = input.Text.Length,
+                        ProcessingTimeMs = 0,
+                        Model = "opennlu-v1",
+                        RecognizedEntityTypeCount = 0,
+                        TotalEntityCount = 0
+                    }
+                };
+            }
+        }
+
+        public async Task<List<EntityRecognitionResultDto>> BatchRecognizeEntitiesAsync(
+            List<string> texts, 
+            List<string> entityTypes, 
+            bool includePosition = false)
+        {
+            var results = new List<EntityRecognitionResultDto>();
+            
+            foreach (var text in texts)
+            {
+                try
+                {
+                    var result = await RecognizeEntitiesAsync(new EntityRecognitionInputDto
+                    {
+                        Text = text,
+                        EntityTypes = entityTypes,
+                        IncludePosition = includePosition
+                    });
+                    results.Add(result);
+                }
+                catch (Exception)
+                {
+                    results.Add(new EntityRecognitionResultDto
+                    {
+                        Entities = [],
+                        Confidence = 0.0,
+                        RecognitionTime = DateTime.Now,
+                        EntityTypeCounts = entityTypes.ToDictionary(et => et, _ => 0),
+                        Metadata = new EntityRecognitionMetadata
+                        {
+                            TextLength = text.Length,
+                            ProcessingTimeMs = 0,
+                            Model = "opennlu-v1",
+                            RecognizedEntityTypeCount = 0,
+                            TotalEntityCount = 0
+                        }
+                    });
+                }
+            }
+
+            return results;
+        }
+    }
+
+    /// <summary>
+    /// 阿里云分类名称推荐服务实现
+    /// </summary>
+    public class AliyunCategoryNameRecommendationService(AliyunAIService aliyunAIService) : ICategoryNameRecommendationService
+    {
+        private readonly AliyunAIService _aliyunAIService = aliyunAIService;
+
+        public string ServiceName => "阿里云分类名称推荐服务";
+        public string ServiceDescription => "基于OpenNLU的分类名称推荐，支持智能分类体系构建";
+
+        public async Task<CategoryNameRecommendationResultDto> RecommendCategoryNamesAsync(CategoryNameRecommendationInputDto input)
+        {
+            try
+            {
+                return await _aliyunAIService.RecommendCategoryNamesAsync(
+                    input.Content, 
+                    input.BusinessDomain, 
+                    input.DocumentType, 
+                    input.RecommendationCount);
+            }
+            catch (Exception)
+            {
+                // 如果AI服务调用失败，返回默认结果
+                return new CategoryNameRecommendationResultDto
+                {
+                    RecommendedCategories = [],
+                    Confidence = 0.0,
+                    RecommendationTime = DateTime.Now,
+                    Metadata = new CategoryRecommendationMetadata
+                    {
+                        TextLength = input.Content.Length,
+                        ProcessingTimeMs = 0,
+                        Model = "opennlu-v1",
+                        RecommendedCategoryCount = 0,
+                        IdentifiedBusinessDomain = input.BusinessDomain,
+                        IdentifiedDocumentType = input.DocumentType
+                    }
+                };
+            }
+        }
+
+        public async Task<List<CategoryNameRecommendationResultDto>> BatchRecommendCategoryNamesAsync(
+            List<string> contents,
+            string? businessDomain = null,
+            string? documentType = null,
+            int recommendationCount = 5)
+        {
+            var results = new List<CategoryNameRecommendationResultDto>();
+            
+            foreach (var content in contents)
+            {
+                try
+                {
+                    var result = await RecommendCategoryNamesAsync(new CategoryNameRecommendationInputDto
+                    {
+                        Content = content,
+                        BusinessDomain = businessDomain,
+                        DocumentType = documentType,
+                        RecommendationCount = recommendationCount
+                    });
+                    results.Add(result);
+                }
+                catch (Exception)
+                {
+                    results.Add(new CategoryNameRecommendationResultDto
+                    {
+                        RecommendedCategories = [],
+                        Confidence = 0.0,
+                        RecommendationTime = DateTime.Now,
+                        Metadata = new CategoryRecommendationMetadata
+                        {
+                            TextLength = content.Length,
+                            ProcessingTimeMs = 0,
+                            Model = "opennlu-v1",
+                            RecommendedCategoryCount = 0,
+                            IdentifiedBusinessDomain = businessDomain,
+                            IdentifiedDocumentType = documentType
+                        }
                     });
                 }
             }

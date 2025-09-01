@@ -140,5 +140,33 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                 throw new UserFriendlyException("批量文档分析服务暂时不可用，请稍后再试");
             }
         }
+
+        public async Task<EntityRecognitionResultDto> RecognizeEntitiesAsync(EntityRecognitionInputDto input)
+        {
+            try
+            {
+                var entityRecognitionService = _aiServiceFactory.GetEntityRecognitionService();
+                return await entityRecognitionService.RecognizeEntitiesAsync(input);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "实体识别失败");
+                throw new UserFriendlyException("实体识别服务暂时不可用，请稍后再试");
+            }
+        }
+
+        public async Task<CategoryNameRecommendationResultDto> RecommendCategoryNamesAsync(CategoryNameRecommendationInputDto input)
+        {
+            try
+            {
+                var categoryRecommendationService = _aiServiceFactory.GetCategoryNameRecommendationService();
+                return await categoryRecommendationService.RecommendCategoryNamesAsync(input);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "分类名称推荐失败");
+                throw new UserFriendlyException("分类名称推荐服务暂时不可用，请稍后再试");
+            }
+        }
     }
 }

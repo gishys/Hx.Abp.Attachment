@@ -10,10 +10,14 @@ namespace Hx.Abp.Attachment.Application.ArchAI
     /// <summary>
     /// 阿里云AI服务 - 使用OpenNLU进行智能文本分析
     /// </summary>
-    public partial class AliyunAIService(ILogger<AliyunAIService> logger, HttpClient httpClient) : IScopedDependency
+    public partial class AliyunAIService(
+        ILogger<AliyunAIService> logger, 
+        HttpClient httpClient,
+        SemanticVectorService semanticVectorService) : IScopedDependency
     {
         private readonly ILogger<AliyunAIService> _logger = logger;
         private readonly HttpClient _httpClient = httpClient;
+        private readonly SemanticVectorService _semanticVectorService = semanticVectorService;
         private readonly string _apiKey = Environment.GetEnvironmentVariable("DASHSCOPE_API_KEY")
                 ?? throw new UserFriendlyException("缺少环境变量 DASHSCOPE_API_KEY");
         private readonly string _workspaceId = Environment.GetEnvironmentVariable("ALIYUN_WORKSPACE_ID")
@@ -86,7 +90,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                     {
                         Sentence = content,
                         Task = "extraction",
-                        Labels = "关键词,重要词汇,核心概念,实体名称"
+                        Labels = "关键词,重要词汇,核心概念"
                     }
                 };
 
@@ -167,12 +171,14 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         /// <param name="categoryOptions">可选分类列表</param>
         /// <param name="maxSummaryLength">摘要最大长度</param>
         /// <param name="keywordCount">关键词数量</param>
+        /// <param name="generateSemanticVector">是否生成语义向量</param>
         /// <returns>综合分析结果</returns>
         public async Task<ComprehensiveAnalysisResult> AnalyzeComprehensivelyAsync(
             string content, 
             List<string> categoryOptions, 
             int maxSummaryLength = 500, 
-            int keywordCount = 5)
+            int keywordCount = 5,
+            bool generateSemanticVector = false)
         {
             try
             {
@@ -194,6 +200,12 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                     Confidence = 0.9
                 };
 
+                // 生成语义向量
+                if (generateSemanticVector)
+                {
+                    result.SemanticVector = await GenerateSemanticVectorAsync(result.Summary, result.Keywords);
+                }
+
                 _logger.LogInformation("综合分析完成");
                 return result;
             }
@@ -201,6 +213,216 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             {
                 _logger.LogError(ex, "综合分析失败");
                 throw new UserFriendlyException("综合分析服务暂时不可用，请稍后再试");
+            }
+        }
+
+        /// <summary>
+        /// 实体识别 - 从文本中识别指定类型的实体
+        /// </summary>
+        /// <param name="content">文本内容</param>
+        /// <param name="entityTypes">要识别的实体类型列表</param>
+        /// <param name="includePosition">是否包含实体位置信息</param>
+        /// <returns>实体识别结果</returns>
+        public async Task<EntityRecognitionResultDto> RecognizeEntitiesAsync(
+            string content, 
+            List<string> entityTypes, 
+            bool includePosition = false)
+        {
+            try
+            {
+                _logger.LogInformation("开始调用阿里云AI进行实体识别，文本长度: {TextLength}, 实体类型数量: {EntityTypeCount}",
+                    content.Length, entityTypes.Count);
+
+                if (entityTypes.Count == 0)
+                {
+                    throw new UserFriendlyException("实体类型不能为空");
+                }
+
+                var request = new AliyunNLURequest
+                {
+                    Model = "opennlu-v1",
+                    Input = new AliyunNLUInput
+                    {
+                        Sentence = content,
+                        Task = "extraction",
+                        Labels = string.Join(",", entityTypes)
+                    }
+                };
+
+                var response = await CallAliyunNLUApiAsync(request);
+                
+                if (!string.IsNullOrEmpty(response.Output?.Text))
+                {
+                    var result = ParseEntityRecognitionResponse(response.Output.Text, entityTypes, includePosition);
+                    _logger.LogInformation("阿里云AI实体识别成功，识别实体数量: {EntityCount}", result.Entities.Count);
+                    return result;
+                }
+
+                _logger.LogWarning("阿里云AI实体识别响应为空或解析失败");
+                throw new UserFriendlyException("阿里云AI返回的实体识别结果为空");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "阿里云AI实体识别失败");
+                throw new UserFriendlyException("阿里云AI实体识别服务暂时不可用，请稍后再试");
+            }
+        }
+
+        /// <summary>
+        /// 分类名称推荐 - 基于文档内容推荐合适的分类名称
+        /// </summary>
+        /// <param name="content">文档内容</param>
+        /// <param name="businessDomain">业务领域</param>
+        /// <param name="documentType">文档类型</param>
+        /// <param name="recommendationCount">推荐数量</param>
+        /// <returns>分类名称推荐结果</returns>
+        public async Task<CategoryNameRecommendationResultDto> RecommendCategoryNamesAsync(
+            string content, 
+            string? businessDomain = null, 
+            string? documentType = null, 
+            int recommendationCount = 5)
+        {
+            try
+            {
+                _logger.LogInformation("开始调用阿里云AI进行分类名称推荐，文本长度: {TextLength}, 推荐数量: {RecommendationCount}",
+                    content.Length, recommendationCount);
+
+                // 1) 构建候选分类标签（常见证照/文档类型 + 业务/文档类型的补充）
+                var candidateLabels = BuildDefaultCategoryLabels(businessDomain, documentType);
+
+                // 2) 首选使用 分类(classification) 任务让模型在候选分类中打分
+                var classifyRequest = new AliyunNLURequest
+                {
+                    Model = "opennlu-v1",
+                    Input = new AliyunNLUInput
+                    {
+                        Sentence = content,
+                        Task = "classification",
+                        Labels = string.Join(",", candidateLabels)
+                    }
+                };
+
+                var response = await CallAliyunNLUApiAsync(classifyRequest);
+
+                if (!string.IsNullOrEmpty(response.Output?.Text))
+                {
+                    // 0) 快速路径：如果模型直接返回“结清证明;不动产登记证明;”这类列表，直接解析
+                    var direct = ExtractDirectCategoryList(
+                        response.Output.Text, recommendationCount, candidateLabels);
+                    if (direct.Count > 0)
+                    {
+                        return new CategoryNameRecommendationResultDto
+                        {
+                            RecommendedCategories = direct,
+                            Confidence = Math.Min(0.92, 0.75 + direct.Count * 0.03),
+                            RecommendationTime = DateTime.Now,
+                            Metadata = new CategoryRecommendationMetadata
+                            {
+                                TextLength = content.Length,
+                                ProcessingTimeMs = 0,
+                                Model = "opennlu-v1",
+                                RecommendedCategoryCount = direct.Count,
+                                IdentifiedBusinessDomain = businessDomain,
+                                IdentifiedDocumentType = documentType
+                            }
+                        };
+                    }
+
+                    // 从分类响应中解析 Top-N 分类
+                    var classified = ExtractCategoriesFromClassificationText(
+                        response.Output.Text, recommendationCount, candidateLabels);
+
+                    // 如果分类有结果，直接返回
+                    if (classified.Count > 0)
+                    {
+                        return new CategoryNameRecommendationResultDto
+                        {
+                            RecommendedCategories = classified,
+                            Confidence = Math.Min(0.95, 0.6 + classified.Count * 0.05),
+                            RecommendationTime = DateTime.Now,
+                            Metadata = new CategoryRecommendationMetadata
+                            {
+                                TextLength = content.Length,
+                                ProcessingTimeMs = 0,
+                                Model = "opennlu-v1",
+                                RecommendedCategoryCount = classified.Count,
+                                IdentifiedBusinessDomain = businessDomain,
+                                IdentifiedDocumentType = documentType
+                            }
+                        };
+                    }
+
+                    // 3) 若分类无效，尝试从文本中抽取分类片段作为备选
+                    var extractedByText = ExtractCategoriesFromResponse(response.Output.Text, recommendationCount);
+                    if (extractedByText.Count > 0)
+                    {
+                        return new CategoryNameRecommendationResultDto
+                        {
+                            RecommendedCategories = extractedByText,
+                            Confidence = 0.7,
+                            RecommendationTime = DateTime.Now,
+                            Metadata = new CategoryRecommendationMetadata
+                            {
+                                TextLength = content.Length,
+                                ProcessingTimeMs = 0,
+                                Model = "opennlu-v1",
+                                RecommendedCategoryCount = extractedByText.Count,
+                                IdentifiedBusinessDomain = businessDomain,
+                                IdentifiedDocumentType = documentType
+                            }
+                        };
+                    }
+                }
+
+                _logger.LogWarning("阿里云AI分类名称推荐响应为空或解析失败");
+                // 4) 规则启发式：基于关键字从内容中提议分类，作为降级
+                var heuristic = HeuristicCategoriesFromContent(content, recommendationCount);
+                if (heuristic.Count > 0)
+                {
+                    return new CategoryNameRecommendationResultDto
+                    {
+                        RecommendedCategories = heuristic,
+                        Confidence = 0.6,
+                        RecommendationTime = DateTime.Now,
+                        Metadata = new CategoryRecommendationMetadata
+                        {
+                            TextLength = content.Length,
+                            ProcessingTimeMs = 0,
+                            Model = "opennlu-v1",
+                            RecommendedCategoryCount = heuristic.Count,
+                            IdentifiedBusinessDomain = businessDomain,
+                            IdentifiedDocumentType = documentType
+                        }
+                    };
+                }
+
+                // 5) 最终兜底：领域/类型/通用默认建议
+                var fallback = GenerateDefaultCategorySuggestions(businessDomain, documentType, recommendationCount);
+                if (fallback.Count > 0)
+                {
+                    return new CategoryNameRecommendationResultDto
+                    {
+                        RecommendedCategories = fallback,
+                        Confidence = 0.5,
+                        RecommendationTime = DateTime.Now,
+                        Metadata = new CategoryRecommendationMetadata
+                        {
+                            TextLength = content.Length,
+                            ProcessingTimeMs = 0,
+                            Model = "opennlu-v1",
+                            RecommendedCategoryCount = fallback.Count,
+                            IdentifiedBusinessDomain = businessDomain,
+                            IdentifiedDocumentType = documentType
+                        }
+                    };
+                }
+
+                throw new UserFriendlyException("未能生成有效的分类名称建议");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "阿里云AI分类名称推荐失败");
+                throw new UserFriendlyException("阿里云AI分类名称推荐服务暂时不可用，请稍后再试");
             }
         }
 
@@ -256,6 +478,26 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         }
 
         /// <summary>
+        /// 生成语义向量
+        /// </summary>
+        /// <param name="summary">摘要内容</param>
+        /// <param name="keywords">关键词列表</param>
+        /// <returns>语义向量</returns>
+        public async Task<List<double>?> GenerateSemanticVectorAsync(string summary, List<string> keywords)
+        {
+            try
+            {
+                var vectorText = $"{summary} {string.Join(" ", keywords)}";
+                return await _semanticVectorService.GenerateVectorAsync(vectorText);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "生成语义向量失败，继续处理其他功能");
+                return null;
+            }
+        }
+
+        /// <summary>
         /// 从响应中提取摘要内容
         /// </summary>
         /// <param name="responseText">API响应文本</param>
@@ -265,27 +507,54 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             if (string.IsNullOrWhiteSpace(responseText))
                 return string.Empty;
 
-            // 尝试提取摘要字段
+            // 按优先级尝试提取：主要信息 -> 核心内容 -> 摘要 -> text 字段
+            string[] candidates = new string[4];
+
+            var mainInfo = AliyunAIService.MainInfoFieldRegex().Match(responseText);
+            if (mainInfo.Success)
+            {
+                candidates[0] = mainInfo.Groups[1].Value.Trim();
+            }
+
+            var coreContent = AliyunAIService.CoreContentFieldRegex().Match(responseText);
+            if (coreContent.Success)
+            {
+                candidates[1] = coreContent.Groups[1].Value.Trim();
+            }
+
             var summaryMatch = AliyunAIService.SummaryRegex().Match(responseText);
             if (summaryMatch.Success)
             {
-                var summary = summaryMatch.Groups[1].Value.Trim();
-                // 清理制表符和多余空格
-                summary = AliyunAIService.WhitespaceRegex().Replace(summary, " ");
-                return summary;
+                candidates[2] = summaryMatch.Groups[1].Value.Trim();
             }
 
-            // 如果没有找到摘要字段，尝试提取整个文本作为摘要
             var textMatch = AliyunAIService.TextFieldRegex().Match(responseText);
             if (textMatch.Success)
             {
-                var text = textMatch.Groups[1].Value.Trim();
-                // 清理制表符和多余空格
-                text = AliyunAIService.WhitespaceRegex().Replace(text, " ");
-                return text;
+                candidates[3] = textMatch.Groups[1].Value.Trim();
             }
 
-            return string.Empty;
+            foreach (var candidate in candidates)
+            {
+                if (string.IsNullOrWhiteSpace(candidate)) continue;
+                var cleaned = AliyunAIService.WhitespaceRegex().Replace(candidate, " ");
+                if (string.Equals(cleaned, "None", StringComparison.OrdinalIgnoreCase)) continue;
+                if (string.Equals(cleaned, "无", StringComparison.OrdinalIgnoreCase)) continue;
+                if (cleaned.Length < 2) continue;
+                return cleaned;
+            }
+
+            // 兜底：从原始文本中按分号切片，选择最长的非None片段
+            var slices = responseText.Split([';', '；'], StringSplitOptions.RemoveEmptyEntries)
+                                     .Select(s => s.Trim())
+                                     .Where(s => !string.IsNullOrWhiteSpace(s) &&
+                                                 !s.EndsWith(": None", StringComparison.OrdinalIgnoreCase) &&
+                                                 !s.Equals("None", StringComparison.OrdinalIgnoreCase) &&
+                                                 !s.Equals("无", StringComparison.OrdinalIgnoreCase))
+                                     .Select(s => AliyunAIService.WhitespaceRegex().Replace(s, " "))
+                                     .OrderByDescending(s => s.Length)
+                                     .ToList();
+            return slices.FirstOrDefault() ?? string.Empty;
         }
 
         /// <summary>
@@ -441,6 +710,12 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         [System.Text.RegularExpressions.GeneratedRegex(@"摘要:\s*([^;]+)")]
         private static partial System.Text.RegularExpressions.Regex SummaryRegex();
 
+        [System.Text.RegularExpressions.GeneratedRegex(@"主要信息[:：]\s*([^;]+)")]
+        private static partial System.Text.RegularExpressions.Regex MainInfoFieldRegex();
+
+        [System.Text.RegularExpressions.GeneratedRegex(@"核心内容[:：]\s*([^;]+)")]
+        private static partial System.Text.RegularExpressions.Regex CoreContentFieldRegex();
+
         [System.Text.RegularExpressions.GeneratedRegex(@"\s+")]
         private static partial System.Text.RegularExpressions.Regex WhitespaceRegex();
 
@@ -458,5 +733,682 @@ namespace Hx.Abp.Attachment.Application.ArchAI
 
         [System.Text.RegularExpressions.GeneratedRegex(@"分类:\s*([^;]+)")]
         private static partial System.Text.RegularExpressions.Regex ClassificationFieldRegex();
+
+        [System.Text.RegularExpressions.GeneratedRegex(@"\{.*\}")]
+        private static partial System.Text.RegularExpressions.Regex JsonObjectRegex();
+
+        /// <summary>
+        /// 解析实体识别响应
+        /// </summary>
+        /// <param name="responseText">API响应文本</param>
+        /// <param name="entityTypes">实体类型列表</param>
+        /// <param name="includePosition">是否包含位置信息</param>
+        /// <returns>实体识别结果</returns>
+        private static EntityRecognitionResultDto ParseEntityRecognitionResponse(
+            string responseText, 
+            List<string> entityTypes, 
+            bool includePosition)
+        {
+            var result = new EntityRecognitionResultDto
+            {
+                Entities = [],
+                Confidence = 0.8,
+                RecognitionTime = DateTime.Now,
+                EntityTypeCounts = entityTypes.ToDictionary(et => et, _ => 0),
+                Metadata = new EntityRecognitionMetadata
+                {
+                    TextLength = 0,
+                    ProcessingTimeMs = 0,
+                    Model = "opennlu-v1",
+                    RecognizedEntityTypeCount = 0,
+                    TotalEntityCount = 0
+                }
+            };
+
+            if (string.IsNullOrWhiteSpace(responseText))
+                return result;
+
+            try
+            {
+                // 尝试从响应中提取实体信息
+                var entities = ExtractEntitiesFromResponse(responseText, entityTypes, includePosition);
+                result.Entities = entities;
+                result.Metadata!.TotalEntityCount = entities.Count;
+
+                // 统计各类型实体数量
+                foreach (var entity in entities)
+                {
+                    if (result.EntityTypeCounts.TryGetValue(entity.Type, out int value))
+                    {
+                        result.EntityTypeCounts[entity.Type] = ++value;
+                    }
+                }
+
+                result.Metadata!.RecognizedEntityTypeCount = result.EntityTypeCounts.Count(kvp => kvp.Value > 0);
+                result.Confidence = entities.Count > 0 ? 0.9 : 0.5;
+            }
+            catch (Exception)
+            {
+                // 解析失败时返回默认结果
+                result.Confidence = 0.3;
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// 从响应中提取实体信息
+        /// </summary>
+        /// <param name="responseText">API响应文本</param>
+        /// <param name="entityTypes">实体类型列表</param>
+        /// <param name="includePosition">是否包含位置信息</param>
+        /// <returns>实体列表</returns>
+        private static List<RecognizedEntity> ExtractEntitiesFromResponse(
+            string responseText, 
+            List<string> entityTypes, 
+            bool includePosition)
+        {
+            var entities = new List<RecognizedEntity>();
+
+            try
+            {
+                // 尝试解析JSON格式的响应
+                var jsonMatch = AliyunAIService.JsonObjectRegex().Match(responseText);
+                if (jsonMatch.Success)
+                {
+                    var jsonText = jsonMatch.Value;
+                    var response = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonText);
+                    
+                    if (response != null && response.TryGetValue("entities", out object? value))
+                    {
+                        // 处理结构化的实体数据
+                        var entitiesData = JsonSerializer.Deserialize<List<Dictionary<string, object>>>(value.ToString() ?? "[]");
+                        foreach (var entityData in entitiesData ?? [])
+                        {
+                            var entity = new RecognizedEntity
+                            {
+                                Name = entityData.GetValueOrDefault("name", "").ToString() ?? "",
+                                Type = entityData.GetValueOrDefault("type", "").ToString() ?? "",
+                                Value = entityData.GetValueOrDefault("value", "").ToString() ?? "",
+                                Confidence = Convert.ToDouble(entityData.GetValueOrDefault("confidence", 0.8))
+                            };
+
+                            if (includePosition)
+                            {
+                                entity.StartPosition = Convert.ToInt32(entityData.GetValueOrDefault("start", 0));
+                                entity.EndPosition = Convert.ToInt32(entityData.GetValueOrDefault("end", 0));
+                            }
+
+                            entities.Add(entity);
+                        }
+                    }
+                }
+
+                // 如果没有找到结构化数据，尝试从文本中提取
+                if (entities.Count == 0)
+                {
+                    entities = ExtractEntitiesFromText(responseText, entityTypes);
+                }
+            }
+            catch (Exception)
+            {
+                // 解析失败时使用文本提取作为备选方案
+                entities = ExtractEntitiesFromText(responseText, entityTypes);
+            }
+
+            return entities;
+        }
+
+        /// <summary>
+        /// 从文本中提取实体信息（备选方案）
+        /// </summary>
+        /// <param name="text">文本内容</param>
+        /// <param name="entityTypes">实体类型列表</param>
+        /// <returns>实体列表</returns>
+        private static List<RecognizedEntity> ExtractEntitiesFromText(string text, List<string> entityTypes)
+        {
+            var entities = new List<RecognizedEntity>();
+
+            // 简单的文本模式匹配提取
+            foreach (var entityType in entityTypes)
+            {
+                var pattern = $@"{entityType}[:：]\s*([^，,;；\n\r]+)";
+                var matches = System.Text.RegularExpressions.Regex.Matches(text, pattern);
+                
+                foreach (System.Text.RegularExpressions.Match match in matches)
+                {
+                    if (match.Groups.Count > 1)
+                    {
+                        var entityValue = match.Groups[1].Value.Trim();
+                        if (!string.IsNullOrEmpty(entityValue))
+                        {
+                            entities.Add(new RecognizedEntity
+                            {
+                                Name = entityValue,
+                                Type = entityType,
+                                Value = entityValue,
+                                Confidence = 0.7
+                            });
+                        }
+                    }
+                }
+            }
+
+            return entities;
+        }
+
+        /// <summary>
+        /// 解析分类名称推荐响应
+        /// </summary>
+        /// <param name="responseText">API响应文本</param>
+        /// <param name="businessDomain">业务领域</param>
+        /// <param name="documentType">文档类型</param>
+        /// <param name="recommendationCount">推荐数量</param>
+        /// <returns>分类名称推荐结果</returns>
+        private static CategoryNameRecommendationResultDto ParseCategoryNameRecommendationResponse(
+            string responseText, 
+            string? businessDomain, 
+            string? documentType, 
+            int recommendationCount)
+        {
+            var result = new CategoryNameRecommendationResultDto
+            {
+                RecommendedCategories = [],
+                Confidence = 0.8,
+                RecommendationTime = DateTime.Now,
+                Metadata = new CategoryRecommendationMetadata
+                {
+                    TextLength = 0,
+                    ProcessingTimeMs = 0,
+                    Model = "opennlu-v1",
+                    RecommendedCategoryCount = 0,
+                    IdentifiedBusinessDomain = businessDomain,
+                    IdentifiedDocumentType = documentType
+                }
+            };
+
+            if (string.IsNullOrWhiteSpace(responseText))
+                return result;
+
+            try
+            {
+                // 尝试从响应中提取分类信息
+                var categories = ExtractCategoriesFromResponse(responseText, recommendationCount);
+                
+                // 验证提取的分类是否有效
+                var validCategories = categories.Where(c => 
+                    !string.IsNullOrEmpty(c.Name) && 
+                    !c.Name.Equals("None", StringComparison.OrdinalIgnoreCase) &&
+                    !c.Name.Equals("无", StringComparison.OrdinalIgnoreCase) &&
+                    !c.Name.Equals("空", StringComparison.OrdinalIgnoreCase) &&
+                    c.Name.Length > 1).ToList();
+                
+                result.RecommendedCategories = validCategories;
+                result.Metadata.RecommendedCategoryCount = validCategories.Count;
+                
+                // 根据有效分类数量调整置信度
+                if (validCategories.Count > 0)
+                {
+                    result.Confidence = Math.Min(0.9, 0.5 + (validCategories.Count * 0.1));
+                }
+                else
+                {
+                    result.Confidence = 0.3;
+                    // 如果没有有效分类，尝试生成一些默认分类建议
+                    result.RecommendedCategories = GenerateDefaultCategorySuggestions(businessDomain, documentType, recommendationCount);
+                }
+            }
+            catch (Exception)
+            {
+                // 解析失败时返回默认结果
+                result.Confidence = 0.3;
+                result.RecommendedCategories = GenerateDefaultCategorySuggestions(businessDomain, documentType, recommendationCount);
+            }
+
+            return result;
+    }
+
+    /// <summary>
+        /// 从响应中提取分类信息
+    /// </summary>
+        /// <param name="responseText">API响应文本</param>
+        /// <param name="recommendationCount">推荐数量</param>
+        /// <returns>推荐分类列表</returns>
+        private static List<RecommendedCategory> ExtractCategoriesFromResponse(string responseText, int recommendationCount)
+        {
+            var categories = new List<RecommendedCategory>();
+
+            try
+            {
+                // 尝试解析JSON格式的响应
+                var jsonMatch = AliyunAIService.JsonObjectRegex().Match(responseText);
+                if (jsonMatch.Success)
+                {
+                    var jsonText = jsonMatch.Value;
+                    var response = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonText);
+                    
+                    if (response != null && response.TryGetValue("categories", out object? value))
+                    {
+                        // 处理结构化的分类数据
+                        var categoriesData = JsonSerializer.Deserialize<List<Dictionary<string, object>>>(value.ToString() ?? "[]");
+                        foreach (var categoryData in categoriesData ?? [])
+                        {
+                            if (categories.Count >= recommendationCount) break;
+
+                            var category = new RecommendedCategory
+                            {
+                                Name = categoryData.GetValueOrDefault("name", "").ToString() ?? "",
+                                Description = categoryData.GetValueOrDefault("description", "").ToString(),
+                                Confidence = Convert.ToDouble(categoryData.GetValueOrDefault("confidence", 0.8)),
+                                Level = Convert.ToInt32(categoryData.GetValueOrDefault("level", 1))
+                            };
+
+                            if (categoryData.TryGetValue("keywords", out object? keywordsValue))
+                            {
+                                var keywords = JsonSerializer.Deserialize<List<string>>(keywordsValue.ToString() ?? "[]");
+                                category.Keywords = keywords ?? [];
+                            }
+
+                            categories.Add(category);
+                        }
+                    }
+                }
+
+                // 如果没有找到结构化数据，尝试从文本中提取
+                if (categories.Count == 0)
+                {
+                    categories = ExtractCategoriesFromText(responseText, recommendationCount);
+                }
+            }
+            catch (Exception)
+            {
+                // 解析失败时使用文本提取作为备选方案
+                categories = ExtractCategoriesFromText(responseText, recommendationCount);
+            }
+
+            return categories;
+    }
+
+    /// <summary>
+        /// 从分类(classification)任务的文本结果中提取Top-N分类（形如：类别A:0.92, 类别B:0.76,...）
+        /// 仅接受在候选集合中的类别。
+    /// </summary>
+        private static List<RecommendedCategory> ExtractCategoriesFromClassificationText(
+            string responseText, int recommendationCount, List<string> candidateLabels)
+        {
+            var result = new List<RecommendedCategory>();
+            if (string.IsNullOrWhiteSpace(responseText)) return result;
+
+            var match = ClassificationFieldRegex().Match(responseText);
+            if (!match.Success) return result;
+
+            var pairs = match.Groups[1].Value
+                .Split(['\t', ',', '，', ';', '；', ' '], StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .Select(s => s.Split(':', 2))
+                .Where(a => a.Length == 2)
+                .Select(a => new { Name = a[0].Trim(), ScoreText = a[1].Trim() })
+                .Where(a => !string.IsNullOrEmpty(a.Name) && candidateLabels.Contains(a.Name))
+                .Select(a => new { a.Name, Score = double.TryParse(a.ScoreText, out var v) ? v : 0.0 })
+                .OrderByDescending(a => a.Score)
+                .Take(recommendationCount)
+                .ToList();
+
+            foreach (var p in pairs)
+            {
+                if (string.Equals(p.Name, "None", StringComparison.OrdinalIgnoreCase)) continue;
+                result.Add(new RecommendedCategory
+                {
+                    Name = p.Name,
+                    Confidence = Math.Clamp(p.Score, 0.0, 1.0),
+                    Level = 1
+                });
+            }
+            return result;
+    }
+
+    /// <summary>
+        /// 快速解析直接列表样式的分类结果，如："结清证明;不动产登记证明;" 或换行/逗号分隔。
+        /// 仅保留在候选集合中或通过基础后缀白名单校验的条目。
+    /// </summary>
+        private static List<RecommendedCategory> ExtractDirectCategoryList(
+            string responseText, int recommendationCount, List<string> candidateLabels)
+        {
+            var list = new List<RecommendedCategory>();
+            if (string.IsNullOrWhiteSpace(responseText)) return list;
+
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var tokens = responseText
+                .Split(['\n', '\r', ';', '；', ',', '，'], StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .ToList();
+
+            foreach (var token in tokens)
+            {
+                if (list.Count >= recommendationCount) break;
+                if (string.Equals(token, "None", StringComparison.OrdinalIgnoreCase)) continue;
+                if (token.Length < 2) continue;
+                if (!seen.Add(token)) continue;
+
+                // 候选集合优先；否则应用简易白名单（以“证”“证明”“书”结尾）
+                var pass = candidateLabels.Contains(token)
+                           || token.EndsWith("证", StringComparison.OrdinalIgnoreCase)
+                           || token.EndsWith("证明", StringComparison.OrdinalIgnoreCase)
+                           || token.EndsWith("书", StringComparison.OrdinalIgnoreCase);
+                if (!pass) continue;
+
+                list.Add(new RecommendedCategory
+                {
+                    Name = token,
+                    Confidence = 0.8,
+                    Level = 1
+                });
+            }
+
+            return list;
+        }
+
+    /// <summary>
+        /// 规则启发式：根据内容中的关键词推断可能的分类（作为降级方案）。
+    /// </summary>
+        private static List<RecommendedCategory> HeuristicCategoriesFromContent(string content, int recommendationCount)
+        {
+            var suggestions = new List<RecommendedCategory>();
+            if (string.IsNullOrWhiteSpace(content)) return suggestions;
+
+            var map = new (string Keyword, string Category)[]
+            {
+                ("身份证", "身份证"),
+                ("居民身份证", "身份证"),
+                ("护照", "护照"),
+                ("驾驶证", "驾驶证"),
+                ("合同", "合同"),
+                ("协议", "合同"),
+                ("发票", "发票"),
+                ("收据", "发票"),
+                ("证明", "证明"),
+                ("结清证明", "证明"),
+                ("不动产登记", "不动产登记证明"),
+                ("房产证", "不动产登记证明"),
+                ("营业执照", "营业执照"),
+                ("报告", "报告"),
+                ("申请", "申请书"),
+                ("批复", "批复"),
+                ("通知", "通知"),
+            };
+
+            var lowered = content;
+            foreach (var (keyword, category) in map)
+            {
+                if (lowered.Contains(keyword, StringComparison.OrdinalIgnoreCase) &&
+                    !suggestions.Any(s => s.Name.Equals(category, StringComparison.OrdinalIgnoreCase)))
+                {
+                    suggestions.Add(new RecommendedCategory
+                    {
+                        Name = category,
+                        Confidence = 0.65,
+                        Level = 1,
+                        Keywords = [keyword]
+                    });
+                    if (suggestions.Count >= recommendationCount) break;
+                }
+            }
+            return suggestions;
+    }
+
+    /// <summary>
+        /// 构建默认候选分类集合（常见证照/文档类型 + 领域/类型补充）
+    /// </summary>
+        private static List<string> BuildDefaultCategoryLabels(string? businessDomain, string? documentType)
+        {
+            var labels = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                // 常见证照/文档类型
+                "身份证","护照","驾驶证","营业执照",
+                "合同","协议","发票","收据",
+                "证明","结清证明","不动产登记证明",
+                "报告","申请书","批复","通知"
+            };
+
+            if (!string.IsNullOrWhiteSpace(documentType))
+            {
+                labels.Add(documentType);
+                labels.Add(documentType + "类文档");
+            }
+            if (!string.IsNullOrWhiteSpace(businessDomain))
+            {
+                labels.Add(businessDomain + "相关文件");
+                labels.Add(businessDomain + "证明");
+            }
+
+            return [.. labels];
+    }
+
+    /// <summary>
+        /// 从文本中提取分类信息（备选方案）
+    /// </summary>
+        /// <param name="text">文本内容</param>
+        /// <param name="recommendationCount">推荐数量</param>
+        /// <returns>推荐分类列表</returns>
+        private static List<RecommendedCategory> ExtractCategoriesFromText(string text, int recommendationCount)
+        {
+            var categories = new List<RecommendedCategory>();
+
+            // 处理阿里云AI返回的特定格式：分类名称,文档类型: None;业务分类: None;
+            if (text.Contains("分类") || text.Contains("功能") || text.Contains("主题"))
+            {
+                // 按分号分割不同的分类字段
+                var categoryFields = text.Split([';', '；'], StringSplitOptions.RemoveEmptyEntries);
+                
+                foreach (var field in categoryFields)
+                {
+                    if (categories.Count >= recommendationCount) break;
+                    
+                    var trimmedField = field.Trim();
+                    if (string.IsNullOrEmpty(trimmedField)) continue;
+                    
+                    // 按冒号分割字段名和值
+                    var colonIndex = trimmedField.IndexOf(':');
+                    if (colonIndex > 0)
+                    {
+                        var fieldName = trimmedField[..colonIndex].Trim();
+                        var fieldValue = trimmedField[(colonIndex + 1)..].Trim();
+                        
+                        // 过滤掉无效值（如 "None"）
+                        if (!string.IsNullOrEmpty(fieldValue) && 
+                            !fieldValue.Equals("None", StringComparison.OrdinalIgnoreCase) &&
+                            !fieldValue.Equals("无", StringComparison.OrdinalIgnoreCase) &&
+                            !fieldValue.Equals("空", StringComparison.OrdinalIgnoreCase) &&
+                            fieldValue.Length > 1)
+                        {
+                            // 检查是否已存在相同名称的分类
+                            if (!categories.Any(c => c.Name.Equals(fieldValue, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                categories.Add(new RecommendedCategory
+                                {
+                                    Name = fieldValue,
+                                    Description = $"从{fieldName}字段提取",
+                                    Confidence = 0.8,
+                                    Level = 1,
+                                    Keywords = [fieldName]
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                // 如果仍然没有提取到有效分类，尝试更宽松的解析
+                if (categories.Count == 0)
+                {
+                    // 尝试从文本中提取任何看起来像分类名称的内容
+                    var words = text.Split([' ', '，', ',', ';', '；', ':', '：'], StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var word in words)
+                    {
+                        if (categories.Count >= recommendationCount) break;
+                        
+                        var trimmedWord = word.Trim();
+                        if (trimmedWord.Length > 1 && 
+                            !trimmedWord.Equals("None", StringComparison.OrdinalIgnoreCase) &&
+                            !trimmedWord.Equals("无", StringComparison.OrdinalIgnoreCase) &&
+                            !trimmedWord.Equals("空", StringComparison.OrdinalIgnoreCase) &&
+                            !trimmedWord.Contains("分类") &&
+                            !trimmedWord.Contains("功能") &&
+                            !trimmedWord.Contains("主题"))
+                        {
+                            if (!categories.Any(c => c.Name.Equals(trimmedWord, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                categories.Add(new RecommendedCategory
+                                {
+                                    Name = trimmedWord,
+                                    Description = "从文本中提取的分类名称",
+                                    Confidence = 0.6,
+                                    Level = 1,
+                                    Keywords = [trimmedWord]
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 如果没有提取到有效分类，尝试使用原有的正则表达式模式
+            if (categories.Count == 0)
+            {
+                var patterns = new[]
+                {
+                    @"分类名称[:：]\s*([^，,;；\n\r]+)",
+                    @"文档类型[:：]\s*([^，,；\n\r]+)",
+                    @"业务分类[:：]\s*([^，,；\n\r]+)",
+                    @"功能分类[:：]\s*([^，,；\n\r]+)",
+                    @"主题分类[:：]\s*([^，,；\n\r]+)"
+                };
+
+                foreach (var pattern in patterns)
+                {
+                    if (categories.Count >= recommendationCount) break;
+
+                    var matches = System.Text.RegularExpressions.Regex.Matches(text, pattern);
+                    foreach (System.Text.RegularExpressions.Match match in matches)
+                    {
+                        if (categories.Count >= recommendationCount) break;
+
+                        if (match.Groups.Count > 1)
+                        {
+                            var categoryName = match.Groups[1].Value.Trim();
+                            if (!string.IsNullOrEmpty(categoryName) && 
+                                !categoryName.Equals("None", StringComparison.OrdinalIgnoreCase) &&
+                                !categoryName.Equals("无", StringComparison.OrdinalIgnoreCase) &&
+                                !categoryName.Equals("空", StringComparison.OrdinalIgnoreCase) &&
+                                !categories.Any(c => c.Name.Equals(categoryName, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                categories.Add(new RecommendedCategory
+                                {
+                                    Name = categoryName,
+                                    Confidence = 0.7,
+                                    Level = 1
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            return categories;
+    }
+
+    /// <summary>
+        /// 生成默认分类建议
+    /// </summary>
+        /// <param name="businessDomain">业务领域</param>
+        /// <param name="documentType">文档类型</param>
+        /// <param name="recommendationCount">推荐数量</param>
+        /// <returns>默认分类建议列表</returns>
+        private static List<RecommendedCategory> GenerateDefaultCategorySuggestions(
+            string? businessDomain, 
+            string? documentType, 
+            int recommendationCount)
+        {
+            var suggestions = new List<RecommendedCategory>();
+            
+            // 基于业务领域生成默认分类
+            if (!string.IsNullOrEmpty(businessDomain))
+            {
+                var domainSuggestions = businessDomain switch
+                {
+                    "金融服务" => ["金融产品", "风险管理", "投资理财", "信贷服务", "保险业务"],
+                    "制造业" => ["生产管理", "质量控制", "供应链", "设备维护", "工艺技术"],
+                    "房地产" => ["住宅开发", "商业地产", "物业管理", "土地规划", "建筑设计"],
+                    "教育" => ["课程管理", "学生服务", "教师发展", "教学资源", "评估考核"],
+                    "医疗健康" => ["临床诊疗", "药品管理", "设备维护", "患者服务", "医疗质量"],
+                    _ => new[] { "业务管理", "运营服务", "技术支持", "客户服务", "质量管理" }
+                };
+                
+                foreach (var suggestion in domainSuggestions.Take(recommendationCount))
+                {
+                    suggestions.Add(new RecommendedCategory
+                    {
+                        Name = suggestion,
+                        Description = $"基于{businessDomain}领域的默认分类建议",
+                        Confidence = 0.6,
+                        Level = 1,
+                        Keywords = [businessDomain, suggestion]
+                    });
+                }
+            }
+            
+            // 基于文档类型生成默认分类
+            if (!string.IsNullOrEmpty(documentType) && suggestions.Count < recommendationCount)
+            {
+                var typeSuggestions = documentType switch
+                {
+                    "合同" => ["合同管理", "条款审核", "履约监督", "风险控制"],
+                    "发票" => ["发票管理", "财务核算", "税务处理", "报销流程"],
+                    "报告" => ["报告分析", "数据统计", "趋势预测", "决策支持"],
+                    "申请" => ["申请处理", "审批流程", "状态跟踪", "结果通知"],
+                    _ => new[] { "文档管理", "流程控制", "信息记录", "业务处理" }
+                };
+                
+                var remainingCount = recommendationCount - suggestions.Count;
+                foreach (var suggestion in typeSuggestions.Take(remainingCount))
+                {
+                    if (!suggestions.Any(s => s.Name.Equals(suggestion, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        suggestions.Add(new RecommendedCategory
+                        {
+                            Name = suggestion,
+                            Description = $"基于{documentType}类型的默认分类建议",
+                            Confidence = 0.6,
+                            Level = 1,
+                            Keywords = [documentType, suggestion]
+                        });
+                    }
+                }
+            }
+            
+            // 如果还不够，添加通用分类
+            if (suggestions.Count < recommendationCount)
+            {
+                var generalSuggestions = new[] { "重要文档", "日常管理", "核心业务", "支持服务", "临时文件" };
+                var remainingCount = recommendationCount - suggestions.Count;
+                
+                foreach (var suggestion in generalSuggestions.Take(remainingCount))
+                {
+                    if (!suggestions.Any(s => s.Name.Equals(suggestion, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        suggestions.Add(new RecommendedCategory
+                        {
+                            Name = suggestion,
+                            Description = "通用文档分类建议",
+                            Confidence = 0.5,
+                            Level = 1,
+                            Keywords = [suggestion]
+                        });
+                    }
+                }
+            }
+            
+            return suggestions;
+        }
     }
 }

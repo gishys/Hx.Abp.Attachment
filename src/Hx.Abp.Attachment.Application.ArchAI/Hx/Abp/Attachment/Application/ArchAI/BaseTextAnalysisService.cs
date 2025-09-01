@@ -181,6 +181,56 @@ namespace Hx.Abp.Attachment.Application.ArchAI
 - 摘要应该客观准确，避免主观判断
 - 重点关注对后续语义匹配有用的信息";
         }
+        /// <summary>
+        /// 构建通用分析提示词
+        /// </summary>
+        public string BuildGenericPrompt1(int keywordCount, int maxSummaryLength, string taskDescription)
+        {
+            return $@"
+# 通用文本分析专家指令
+
+## 任务要求
+{taskDescription}
+
+## 输出格式要求
+请严格按照以下JSON格式返回结果，不要包含任何其他内容：
+
+{{
+  ""summary"": ""文本摘要内容，控制在{maxSummaryLength}字符以内，突出核心信息和主要观点"",
+  ""keywords"": [""关键词1"", ""关键词2"", ""关键词3"", ""关键词4"", ""关键词5""],
+  ""confidence"": 0.95
+}}
+
+## 分析指导原则
+1. **摘要生成**：
+   - 提取文本的核心信息和主要观点
+   - 保持逻辑清晰，语言简洁
+   - 确保摘要完整表达原文主旨
+   - 重点关注实体名称、时间、金额、地点等关键信息
+
+2. **关键词提取**：
+   - 提取{keywordCount}个最重要的关键词
+   - 关键词应具有代表性，能体现文本主题
+   - 包含实体名词、专业术语、核心概念等
+   - 按重要性排序，优先提取：
+     * 实体名称（公司、机构、人名、地名等）
+     * 文档类型标识
+     * 关键业务术语
+     * 重要时间节点
+     * 数值信息（金额、数量等）
+
+3. **置信度评估**：
+   - 基于文本清晰度、信息完整性评估
+   - 范围0.0-1.0，0.9以上表示高置信度
+   - 考虑文本结构、信息密度、专业术语使用等因素
+
+## 注意事项
+- 只返回JSON格式结果，不要包含解释文字
+- 确保JSON格式正确，可以被直接解析
+- 关键词应该是单个词或短语，不要包含标点符号
+- 摘要应该客观准确，避免主观判断
+- 重点关注对后续语义匹配有用的信息";
+        }
 
         protected static void AddMetadata(TextAnalysisDto result, DeepSeekResponse apiResponse, int textLength, long processingTimeMs)
         {

@@ -104,5 +104,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI.Contracts
         public DateTime AnalysisTime { get; set; }
         [JsonPropertyName("confidence")]
         public double Confidence { get; set; }
+        [JsonPropertyName("semantic_vector")]
+        public List<double>? SemanticVector { get; set; }
     }
 }

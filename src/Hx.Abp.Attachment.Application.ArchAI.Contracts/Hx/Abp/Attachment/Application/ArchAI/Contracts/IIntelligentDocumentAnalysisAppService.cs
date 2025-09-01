@@ -2,7 +2,7 @@ using Volo.Abp.Application.Services;
 
 namespace Hx.Abp.Attachment.Application.ArchAI.Contracts
 {
-    public interface IArchiveAIAppService : IApplicationService
+    public interface IIntelligentDocumentAnalysisAppService : IApplicationService
     {
         /// <summary>
         /// 获取OCR全文识别结果

@@ -8,16 +8,16 @@ using Volo.Abp.Application.Services;
 
 namespace Hx.Abp.Attachment.Application.ArchAI
 {
-    public class ArchiveAIAppService(
+    public class IntelligentDocumentAnalysisAppService(
         IConfiguration configuration,
         IEfCoreAttachFileRepository efCoreAttachFileRepository,
         AIServiceFactory aiServiceFactory,
-        ILogger<ArchiveAIAppService> logger) : ApplicationService, IArchiveAIAppService
+        ILogger<IntelligentDocumentAnalysisAppService> logger) : ApplicationService, IIntelligentDocumentAnalysisAppService
     {
         private readonly IConfiguration _configuration = configuration;
         private readonly IEfCoreAttachFileRepository _efCoreAttachFileRepository = efCoreAttachFileRepository;
         private readonly AIServiceFactory _aiServiceFactory = aiServiceFactory;
-        private readonly ILogger<ArchiveAIAppService> _logger = logger;
+        private readonly ILogger<IntelligentDocumentAnalysisAppService> _logger = logger;
 
         public async Task<List<RecognizeCharacterDto>> OcrFullTextAsync(List<Guid> ids)
         {

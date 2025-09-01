@@ -10,9 +10,9 @@ namespace Hx.Abp.Attachment.HttpApi
     /// </summary>
     [ApiController]
     [Route("api/app/intelligent-document-analysis")]
-    public class IntelligentDocumentAnalysisController(IArchiveAIAppService archiveAIAppService) : AbpControllerBase
+    public class IntelligentDocumentAnalysisController(IIntelligentDocumentAnalysisAppService archiveAIAppService) : AbpControllerBase
     {
-        private readonly IArchiveAIAppService _archiveAIAppService = archiveAIAppService;
+        private readonly IIntelligentDocumentAnalysisAppService _archiveAIAppService = archiveAIAppService;
         
         /// <summary>
         /// 获取OCR全文识别结果

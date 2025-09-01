@@ -14,12 +14,12 @@ namespace Hx.Abp.Attachment.Domain
         public virtual string TemplateName { get; private set; }
 
         /// <summary>
-        /// 模板版本号 (新增)
+        /// 模板版本号
         /// </summary>
         public virtual int Version { get; private set; } = 1;
 
         /// <summary>
-        /// 是否为最新版本 (新增)
+        /// 是否为最新版本
         /// </summary>
         public virtual bool IsLatest { get; private set; } = true;
 
@@ -71,6 +71,27 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual ICollection<AttachCatalogueTemplate> Children { get; private set; }
 
+        /// <summary>
+        /// 模板类型 - 标识模板的层级和用途
+        /// </summary>
+        public virtual TemplateType TemplateType { get; private set; } = TemplateType.General;
+
+        /// <summary>
+        /// 模板用途 - 标识模板的具体用途
+        /// </summary>
+        public virtual TemplatePurpose TemplatePurpose { get; private set; } = TemplatePurpose.Classification;
+
+        /// <summary>
+        /// 文本向量（64-2048维）
+        /// </summary>
+        [CanBeNull]
+        public virtual List<double>? TextVector { get; private set; }
+
+        /// <summary>
+        /// 向量维度
+        /// </summary>
+        public virtual int VectorDimension { get; private set; } = 0;
+
 #pragma warning disable CS8618 // 在退出构造函数时，不可为 null 的字段必须包含非 null 值。请考虑声明为可以为 null。
         protected AttachCatalogueTemplate() { }
 #pragma warning restore CS8618 // 在退出构造函数时，不可为 null 的字段必须包含非 null 值。请考虑声明为可以为 null。
@@ -87,7 +108,10 @@ namespace Hx.Abp.Attachment.Domain
             [CanBeNull] string? ruleExpression = null,
             [CanBeNull] string? semanticModel = null,
             int version = 1,
-            bool isLatest = true)
+            bool isLatest = true,
+            TemplateType templateType = TemplateType.General,
+            TemplatePurpose templatePurpose = TemplatePurpose.Classification,
+            [CanBeNull] List<double>? textVector = null)
         {
             Id = id;
             TemplateName = Check.NotNullOrWhiteSpace(templateName, nameof(templateName));
@@ -101,6 +125,9 @@ namespace Hx.Abp.Attachment.Domain
             SemanticModel = semanticModel;
             Version = version;
             IsLatest = isLatest;
+            TemplateType = templateType;
+            TemplatePurpose = templatePurpose;
+            SetTextVector(textVector);
             Children = [];
         }
 
@@ -112,7 +139,9 @@ namespace Hx.Abp.Attachment.Domain
             bool isStatic,
             [CanBeNull] string namePattern,
             [CanBeNull] string ruleExpression,
-            [CanBeNull] string semanticModel)
+            [CanBeNull] string semanticModel,
+            TemplateType templateType,
+            TemplatePurpose templatePurpose)
         {
             TemplateName = Check.NotNullOrWhiteSpace(templateName, nameof(templateName));
             AttachReceiveType = attachReceiveType;
@@ -122,6 +151,8 @@ namespace Hx.Abp.Attachment.Domain
             NamePattern = namePattern;
             RuleExpression = ruleExpression;
             SemanticModel = semanticModel;
+            TemplateType = templateType;
+            TemplatePurpose = templatePurpose;
         }
 
         public virtual void SetVersion(int version, bool isLatest)
@@ -146,6 +177,41 @@ namespace Hx.Abp.Attachment.Domain
         }
 
         /// <summary>
+        /// 设置文本向量
+        /// </summary>
+        /// <param name="textVector">文本向量</param>
+        public virtual void SetTextVector([CanBeNull] List<double>? textVector)
+        {
+            if (textVector != null)
+            {
+                if (textVector.Count < 64 || textVector.Count > 2048)
+                {
+                    throw new ArgumentException("向量维度必须在64到2048之间", nameof(textVector));
+                }
+                TextVector = textVector;
+                VectorDimension = textVector.Count;
+            }
+            else
+            {
+                TextVector = null;
+                VectorDimension = 0;
+            }
+        }
+
+        /// <summary>
+        /// 设置模板标识
+        /// </summary>
+        /// <param name="templateType">模板类型</param>
+        /// <param name="templatePurpose">模板用途</param>
+        public virtual void SetTemplateIdentifiers(
+            TemplateType templateType,
+            TemplatePurpose templatePurpose)
+        {
+            TemplateType = templateType;
+            TemplatePurpose = templatePurpose;
+        }
+
+        /// <summary>
         /// 验证模板配置
         /// </summary>
         public virtual void ValidateConfiguration()
@@ -158,6 +224,12 @@ namespace Hx.Abp.Attachment.Domain
             if (Version <= 0)
             {
                 throw new ArgumentException("版本号必须大于0", nameof(Version));
+            }
+
+            // 验证向量维度
+            if (TextVector != null && (VectorDimension < 64 || VectorDimension > 2048))
+            {
+                throw new ArgumentException("向量维度必须在64到2048之间", nameof(TextVector));
             }
 
             // 验证规则表达式格式（如果提供）
@@ -195,6 +267,9 @@ namespace Hx.Abp.Attachment.Domain
             SequenceNumber = source.SequenceNumber;
             IsStatic = source.IsStatic;
             ParentId = source.ParentId;
+            TemplateType = source.TemplateType;
+            TemplatePurpose = source.TemplatePurpose;
+            SetTextVector(source.TextVector);
         }
 
         /// <summary>
@@ -223,5 +298,47 @@ namespace Hx.Abp.Attachment.Domain
         {
             return TemplateName; // 简化实现，实际应该构建完整路径
         }
+
+        /// <summary>
+        /// 获取模板标识描述
+        /// </summary>
+        public virtual string GetTemplateIdentifierDescription()
+        {
+            return $"{TemplateType} - {TemplatePurpose}";
+        }
+
+        /// <summary>
+        /// 检查是否匹配模板标识
+        /// </summary>
+        /// <param name="templateType">模板类型</param>
+        /// <param name="templatePurpose">模板用途</param>
+        /// <returns>是否匹配</returns>
+        public virtual bool MatchesTemplateIdentifier(
+            TemplateType? templateType = null,
+            TemplatePurpose? templatePurpose = null)
+        {
+            return (templateType == null || TemplateType == templateType) &&
+                   (templatePurpose == null || TemplatePurpose == templatePurpose);
+        }
+
+        /// <summary>
+        /// 检查是否为项目级模板
+        /// </summary>
+        public virtual bool IsProjectTemplate => TemplateType == TemplateType.Project;
+
+        /// <summary>
+        /// 检查是否为阶段级模板
+        /// </summary>
+        public virtual bool IsPhaseTemplate => TemplateType == TemplateType.Phase;
+
+        /// <summary>
+        /// 检查是否为业务分类模板
+        /// </summary>
+        public virtual bool IsBusinessCategoryTemplate => TemplateType == TemplateType.BusinessCategory;
+
+        /// <summary>
+        /// 检查是否为专业领域模板
+        /// </summary>
+        public virtual bool IsProfessionalTemplate => TemplateType == TemplateType.Professional;
     }
 }

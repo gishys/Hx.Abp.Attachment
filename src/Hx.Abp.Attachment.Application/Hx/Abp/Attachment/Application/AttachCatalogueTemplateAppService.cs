@@ -1,5 +1,6 @@
 using Hx.Abp.Attachment.Application.Contracts;
 using Hx.Abp.Attachment.Domain;
+using Hx.Abp.Attachment.Domain.Shared;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
@@ -15,7 +16,7 @@ namespace Hx.Abp.Attachment.Application
             AttachCatalogueTemplate,
             AttachCatalogueTemplateDto,
             Guid,
-            PagedAndSortedResultRequestDto,
+            GetAttachCatalogueTemplateListDto,
             CreateUpdateAttachCatalogueTemplateDto>(repository),
         IAttachCatalogueTemplateAppService
     {
@@ -117,7 +118,10 @@ namespace Hx.Abp.Attachment.Application
                 ruleExpression: input.RuleExpression,
                 semanticModel: input.SemanticModel,
                 version: nextVersion,
-                isLatest: false
+                isLatest: false,
+                templateType: input.TemplateType,
+                templatePurpose: input.TemplatePurpose,
+                textVector: input.TextVector
             );
 
             // 复制子结构
@@ -149,11 +153,14 @@ namespace Hx.Abp.Attachment.Application
                     ruleExpression: child.RuleExpression,
                     semanticModel: child.SemanticModel,
                     version: child.Version,
-                    isLatest: false
+                    isLatest: false,
+                    templateType: child.TemplateType,
+                    templatePurpose: child.TemplatePurpose,
+                    textVector: child.TextVector
                 );
 
                 await _templateRepository.InsertAsync(newChild);
-                await CopyChildrenStructureAsync(child, newChild);
+                await CopyChildrenStructureAsync(newChild, child);
             }
         }
 
@@ -193,7 +200,10 @@ namespace Hx.Abp.Attachment.Application
                 ruleExpression: versionToRollback.RuleExpression,
                 semanticModel: versionToRollback.SemanticModel,
                 version: latestVersion.Version + 1,
-                isLatest: false
+                isLatest: false,
+                templateType: versionToRollback.TemplateType,
+                templatePurpose: versionToRollback.TemplatePurpose,
+                textVector: versionToRollback.TextVector
             );
 
             // 复制子结构
@@ -206,6 +216,53 @@ namespace Hx.Abp.Attachment.Application
             await _templateRepository.SetAsLatestVersionAsync(rollbackTemplate.Id);
 
             return ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(rollbackTemplate);
+        }
+
+        // ============= 新增模板标识查询方法 =============
+        public async Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplatesByIdentifierAsync(
+            TemplateType? templateType = null,
+            TemplatePurpose? templatePurpose = null,
+            bool onlyLatest = true)
+        {
+            var templates = await _templateRepository.GetTemplatesByIdentifierAsync(
+                templateType.HasValue ? (int)templateType.Value : null,
+                templatePurpose.HasValue ? (int)templatePurpose.Value : null,
+                onlyLatest);
+
+            return new ListResultDto<AttachCatalogueTemplateDto>(
+                ObjectMapper.Map<List<AttachCatalogueTemplate>, List<AttachCatalogueTemplateDto>>(templates));
+        }
+
+        // ============= 新增向量相关方法 =============
+        public async Task<ListResultDto<AttachCatalogueTemplateDto>> FindSimilarTemplatesAsync(
+            string semanticQuery, 
+            double similarityThreshold = 0.7,
+            int maxResults = 10)
+        {
+            var templates = await _templateRepository.FindSimilarTemplatesAsync(
+                semanticQuery, similarityThreshold, maxResults);
+
+            return new ListResultDto<AttachCatalogueTemplateDto>(
+                ObjectMapper.Map<List<AttachCatalogueTemplate>, List<AttachCatalogueTemplateDto>>(templates));
+        }
+
+        public async Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplatesByVectorDimensionAsync(
+            int minDimension, 
+            int maxDimension, 
+            bool onlyLatest = true)
+        {
+            var templates = await _templateRepository.GetTemplatesByVectorDimensionAsync(
+                minDimension, maxDimension, onlyLatest);
+
+            return new ListResultDto<AttachCatalogueTemplateDto>(
+                ObjectMapper.Map<List<AttachCatalogueTemplate>, List<AttachCatalogueTemplateDto>>(templates));
+        }
+
+        // ============= 新增统计方法 =============
+        public async Task<AttachCatalogueTemplateStatisticsDto> GetTemplateStatisticsAsync()
+        {
+            var statistics = await _templateRepository.GetTemplateStatisticsAsync();
+            return ObjectMapper.Map<object, AttachCatalogueTemplateStatisticsDto>(statistics);
         }
     }
 }

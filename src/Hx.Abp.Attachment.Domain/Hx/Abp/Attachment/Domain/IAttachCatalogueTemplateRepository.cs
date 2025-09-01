@@ -29,6 +29,26 @@ namespace Hx.Abp.Attachment.Domain
             int expectedLevels = 3,
             bool onlyLatest = true);
 
+        // 新增模板标识查询方法
+        Task<List<AttachCatalogueTemplate>> GetTemplatesByIdentifierAsync(
+            int? templateType = null,
+            int? templatePurpose = null,
+            bool onlyLatest = true);
+
+        // 新增向量相关查询方法
+        Task<List<AttachCatalogueTemplate>> FindSimilarTemplatesAsync(
+            string semanticQuery,
+            double similarityThreshold = 0.7,
+            int maxResults = 10);
+
+        Task<List<AttachCatalogueTemplate>> GetTemplatesByVectorDimensionAsync(
+            int minDimension,
+            int maxDimension,
+            bool onlyLatest = true);
+
+        // 新增统计方法
+        Task<object> GetTemplateStatisticsAsync();
+
         #region 关键字维护方法
 
         /// <summary>

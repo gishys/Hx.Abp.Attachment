@@ -1,45 +1,30 @@
 using Hx.Abp.Attachment.Application.Contracts;
+using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.AspNetCore.Mvc;
+using Volo.Abp;
 using Volo.Abp.Application.Dtos;
-using Volo.Abp.AspNetCore.Mvc;
 
 namespace Hx.Abp.Attachment.HttpApi
 {
-    [ApiController]
-    [Route("api/app/attachment-template")]
-    public class AttachCatalogueTemplateController(IAttachCatalogueTemplateAppService attachCatalogueTemplateAppService) : AbpControllerBase
+    [RemoteService]
+    [Route("api/attach-catalogue-template")]
+    public class AttachCatalogueTemplateController(IAttachCatalogueTemplateAppService attachCatalogueTemplateAppService) : IAttachCatalogueTemplateAppService
     {
-        protected IAttachCatalogueTemplateAppService AttachCatalogueTemplateAppService { get; } = attachCatalogueTemplateAppService;
+        private readonly IAttachCatalogueTemplateAppService _attachCatalogueTemplateAppService = attachCatalogueTemplateAppService;
+
+        public IAttachCatalogueTemplateAppService AttachCatalogueTemplateAppService => _attachCatalogueTemplateAppService;
 
         /// <summary>
-        /// 创建模板
+        /// 获取分类模板列表
         /// </summary>
-        [HttpPost]
-        public virtual Task<AttachCatalogueTemplateDto> CreateAsync(CreateUpdateAttachCatalogueTemplateDto input)
+        [HttpGet]
+        public virtual Task<PagedResultDto<AttachCatalogueTemplateDto>> GetListAsync(GetAttachCatalogueTemplateListDto input)
         {
-            return AttachCatalogueTemplateAppService.CreateAsync(input);
+            return AttachCatalogueTemplateAppService.GetListAsync(input);
         }
 
         /// <summary>
-        /// 更新模板
-        /// </summary>
-        [HttpPut("{id}")]
-        public virtual Task<AttachCatalogueTemplateDto> UpdateAsync(Guid id, CreateUpdateAttachCatalogueTemplateDto input)
-        {
-            return AttachCatalogueTemplateAppService.UpdateAsync(id, input);
-        }
-
-        /// <summary>
-        /// 删除模板
-        /// </summary>
-        [HttpDelete("{id}")]
-        public virtual Task DeleteAsync(Guid id)
-        {
-            return AttachCatalogueTemplateAppService.DeleteAsync(id);
-        }
-
-        /// <summary>
-        /// 获取模板
+        /// 根据ID获取分类模板
         /// </summary>
         [HttpGet("{id}")]
         public virtual Task<AttachCatalogueTemplateDto> GetAsync(Guid id)
@@ -48,12 +33,30 @@ namespace Hx.Abp.Attachment.HttpApi
         }
 
         /// <summary>
-        /// 获取模板列表
+        /// 创建分类模板
         /// </summary>
-        [HttpGet]
-        public virtual Task<PagedResultDto<AttachCatalogueTemplateDto>> GetListAsync([FromQuery] PagedAndSortedResultRequestDto input)
+        [HttpPost]
+        public virtual Task<AttachCatalogueTemplateDto> CreateAsync(CreateUpdateAttachCatalogueTemplateDto input)
         {
-            return AttachCatalogueTemplateAppService.GetListAsync(input);
+            return AttachCatalogueTemplateAppService.CreateAsync(input);
+        }
+
+        /// <summary>
+        /// 更新分类模板
+        /// </summary>
+        [HttpPut("{id}")]
+        public virtual Task<AttachCatalogueTemplateDto> UpdateAsync(Guid id, CreateUpdateAttachCatalogueTemplateDto input)
+        {
+            return AttachCatalogueTemplateAppService.UpdateAsync(id, input);
+        }
+
+        /// <summary>
+        /// 删除分类模板
+        /// </summary>
+        [HttpDelete("{id}")]
+        public virtual Task DeleteAsync(Guid id)
+        {
+            return AttachCatalogueTemplateAppService.DeleteAsync(id);
         }
 
         /// <summary>
@@ -69,7 +72,7 @@ namespace Hx.Abp.Attachment.HttpApi
         /// 获取模板结构
         /// </summary>
         [HttpGet("{id}/structure")]
-        public virtual Task<AttachCatalogueStructureDto> GetTemplateStructureAsync(Guid id, [FromQuery] bool includeHistory = false)
+        public virtual Task<AttachCatalogueStructureDto> GetTemplateStructureAsync(Guid id, bool includeHistory = false)
         {
             return AttachCatalogueTemplateAppService.GetTemplateStructureAsync(id, includeHistory);
         }
@@ -86,7 +89,7 @@ namespace Hx.Abp.Attachment.HttpApi
         /// <summary>
         /// 创建新版本
         /// </summary>
-        [HttpPost("{id}/versions")]
+        [HttpPost("{id}/new-version")]
         public virtual Task<AttachCatalogueTemplateDto> CreateNewVersionAsync(Guid id, CreateUpdateAttachCatalogueTemplateDto input)
         {
             return AttachCatalogueTemplateAppService.CreateNewVersionAsync(id, input);
@@ -102,7 +105,7 @@ namespace Hx.Abp.Attachment.HttpApi
         }
 
         /// <summary>
-        /// 获取版本历史
+        /// 获取模板历史
         /// </summary>
         [HttpGet("{id}/history")]
         public virtual Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplateHistoryAsync(Guid id)
@@ -117,6 +120,56 @@ namespace Hx.Abp.Attachment.HttpApi
         public virtual Task<AttachCatalogueTemplateDto> RollbackToVersionAsync(Guid id)
         {
             return AttachCatalogueTemplateAppService.RollbackToVersionAsync(id);
+        }
+
+        // ============= 新增模板标识查询接口 =============
+
+        /// <summary>
+        /// 按模板标识查询模板
+        /// </summary>
+        [HttpGet("by-identifier")]
+        public virtual Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplatesByIdentifierAsync(
+            [FromQuery] TemplateType? templateType = null,
+            [FromQuery] TemplatePurpose? templatePurpose = null,
+            [FromQuery] bool onlyLatest = true)
+        {
+            return AttachCatalogueTemplateAppService.GetTemplatesByIdentifierAsync(
+                templateType, templatePurpose, onlyLatest);
+        }
+
+        /// <summary>
+        /// 查找相似模板（基于语义向量）
+        /// </summary>
+        [HttpPost("find-similar")]
+        public virtual Task<ListResultDto<AttachCatalogueTemplateDto>> FindSimilarTemplatesAsync(
+            [FromQuery] string semanticQuery,
+            [FromQuery] double similarityThreshold = 0.7,
+            [FromQuery] int maxResults = 10)
+        {
+            return AttachCatalogueTemplateAppService.FindSimilarTemplatesAsync(
+                semanticQuery, similarityThreshold, maxResults);
+        }
+
+        /// <summary>
+        /// 按向量维度查询模板
+        /// </summary>
+        [HttpGet("by-vector-dimension")]
+        public virtual Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplatesByVectorDimensionAsync(
+            [FromQuery] int minDimension,
+            [FromQuery] int maxDimension,
+            [FromQuery] bool onlyLatest = true)
+        {
+            return AttachCatalogueTemplateAppService.GetTemplatesByVectorDimensionAsync(
+                minDimension, maxDimension, onlyLatest);
+        }
+
+        /// <summary>
+        /// 获取模板统计信息
+        /// </summary>
+        [HttpGet("statistics")]
+        public virtual Task<AttachCatalogueTemplateStatisticsDto> GetTemplateStatisticsAsync()
+        {
+            return AttachCatalogueTemplateAppService.GetTemplateStatisticsAsync();
         }
     }
 }

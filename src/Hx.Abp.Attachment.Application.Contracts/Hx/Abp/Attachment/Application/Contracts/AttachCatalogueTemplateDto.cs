@@ -1,4 +1,5 @@
-﻿using Hx.Abp.Attachment.Domain.Shared;
+﻿using Hx.Abp.Attachment.Domain;
+using Hx.Abp.Attachment.Domain.Shared;
 using Volo.Abp.Application.Dtos;
 
 namespace Hx.Abp.Attachment.Application.Contracts
@@ -16,5 +17,30 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public int SequenceNumber { get; set; }
         public bool IsStatic { get; set; }
         public Guid? ParentId { get; set; }
+        
+        /// <summary>
+        /// 模板类型 - 标识模板的层级和用途
+        /// </summary>
+        public TemplateType TemplateType { get; set; } = TemplateType.General;
+        
+        /// <summary>
+        /// 模板用途 - 标识模板的具体用途
+        /// </summary>
+        public TemplatePurpose TemplatePurpose { get; set; } = TemplatePurpose.Classification;
+        
+        /// <summary>
+        /// 文本向量
+        /// </summary>
+        public List<double>? TextVector { get; set; }
+        
+        /// <summary>
+        /// 向量维度
+        /// </summary>
+        public int VectorDimension { get; set; } = 0;
+        
+        /// <summary>
+        /// 模板标识描述
+        /// </summary>
+        public string TemplateIdentifierDescription => $"{TemplateType} - {TemplatePurpose}";
     }
 }

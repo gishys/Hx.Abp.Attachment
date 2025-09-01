@@ -13,7 +13,19 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.ConfigureFullAuditedAggregateRoot();
             builder.ToTable(
                 BgAppConsts.DbTablePrefix + "ATTACH_CATALOGUE_TEMPLATES",
-                BgAppConsts.DbSchema);
+                BgAppConsts.DbSchema,
+                tableBuilder =>
+                {
+                    // 约束配置
+                    tableBuilder.HasCheckConstraint("CK_ATTACH_CATALOGUE_TEMPLATES_VECTOR_DIMENSION",
+                        "\"VECTOR_DIMENSION\" >= 0 AND \"VECTOR_DIMENSION\" <= 2048");
+
+                    tableBuilder.HasCheckConstraint("CK_ATTACH_CATALOGUE_TEMPLATES_TEMPLATE_TYPE",
+                        "\"TEMPLATE_TYPE\" IN (1, 2, 3, 4, 99)");
+
+                    tableBuilder.HasCheckConstraint("CK_ATTACH_CATALOGUE_TEMPLATES_TEMPLATE_PURPOSE",
+                        "\"TEMPLATE_PURPOSE\" IN (1, 2, 3, 4, 99)");
+                });
             
             // 主键配置
             builder.HasKey(d => d.Id).HasName("PK_ATTACH_CATALOGUE_TEMPLATES");
@@ -35,6 +47,21 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.Property(d => d.SequenceNumber).HasColumnName("SEQUENCE_NUMBER").HasDefaultValue(0);
             builder.Property(d => d.IsStatic).HasColumnName("IS_STATIC").HasDefaultValue(false);
             builder.Property(d => d.ParentId).HasColumnName("PARENT_ID");
+
+            // 新增字段配置
+            builder.Property(d => d.TemplateType).HasColumnName("TEMPLATE_TYPE")
+                .HasDefaultValue(99)
+                .HasConversion<int>();
+
+            builder.Property(d => d.TemplatePurpose).HasColumnName("TEMPLATE_PURPOSE")
+                .HasDefaultValue(1)
+                .HasConversion<int>();
+
+            builder.Property(d => d.TextVector).HasColumnName("TEXT_VECTOR")
+                .HasColumnType("double precision[]");
+
+            builder.Property(d => d.VectorDimension).HasColumnName("VECTOR_DIMENSION")
+                .HasDefaultValue(0);
 
             // 审计字段配置
             builder.Property(p => p.ExtraProperties).HasColumnName("EXTRA_PROPERTIES");
@@ -63,6 +90,23 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
             builder.HasIndex(e => e.SequenceNumber)
                 .HasDatabaseName("IDX_ATTACH_CATALOGUE_TEMPLATES_SEQUENCE");
+
+            // 新增索引配置
+            builder.HasIndex(e => e.TemplateType)
+                .HasDatabaseName("IDX_ATTACH_CATALOGUE_TEMPLATES_TYPE")
+                .HasFilter("\"IS_DELETED\" = false");
+
+            builder.HasIndex(e => e.TemplatePurpose)
+                .HasDatabaseName("IDX_ATTACH_CATALOGUE_TEMPLATES_PURPOSE")
+                .HasFilter("\"IS_DELETED\" = false");
+
+            builder.HasIndex(e => new { e.TemplateType, e.TemplatePurpose })
+                .HasDatabaseName("IDX_ATTACH_CATALOGUE_TEMPLATES_IDENTIFIER_COMPOSITE")
+                .HasFilter("\"IS_DELETED\" = false");
+
+            builder.HasIndex(e => e.VectorDimension)
+                .HasDatabaseName("IDX_ATTACH_CATALOGUE_TEMPLATES_VECTOR_DIM")
+                .HasFilter("\"IS_DELETED\" = false AND \"VECTOR_DIMENSION\" > 0");
 
             // 全文搜索索引 - 通过原生SQL创建
             // CREATE INDEX CONCURRENTLY IF NOT EXISTS IDX_ATTACH_CATALOGUE_TEMPLATES_FULLTEXT 

@@ -4,12 +4,10 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using RulesEngine.Interfaces;
 using RulesEngine.Models;
-using System.Linq;
 using System.Linq.Dynamic.Core;
 using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.Guids;
-using System.Dynamic;
 
 namespace Hx.Abp.Attachment.EntityFrameworkCore
 {
@@ -57,7 +55,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 if (totalCount == 0)
                 {
                     Logger.LogWarning("数据库中没有模板数据，返回空列表");
-                    return new List<AttachCatalogueTemplate>();
+                    return [];
                 }
                 
                 // 恢复原有的复杂业务逻辑，保持精度和准确性
@@ -236,7 +234,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 catch (Exception fallbackEx)
                 {
                     Logger.LogError(fallbackEx, "备选搜索也失败了");
-                    return new List<AttachCatalogueTemplate>();
+                    return [];
                 }
             }
         }
@@ -261,8 +259,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 return 0.8;
 
             // 单词匹配
-            var words1 = text1.Split(new[] { ' ', '_', '-', '.', ',', ';', ':', '!', '?' }, StringSplitOptions.RemoveEmptyEntries);
-            var words2 = text2.Split(new[] { ' ', '_', '-', '.', ',', ';', ':', '!', '?' }, StringSplitOptions.RemoveEmptyEntries);
+            var words1 = text1.Split([' ', '_', '-', '.', ',', ';', ':', '!', '?'], StringSplitOptions.RemoveEmptyEntries);
+            var words2 = text2.Split([' ', '_', '-', '.', ',', ';', ':', '!', '?'], StringSplitOptions.RemoveEmptyEntries);
 
             var commonWords = words1.Intersect(words2, StringComparer.OrdinalIgnoreCase).Count();
             var totalWords = Math.Max(words1.Length, words2.Length);
@@ -457,7 +455,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             
             // 1. 从业务描述中提取核心词汇
             var businessWords = businessDescription
-                .Split(new[] { ' ', ',', '，', '、', '；', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Split([' ', ',', '，', '、', '；', ';'], StringSplitOptions.RemoveEmptyEntries)
                 .Where(w => w.Length > 1)
                 .ToList();
 
@@ -480,7 +478,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             }
 
             // 3. 去重并限制数量
-            return keywords.Distinct().Take(10).ToList();
+            return [.. keywords.Distinct().Take(10)];
         }
 
         /// <summary>
@@ -583,7 +581,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             catch (Exception ex)
             {
                 Logger.LogError(ex, "降级查询也失败了");
-                return new List<AttachCatalogueTemplate>();
+                return [];
             }
         }
 
@@ -601,7 +599,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             // 1. 业务关键词匹配
             foreach (var keyword in businessKeywords)
             {
-                if (text.Contains(keyword.ToLowerInvariant()))
+                if (text.Contains(keyword, StringComparison.InvariantCultureIgnoreCase))
                 {
                     score += 0.3; // 每个关键词匹配增加0.3分
                 }
@@ -610,7 +608,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             // 2. 文件类型关键词匹配
             foreach (var fileType in fileTypeKeywords)
             {
-                if (text.Contains(fileType.ToLowerInvariant()))
+                if (text.Contains(fileType, StringComparison.InvariantCultureIgnoreCase))
                 {
                     score += 0.2; // 每个文件类型匹配增加0.2分
                 }
@@ -822,12 +820,12 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 }
                 
                 // 去重并限制数量
-                return keywords.Distinct().Take(10).ToList();
+                return [.. keywords.Distinct().Take(10)];
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "提取语义关键字失败，模板ID：{templateId}", templateId);
-                return new List<string>();
+                return [];
             }
         }
 
@@ -853,7 +851,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     .Where(fn => !string.IsNullOrEmpty(fn))
                     .ToList();
                 
-                if (!fileNames.Any())
+                if (fileNames.Count == 0)
                 {
                     return "{Type}_{ProjectName}_{Date}";
                 }
@@ -875,7 +873,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         /// </summary>
         private static string DetermineNamePattern(List<string> fileNames)
         {
-            if (!fileNames.Any())
+            if (fileNames.Count == 0)
                 return "{Type}_{ProjectName}_{Date}";
             
             // 分析文件名中的模式
@@ -1053,7 +1051,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             catch (Exception ex)
             {
                 Logger.LogError(ex, "获取模板使用趋势失败，模板ID：{templateId}", templateId);
-                return new List<TemplateUsageTrend>();
+                return [];
             }
         }
 
@@ -1145,7 +1143,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             catch (Exception ex)
             {
                 Logger.LogError(ex, "获取热门模板失败");
-                return new List<HotTemplate>();
+                return [];
             }
         }
 
@@ -1192,7 +1190,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     ActiveTemplates = totalTemplates, // 简化处理
                     TotalUsageCount = totalUsage,
                     AverageUsagePerTemplate = totalTemplates > 0 ? Math.Round((double)totalUsage / totalTemplates, 2) : 0,
-                    TopUsedTemplates = topUsedTemplates.Select(t => new HotTemplate
+                    TopUsedTemplates = [.. topUsedTemplates.Select(t => new HotTemplate
                     {
                         TemplateId = t.Id,
                         TemplateName = t.TemplateName,
@@ -1200,8 +1198,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                         RecentUsageCount = 0, // 需要额外查询
                         AverageUsagePerDay = 0, // 需要额外计算
                         LastUsedTime = null // 需要额外查询
-                    }).ToList(),
-                    UsageByMonth = new Dictionary<string, int>() // 需要额外查询
+                    })],
+                    UsageByMonth = [] // 需要额外查询
                 };
 
                 Logger.LogInformation("获取模板使用统计概览完成");
@@ -1216,5 +1214,207 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         }
 
         #endregion
+
+        // ============= 新增模板标识查询方法 =============
+        
+        /// <summary>
+        /// 按模板标识查询模板
+        /// </summary>
+        public async Task<List<AttachCatalogueTemplate>> GetTemplatesByIdentifierAsync(
+            int? templateType = null,
+            int? templatePurpose = null,
+            bool onlyLatest = true)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                var queryable = dbSet.AsQueryable();
+
+                // 应用过滤条件
+                if (onlyLatest)
+                {
+                    queryable = queryable.Where(t => t.IsLatest);
+                }
+
+                if (templateType.HasValue)
+                {
+                    queryable = queryable.Where(t => (int)t.TemplateType == templateType.Value);
+                }
+
+                if (templatePurpose.HasValue)
+                {
+                    queryable = queryable.Where(t => (int)t.TemplatePurpose == templatePurpose.Value);
+                }
+
+                var templates = await queryable
+                    .OrderBy(t => t.SequenceNumber)
+                    .ThenBy(t => t.TemplateName)
+                    .ToListAsync();
+
+                Logger.LogInformation("按模板标识查询完成，类型：{templateType}，用途：{templatePurpose}，结果数量：{count}", 
+                    templateType, templatePurpose, templates.Count);
+
+                return templates;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "按模板标识查询模板失败");
+                return [];
+            }
+        }
+
+        // ============= 新增向量相关查询方法 =============
+
+        /// <summary>
+        /// 查找相似模板（基于语义向量）
+        /// </summary>
+        public async Task<List<AttachCatalogueTemplate>> FindSimilarTemplatesAsync(
+            string semanticQuery,
+            double similarityThreshold = 0.7,
+            int maxResults = 10)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                
+                // 首先获取有向量的模板
+                var templatesWithVector = await dbSet
+                    .Where(t => t.IsLatest && t.TextVector != null && t.VectorDimension > 0)
+                    .ToListAsync();
+
+                if (templatesWithVector.Count == 0)
+                {
+                    Logger.LogWarning("没有找到包含向量的模板");
+                    return [];
+                }
+
+                // 使用语义匹配器查找相似模板
+                var similarTemplates = await _semanticMatcher.MatchTemplatesAsync(semanticQuery, templatesWithVector);
+                
+                // 过滤相似度阈值
+                var filteredTemplates = similarTemplates
+                    .Where(t => t.GetType().GetProperty("SimilarityScore")?.GetValue(t) is double score && score >= similarityThreshold)
+                    .Take(maxResults)
+                    .ToList();
+
+                Logger.LogInformation("查找相似模板完成，查询：{query}，阈值：{threshold}，结果数量：{count}", 
+                    semanticQuery, similarityThreshold, filteredTemplates.Count);
+
+                return filteredTemplates;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "查找相似模板失败");
+                return [];
+            }
+        }
+
+        /// <summary>
+        /// 按向量维度查询模板
+        /// </summary>
+        public async Task<List<AttachCatalogueTemplate>> GetTemplatesByVectorDimensionAsync(
+            int minDimension,
+            int maxDimension,
+            bool onlyLatest = true)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                var queryable = dbSet.AsQueryable();
+
+                // 应用过滤条件
+                if (onlyLatest)
+                {
+                    queryable = queryable.Where(t => t.IsLatest);
+                }
+
+                // 向量维度范围过滤
+                queryable = queryable.Where(t => 
+                    t.VectorDimension >= minDimension && 
+                    t.VectorDimension <= maxDimension);
+
+                var templates = await queryable
+                    .OrderBy(t => t.VectorDimension)
+                    .ThenBy(t => t.TemplateName)
+                    .ToListAsync();
+
+                Logger.LogInformation("按向量维度查询完成，最小维度：{minDimension}，最大维度：{maxDimension}，结果数量：{count}", 
+                    minDimension, maxDimension, templates.Count);
+
+                return templates;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "按向量维度查询模板失败");
+                return [];
+            }
+        }
+
+        // ============= 新增统计方法 =============
+
+        /// <summary>
+        /// 获取模板统计信息
+        /// </summary>
+        public async Task<object> GetTemplateStatisticsAsync()
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                
+                // 基础统计
+                var totalCount = await dbSet.Where(t => !t.IsDeleted).CountAsync();
+                var latestCount = await dbSet.Where(t => !t.IsDeleted && t.IsLatest).CountAsync();
+                var templatesWithVector = await dbSet.Where(t => !t.IsDeleted && t.TextVector != null && t.VectorDimension > 0).CountAsync();
+                
+                // 按模板类型统计
+                var typeCounts = await dbSet
+                    .Where(t => !t.IsDeleted)
+                    .GroupBy(t => (int)t.TemplateType)
+                    .Select(g => new { Type = g.Key, Count = g.Count() })
+                    .ToDictionaryAsync(x => x.Type.ToString(), x => x.Count);
+
+                // 按模板用途统计
+                var purposeCounts = await dbSet
+                    .Where(t => !t.IsDeleted)
+                    .GroupBy(t => (int)t.TemplatePurpose)
+                    .Select(g => new { Purpose = g.Key, Count = g.Count() })
+                    .ToDictionaryAsync(x => x.Purpose.ToString(), x => x.Count);
+
+                // 向量维度统计
+                var vectorTemplates = await dbSet
+                    .Where(t => !t.IsDeleted && t.VectorDimension > 0)
+                    .Select(t => t.VectorDimension)
+                    .ToListAsync();
+
+                var averageVectorDimension = vectorTemplates.Count != 0 ? vectorTemplates.Average() : 0.0;
+
+                var statistics = new
+                {
+                    TotalCount = totalCount,
+                    LatestCount = latestCount,
+                    TemplatesWithVector = templatesWithVector,
+                    TemplateTypeCounts = typeCounts,
+                    TemplatePurposeCounts = purposeCounts,
+                    AverageVectorDimension = Math.Round(averageVectorDimension, 2)
+                };
+
+                Logger.LogInformation("获取模板统计信息完成，总数量：{totalCount}", totalCount);
+
+                return statistics;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取模板统计信息失败");
+                return new
+                {
+                    TotalCount = 0,
+                    LatestCount = 0,
+                    TemplatesWithVector = 0,
+                    TemplateTypeCounts = new Dictionary<string, int>(),
+                    TemplatePurposeCounts = new Dictionary<string, int>(),
+                    AverageVectorDimension = 0.0
+                };
+            }
+        }
     }
 }

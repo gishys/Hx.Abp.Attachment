@@ -1,4 +1,5 @@
 using Hx.Abp.Attachment.Application.ArchAI.Contracts;
+using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Text.Json;
@@ -545,7 +546,8 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             }
 
             // 兜底：从原始文本中按分号切片，选择最长的非None片段
-            var slices = responseText.Split([';', '；'], StringSplitOptions.RemoveEmptyEntries)
+            // 使用优化的扩展方法避免歧义
+            var slices = responseText.SplitEfficient([';', '；'])
                                      .Select(s => s.Trim())
                                      .Where(s => !string.IsNullOrWhiteSpace(s) &&
                                                  !s.EndsWith(": None", StringComparison.OrdinalIgnoreCase) &&
@@ -577,7 +579,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                 var keywordText = keywordMatch.Groups[1].Value.Trim();
                 // 按制表符、逗号、分号等分隔符分割
                 var extractedKeywords = keywordText
-                    .Split(['\t', ',', '，', ';', '；', ' '], StringSplitOptions.RemoveEmptyEntries)
+                    .SplitEfficient(['\t', ',', '，', ';', '；', ' '])
                     .Select(k => k.Trim())
                     .Where(k => !string.IsNullOrEmpty(k) && k != "None")
                     .Take(keywordCount)
@@ -597,7 +599,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                 {
                     var importantText = importantMatch.Groups[1].Value.Trim();
                     var additionalKeywords = importantText
-                        .Split(['\t', ',', '，', ';', '；', ' '], StringSplitOptions.RemoveEmptyEntries)
+                        .SplitEfficient(['\t', ',', '，', ';', '；', ' '])
                         .Select(k => k.Trim())
                         .Where(k => !string.IsNullOrEmpty(k) && k != "None" && !keywords.Contains(k))
                         .Take(remainingCount)
@@ -615,7 +617,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                     {
                         var conceptText = conceptMatch.Groups[1].Value.Trim();
                         var conceptKeywords = conceptText
-                            .Split(['\t', ',', '，', ';', '；', ' '], StringSplitOptions.RemoveEmptyEntries)
+                            .SplitEfficient(['\t', ',', '，', ';', '；', ' '])
                             .Select(k => k.Trim())
                             .Where(k => !string.IsNullOrEmpty(k) && k != "None" && !keywords.Contains(k))
                             .Take(remainingCount)
@@ -654,7 +656,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                 {
                     var categoryText = classificationMatch.Groups[1].Value.Trim();
                     var categoryPairs = categoryText
-                        .Split(['\t', ',', '，', ';', '；', ' '], StringSplitOptions.RemoveEmptyEntries)
+                        .SplitEfficient(['\t', ',', '，', ';', '；', ' '])
                         .Select(pair => pair.Trim().Split(':', 2))
                         .Where(pair => pair.Length == 2)
                         .ToDictionary(pair => pair[0].Trim(), pair => double.Parse(pair[1].Trim()));
@@ -1043,7 +1045,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             if (!match.Success) return result;
 
             var pairs = match.Groups[1].Value
-                .Split(['\t', ',', '，', ';', '；', ' '], StringSplitOptions.RemoveEmptyEntries)
+                .SplitEfficient(['\t', ',', '，', ';', '；', ' '])
                 .Select(s => s.Trim())
                 .Select(s => s.Split(':', 2))
                 .Where(a => a.Length == 2)
@@ -1079,7 +1081,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
 
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var tokens = responseText
-                .Split(['\n', '\r', ';', '；', ',', '，'], StringSplitOptions.RemoveEmptyEntries)
+                .SplitEfficient(['\n', '\r', ';', '；', ',', '，'])
                 .Select(s => s.Trim())
                 .Where(s => !string.IsNullOrWhiteSpace(s))
                 .ToList();
@@ -1199,7 +1201,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             if (text.Contains("分类") || text.Contains("功能") || text.Contains("主题"))
             {
                 // 按分号分割不同的分类字段
-                var categoryFields = text.Split([';', '；'], StringSplitOptions.RemoveEmptyEntries);
+                var categoryFields = text.SplitEfficient([';', '；']);
                 
                 foreach (var field in categoryFields)
                 {
@@ -1242,7 +1244,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                 if (categories.Count == 0)
                 {
                     // 尝试从文本中提取任何看起来像分类名称的内容
-                    var words = text.Split([' ', '，', ',', ';', '；', ':', '：'], StringSplitOptions.RemoveEmptyEntries);
+                    var words = text.SplitEfficient([' ', '，', ',', ';', '；', ':', '：']);
                     foreach (var word in words)
                     {
                         if (categories.Count >= recommendationCount) break;

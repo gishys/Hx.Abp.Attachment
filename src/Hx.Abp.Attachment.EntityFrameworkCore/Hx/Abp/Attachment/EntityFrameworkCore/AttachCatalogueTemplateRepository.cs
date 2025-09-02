@@ -1,4 +1,5 @@
 using Hx.Abp.Attachment.Domain;
+using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -259,11 +260,11 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 return 0.8;
 
             // 单词匹配
-            var words1 = text1.Split([' ', '_', '-', '.', ',', ';', ':', '!', '?'], StringSplitOptions.RemoveEmptyEntries);
-            var words2 = text2.Split([' ', '_', '-', '.', ',', ';', ':', '!', '?'], StringSplitOptions.RemoveEmptyEntries);
+            var words1 = text1.SplitEfficient([' ', '_', '-', '.', ',', ';', ':', '!', '?']);
+            var words2 = text2.SplitEfficient([' ', '_', '-', '.', ',', ';', ':', '!', '?']);
 
             var commonWords = words1.Intersect(words2, StringComparer.OrdinalIgnoreCase).Count();
-            var totalWords = Math.Max(words1.Length, words2.Length);
+            var totalWords = Math.Max(words1.Count, words2.Count);
 
             if (totalWords == 0)
                 return 0.0;
@@ -455,7 +456,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             
             // 1. 从业务描述中提取核心词汇
             var businessWords = businessDescription
-                .Split([' ', ',', '，', '、', '；', ';'], StringSplitOptions.RemoveEmptyEntries)
+                .SplitEfficient([' ', ',', '，', '、', '；', ';'])
                 .Where(w => w.Length > 1)
                 .ToList();
 

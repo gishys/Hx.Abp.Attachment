@@ -1,4 +1,5 @@
 using Hx.Abp.Attachment.Application.ArchAI.Contracts;
+using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Text.Json;
@@ -121,7 +122,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                 Confidence = 0.8
             };
 
-            var words = content.Split([' ', ',', '.', ';', ':', '!', '?', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries)
+            var words = content.SplitEfficient([' ', ',', '.', ';', ':', '!', '?', '\n', '\r'])
                 .Where(w => w.Length > 2)
                 .Select(w => w.Trim('"', '\'', '(', ')', '[', ']', '{', '}'))
                 .Where(w => w.Length > 2)
@@ -184,7 +185,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         /// <summary>
         /// 构建通用分析提示词
         /// </summary>
-        public string BuildGenericPrompt1(int keywordCount, int maxSummaryLength, string taskDescription)
+        public static string BuildGenericPrompt1(int keywordCount, int maxSummaryLength, string taskDescription)
         {
             return $@"
 # 通用文本分析专家指令

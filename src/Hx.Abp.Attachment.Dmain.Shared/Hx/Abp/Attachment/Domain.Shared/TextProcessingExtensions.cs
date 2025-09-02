@@ -44,6 +44,42 @@ namespace Hx.Abp.Attachment.Domain.Shared
         }
 
         /// <summary>
+        /// 高效的字符串分割方法，接受字符数组参数，避免歧义
+        /// </summary>
+        /// <param name="text">要分割的文本</param>
+        /// <param name="separators">分隔符字符数组</param>
+        /// <returns>分割后的字符串列表</returns>
+        public static List<string> SplitEfficient(this string text, char[] separators)
+        {
+            if (string.IsNullOrEmpty(text))
+                return [];
+
+            var result = new List<string>();
+            var currentStart = 0;
+            var textSpan = text.AsSpan();
+
+            for (int i = 0; i < textSpan.Length; i++)
+            {
+                if (separators.Contains(textSpan[i]))
+                {
+                    if (i > currentStart)
+                    {
+                        result.Add(textSpan[currentStart..i].ToString());
+                    }
+                    currentStart = i + 1;
+                }
+            }
+
+            // 添加最后一个部分
+            if (currentStart < textSpan.Length)
+            {
+                result.Add(textSpan[currentStart..].ToString());
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// 提取关键词的优化方法
         /// </summary>
         /// <param name="text">要处理的文本</param>

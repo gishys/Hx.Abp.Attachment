@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Hx.Abp.Attachment.Domain")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9c2662a0f7125f4924719a060a538f10d0505033")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4b60e69d82b946b82f2f677b482b0b527d7ad5cc")]
 [assembly: System.Reflection.AssemblyProductAttribute("Hx.Abp.Attachment.Domain")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Hx.Abp.Attachment.Domain")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

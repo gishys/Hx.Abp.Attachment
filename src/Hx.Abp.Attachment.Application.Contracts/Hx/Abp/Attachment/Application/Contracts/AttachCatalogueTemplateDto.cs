@@ -39,6 +39,11 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public int VectorDimension { get; set; } = 0;
         
         /// <summary>
+        /// 权限集合
+        /// </summary>
+        public ICollection<AttachCatalogueTemplatePermissionDto>? Permissions { get; set; }
+        
+        /// <summary>
         /// 模板标识描述
         /// </summary>
         public string TemplateIdentifierDescription => $"{TemplateType} - {TemplatePurpose}";

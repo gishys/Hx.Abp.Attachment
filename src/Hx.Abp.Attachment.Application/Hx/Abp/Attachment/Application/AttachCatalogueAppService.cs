@@ -388,7 +388,13 @@ namespace Hx.Abp.Attachment.Application
                         isRequired: input.IsRequired,
                         isVerification: input.IsVerification,
                         verificationPassed: input.VerificationPassed,
-                        isStatic: input.IsStatic);
+                        isStatic: input.IsStatic,
+                        attachCount: 0,
+                        pageCount: 0,
+                        templateId: input.TemplateId,
+                        catalogueType: input.CatalogueType,
+                        cataloguePurpose: input.CataloguePurpose,
+                        textVector: input.TextVector);
                 if (input.Children?.Count > 0)
                 {
                     var children = await GetEntitys([.. input.Children], 0);

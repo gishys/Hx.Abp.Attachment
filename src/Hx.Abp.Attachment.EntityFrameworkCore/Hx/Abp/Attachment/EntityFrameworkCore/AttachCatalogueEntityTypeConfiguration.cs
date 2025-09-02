@@ -33,12 +33,12 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
             // 创建权限集合的值转换器
 #pragma warning disable CS8600 // 将 null 文本或可能的 null 值转换为不可为 null 类型
-            var permissionsConverter = new ValueConverter<ICollection<AttachCatalogueTemplatePermission>, string?>(
-                // 转换为数据库值
-                v => v == null || v.Count == 0 ? null : 
+            var permissionsConverter = new ValueConverter<ICollection<AttachCatalogueTemplatePermission>, string>(
+                // 转换为数据库值 - 空集合转换为空数组字符串，而不是null
+                v => v == null || v.Count == 0 ? "[]" : 
                      JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
                 // 从数据库值转换
-                v => string.IsNullOrEmpty(v) ? new List<AttachCatalogueTemplatePermission>() : 
+                v => string.IsNullOrEmpty(v) || v == "[]" ? new List<AttachCatalogueTemplatePermission>() : 
                      JsonSerializer.Deserialize<List<AttachCatalogueTemplatePermission>>(v, (JsonSerializerOptions)null) ?? new List<AttachCatalogueTemplatePermission>()
             );
 #pragma warning restore CS8600

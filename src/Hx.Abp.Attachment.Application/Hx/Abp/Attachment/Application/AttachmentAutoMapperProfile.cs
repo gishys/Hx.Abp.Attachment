@@ -20,7 +20,8 @@ namespace Hx.Abp.Attachment.Application
             CreateMap<AttachFileUpdateDto, AttachFile>(MemberList.Source);
             
             // AttachCatalogueTemplate 映射
-            CreateMap<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(MemberList.Destination);
+            CreateMap<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(MemberList.Destination)
+                .ForMember(dest => dest.Permissions, opt => opt.MapFrom(src => src.Permissions));
             CreateMap<CreateUpdateAttachCatalogueTemplateDto, AttachCatalogueTemplate>(MemberList.Source);
             
             // 权限相关映射

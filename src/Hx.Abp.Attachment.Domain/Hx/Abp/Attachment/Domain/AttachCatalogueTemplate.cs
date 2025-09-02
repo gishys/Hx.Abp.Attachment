@@ -96,7 +96,7 @@ namespace Hx.Abp.Attachment.Domain
         /// <summary>
         /// 权限集合（JSONB格式，存储权限值对象数组）
         /// </summary>
-        public virtual ICollection<AttachCatalogueTemplatePermission> Permissions { get; private set; }
+        public virtual ICollection<AttachCatalogueTemplatePermission> Permissions { get; private set; } = [];
 
 #pragma warning disable CS8618 // 在退出构造函数时，不可为 null 的字段必须包含非 null 值。请考虑声明为可以为 null。
         protected AttachCatalogueTemplate() { }
@@ -277,7 +277,7 @@ namespace Hx.Abp.Attachment.Domain
             TemplateType = source.TemplateType;
             TemplatePurpose = source.TemplatePurpose;
             SetTextVector(source.TextVector);
-            Permissions = source.Permissions.Select(p => new AttachCatalogueTemplatePermission(p.PermissionType, p.PermissionTarget, p.Action, p.Effect, p.AttributeConditions, p.EffectiveTime, p.ExpirationTime, p.Description)).ToList();
+            Permissions = [.. source.Permissions.Select(p => new AttachCatalogueTemplatePermission(p.PermissionType, p.PermissionTarget, p.Action, p.Effect, p.AttributeConditions, p.EffectiveTime, p.ExpirationTime, p.Description))];
         }
 
         /// <summary>
@@ -356,8 +356,7 @@ namespace Hx.Abp.Attachment.Domain
         {
             ArgumentNullException.ThrowIfNull(permission);
             
-            if (Permissions == null)
-                Permissions = new List<AttachCatalogueTemplatePermission>();
+            Permissions ??= [];
                 
             Permissions.Add(permission);
         }
@@ -369,10 +368,7 @@ namespace Hx.Abp.Attachment.Domain
         {
             ArgumentNullException.ThrowIfNull(permission);
             
-            if (Permissions != null)
-            {
-                Permissions.Remove(permission);
-            }
+            Permissions?.Remove(permission);
         }
 
         /// <summary>
@@ -391,7 +387,7 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual IEnumerable<AttachCatalogueTemplatePermission> GetPermissionsByAction(PermissionAction action)
         {
-            return Permissions?.Where(p => p.Action == action) ?? Enumerable.Empty<AttachCatalogueTemplatePermission>();
+            return Permissions?.Where(p => p.Action == action) ?? [];
         }
 
         /// <summary>
@@ -399,7 +395,7 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual IEnumerable<AttachCatalogueTemplatePermission> GetPermissionsByType(string permissionType)
         {
-            return Permissions?.Where(p => p.PermissionType == permissionType) ?? Enumerable.Empty<AttachCatalogueTemplatePermission>();
+            return Permissions?.Where(p => p.PermissionType == permissionType) ?? [];
         }
 
         /// <summary>
@@ -407,7 +403,7 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual bool HasPermission(Guid userId, PermissionAction action)
         {
-            if (Permissions == null || !Permissions.Any())
+            if (Permissions == null || Permissions.Count == 0)
                 return false;
 
             // 检查直接权限
@@ -415,7 +411,7 @@ namespace Hx.Abp.Attachment.Domain
                 .Where(p => p.IsEffective() && p.Action == action)
                 .ToList();
 
-            if (directPermissions.Any())
+            if (directPermissions.Count != 0)
             {
                 // 如果有拒绝权限，直接拒绝
                 if (directPermissions.Any(p => p.Effect == PermissionEffect.Deny))
@@ -433,7 +429,7 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual string GetPermissionSummary()
         {
-            if (Permissions == null || !Permissions.Any())
+            if (Permissions == null || Permissions.Count == 0)
                 return "无权限配置";
 
             var summary = $"权限数量: {Permissions.Count}";

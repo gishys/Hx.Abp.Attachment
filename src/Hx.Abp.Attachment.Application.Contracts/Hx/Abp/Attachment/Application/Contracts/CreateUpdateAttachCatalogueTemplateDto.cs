@@ -40,5 +40,10 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// </summary>
         [Range(64, 2048, ErrorMessage = "向量维度必须在64到2048之间")]
         public List<double>? TextVector { get; set; }
+        
+        /// <summary>
+        /// 权限集合
+        /// </summary>
+        public ICollection<AttachCatalogueTemplatePermissionDto>? Permissions { get; set; }
     }
 }

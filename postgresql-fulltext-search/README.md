@@ -1,133 +1,120 @@
-# PostgreSQL 全文搜索与智能推荐解决方案
+# 附件管理系统数据库迁移脚本
 
-## 📚 文档导航
+## 概述
 
-### 🎯 主要文档
+本项目包含附件管理系统的完整数据库迁移脚本，支持 PostgreSQL 数据库的全文搜索、权限管理、模板管理等功能。
 
--   **[📖 完整解决方案指南](./INTEGRATED_SOLUTION_GUIDE.md)** - 整合了全文搜索、智能推荐、OCR 处理等核心功能的完整解决方案
+## 迁移脚本
 
-### 🔧 技术文档
+### 1. 统一模板迁移脚本
 
--   **[📊 模板使用统计API指南](./TEMPLATE_USAGE_STATS_API_GUIDE.md)** - 模板使用统计功能的API使用指南
--   **[🧠 动态搜索指南](./DYNAMIC_SEARCH_GUIDE.md)** - 基于数据库内容的动态智能匹配功能
+-   **文件**: `unified-attach-catalogue-template-migration.sql`
+-   **说明**: 完整的 `AttachCatalogueTemplate` 表迁移脚本，包含表创建、字段添加、权限字段、索引创建、约束添加等所有功能
+-   **功能**:
+    -   表结构和字段管理
+    -   权限字段（JSONB 格式）
+    -   完整的索引体系
+    -   约束和验证
+    -   示例数据插入
 
-### 🗄️ 数据库脚本
+### 2. 附件分类增强迁移脚本
 
--   **[🏗️ 数据库迁移](./database-migration.sql)** - 完整的数据库结构迁移脚本
--   **[📁 目录模板迁移](./attach-catalogue-templates-migration.sql)** - 目录模板相关的数据库迁移
--   **[🔍 OCR 文本块迁移](./ocr-text-blocks-migration.sql)** - OCR 文本块相关的数据库迁移
--   **[🔍 模糊搜索调试](./fuzzy-search-debug.sql)** - 模糊搜索功能的调试脚本
--   **[🧠 动态搜索迁移](./dynamic-search-migration.sql)** - 动态搜索功能的数据库迁移脚本
--   **[📊 模板使用统计](./template-usage-count-migration.sql)** - 模板使用次数统计的 SQL 脚本
+-   **文件**: `attach-catalogue-enhancement-migration.sql`
+-   **说明**: 为 `AttachCatalogue` 表添加增强功能的迁移脚本
+-   **功能**:
+    -   模板类型和用途字段
+    -   文本向量和向量维度
+    -   权限集合字段
+    -   相关索引和约束
 
-### 📖 功能指南
+### 3. 权限系统迁移脚本
 
--   **[📋 目录模板指南](./ATTACH_CATALOGUE_TEMPLATE_GUIDE.md)** - 目录模板的详细使用指南
--   **[🔍 增强 OCR 指南](./README-EnhancedOcr.md)** - 增强 OCR 功能的详细说明
--   **[📋 迁移指南](./MIGRATION_GUIDE.md)** - 系统迁移的详细步骤
+-   **文件**: `permission-system-migration.sql`
+-   **说明**: 完整的权限系统数据库结构迁移脚本
+-   **功能**:
+    -   权限表结构
+    -   角色和用户权限关联
+    -   权限验证和检查
 
-## 🚀 快速开始
+### 4. 模板使用统计迁移脚本
 
-### 1. 查看完整解决方案
+-   **文件**: `template-usage-count-migration.sql`
+-   **说明**: 为模板使用统计功能添加数据库支持的迁移脚本
+-   **功能**:
+    -   模板 ID 关联字段
+    -   统计视图和函数
+    -   使用趋势分析
 
-首先阅读 **[完整解决方案指南](./INTEGRATED_SOLUTION_GUIDE.md)**，了解系统的整体架构和核心功能。
+### 5. 模板权限字段迁移脚本
 
-### 2. 数据库配置
+-   **文件**: `attach-catalogue-template-permissions-migration.sql`
+-   **说明**: 专门为模板表添加权限字段的迁移脚本
+-   **功能**:
+    -   权限字段添加和配置
+    -   数据清理和标准化
+    -   约束和索引创建
 
-执行数据库迁移脚本：
+## 测试脚本
+
+### 1. 附件分类增强测试脚本
+
+-   **文件**: `attach-catalogue-enhancement-test.sql`
+-   **说明**: 验证附件分类增强功能的测试脚本
+-   **功能**:
+    -   新增字段功能测试
+    -   索引性能测试
+    -   约束验证测试
+    -   权限功能测试
+
+### 2. 权限系统测试脚本
+
+-   **文件**: `permission-system-test.sql`
+-   **说明**: 验证权限系统功能的测试脚本
+-   **功能**:
+    -   用户权限查询测试
+    -   角色权限验证测试
+    -   权限继承测试
+    -   性能测试
+
+## 使用说明
+
+### 执行顺序
+
+1. 先执行 `permission-system-migration.sql`（权限系统基础）
+2. 再执行 `unified-attach-catalogue-template-migration.sql`（模板表结构）
+3. 然后执行 `attach-catalogue-enhancement-migration.sql`（分类表增强）
+4. 最后执行 `template-usage-count-migration.sql`（统计功能）
+
+### 执行方法
 
 ```sql
--- 执行 database-migration.sql 文件中的所有SQL语句
--- 启用模糊搜索扩展
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-
--- 创建中文全文搜索配置
-CREATE TEXT SEARCH CONFIGURATION chinese_fts (PARSER = pg_catalog.default);
-ALTER TEXT SEARCH CONFIGURATION chinese_fts
-    ALTER MAPPING FOR
-        asciiword, asciihword, hword_asciipart,
-        word, hword, hword_part
-    WITH simple;
+-- 在PostgreSQL中执行
+\i script-name.sql
 ```
 
-### 3. 依赖注入配置
+### 注意事项
 
-在 `HxAbpAttachmentApplicationModule.cs` 中注册服务：
+-   执行前请备份数据库
+-   建议在测试环境先验证
+-   需要数据库管理员权限
+-   生产环境谨慎操作
 
-```csharp
-public override void ConfigureServices(ServiceConfigurationContext context)
-{
-    // 注册OCR服务
-    context.Services.AddScoped<IOcrService, OcrService>();
+## 技术特性
 
-    // 注册全文搜索仓储
-    context.Services.AddScoped<IFullTextSearchRepository, FullTextSearchRepository>();
+-   **PostgreSQL 12+** 支持
+-   **JSONB** 数据类型支持
+-   **全文搜索** 索引
+-   **向量搜索** 支持
+-   **权限管理** 系统
+-   **模板管理** 功能
+-   **统计分析** 能力
 
-    // 注册语义匹配服务
-    context.Services.AddScoped<ISemanticMatcher, DefaultSemanticMatcher>();
-}
-```
+## 文档
 
-## 🔧 核心功能
+-   `UNIFIED_MIGRATION_README.md` - 统一迁移脚本详细说明
+-   `TEMPLATE_USAGE_STATS_API_GUIDE.md` - 模板使用统计 API 指南
+-   `INTEGRATED_SOLUTION_GUIDE.md` - 集成解决方案指南
 
-### 📖 全文搜索
+## 联系信息
 
--   OCR 文本提取
--   全文内容存储
--   PostgreSQL 全文搜索
--   模糊搜索
--   组合搜索
-
-### 🧠 智能推荐
-
--   语义匹配
--   模板推荐
--   关键字维护
--   批量处理
-
-### 🔍 OCR 处理
-
--   多格式支持
--   批量处理
--   状态跟踪
--   错误处理
-
-## 📊 性能优化
-
--   数据库索引优化
--   查询性能优化
--   批量处理优化
--   内存使用优化
-
-## 🐛 故障排除
-
--   常见问题解决
--   调试方法
--   性能监控
--   日志分析
-
-## 📈 扩展功能
-
--   真实 OCR 服务集成
--   语义搜索
--   搜索建议
--   向量数据库
-
-## 🤝 贡献指南
-
-1. 阅读相关技术文档
-2. 遵循代码规范
-3. 编写测试用例
-4. 更新文档说明
-
-## 📞 支持
-
-如有问题，请查看：
-
-1. [完整解决方案指南](./INTEGRATED_SOLUTION_GUIDE.md)
-2. [故障排除章节](./INTEGRATED_SOLUTION_GUIDE.md#故障排除)
-3. 相关技术文档
-
----
-
-**注意**: 本文档集合涵盖了附件管理系统的完整解决方案，建议按照文档导航顺序进行学习和使用。
+如有问题或建议，请联系开发团队。

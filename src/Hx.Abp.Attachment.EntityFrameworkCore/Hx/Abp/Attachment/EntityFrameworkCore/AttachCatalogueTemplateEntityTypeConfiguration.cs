@@ -1,6 +1,7 @@
 using Hx.Abp.Attachment.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Volo.Abp.EntityFrameworkCore.Modeling;
 
 namespace Hx.Abp.Attachment.EntityFrameworkCore
@@ -60,6 +61,24 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
             builder.Property(d => d.VectorDimension).HasColumnName("VECTOR_DIMENSION")
                 .HasDefaultValue(0);
+
+            // 权限集合字段配置（JSONB格式）
+#pragma warning disable CS8600 // 将 null 文本或可能的 null 值转换为不可为 null 类型
+            var permissionsConverter = new ValueConverter<ICollection<AttachCatalogueTemplatePermission>, string>(
+                // 转换为数据库值 - 空集合转换为空数组字符串，而不是null
+                v => v == null || v.Count == 0 ? "[]" : 
+                     System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions)null),
+                // 从数据库值转换
+                v => string.IsNullOrEmpty(v) || v == "[]" ? new List<AttachCatalogueTemplatePermission>() : 
+                     System.Text.Json.JsonSerializer.Deserialize<List<AttachCatalogueTemplatePermission>>(v, (System.Text.Json.JsonSerializerOptions)null) ?? new List<AttachCatalogueTemplatePermission>()
+            );
+#pragma warning restore CS8600
+
+            builder.Property(d => d.Permissions)
+                .HasColumnName("PERMISSIONS")
+                .HasColumnType("jsonb")
+                .HasConversion(permissionsConverter)
+                .IsRequired(false);
 
             // 审计字段配置
             builder.Property(p => p.ExtraProperties).HasColumnName("EXTRA_PROPERTIES");

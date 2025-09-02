@@ -1,140 +1,261 @@
--- AttachCatalogue 增强功能测试脚本
--- 测试新添加的 CatalogueType、CataloguePurpose、TextVector、VectorDimension、Permissions 字段
+-- =====================================================
+-- 附件分类增强功能测试脚本
+-- 用于验证新增字段和功能是否正常工作
+-- =====================================================
 
--- 设置测试环境
-SET client_min_messages TO notice;
+-- 设置事务隔离级别
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
 
--- 测试数据准备
+-- 开始事务
+BEGIN;
+
+-- =====================================================
+-- 1. 测试数据准备
+-- =====================================================
+
+-- 创建测试用的附件分类数据
+INSERT INTO "APPATTACH_CATALOGUES" (
+    "ID", "CATALOGUE_NAME", "REFERENCE", "REFERENCE_TYPE", "SEQUENCE_NUMBER",
+    "CATALOGUE_TYPE", "CATALOGUE_PURPOSE", "TEXT_VECTOR", "VECTOR_DIMENSION",
+    "PERMISSIONS", "IS_DELETED", "CREATION_TIME"
+) VALUES 
+(
+    gen_random_uuid(), '测试分类1', 'test-ref-001', 1, 1,
+    1, 1, ARRAY[0.1, 0.2, 0.3], 3,
+    '[{"permissionType": "read", "permissionTarget": "user", "action": "view", "effect": "allow"}]'::jsonb,
+    false, CURRENT_TIMESTAMP
+),
+(
+    gen_random_uuid(), '测试分类2', 'test-ref-002', 2, 2,
+    2, 2, ARRAY[0.4, 0.5, 0.6], 3,
+    '[{"permissionType": "write", "permissionTarget": "admin", "action": "edit", "effect": "allow"}]'::jsonb,
+    false, CURRENT_TIMESTAMP
+),
+(
+    gen_random_uuid(), '测试分类3', 'test-ref-003', 3, 3,
+    3, 3, ARRAY[0.7, 0.8, 0.9], 3,
+    '[]'::jsonb,
+    false, CURRENT_TIMESTAMP
+);
+
+RAISE NOTICE '已插入测试数据';
+
+-- =====================================================
+-- 2. 测试新增字段功能
+-- =====================================================
+
+-- 测试 CATALOGUE_TYPE 字段
 DO $$
 DECLARE
-    test_catalogue_id uuid := '66666666-6666-6666-6666-666666666666';
+    test_result record;
 BEGIN
-    -- 插入测试分类
-    INSERT INTO "APPATTACH_CATALOGUES" (
-        "ID", "CATALOGUE_NAME", "ATTACH_RECEIVE_TYPE", "SEQUENCE_NUMBER", 
-        "REFERENCE", "REFERENCE_TYPE", "CATALOGUE_TYPE", "CATALOGUE_PURPOSE",
-        "TEXT_VECTOR", "VECTOR_DIMENSION", "PERMISSIONS"
-    ) VALUES (
-        test_catalogue_id, '测试分类', 0, 1, 'TEST001', 1, 1, 1,
-        ARRAY[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]::double precision[],
-        10,
-        '[
-            {
-                "permissionType": "Role",
-                "permissionTarget": "Admin",
-                "action": 1,
-                "effect": 1,
-                "isEnabled": true,
-                "description": "管理员可以查看"
-            },
-            {
-                "permissionType": "User",
-                "permissionTarget": "11111111-1111-1111-1111-111111111111",
-                "action": 2,
-                "effect": 1,
-                "isEnabled": true,
-                "description": "特定用户可以创建"
-            }
-        ]'::jsonb
-    )
-    ON CONFLICT (id) DO UPDATE SET 
-        "CATALOGUE_TYPE" = EXCLUDED."CATALOGUE_TYPE",
-        "CATALOGUE_PURPOSE" = EXCLUDED."CATALOGUE_PURPOSE",
-        "TEXT_VECTOR" = EXCLUDED."TEXT_VECTOR",
-        "VECTOR_DIMENSION" = EXCLUDED."VECTOR_DIMENSION",
-        "PERMISSIONS" = EXCLUDED."PERMISSIONS";
+    SELECT "CATALOGUE_TYPE", "CATALOGUE_PURPOSE" 
+    INTO test_result
+    FROM "APPATTACH_CATALOGUES" 
+    WHERE "CATALOGUE_NAME" = '测试分类1';
     
-    RAISE NOTICE '测试数据准备完成';
+    IF test_result."CATALOGUE_TYPE" = 1 AND test_result."CATALOGUE_PURPOSE" = 1 THEN
+        RAISE NOTICE '✓ CATALOGUE_TYPE 和 CATALOGUE_PURPOSE 字段测试通过';
+    ELSE
+        RAISE NOTICE '✗ CATALOGUE_TYPE 和 CATALOGUE_PURPOSE 字段测试失败';
+    END IF;
 END $$;
 
--- 测试分类标识描述函数
+-- 测试 TEXT_VECTOR 字段
 DO $$
 DECLARE
-    test_catalogue_id uuid := '66666666-6666-6666-6666-666666666666';
-    description text;
+    test_result record;
 BEGIN
-    SELECT "FN_GET_CATALOGUE_IDENTIFIER_DESCRIPTION"("CATALOGUE_TYPE", "CATALOGUE_PURPOSE") INTO description
-    FROM "APPATTACH_CATALOGUES"
-    WHERE "ID" = test_catalogue_id;
+    SELECT "TEXT_VECTOR", "VECTOR_DIMENSION" 
+    INTO test_result
+    FROM "APPATTACH_CATALOGUES" 
+    WHERE "CATALOGUE_NAME" = '测试分类1';
     
-    RAISE NOTICE '分类标识描述: %', description;
+    IF test_result."TEXT_VECTOR" IS NOT NULL AND test_result."VECTOR_DIMENSION" = 3 THEN
+        RAISE NOTICE '✓ TEXT_VECTOR 和 VECTOR_DIMENSION 字段测试通过';
+    ELSE
+        RAISE NOTICE '✗ TEXT_VECTOR 和 VECTOR_DIMENSION 字段测试失败';
+    END IF;
 END $$;
 
--- 测试权限检查函数
+-- 测试 PERMISSIONS 字段
 DO $$
 DECLARE
-    test_catalogue_id uuid := '66666666-6666-6666-6666-666666666666';
-    test_user_id uuid := '11111111-1111-1111-1111-111111111111';
-    has_permission boolean;
+    test_result record;
 BEGIN
-    -- 测试查看权限
-    SELECT "FN_CHECK_CATALOGUE_PERMISSION"(test_catalogue_id, test_user_id, 1) INTO has_permission;
-    RAISE NOTICE '用户查看权限: %', has_permission;
+    SELECT "PERMISSIONS" 
+    INTO test_result
+    FROM "APPATTACH_CATALOGUES" 
+    WHERE "CATALOGUE_NAME" = '测试分类1';
     
-    -- 测试创建权限
-    SELECT "FN_CHECK_CATALOGUE_PERMISSION"(test_catalogue_id, test_user_id, 2) INTO has_permission;
-    RAISE NOTICE '用户创建权限: %', has_permission;
+    IF jsonb_array_length(test_result."PERMISSIONS") > 0 THEN
+        RAISE NOTICE '✓ PERMISSIONS 字段测试通过';
+    ELSE
+        RAISE NOTICE '✗ PERMISSIONS 字段测试失败';
+    END IF;
 END $$;
 
--- 测试分类标识统计视图
+-- =====================================================
+-- 3. 测试索引功能
+-- =====================================================
+
+-- 测试模板类型索引
+DO $$
+DECLARE
+    start_time timestamp;
+    end_time timestamp;
+    execution_time interval;
+BEGIN
+    start_time := clock_timestamp();
+    
+    -- 执行查询
+    PERFORM COUNT(*) FROM "APPATTACH_CATALOGUES" 
+    WHERE "CATALOGUE_TYPE" = 1 AND "IS_DELETED" = false;
+    
+    end_time := clock_timestamp();
+    execution_time := end_time - start_time;
+    
+    RAISE NOTICE '模板类型索引查询执行时间: %', execution_time;
+END $$;
+
+-- 测试权限索引
+DO $$
+DECLARE
+    start_time timestamp;
+    end_time timestamp;
+    execution_time interval;
+BEGIN
+    start_time := clock_timestamp();
+    
+    -- 执行查询
+    PERFORM COUNT(*) FROM "APPATTACH_CATALOGUES" 
+    WHERE "PERMISSIONS" @> '[{"permissionType": "read"}]'::jsonb;
+    
+    end_time := clock_timestamp();
+    execution_time := end_time - start_time;
+    
+    RAISE NOTICE '权限索引查询执行时间: %', execution_time;
+END $$;
+
+-- =====================================================
+-- 4. 测试约束功能
+-- =====================================================
+
+-- 测试向量维度约束
+DO $$
+BEGIN
+    BEGIN
+        UPDATE "APPATTACH_CATALOGUES" 
+        SET "VECTOR_DIMENSION" = 3000 
+        WHERE "CATALOGUE_NAME" = '测试分类1';
+        
+        RAISE NOTICE '✗ 向量维度约束测试失败（应该被拒绝）';
+    EXCEPTION
+        WHEN check_violation THEN
+            RAISE NOTICE '✓ 向量维度约束测试通过（正确拒绝无效值）';
+        WHEN OTHERS THEN
+            RAISE NOTICE '✗ 向量维度约束测试异常: %', SQLERRM;
+    END;
+END $$;
+
+-- 测试模板类型约束
+DO $$
+BEGIN
+    BEGIN
+        UPDATE "APPATTACH_CATALOGUES" 
+        SET "CATALOGUE_TYPE" = 999 
+        WHERE "CATALOGUE_NAME" = '测试分类1';
+        
+        RAISE NOTICE '✗ 模板类型约束测试失败（应该被拒绝）';
+    EXCEPTION
+        WHEN check_violation THEN
+            RAISE NOTICE '✓ 模板类型约束测试通过（正确拒绝无效值）';
+        WHEN OTHERS THEN
+            RAISE NOTICE '✗ 模板类型约束测试异常: %', SQLERRM;
+    END;
+END $$;
+
+-- =====================================================
+-- 5. 测试权限功能
+-- =====================================================
+
+-- 测试权限查询
+DO $$
+DECLARE
+    permission_count integer;
+BEGIN
+    SELECT COUNT(*) INTO permission_count
+    FROM "APPATTACH_CATALOGUES" ac,
+         jsonb_array_elements(ac."PERMISSIONS") AS perm
+    WHERE ac."CATALOGUE_NAME" = '测试分类1'
+      AND perm->>'permissionType' = 'read';
+    
+    IF permission_count > 0 THEN
+        RAISE NOTICE '✓ 权限查询功能测试通过';
+    ELSE
+        RAISE NOTICE '✗ 权限查询功能测试失败';
+    END IF;
+END $$;
+
+-- =====================================================
+-- 6. 测试全文搜索功能
+-- =====================================================
+
+-- 测试全文搜索
+DO $$
+DECLARE
+    search_result record;
+BEGIN
+    SELECT "CATALOGUE_NAME" INTO search_result
+    FROM "APPATTACH_CATALOGUES" 
+    WHERE to_tsvector('chinese_fts', "CATALOGUE_NAME") @@ plainto_tsquery('chinese_fts', '测试分类')
+    LIMIT 1;
+    
+    IF search_result."CATALOGUE_NAME" IS NOT NULL THEN
+        RAISE NOTICE '✓ 全文搜索功能测试通过';
+    ELSE
+        RAISE NOTICE '✗ 全文搜索功能测试失败';
+    END IF;
+END $$;
+
+-- =====================================================
+-- 7. 测试结果汇总
+-- =====================================================
+
+-- 显示测试数据统计
 SELECT 
-    "CATALOGUE_TYPE",
-    "CATALOGUE_PURPOSE",
-    "CATALOGUE_COUNT",
-    "ACTIVE_CATALOGUE_COUNT",
-    "AVERAGE_VECTOR_DIMENSION"
-FROM "V_ATTACH_CATALOGUES_BY_IDENTIFIER"
-ORDER BY "CATALOGUE_TYPE", "CATALOGUE_PURPOSE";
+    COUNT(*) as total_test_records,
+    COUNT("CATALOGUE_TYPE") as catalogue_type_count,
+    COUNT("CATALOGUE_PURPOSE") as catalogue_purpose_count,
+    COUNT("TEXT_VECTOR") as text_vector_count,
+    COUNT("VECTOR_DIMENSION") as vector_dimension_count,
+    COUNT("PERMISSIONS") as permissions_count
+FROM "APPATTACH_CATALOGUES" 
+WHERE "CATALOGUE_NAME" LIKE '测试分类%';
 
--- 测试向量维度统计视图
+-- 显示权限统计
 SELECT 
-    "VECTOR_DIMENSION_RANGE",
-    "CATALOGUE_COUNT",
-    "ACTIVE_CATALOGUE_COUNT"
-FROM "V_ATTACH_CATALOGUES_BY_VECTOR_DIMENSION"
-ORDER BY "VECTOR_DIMENSION_RANGE";
+    perm->>'permissionType' as permission_type,
+    COUNT(*) as count
+FROM "APPATTACH_CATALOGUES" ac,
+     jsonb_array_elements(ac."PERMISSIONS") AS perm
+WHERE ac."CATALOGUE_NAME" LIKE '测试分类%'
+GROUP BY perm->>'permissionType';
 
--- 测试新字段查询
-SELECT 
-    "ID",
-    "CATALOGUE_NAME",
-    "CATALOGUE_TYPE",
-    "CATALOGUE_PURPOSE",
-    "VECTOR_DIMENSION",
-    "PERMISSIONS"
-FROM "APPATTACH_CATALOGUES"
-WHERE "ID" = '66666666-6666-6666-6666-666666666666';
+-- =====================================================
+-- 8. 清理测试数据
+-- =====================================================
 
--- 测试分类标识查询
-SELECT 
-    "ID",
-    "CATALOGUE_NAME",
-    "CATALOGUE_TYPE",
-    "CATALOGUE_PURPOSE"
-FROM "APPATTACH_CATALOGUES"
-WHERE "CATALOGUE_TYPE" = 1 AND "CATALOGUE_PURPOSE" = 1
-  AND "IS_DELETED" = false;
+-- 删除测试数据
+DELETE FROM "APPATTACH_CATALOGUES" 
+WHERE "CATALOGUE_NAME" LIKE '测试分类%';
 
--- 测试向量维度查询
-SELECT 
-    "ID",
-    "CATALOGUE_NAME",
-    "VECTOR_DIMENSION"
-FROM "APPATTACH_CATALOGUES"
-WHERE "VECTOR_DIMENSION" > 0 AND "VECTOR_DIMENSION" <= 100
-  AND "IS_DELETED" = false;
+RAISE NOTICE '已清理测试数据';
 
--- 测试权限JSONB查询
-SELECT 
-    "ID",
-    "CATALOGUE_NAME",
-    jsonb_array_length("PERMISSIONS") AS "PERMISSION_COUNT"
-FROM "APPATTACH_CATALOGUES"
-WHERE "PERMISSIONS" IS NOT NULL
-  AND "IS_DELETED" = false;
+-- 提交事务
+COMMIT;
 
--- 清理测试数据
-DELETE FROM "APPATTACH_CATALOGUES"
-WHERE "ID" = '66666666-6666-6666-6666-666666666666';
-
-SELECT 'AttachCatalogue 增强功能测试完成！' AS "TEST_STATUS";
+RAISE NOTICE '=====================================================';
+RAISE NOTICE '附件分类增强功能测试完成！';
+RAISE NOTICE '请检查上述测试结果，确保所有功能正常工作。';
+RAISE NOTICE '=====================================================';

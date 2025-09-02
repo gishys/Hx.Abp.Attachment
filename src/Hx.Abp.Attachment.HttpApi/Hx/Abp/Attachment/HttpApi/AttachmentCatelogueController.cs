@@ -1,7 +1,6 @@
 using Hx.Abp.Attachment.Application.Contracts;
 using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.AspNetCore.Mvc;
-using Volo.Abp;
 using Volo.Abp.AspNetCore.Mvc;
 
 namespace Hx.Abp.Attachment.HttpApi
@@ -17,95 +16,168 @@ namespace Hx.Abp.Attachment.HttpApi
         {
             return AttachCatalogueAppService.CreateAsync(input, mode);
         }
+
         [Route("createmany")]
         [HttpPost]
         public virtual Task<List<AttachCatalogueDto>> CreateManyAsync(List<AttachCatalogueCreateDto> inputs, CatalogueCreateMode mode)
         {
             return AttachCatalogueAppService.CreateManyAsync(inputs, mode);
         }
+
         [Route("queryfiles")]
         [HttpGet]
         public virtual Task<List<AttachFileDto>> QueryFilesAsync(Guid catalogueId)
         {
             return AttachCatalogueAppService.QueryFilesAsync(catalogueId);
         }
+
         [Route("query")]
         [HttpGet]
         public virtual Task<AttachFileDto> QueryFileAsync(Guid attachFileId)
         {
             return AttachCatalogueAppService.QueryFileAsync(attachFileId);
         }
+
         [Route("uploadfiles")]
         [HttpPost]
         public virtual async Task<List<AttachFileDto>> CreateFilesAsync(Guid? id, string? prefix)
         {
             var files = Request.Form.Files;
-            if (files.Count > 0)
+            var inputs = new List<AttachFileCreateDto>();
+            foreach (var file in files)
             {
-                var inputs = new List<AttachFileCreateDto>();
-                foreach (var file in files)
+                using var stream = file.OpenReadStream();
+                using var memoryStream = new MemoryStream();
+                await stream.CopyToAsync(memoryStream);
+                var input = new AttachFileCreateDto
                 {
-                    byte[] fileBytes;
-                    using (var fileStream = file.OpenReadStream())
-                    using (var ms = new MemoryStream())
-                    {
-                        fileStream.CopyTo(ms);
-                        fileBytes = ms.ToArray();
-                    }
-                    var attachFile = new AttachFileCreateDto() { DocumentContent = fileBytes, FileAlias = file.FileName };
-                    inputs.Add(attachFile);
-                }
-                return await AttachCatalogueAppService.CreateFilesAsync(id, inputs, prefix);
+                    FileAlias = file.FileName,
+                    DocumentContent = memoryStream.ToArray()
+                };
+                inputs.Add(input);
             }
-            throw new UserFriendlyException("上传文件为空！");
+            return await AttachCatalogueAppService.CreateFilesAsync(id, inputs, prefix);
         }
-        [Route("deletesinglefile")]
-        [HttpDelete]
-        public virtual Task DeleteSingleFileAsync(Guid attachFileId)
-        {
-            return AttachCatalogueAppService.DeleteSingleFileAsync(attachFileId);
-        }
-        [Route("updatesinglefile")]
-        [HttpPut]
-        public virtual Task<AttachFileDto> UpdateSingleFileAsync(Guid catalogueId, Guid attachFileId, AttachFileCreateDto input)
-        {
-            return AttachCatalogueAppService.UpdateSingleFileAsync(catalogueId, attachFileId, input);
-        }
-        [Route("findbyreference")]
-        [HttpPost]
-        public virtual Task<List<AttachCatalogueDto>> FindByReferenceAsync(List<GetAttachListInput> inputs)
-        {
-            return AttachCatalogueAppService.FindByReferenceAsync(inputs);
-        }
-        [Route("verifycatalogues")]
-        [HttpPost]
-        public virtual Task<FileVerifyResultDto> VerifyUploadAsync(List<GetAttachListInput> inputs, bool details = false)
-        {
-            return AttachCatalogueAppService.VerifyUploadAsync(inputs, details);
-        }
+
         [Route("update")]
         [HttpPut]
-        public virtual Task<AttachCatalogueDto> UpdateAsync(Guid id, AttachCatalogueUpdateDto input)
+        public virtual Task<AttachCatalogueDto?> UpdateAsync(Guid id, AttachCatalogueCreateDto input)
         {
             return AttachCatalogueAppService.UpdateAsync(id, input);
         }
+
         [Route("delete")]
         [HttpDelete]
         public virtual Task DeleteAsync(Guid id)
         {
             return AttachCatalogueAppService.DeleteAsync(id);
         }
-        [Route("deletebyreference")]
+
+        [Route("deletefile")]
         [HttpDelete]
+        public virtual Task DeleteSingleFileAsync(Guid attachFileId)
+        {
+            return AttachCatalogueAppService.DeleteSingleFileAsync(attachFileId);
+        }
+
+        [Route("updatefile")]
+        [HttpPut]
+        public virtual Task<AttachFileDto> UpdateSingleFileAsync(Guid catalogueId, Guid attachFileId, AttachFileCreateDto input)
+        {
+            return AttachCatalogueAppService.UpdateSingleFileAsync(catalogueId, attachFileId, input);
+        }
+
+        [Route("findbyreference")]
+        [HttpPost]
+        public virtual Task<List<AttachCatalogueDto>> FindByReferenceAsync(List<GetAttachListInput> inputs)
+        {
+            return AttachCatalogueAppService.FindByReferenceAsync(inputs);
+        }
+
+        [Route("verifyupload")]
+        [HttpPost]
+        public virtual Task<FileVerifyResultDto> VerifyUploadAsync(List<GetAttachListInput> inputs, bool details = false)
+        {
+            return AttachCatalogueAppService.VerifyUploadAsync(inputs, details);
+        }
+
+        [Route("deletebyreference")]
+        [HttpPost]
         public virtual Task DeleteByReferenceAsync(List<AttachCatalogueCreateDto> inputs)
         {
             return AttachCatalogueAppService.DeleteByReferenceAsync(inputs);
         }
+
         [Route("getbyfileid")]
         [HttpGet]
-        public virtual Task GetByFileIdAsync(Guid fileId)
+        public virtual Task<AttachCatalogueDto?> GetAttachCatalogueByFileIdAsync(Guid fileId)
         {
             return AttachCatalogueAppService.GetAttachCatalogueByFileIdAsync(fileId);
+        }
+
+        [Route("search/fulltext")]
+        [HttpGet]
+        public virtual Task<List<AttachCatalogueDto>> SearchByFullTextAsync(string searchText, string? reference = null, int? referenceType = null, int limit = 10)
+        {
+            return AttachCatalogueAppService.SearchByFullTextAsync(searchText, reference, referenceType, limit);
+        }
+
+        [Route("search/semantic")]
+        [HttpPost]
+        public virtual Task<List<AttachCatalogueDto>> SearchBySemanticAsync([FromBody] float[] queryEmbedding, string? reference = null, int? referenceType = null, int limit = 10, float similarityThreshold = 0.7f)
+        {
+            return AttachCatalogueAppService.SearchBySemanticAsync(queryEmbedding, reference, referenceType, limit, similarityThreshold);
+        }
+
+        [Route("update/embedding")]
+        [HttpPut]
+        public virtual Task<AttachCatalogueDto> UpdateEmbeddingAsync(Guid catalogueId, [FromBody] float[] embedding)
+        {
+            return AttachCatalogueAppService.UpdateEmbeddingAsync(catalogueId, embedding);
+        }
+
+        // 新增的API端点
+
+        [Route("permissions/set")]
+        [HttpPut]
+        public virtual Task SetPermissionsAsync(Guid id, [FromBody] List<AttachCatalogueTemplatePermissionDto> permissions)
+        {
+            return AttachCatalogueAppService.SetPermissionsAsync(id, permissions);
+        }
+
+        [Route("permissions/get")]
+        [HttpGet]
+        public virtual Task<List<AttachCatalogueTemplatePermissionDto>> GetPermissionsAsync(Guid id)
+        {
+            return AttachCatalogueAppService.GetPermissionsAsync(id);
+        }
+
+        [Route("permissions/check")]
+        [HttpGet]
+        public virtual Task<bool> HasPermissionAsync(Guid id, Guid userId, PermissionAction action)
+        {
+            return AttachCatalogueAppService.HasPermissionAsync(id, userId, action);
+        }
+
+        [Route("identifier/description")]
+        [HttpGet]
+        public virtual Task<string> GetCatalogueIdentifierDescriptionAsync(Guid id)
+        {
+            return AttachCatalogueAppService.GetCatalogueIdentifierDescriptionAsync(id);
+        }
+
+        [Route("search/by-identifier")]
+        [HttpGet]
+        public virtual Task<List<AttachCatalogueDto>> GetByCatalogueIdentifierAsync(TemplateType? catalogueType = null, TemplatePurpose? cataloguePurpose = null)
+        {
+            return AttachCatalogueAppService.GetByCatalogueIdentifierAsync(catalogueType, cataloguePurpose);
+        }
+
+        [Route("search/by-vector-dimension")]
+        [HttpGet]
+        public virtual Task<List<AttachCatalogueDto>> GetByVectorDimensionAsync(int? minDimension = null, int? maxDimension = null)
+        {
+            return AttachCatalogueAppService.GetByVectorDimensionAsync(minDimension, maxDimension);
         }
     }
 }

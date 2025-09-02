@@ -35,6 +35,20 @@ namespace Hx.Abp.Attachment.Domain
         Task<AttachCatalogue?> GetByFileIdAsync(Guid fileId, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// 根据引用和名称查找分类
+        /// </summary>
+        /// <param name="reference">业务引用</param>
+        /// <param name="referenceType">业务类型</param>
+        /// <param name="catalogueName">分类名称</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>匹配的分类</returns>
+        Task<AttachCatalogue?> FindByReferenceAndNameAsync(
+            string reference,
+            int referenceType,
+            string catalogueName,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// 全文检索分类
         /// </summary>
         /// <param name="searchText">搜索文本</param>

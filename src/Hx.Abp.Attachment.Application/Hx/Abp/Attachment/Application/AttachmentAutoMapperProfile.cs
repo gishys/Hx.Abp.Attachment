@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Hx.Abp.Attachment.Application.Contracts;
 using Hx.Abp.Attachment.Domain;
 
@@ -9,7 +9,8 @@ namespace Hx.Abp.Attachment.Application
         public AttachmentAutoMapperProfile()
         {
             // AttachCatalogue 映射
-            CreateMap<AttachCatalogue, AttachCatalogueDto>(MemberList.Destination);
+            CreateMap<AttachCatalogue, AttachCatalogueDto>(MemberList.Destination)
+                .ForMember(dest => dest.Permissions, opt => opt.MapFrom(src => src.Permissions));
             CreateMap<AttachCatalogueCreateDto, AttachCatalogue>(MemberList.Source);
             CreateMap<AttachCatalogueUpdateDto, AttachCatalogue>(MemberList.Source);
             
@@ -21,6 +22,10 @@ namespace Hx.Abp.Attachment.Application
             // AttachCatalogueTemplate 映射
             CreateMap<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(MemberList.Destination);
             CreateMap<CreateUpdateAttachCatalogueTemplateDto, AttachCatalogueTemplate>(MemberList.Source);
+            
+            // 权限相关映射
+            CreateMap<AttachCatalogueTemplatePermission, AttachCatalogueTemplatePermissionDto>(MemberList.Destination);
+            CreateMap<AttachCatalogueTemplatePermissionDto, AttachCatalogueTemplatePermission>(MemberList.Source);
         }
     }
 }

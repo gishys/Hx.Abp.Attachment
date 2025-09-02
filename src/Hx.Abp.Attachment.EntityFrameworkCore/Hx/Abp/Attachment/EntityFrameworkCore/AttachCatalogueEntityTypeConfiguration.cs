@@ -1,22 +1,47 @@
-using Hx.Abp.Attachment.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Hx.Abp.Attachment.Domain;
+using System.Text.Json;
 using Volo.Abp.EntityFrameworkCore.Modeling;
 
 namespace Hx.Abp.Attachment.EntityFrameworkCore
 {
-    public class AttachCatalogueEntityTypeConfiguration
-        : IEntityTypeConfiguration<AttachCatalogue>
+    public class AttachCatalogueEntityTypeConfiguration : IEntityTypeConfiguration<AttachCatalogue>
     {
         public void Configure(EntityTypeBuilder<AttachCatalogue> builder)
         {
             builder.ConfigureFullAuditedAggregateRoot();
             builder.ToTable(
                 BgAppConsts.DbTablePrefix + "ATTACH_CATALOGUES",
-                BgAppConsts.DbSchema);
+                BgAppConsts.DbSchema,
+                tableBuilder =>
+                {
+                    // 约束配置
+                    tableBuilder.HasCheckConstraint("CK_ATTACH_CATALOGUES_VECTOR_DIMENSION",
+                        "\"VECTOR_DIMENSION\" >= 0 AND \"VECTOR_DIMENSION\" <= 2048");
+
+                    tableBuilder.HasCheckConstraint("CK_ATTACH_CATALOGUES_CATALOGUE_TYPE",
+                        "\"CATALOGUE_TYPE\" IN (1, 2, 3, 4, 99)");
+
+                    tableBuilder.HasCheckConstraint("CK_ATTACH_CATALOGUES_CATALOGUE_PURPOSE",
+                        "\"CATALOGUE_PURPOSE\" IN (1, 2, 3, 4, 99)");
+                });
             
             // 主键配置
             builder.HasKey(d => d.Id).HasName("PK_ATTACH_CATALOGUES");
+
+            // 创建权限集合的值转换器
+#pragma warning disable CS8600 // 将 null 文本或可能的 null 值转换为不可为 null 类型
+            var permissionsConverter = new ValueConverter<ICollection<AttachCatalogueTemplatePermission>, string?>(
+                // 转换为数据库值
+                v => v == null || v.Count == 0 ? null : 
+                     JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                // 从数据库值转换
+                v => string.IsNullOrEmpty(v) ? new List<AttachCatalogueTemplatePermission>() : 
+                     JsonSerializer.Deserialize<List<AttachCatalogueTemplatePermission>>(v, (JsonSerializerOptions)null) ?? new List<AttachCatalogueTemplatePermission>()
+            );
+#pragma warning restore CS8600
 
             // 基础字段配置
             builder.Property(d => d.AttachReceiveType).HasColumnName("ATTACH_RECEIVE_TYPE");
@@ -40,6 +65,26 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.Property(d => d.FullTextContent).HasColumnName("FULL_TEXT_CONTENT").HasColumnType("text");
             builder.Property(d => d.FullTextContentUpdatedTime).HasColumnName("FULL_TEXT_CONTENT_UPDATED_TIME");
 
+            // 新增字段配置
+            builder.Property(d => d.CatalogueType).HasColumnName("CATALOGUE_TYPE")
+                .HasConversion<int>();
+
+            builder.Property(d => d.CataloguePurpose).HasColumnName("CATALOGUE_PURPOSE")
+                .HasConversion<int>();
+
+            builder.Property(d => d.TextVector).HasColumnName("TEXT_VECTOR")
+                .HasColumnType("double precision[]");
+
+            builder.Property(d => d.VectorDimension).HasColumnName("VECTOR_DIMENSION")
+                .HasDefaultValue(0);
+
+            // 权限集合字段配置（JSONB格式）
+            builder.Property(d => d.Permissions)
+                .HasColumnName("PERMISSIONS")
+                .HasColumnType("jsonb")
+                .HasConversion(permissionsConverter)
+                .IsRequired(false);
+
             // 审计字段配置
             builder.Property(p => p.ExtraProperties).HasColumnName("EXTRA_PROPERTIES");
             builder.Property(p => p.ConcurrencyStamp).HasColumnName("CONCURRENCY_STAMP")
@@ -52,31 +97,6 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.Property(p => p.DeleterId).HasColumnName("DELETER_ID");
             builder.Property(p => p.DeletionTime).HasColumnName("DELETION_TIME");
 
-            // 全文检索配置 - 不进行数据库映射，使用原生SQL查询
-            // builder.Property(d => d.SearchVector)
-            //     .HasColumnName("SEARCH_VECTOR")
-            //     .HasComputedColumnSql(
-            //         "to_tsvector('chinese', " +
-            //         "coalesce(\"CATALOGUE_NAME\",'') || ' ' || " +
-            //         "coalesce(\"REFERENCE\",'')", true);
-
-            // 语义检索配置 - 暂时忽略 Embedding 字段以避免 pgvector 配置问题
-            // builder.Property(d => d.Embedding)
-            //     .HasColumnName("EMBEDDING")
-            //     .HasColumnType("vector(384)")
-            //     .HasVectorDimensions(384);
-
-            // 索引配置 - 全文搜索索引通过原生SQL创建
-            // builder.HasIndex(d => d.SearchVector)
-            //     .HasDatabaseName("IDX_ATTACH_CATALOGUES_SEARCH_VECTOR")
-            //     .HasMethod("GIN");
-
-            // 向量索引 - 暂时注释掉
-            // builder.HasIndex(d => d.Embedding)
-            //     .HasDatabaseName("IDX_ATTACH_CATALOGUES_EMBEDDING")
-            //     .HasMethod("ivfflat")
-            //     .HasOperators("vector_cosine_ops");
-
             // 业务唯一索引 - 使用包含筛选条件的唯一索引
             builder.HasIndex(e => new { e.Reference, e.ReferenceType, e.CatalogueName })
                 .HasDatabaseName("UK_ATTACH_CATALOGUES_REF_TYPE_NAME")
@@ -84,14 +104,22 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .IsUnique()
                 .HasAnnotation("ConcurrencyCheck", true);
 
-            // 全文搜索索引 - 通过原生SQL创建
-            // CREATE INDEX CONCURRENTLY IF NOT EXISTS IDX_ATTACH_CATALOGUES_FULLTEXT 
-            // ON "APPATTACH_CATALOGUES" USING GIN (
-            //     to_tsvector('chinese_fts', 
-            //         COALESCE("CATALOGUE_NAME", '') || ' ' || 
-            //         COALESCE("FULL_TEXT_CONTENT", '')
-            //     )
-            // );
+            // 新增字段索引
+            builder.HasIndex(e => e.CatalogueType)
+                .HasDatabaseName("IDX_ATTACH_CATALOGUES_CATALOGUE_TYPE");
+
+            builder.HasIndex(e => e.CataloguePurpose)
+                .HasDatabaseName("IDX_ATTACH_CATALOGUES_CATALOGUE_PURPOSE");
+
+            builder.HasIndex(e => e.VectorDimension)
+                .HasDatabaseName("IDX_ATTACH_CATALOGUES_VECTOR_DIMENSION");
+
+            // 复合索引
+            builder.HasIndex(e => new { e.CatalogueType, e.CataloguePurpose })
+                .HasDatabaseName("IDX_ATTACH_CATALOGUES_TYPE_PURPOSE");
+
+            builder.HasIndex(e => new { e.ParentId, e.CatalogueType })
+                .HasDatabaseName("IDX_ATTACH_CATALOGUES_PARENT_TYPE");
 
             // 关系配置
             builder.HasMany(d => d.AttachFiles)
@@ -103,13 +131,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.HasMany(d => d.Children)
                 .WithOne()
                 .HasForeignKey(d => d.ParentId)
-                .HasConstraintName("FK_ATTACH_CATALOGUES_PARENT")
-                .OnDelete(DeleteBehavior.Cascade);
+                .HasConstraintName("FK_ATTACH_CATALOGUES_CHILDREN")
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }
-
-//--需要在数据库中执行
-//CREATE EXTENSION IF NOT EXISTS zhparser;
-//CREATE TEXT SEARCH CONFIGURATION chinese (PARSER = zhparser);
-//ALTER TEXT SEARCH CONFIGURATION chinese ADD MAPPING FOR n, v, a, i, e, l WITH simple;

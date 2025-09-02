@@ -50,11 +50,9 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
             // 新增字段配置
             builder.Property(d => d.TemplateType).HasColumnName("TEMPLATE_TYPE")
-                .HasDefaultValue(99)
                 .HasConversion<int>();
 
             builder.Property(d => d.TemplatePurpose).HasColumnName("TEMPLATE_PURPOSE")
-                .HasDefaultValue(1)
                 .HasConversion<int>();
 
             builder.Property(d => d.TextVector).HasColumnName("TEXT_VECTOR")

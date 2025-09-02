@@ -128,12 +128,36 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         }
         public async Task<AttachCatalogue?> GetAsync(Guid? parentId, string catalogueName, string reference, int referenceType)
         {
-            return await (await GetDbSetAsync()).Where(p =>
-            p.ParentId == parentId &&
-            p.CatalogueName == catalogueName &&
-            p.Reference == reference &&
-            p.ReferenceType == referenceType).FirstOrDefaultAsync();
+            return await (await GetDbSetAsync())
+                .IncludeDetails()
+                .FirstOrDefaultAsync(u => u.ParentId == parentId &&
+                u.CatalogueName == catalogueName &&
+                u.Reference == reference &&
+                u.ReferenceType == referenceType);
         }
+
+        /// <summary>
+        /// 根据引用和名称查找分类
+        /// </summary>
+        /// <param name="reference">业务引用</param>
+        /// <param name="referenceType">业务类型</param>
+        /// <param name="catalogueName">分类名称</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>匹配的分类</returns>
+        public async Task<AttachCatalogue?> FindByReferenceAndNameAsync(
+            string reference,
+            int referenceType,
+            string catalogueName,
+            CancellationToken cancellationToken = default)
+        {
+            return await (await GetDbSetAsync())
+                .IncludeDetails()
+                .FirstOrDefaultAsync(u => u.Reference == reference &&
+                u.ReferenceType == referenceType &&
+                u.CatalogueName == catalogueName,
+                GetCancellationToken(cancellationToken));
+        }
+
         public async Task<List<AttachCatalogue>> AnyByNameAsync(List<GetCatalogueInput> inputs, bool details = true)
         {
             var predicate = PredicateBuilder.New<AttachCatalogue>(true);

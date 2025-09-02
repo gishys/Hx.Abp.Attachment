@@ -1,6 +1,7 @@
 -- =====================================================
 -- 权限系统数据库迁移脚本
 -- 实现RBAC + ABAC + PBAC混合模型的权限管理
+-- 基于ABP vNext框架，支持权限继承、覆盖、运行时权限检查
 -- =====================================================
 
 -- 检查扩展
@@ -227,6 +228,52 @@ WHERE p."IS_DELETED" = false;
 -- 添加视图注释
 COMMENT ON VIEW "V_APPATTACH_PERMISSION_SUMMARY" IS '权限摘要视图 - 提供权限信息的汇总和计算字段';
 
+-- 创建权限统计视图
+CREATE OR REPLACE VIEW "V_APPATTACH_PERMISSION_STATISTICS" AS
+SELECT 
+    t."ID" AS "TEMPLATE_ID",
+    t."TEMPLATE_NAME",
+    t."TEMPLATE_TYPE",
+    t."TEMPLATE_PURPOSE",
+    COUNT(p."ID") AS "TOTAL_PERMISSIONS",
+    COUNT(CASE WHEN p."IS_ENABLED" = true THEN 1 END) AS "ENABLED_PERMISSIONS",
+    COUNT(CASE WHEN p."IS_ENABLED" = false THEN 1 END) AS "DISABLED_PERMISSIONS",
+    COUNT(CASE WHEN p."PERMISSION_TYPE" = 'RBAC' THEN 1 END) AS "RBAC_PERMISSIONS",
+    COUNT(CASE WHEN p."PERMISSION_TYPE" = 'ABAC' THEN 1 END) AS "ABAC_PERMISSIONS",
+    COUNT(CASE WHEN p."PERMISSION_TYPE" = 'PBAC' THEN 1 END) AS "PBAC_PERMISSIONS",
+    COUNT(CASE WHEN p."EFFECT" = 1 THEN 1 END) AS "ALLOW_PERMISSIONS",
+    COUNT(CASE WHEN p."EFFECT" = 2 THEN 1 END) AS "DENY_PERMISSIONS",
+    COUNT(CASE WHEN p."EFFECT" = 3 THEN 1 END) AS "INHERIT_PERMISSIONS",
+    MAX(p."CREATION_TIME") AS "LAST_PERMISSION_ADDED",
+    MAX(p."LAST_MODIFICATION_TIME") AS "LAST_PERMISSION_MODIFIED"
+FROM "APPATTACH_CATALOGUE_TEMPLATES" t
+LEFT JOIN "APPATTACH_ATTACH_CATALOGUE_TEMPLATE_PERMISSIONS" p ON t."ID" = p."TEMPLATE_ID" AND p."IS_DELETED" = false
+WHERE t."IS_DELETED" = false
+GROUP BY t."ID", t."TEMPLATE_NAME", t."TEMPLATE_TYPE", t."TEMPLATE_PURPOSE";
+
+-- 添加统计视图注释
+COMMENT ON VIEW "V_APPATTACH_PERMISSION_STATISTICS" IS '权限统计视图 - 提供模板权限的统计信息';
+
+-- 创建权限分析视图
+CREATE OR REPLACE VIEW "V_APPATTACH_PERMISSION_ANALYSIS" AS
+SELECT 
+    t."ID" AS "TEMPLATE_ID",
+    t."TEMPLATE_NAME",
+    t."TEMPLATE_TYPE",
+    t."TEMPLATE_PURPOSE",
+    t."VERSION",
+    t."CREATION_TIME",
+    t."LAST_MODIFICATION_TIME",
+    CASE 
+        WHEN t."PERMISSIONS" IS NOT NULL THEN '已配置权限'
+        ELSE '未配置权限'
+    END AS "PERMISSION_STATUS"
+FROM "APPATTACH_CATALOGUE_TEMPLATES" t
+WHERE t."IS_DELETED" = false;
+
+-- 添加分析视图注释
+COMMENT ON VIEW "V_APPATTACH_PERMISSION_ANALYSIS" IS '权限分析视图 - 提供模板权限的分析信息';
+
 -- =====================================================
 -- 9. 创建函数
 -- =====================================================
@@ -295,6 +342,29 @@ $$;
 
 -- 添加函数注释
 COMMENT ON FUNCTION "FN_CHECK_USER_PERMISSION" IS '权限检查函数 - 检查用户是否具有指定模板的指定权限';
+
+-- 创建权限状态查询函数
+CREATE OR REPLACE FUNCTION "FN_GET_TEMPLATE_PERMISSION_COUNT"(
+    p_template_id uuid
+)
+RETURNS integer
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_permission_count integer := 0;
+BEGIN
+    -- 通过关联查询获取权限数量
+    SELECT COUNT(*) INTO v_permission_count
+    FROM "APPATTACH_ATTACH_CATALOGUE_TEMPLATE_PERMISSIONS" tp
+    WHERE tp."TEMPLATE_ID" = p_template_id 
+      AND tp."IS_DELETED" = false;
+    
+    RETURN COALESCE(v_permission_count, 0);
+END;
+$$;
+
+-- 添加函数注释
+COMMENT ON FUNCTION "FN_GET_TEMPLATE_PERMISSION_COUNT" IS '获取模板权限数量函数';
 
 -- =====================================================
 -- 10. 创建触发器
@@ -474,36 +544,6 @@ $$;
 
 -- 添加存储过程注释
 COMMENT ON PROCEDURE "SP_CALCULATE_INHERITED_PERMISSIONS" IS '权限继承计算存储过程 - 递归计算模板的继承权限';
-
--- =====================================================
--- 13. 创建权限统计视图
--- =====================================================
-
--- 创建权限统计视图
-CREATE OR REPLACE VIEW "V_APPATTACH_PERMISSION_STATISTICS" AS
-SELECT 
-    t."ID" AS "TEMPLATE_ID",
-    t."TEMPLATE_NAME",
-    t."TEMPLATE_TYPE",
-    t."TEMPLATE_PURPOSE",
-    COUNT(p."ID") AS "TOTAL_PERMISSIONS",
-    COUNT(CASE WHEN p."IS_ENABLED" = true THEN 1 END) AS "ENABLED_PERMISSIONS",
-    COUNT(CASE WHEN p."IS_ENABLED" = false THEN 1 END) AS "DISABLED_PERMISSIONS",
-    COUNT(CASE WHEN p."PERMISSION_TYPE" = 'RBAC' THEN 1 END) AS "RBAC_PERMISSIONS",
-    COUNT(CASE WHEN p."PERMISSION_TYPE" = 'ABAC' THEN 1 END) AS "ABAC_PERMISSIONS",
-    COUNT(CASE WHEN p."PERMISSION_TYPE" = 'PBAC' THEN 1 END) AS "PBAC_PERMISSIONS",
-    COUNT(CASE WHEN p."EFFECT" = 1 THEN 1 END) AS "ALLOW_PERMISSIONS",
-    COUNT(CASE WHEN p."EFFECT" = 2 THEN 1 END) AS "DENY_PERMISSIONS",
-    COUNT(CASE WHEN p."EFFECT" = 3 THEN 1 END) AS "INHERIT_PERMISSIONS",
-    MAX(p."CREATION_TIME") AS "LAST_PERMISSION_ADDED",
-    MAX(p."LAST_MODIFICATION_TIME") AS "LAST_PERMISSION_MODIFIED"
-FROM "APPATTACH_CATALOGUE_TEMPLATES" t
-LEFT JOIN "APPATTACH_ATTACH_CATALOGUE_TEMPLATE_PERMISSIONS" p ON t."ID" = p."TEMPLATE_ID" AND p."IS_DELETED" = false
-WHERE t."IS_DELETED" = false
-GROUP BY t."ID", t."TEMPLATE_NAME", t."TEMPLATE_TYPE", t."TEMPLATE_PURPOSE";
-
--- 添加统计视图注释
-COMMENT ON VIEW "V_APPATTACH_PERMISSION_STATISTICS" IS '权限统计视图 - 提供模板权限的统计信息';
 
 -- =====================================================
 -- 迁移完成

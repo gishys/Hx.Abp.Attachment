@@ -168,15 +168,20 @@ namespace Hx.Abp.Attachment.Domain
         }
 
         /// <summary>
-        /// 获取值对象原子值
+        /// 获取原子值集合 - ValueObject基类要求
         /// </summary>
+        /// <returns>原子值集合</returns>
         protected override IEnumerable<object> GetAtomicValues()
         {
             yield return PermissionType;
             yield return PermissionTarget;
             yield return Action;
             yield return Effect;
+            yield return AttributeConditions ?? string.Empty;
             yield return IsEnabled;
+            yield return EffectiveTime ?? DateTime.MinValue;
+            yield return ExpirationTime ?? DateTime.MaxValue;
+            yield return Description ?? string.Empty;
         }
     }
 }

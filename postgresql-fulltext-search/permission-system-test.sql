@@ -1,5 +1,6 @@
 -- 权限系统测试脚本
 -- 用于验证RBAC + ABAC + PBAC混合模型的权限管理功能
+-- 基于ABP vNext框架，支持权限继承、覆盖、运行时权限检查
 
 -- 设置测试环境
 SET client_min_messages TO notice;
@@ -72,6 +73,10 @@ BEGIN
     -- 测试删除权限
     SELECT "FN_CHECK_USER_PERMISSION"(user_id, template_id, 4) INTO has_permission;
     RAISE NOTICE '用户删除权限: %', has_permission;
+    
+    -- 测试权限数量查询
+    SELECT "FN_GET_TEMPLATE_PERMISSION_COUNT"(template_id) INTO has_permission;
+    RAISE NOTICE '模板权限数量: %', has_permission;
 END $$;
 
 -- 测试权限视图
@@ -84,6 +89,25 @@ SELECT
 FROM "V_APPATTACH_PERMISSION_SUMMARY"
 WHERE "TEMPLATE_ID" = '55555555-5555-5555-5555-555555555555'
 ORDER BY "ACTION";
+
+-- 测试权限统计视图
+SELECT 
+    "TEMPLATE_ID",
+    "TEMPLATE_NAME",
+    "TOTAL_PERMISSIONS",
+    "RBAC_PERMISSIONS",
+    "ABAC_PERMISSIONS",
+    "PBAC_PERMISSIONS"
+FROM "V_APPATTACH_PERMISSION_STATISTICS"
+WHERE "TEMPLATE_ID" = '55555555-5555-5555-5555-555555555555';
+
+-- 测试权限分析视图
+SELECT 
+    "TEMPLATE_ID",
+    "TEMPLATE_NAME",
+    "PERMISSION_STATUS"
+FROM "V_APPATTACH_PERMISSION_ANALYSIS"
+WHERE "TEMPLATE_ID" = '55555555-5555-5555-5555-555555555555';
 
 -- 清理测试数据
 DELETE FROM "APPATTACH_ATTACH_CATALOGUE_TEMPLATE_PERMISSIONS"

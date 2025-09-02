@@ -1,6 +1,7 @@
 using Hx.Abp.Attachment.Domain;
 using Microsoft.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace Hx.Abp.Attachment.EntityFrameworkCore
 {
@@ -13,6 +14,18 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
+            // 忽略值对象类型，避免EF Core将其作为实体处理
+            builder.Ignore<AttachCatalogueTemplatePermission>();
+
+            // 配置Npgsql JSON处理
+            builder.HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
+
+            // 启用动态JSON序列化支持
+            builder.HasAnnotation("Npgsql:EnableDynamicJson", true);
+
+            // 配置JSON字段处理
+            builder.HasAnnotation("Npgsql:JsonDocumentSupport", true);
 
             builder.ConfigureAttachment();
             

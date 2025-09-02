@@ -7,7 +7,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
     {
         Task<AttachCatalogueDto?> CreateAsync(AttachCatalogueCreateDto create, CatalogueCreateMode? createMode);
         Task<List<AttachCatalogueDto>> FindByReferenceAsync(List<GetAttachListInput> inputs);
-        Task<AttachCatalogueDto> UpdateAsync(Guid id, AttachCatalogueUpdateDto input);
+        Task<AttachCatalogueDto?> UpdateAsync(Guid id, AttachCatalogueCreateDto input);
         Task DeleteAsync(Guid id);
         Task DeleteSingleFileAsync(Guid attachFileId);
         Task<AttachFileDto> UpdateSingleFileAsync(Guid catalogueId, Guid attachFileId, AttachFileCreateDto input);
@@ -47,5 +47,52 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <param name="embedding">语义向量</param>
         /// <returns>更新后的分类</returns>
         Task<AttachCatalogueDto> UpdateEmbeddingAsync(Guid catalogueId, float[] embedding);
+
+        /// <summary>
+        /// 设置分类权限
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <param name="permissions">权限列表</param>
+        /// <returns></returns>
+        Task SetPermissionsAsync(Guid id, List<AttachCatalogueTemplatePermissionDto> permissions);
+
+        /// <summary>
+        /// 获取分类权限
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <returns></returns>
+        Task<List<AttachCatalogueTemplatePermissionDto>> GetPermissionsAsync(Guid id);
+
+        /// <summary>
+        /// 检查用户权限
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <param name="userId">用户ID</param>
+        /// <param name="action">权限操作</param>
+        /// <returns></returns>
+        Task<bool> HasPermissionAsync(Guid id, Guid userId, PermissionAction action);
+
+        /// <summary>
+        /// 获取分类标识描述
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <returns></returns>
+        Task<string> GetCatalogueIdentifierDescriptionAsync(Guid id);
+
+        /// <summary>
+        /// 根据分类标识查询
+        /// </summary>
+        /// <param name="catalogueType">分类类型</param>
+        /// <param name="cataloguePurpose">分类用途</param>
+        /// <returns></returns>
+        Task<List<AttachCatalogueDto>> GetByCatalogueIdentifierAsync(TemplateType? catalogueType = null, TemplatePurpose? cataloguePurpose = null);
+
+        /// <summary>
+        /// 根据向量维度查询
+        /// </summary>
+        /// <param name="minDimension">最小维度</param>
+        /// <param name="maxDimension">最大维度</param>
+        /// <returns></returns>
+        Task<List<AttachCatalogueDto>> GetByVectorDimensionAsync(int? minDimension = null, int? maxDimension = null);
     }
 }

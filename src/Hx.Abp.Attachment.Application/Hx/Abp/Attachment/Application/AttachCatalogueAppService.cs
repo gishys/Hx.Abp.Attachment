@@ -35,48 +35,231 @@ namespace Hx.Abp.Attachment.Application
             var lockKey = $"AttachCatalogue:{input.Reference}:{input.ReferenceType}:{input.CatalogueName}";
 
             await using var handle = await DistributedLock.TryAcquireAsync(lockKey, TimeSpan.FromSeconds(30)) ?? throw new UserFriendlyException("系统繁忙，请稍后重试！");
-            using var uow = UnitOfWorkManager.Begin();
+
             try
             {
-                var existingCatalogue = await CatalogueRepository.AnyByNameAsync(input.ParentId, input.CatalogueName, input.Reference, input.ReferenceType);
-                if (createMode != CatalogueCreateMode.SkipExistAppend && existingCatalogue)
+                // 检查是否已存在相同的分类
+                var existingCatalogue = await CatalogueRepository.FindByReferenceAndNameAsync(input.Reference, input.ReferenceType, input.CatalogueName);
+                if (existingCatalogue != null)
                 {
-                    throw new UserFriendlyException("名称重复，请先删除现有名称再创建！");
+                    throw new UserFriendlyException($"已存在相同的分类名称: {input.CatalogueName}");
                 }
-
-                AttachCatalogue? attachCatalogue;
-                if (createMode == CatalogueCreateMode.SkipExistAppend && existingCatalogue)
-                {
-                    attachCatalogue = await CatalogueRepository.GetAsync(input.ParentId, input.CatalogueName, input.Reference, input.ReferenceType);
-                }
-                else
-                {
                     int maxNumber = await CatalogueRepository.GetMaxSequenceNumberByReferenceAsync(input.ParentId, input.Reference, input.ReferenceType);
-                    attachCatalogue = new AttachCatalogue(
-                            GuidGenerator.Create(),
+                // 创建新的分类实体
+                var catalogue = new AttachCatalogue(
+                    Guid.NewGuid(),
                             input.AttachReceiveType,
                             input.CatalogueName,
                             ++maxNumber,
                             input.Reference,
                             input.ReferenceType,
                             input.ParentId,
-                            isRequired: input.IsRequired,
-                            isVerification: input.IsVerification,
-                            verificationPassed: input.VerificationPassed,
-                            isStatic: input.IsStatic);
-                    await CatalogueRepository.InsertAsync(attachCatalogue);
-                    await uow.SaveChangesAsync();
-                }
+                    input.IsRequired,
+                    input.IsVerification,
+                    input.VerificationPassed,
+                    input.IsStatic,
+                    0, // attachCount
+                    0, // pageCount
+                    input.TemplateId,
+                    input.CatalogueType,
+                    input.CataloguePurpose,
+                    input.TextVector
+                );
 
-                var result = attachCatalogue != null ? ConvertSrc([attachCatalogue]) : null;
-                return result?.First();
+                // 验证配置
+                catalogue.ValidateConfiguration();
+
+                // 保存到数据库
+                await CatalogueRepository.InsertAsync(catalogue);
+
+                // 返回创建的DTO
+                return await MapToDtoAsync(catalogue);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                await uow.RollbackAsync();
-                throw;
+                throw new UserFriendlyException($"创建分类失败: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// 更新分类信息
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <param name="input">更新输入</param>
+        /// <returns></returns>
+        public virtual async Task<AttachCatalogueDto?> UpdateAsync(Guid id, AttachCatalogueCreateDto input)
+        {
+            var catalogue = await CatalogueRepository.GetAsync(id) ?? throw new UserFriendlyException($"分类不存在: {id}");
+
+            // 更新基础字段
+            catalogue.SetCatalogueName(input.CatalogueName);
+            catalogue.SetAttachReceiveType(input.AttachReceiveType);
+            catalogue.SetReference(input.Reference, input.ReferenceType);
+            if (input.SequenceNumber.HasValue)
+            {
+                catalogue.SetSequenceNumber(input.SequenceNumber.Value);
+            }
+            catalogue.SetIsVerification(input.IsVerification);
+            catalogue.SetIsRequired(input.IsRequired);
+            catalogue.SetIsStatic(input.IsStatic);
+            catalogue.SetTemplateId(input.TemplateId);
+
+            // 更新新增字段
+            catalogue.SetCatalogueIdentifiers(input.CatalogueType, input.CataloguePurpose);
+            catalogue.SetTextVector(input.TextVector);
+
+            // 验证配置
+            catalogue.ValidateConfiguration();
+
+            // 保存到数据库
+            await CatalogueRepository.UpdateAsync(catalogue);
+
+            // 返回更新的DTO
+            return await MapToDtoAsync(catalogue);
+        }
+
+        /// <summary>
+        /// 设置分类权限
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <param name="permissions">权限列表</param>
+        /// <returns></returns>
+        public virtual async Task SetPermissionsAsync(Guid id, List<AttachCatalogueTemplatePermissionDto> permissions)
+        {
+            var catalogue = await CatalogueRepository.GetAsync(id) ?? throw new UserFriendlyException($"分类不存在: {id}");
+
+            // 清空现有权限
+            catalogue.Permissions?.Clear();
+
+            // 添加新权限
+            if (permissions != null)
+            {
+                foreach (var permissionDto in permissions)
+                {
+                    var permission = new AttachCatalogueTemplatePermission(
+                        permissionDto.PermissionType,
+                        permissionDto.PermissionTarget,
+                        permissionDto.Action,
+                        permissionDto.Effect,
+                        permissionDto.AttributeConditions,
+                        permissionDto.EffectiveTime,
+                        permissionDto.ExpirationTime,
+                        permissionDto.Description
+                    );
+                    catalogue.AddPermission(permission);
+                }
+            }
+
+            // 保存到数据库
+            await CatalogueRepository.UpdateAsync(catalogue);
+        }
+
+        /// <summary>
+        /// 获取分类权限
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <returns></returns>
+        public virtual async Task<List<AttachCatalogueTemplatePermissionDto>> GetPermissionsAsync(Guid id)
+        {
+            var catalogue = await CatalogueRepository.GetAsync(id) ?? throw new UserFriendlyException($"分类不存在: {id}");
+            var result = new List<AttachCatalogueTemplatePermissionDto>();
+            
+            if (catalogue.Permissions != null)
+            {
+                foreach (var permission in catalogue.Permissions)
+                {
+                    result.Add(new AttachCatalogueTemplatePermissionDto
+                    {
+                        PermissionType = permission.PermissionType,
+                        PermissionTarget = permission.PermissionTarget,
+                        Action = permission.Action,
+                        Effect = permission.Effect,
+                        AttributeConditions = permission.AttributeConditions,
+                        IsEnabled = permission.IsEnabled,
+                        EffectiveTime = permission.EffectiveTime,
+                        ExpirationTime = permission.ExpirationTime,
+                        Description = permission.Description
+                    });
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// 检查用户权限
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <param name="userId">用户ID</param>
+        /// <param name="action">权限操作</param>
+        /// <returns></returns>
+        public virtual async Task<bool> HasPermissionAsync(Guid id, Guid userId, PermissionAction action)
+        {
+            var catalogue = await CatalogueRepository.GetAsync(id);
+            if (catalogue == null)
+            {
+                return false;
+            }
+
+            return catalogue.HasPermission(userId, action);
+        }
+
+        /// <summary>
+        /// 获取分类标识描述
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <returns></returns>
+        public virtual async Task<string> GetCatalogueIdentifierDescriptionAsync(Guid id)
+        {
+            var catalogue = await CatalogueRepository.GetAsync(id);
+            return catalogue == null ? throw new UserFriendlyException($"分类不存在: {id}") : catalogue.GetCatalogueIdentifierDescription();
+        }
+
+        /// <summary>
+        /// 根据分类标识查询
+        /// </summary>
+        /// <param name="catalogueType">分类类型</param>
+        /// <param name="cataloguePurpose">分类用途</param>
+        /// <returns></returns>
+        public virtual async Task<List<AttachCatalogueDto>> GetByCatalogueIdentifierAsync(TemplateType? catalogueType = null, TemplatePurpose? cataloguePurpose = null)
+        {
+            var catalogues = await CatalogueRepository.GetListAsync();
+            
+            var filteredCatalogues = catalogues.Where(c => 
+                c.MatchesCatalogueIdentifier(catalogueType, cataloguePurpose)).ToList();
+
+            var result = new List<AttachCatalogueDto>();
+            foreach (var catalogue in filteredCatalogues)
+            {
+                result.Add(await MapToDtoAsync(catalogue));
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// 根据向量维度查询
+        /// </summary>
+        /// <param name="minDimension">最小维度</param>
+        /// <param name="maxDimension">最大维度</param>
+        /// <returns></returns>
+        public virtual async Task<List<AttachCatalogueDto>> GetByVectorDimensionAsync(int? minDimension = null, int? maxDimension = null)
+        {
+            var catalogues = await CatalogueRepository.GetListAsync();
+            
+            var filteredCatalogues = catalogues.Where(c => 
+                (minDimension == null || c.VectorDimension >= minDimension) &&
+                (maxDimension == null || c.VectorDimension <= maxDimension)).ToList();
+
+            var result = new List<AttachCatalogueDto>();
+            foreach (var catalogue in filteredCatalogues)
+            {
+                result.Add(await MapToDtoAsync(catalogue));
+            }
+
+            return result;
+        }
+
         /// <summary>
         /// 创建文件夹(Many)
         /// </summary>
@@ -551,44 +734,6 @@ namespace Hx.Abp.Attachment.Application
             return list;
         }
         /// <summary>
-        /// 修改分类
-        /// </summary>
-        /// <param name="id"></param>
-        /// <param name="input"></param>
-        /// <returns></returns>
-        public virtual async Task<AttachCatalogueDto> UpdateAsync(Guid id, AttachCatalogueUpdateDto input)
-        {
-            using var uow = UnitOfWorkManager.Begin();
-            var entity = await CatalogueRepository.GetAsync(id);
-            if (entity.AttachReceiveType != input.AttachReceiveType)
-            {
-                entity.SetAttachReceiveType(input.AttachReceiveType);
-            }
-            if (!string.Equals(entity.CatalogueName, input.CatalogueName, StringComparison.InvariantCultureIgnoreCase))
-            {
-                entity.SetCatalogueName(input.CatalogueName);
-            }
-            if (!string.Equals(entity.Reference, input.Reference, StringComparison.InvariantCultureIgnoreCase))
-            {
-                entity.SetReference(input.Reference, input.ReferenceType);
-            }
-            if (entity.ParentId != input.ParentId)
-            {
-                entity.RemoveTo(input.ParentId);
-            }
-            if (entity.IsVerification != input.IsVerification)
-            {
-                entity.SetIsVerification(input.IsVerification);
-            }
-            if (entity.IsRequired != input.IsRequired)
-            {
-                entity.SetIsRequired(input.IsRequired);
-            }
-            await CatalogueRepository.UpdateAsync(entity);
-            await uow.SaveChangesAsync();
-            return ObjectMapper.Map<AttachCatalogue, AttachCatalogueDto>(entity);
-        }
-        /// <summary>
         /// 删除分类
         /// </summary>
         /// <param name="id"></param>
@@ -678,6 +823,86 @@ namespace Hx.Abp.Attachment.Application
             await uow.SaveChangesAsync();
 
             return ObjectMapper.Map<AttachCatalogue, AttachCatalogueDto>(catalogue);
+        }
+
+        /// <summary>
+        /// 映射到DTO
+        /// </summary>
+        /// <param name="catalogue">分类实体</param>
+        /// <returns></returns>
+        private static async Task<AttachCatalogueDto> MapToDtoAsync(AttachCatalogue catalogue)
+        {
+            var dto = new AttachCatalogueDto
+            {
+                Id = catalogue.Id,
+                Reference = catalogue.Reference,
+                AttachReceiveType = catalogue.AttachReceiveType,
+                ReferenceType = catalogue.ReferenceType,
+                CatalogueName = catalogue.CatalogueName,
+                SequenceNumber = catalogue.SequenceNumber,
+                ParentId = catalogue.ParentId,
+                IsRequired = catalogue.IsRequired,
+                AttachCount = catalogue.AttachCount,
+                PageCount = catalogue.PageCount,
+                IsStatic = catalogue.IsStatic,
+                IsVerification = catalogue.IsVerification,
+                VerificationPassed = catalogue.VerificationPassed,
+                Embedding = catalogue.Embedding,
+                TemplateId = catalogue.TemplateId,
+                FullTextContent = catalogue.FullTextContent,
+                FullTextContentUpdatedTime = catalogue.FullTextContentUpdatedTime,
+                CatalogueType = catalogue.CatalogueType,
+                CataloguePurpose = catalogue.CataloguePurpose,
+                TextVector = catalogue.TextVector,
+                VectorDimension = catalogue.VectorDimension,
+                CreationTime = catalogue.CreationTime,
+                CreatorId = catalogue.CreatorId,
+                LastModificationTime = catalogue.LastModificationTime,
+                LastModifierId = catalogue.LastModifierId,
+                IsDeleted = catalogue.IsDeleted,
+                DeleterId = catalogue.DeleterId,
+                DeletionTime = catalogue.DeletionTime
+            };
+
+            // 映射权限集合
+            if (catalogue.Permissions != null && catalogue.Permissions.Count != 0)
+            {
+                dto.Permissions = [.. catalogue.Permissions.Select(p => new AttachCatalogueTemplatePermissionDto
+                {
+                    PermissionType = p.PermissionType,
+                    PermissionTarget = p.PermissionTarget,
+                    Action = p.Action,
+                    Effect = p.Effect,
+                    AttributeConditions = p.AttributeConditions,
+                    IsEnabled = p.IsEnabled,
+                    EffectiveTime = p.EffectiveTime,
+                    ExpirationTime = p.ExpirationTime,
+                    Description = p.Description
+                })];
+            }
+
+            // 映射子分类
+            if (catalogue.Children != null && catalogue.Children.Count != 0)
+            {
+                dto.Children = [];
+                foreach (var child in catalogue.Children)
+                {
+                    dto.Children.Add(await MapToDtoAsync(child));
+                }
+            }
+
+            // 映射附件文件
+            if (catalogue.AttachFiles != null && catalogue.AttachFiles.Count != 0)
+            {
+                dto.AttachFiles = [];
+                foreach (var file in catalogue.AttachFiles)
+                {
+                    // 这里需要实现AttachFile到AttachFileDto的映射
+                    // 暂时跳过，避免循环依赖
+                }
+            }
+
+            return dto;
         }
     }
 }

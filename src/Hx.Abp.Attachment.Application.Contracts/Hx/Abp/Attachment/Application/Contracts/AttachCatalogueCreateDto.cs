@@ -14,6 +14,12 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// </summary>
         [MaxLength(500)]
         public required string CatalogueName { get; set; }
+        
+        /// <summary>
+        /// 序号
+        /// </summary>
+        public int? SequenceNumber { get; set; }
+        
         /// <summary>
         /// 业务类型标识
         /// </summary>
@@ -51,5 +57,26 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// 子文件
         /// </summary>
         public List<AttachFileCreateDto>? AttachFiles {  get; set; }
+
+        /// <summary>
+        /// 关联的模板ID
+        /// </summary>
+        public Guid? TemplateId { get; set; }
+
+        /// <summary>
+        /// 分类类型 - 标识分类的层级和用途
+        /// </summary>
+        public TemplateType CatalogueType { get; set; } = TemplateType.General;
+
+        /// <summary>
+        /// 分类用途 - 标识分类的具体用途
+        /// </summary>
+        public TemplatePurpose CataloguePurpose { get; set; } = TemplatePurpose.Classification;
+
+        /// <summary>
+        /// 文本向量（64-2048维）
+        /// </summary>
+        [Range(64, 2048, ErrorMessage = "向量维度必须在64到2048之间")]
+        public List<double>? TextVector { get; set; }
     }
 }

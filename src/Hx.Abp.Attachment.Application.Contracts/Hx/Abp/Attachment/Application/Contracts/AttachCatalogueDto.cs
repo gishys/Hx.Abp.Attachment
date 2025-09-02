@@ -64,9 +64,55 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// 子文件夹
         /// </summary>
         public ICollection<AttachCatalogueDto>? Children { get; set; }
+
         /// <summary>
         /// 附件文件集合
         /// </summary>
         public Collection<AttachFileDto>? AttachFiles { get; set; }
+
+        /// <summary>
+        /// 关联的模板ID
+        /// </summary>
+        public Guid? TemplateId { get; set; }
+
+        /// <summary>
+        /// 全文内容
+        /// </summary>
+        public string? FullTextContent { get; set; }
+
+        /// <summary>
+        /// 全文内容更新时间
+        /// </summary>
+        public DateTime? FullTextContentUpdatedTime { get; set; }
+
+        /// <summary>
+        /// 分类类型 - 标识分类的层级和用途
+        /// </summary>
+        public TemplateType CatalogueType { get; set; } = TemplateType.General;
+
+        /// <summary>
+        /// 分类用途 - 标识分类的具体用途
+        /// </summary>
+        public TemplatePurpose CataloguePurpose { get; set; } = TemplatePurpose.Classification;
+
+        /// <summary>
+        /// 文本向量
+        /// </summary>
+        public List<double>? TextVector { get; set; }
+
+        /// <summary>
+        /// 向量维度
+        /// </summary>
+        public int VectorDimension { get; set; } = 0;
+
+        /// <summary>
+        /// 权限集合
+        /// </summary>
+        public ICollection<AttachCatalogueTemplatePermissionDto>? Permissions { get; set; }
+
+        /// <summary>
+        /// 分类标识描述
+        /// </summary>
+        public string CatalogueIdentifierDescription => $"{CatalogueType} - {CataloguePurpose}";
     }
 }

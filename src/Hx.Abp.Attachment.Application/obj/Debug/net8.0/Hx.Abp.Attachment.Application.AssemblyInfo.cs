@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Hx.Abp.Attachment.Application")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+192c246cd0bc64c00d923f8e828b7752d002b777")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9c2662a0f7125f4924719a060a538f10d0505033")]
 [assembly: System.Reflection.AssemblyProductAttribute("Hx.Abp.Attachment.Application")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Hx.Abp.Attachment.Application")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

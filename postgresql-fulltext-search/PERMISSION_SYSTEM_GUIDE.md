@@ -2,15 +2,28 @@
 
 ## 概述
 
-本权限系统实现了 RBAC + ABAC + PBAC 混合模型，支持权限继承、覆盖、运行时权限检查等功能，为附件目录模板提供完整的权限管理能力。
+本权限系统基于 ABP vNext 框架，实现了 RBAC + ABAC + PBAC 混合模型，支持权限继承、覆盖、运行时权限检查等功能，为附件目录模板提供完整的权限管理能力。
 
 ## 系统架构
 
 ### 1. 权限模型
 
 -   **RBAC (Role-Based Access Control)**: 基于角色的权限控制
+
+    -   支持角色、用户、用户组三种权限分配方式
+    -   灵活的权限继承机制
+    -   权限优先级管理
+
 -   **ABAC (Attribute-Based Access Control)**: 基于属性的权限控制
+
+    -   支持用户属性、环境属性、资源属性等
+    -   JSONB 格式存储，支持复杂条件表达式
+    -   动态权限评估
+
 -   **PBAC (Policy-Based Access Control)**: 基于策略的权限控制
+    -   支持时间、位置、风险等策略规则
+    -   可扩展的规则引擎
+    -   策略优先级管理
 
 ### 2. 核心组件
 
@@ -19,6 +32,12 @@
 -   **RuntimePermissionContext**: 运行时权限上下文
 -   **PermissionService**: 权限服务
 -   **PermissionController**: 权限控制器
+
+### 3. 存储方式
+
+-   **实体关联**: 权限集合直接作为 `AttachCatalogueTemplate` 实体的属性
+-   **PostgreSQL JSONB**: 原生支持复杂对象集合的存储和查询
+-   **权限表**: 独立的权限管理表，支持复杂的权限规则
 
 ## 功能特性
 
@@ -164,6 +183,35 @@ var userSummaries = await _permissionService.GetUserPermissionSummaryAsync(userI
     },
     "action": "Export",
     "effect": "Allow"
+}
+```
+
+## 部署说明
+
+### 1. 数据库迁移
+
+执行 `permission-system-migration.sql` 脚本创建权限系统所需的表、索引、视图、函数等。
+
+### 2. 应用配置
+
+确保在应用模块中注册了权限服务：
+
+```csharp
+services.AddTransient<IPermissionService, PermissionService>();
+```
+
+### 3. 权限定义
+
+在 `AttachmentPermissionDefinitionProvider` 中定义所需的权限：
+
+```csharp
+public override void Define(IPermissionDefinitionContext context)
+{
+    var attachmentGroup = context.AddGroup(AttachmentPermissions.GroupName, L("Permission:Attachment"));
+
+    var templatePermission = attachmentGroup.AddPermission(AttachmentPermissions.Templates.Default, L("Permission:Templates"));
+    templatePermission.AddChild(AttachmentPermissions.Templates.View, L("Permission:Templates.View"));
+    // ... 其他权限
 }
 ```
 

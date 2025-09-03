@@ -86,9 +86,9 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public DateTime? FullTextContentUpdatedTime { get; set; }
 
         /// <summary>
-        /// 分类类型 - 标识分类的层级和用途
+        /// 分类分面类型 - 标识分类的层级和用途
         /// </summary>
-        public TemplateType CatalogueType { get; set; } = TemplateType.General;
+        public FacetType CatalogueFacetType { get; set; } = FacetType.General;
 
         /// <summary>
         /// 分类用途 - 标识分类的具体用途
@@ -113,6 +113,6 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 分类标识描述
         /// </summary>
-        public string CatalogueIdentifierDescription => $"{CatalogueType} - {CataloguePurpose}";
+        public string CatalogueIdentifierDescription => $"{CatalogueFacetType} - {CataloguePurpose}";
     }
 }

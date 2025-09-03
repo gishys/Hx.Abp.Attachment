@@ -85,7 +85,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <param name="catalogueType">分类类型</param>
         /// <param name="cataloguePurpose">分类用途</param>
         /// <returns></returns>
-        Task<List<AttachCatalogueDto>> GetByCatalogueIdentifierAsync(TemplateType? catalogueType = null, TemplatePurpose? cataloguePurpose = null);
+        Task<List<AttachCatalogueDto>> GetByCatalogueIdentifierAsync(FacetType? catalogueFacetType = null, TemplatePurpose? cataloguePurpose = null);
 
         /// <summary>
         /// 根据向量维度查询

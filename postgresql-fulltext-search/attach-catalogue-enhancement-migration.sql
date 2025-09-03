@@ -18,14 +18,14 @@ END $$;
 -- 添加新字段
 DO $$
 BEGIN
-    -- 添加 CATALOGUE_TYPE 字段
-    IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'APPATTACH_CATALOGUES' AND column_name = 'CATALOGUE_TYPE') THEN
+    -- 添加 CATALOGUE_FACET_TYPE 字段
+    IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'APPATTACH_CATALOGUES' AND column_name = 'CATALOGUE_FACET_TYPE') THEN
         ALTER TABLE "APPATTACH_CATALOGUES" 
-        ADD COLUMN "CATALOGUE_TYPE" integer NOT NULL DEFAULT 99;
+        ADD COLUMN "CATALOGUE_FACET_TYPE" integer NOT NULL DEFAULT 99;
         
-        RAISE NOTICE '已添加 CATALOGUE_TYPE 字段';
+        RAISE NOTICE '已添加 CATALOGUE_FACET_TYPE 字段';
     ELSE
-        RAISE NOTICE 'CATALOGUE_TYPE 字段已存在';
+        RAISE NOTICE 'CATALOGUE_FACET_TYPE 字段已存在';
     END IF;
 
     -- 添加 CATALOGUE_PURPOSE 字段
@@ -87,7 +87,7 @@ BEGIN
     IF NOT EXISTS (SELECT FROM information_schema.check_constraints WHERE constraint_name = 'CK_ATTACH_CATALOGUES_CATALOGUE_TYPE') THEN
         ALTER TABLE "APPATTACH_CATALOGUES" 
         ADD CONSTRAINT "CK_ATTACH_CATALOGUES_CATALOGUE_TYPE" 
-        CHECK ("CATALOGUE_TYPE" IN (1, 2, 3, 4, 99));
+        CHECK ("CATALOGUE_FACET_TYPE" IN (1, 2, 3, 4, 99));
         
         RAISE NOTICE '已添加分类类型约束';
     ELSE
@@ -110,8 +110,8 @@ END $$;
 DO $$
 BEGIN
     -- 添加分类类型注释
-    IF NOT EXISTS (SELECT FROM pg_description WHERE objoid = (SELECT oid FROM pg_class WHERE relname = 'APPATTACH_CATALOGUES') AND objsubid = (SELECT attnum FROM pg_attribute WHERE attname = 'CATALOGUE_TYPE' AND attrelid = (SELECT oid FROM pg_class WHERE relname = 'APPATTACH_CATALOGUES'))) THEN
-        COMMENT ON COLUMN "APPATTACH_CATALOGUES"."CATALOGUE_TYPE" IS '分类类型：1=项目级,2=阶段级,3=业务分类,4=专业领域,99=通用';
+    IF NOT EXISTS (SELECT FROM pg_description WHERE objoid = (SELECT oid FROM pg_class WHERE relname = 'APPATTACH_CATALOGUES') AND objsubid = (SELECT attnum FROM pg_attribute WHERE attname = 'CATALOGUE_FACET_TYPE' AND attrelid = (SELECT oid FROM pg_class WHERE relname = 'APPATTACH_CATALOGUES'))) THEN
+        COMMENT ON COLUMN "APPATTACH_CATALOGUES"."CATALOGUE_FACET_TYPE" IS '分类类型：1=项目级,2=阶段级,3=业务分类,4=专业领域,99=通用';
     END IF;
 
     -- 添加分类用途注释
@@ -141,7 +141,7 @@ BEGIN
     -- 创建分类类型索引
     IF NOT EXISTS (SELECT FROM pg_indexes WHERE indexname = 'IDX_ATTACH_CATALOGUES_CATALOGUE_TYPE') THEN
         CREATE INDEX "IDX_ATTACH_CATALOGUES_CATALOGUE_TYPE" 
-        ON "APPATTACH_CATALOGUES" ("CATALOGUE_TYPE");
+        ON "APPATTACH_CATALOGUES" ("CATALOGUE_FACET_TYPE");
         
         RAISE NOTICE '已创建分类类型索引';
     ELSE
@@ -171,7 +171,7 @@ BEGIN
     -- 创建复合索引
     IF NOT EXISTS (SELECT FROM pg_indexes WHERE indexname = 'IDX_ATTACH_CATALOGUES_TYPE_PURPOSE') THEN
         CREATE INDEX "IDX_ATTACH_CATALOGUES_TYPE_PURPOSE" 
-        ON "APPATTACH_CATALOGUES" ("CATALOGUE_TYPE", "CATALOGUE_PURPOSE");
+        ON "APPATTACH_CATALOGUES" ("CATALOGUE_FACET_TYPE", "CATALOGUE_PURPOSE");
         
         RAISE NOTICE '已创建类型用途复合索引';
     ELSE
@@ -181,7 +181,7 @@ BEGIN
     -- 创建父级类型复合索引
     IF NOT EXISTS (SELECT FROM pg_indexes WHERE indexname = 'IDX_ATTACH_CATALOGUES_PARENT_TYPE') THEN
         CREATE INDEX "IDX_ATTACH_CATALOGUES_PARENT_TYPE" 
-        ON "APPATTACH_CATALOGUES" ("PARENT_ID", "CATALOGUE_TYPE");
+        ON "APPATTACH_CATALOGUES" ("PARENT_ID", "CATALOGUE_FACET_TYPE");
         
         RAISE NOTICE '已创建父级类型复合索引';
     ELSE

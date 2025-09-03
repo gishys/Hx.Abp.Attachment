@@ -119,7 +119,7 @@ namespace Hx.Abp.Attachment.Application
                 semanticModel: input.SemanticModel,
                 version: nextVersion,
                 isLatest: false,
-                templateType: input.TemplateType,
+                facetType: input.FacetType,
                 templatePurpose: input.TemplatePurpose,
                 textVector: input.TextVector
             );
@@ -154,7 +154,7 @@ namespace Hx.Abp.Attachment.Application
                     semanticModel: child.SemanticModel,
                     version: child.Version,
                     isLatest: false,
-                    templateType: child.TemplateType,
+                    facetType: child.FacetType,
                     templatePurpose: child.TemplatePurpose,
                     textVector: child.TextVector
                 );
@@ -201,7 +201,7 @@ namespace Hx.Abp.Attachment.Application
                 semanticModel: versionToRollback.SemanticModel,
                 version: latestVersion.Version + 1,
                 isLatest: false,
-                templateType: versionToRollback.TemplateType,
+                facetType: versionToRollback.FacetType,
                 templatePurpose: versionToRollback.TemplatePurpose,
                 textVector: versionToRollback.TextVector
             );
@@ -220,12 +220,12 @@ namespace Hx.Abp.Attachment.Application
 
         // ============= 新增模板标识查询方法 =============
         public async Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplatesByIdentifierAsync(
-            TemplateType? templateType = null,
+            FacetType? facetType = null,
             TemplatePurpose? templatePurpose = null,
             bool onlyLatest = true)
         {
             var templates = await _templateRepository.GetTemplatesByIdentifierAsync(
-                templateType.HasValue ? (int)templateType.Value : null,
+                facetType.HasValue ? (int)facetType.Value : null,
                 templatePurpose.HasValue ? (int)templatePurpose.Value : null,
                 onlyLatest);
 

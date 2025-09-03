@@ -129,12 +129,12 @@ namespace Hx.Abp.Attachment.HttpApi
         /// </summary>
         [HttpGet("by-identifier")]
         public virtual Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplatesByIdentifierAsync(
-            [FromQuery] TemplateType? templateType = null,
+            [FromQuery] FacetType? facetType = null,
             [FromQuery] TemplatePurpose? templatePurpose = null,
             [FromQuery] bool onlyLatest = true)
         {
             return AttachCatalogueTemplateAppService.GetTemplatesByIdentifierAsync(
-                templateType, templatePurpose, onlyLatest);
+                facetType, templatePurpose, onlyLatest);
         }
 
         /// <summary>

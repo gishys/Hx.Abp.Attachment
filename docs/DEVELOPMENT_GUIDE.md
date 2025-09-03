@@ -524,7 +524,7 @@ var pagedResult = await _repository
 ```sql
 -- 为常用查询字段创建索引
 CREATE INDEX idx_catalogues_name ON "APPATTACH_CATALOGUES" (CATALOGUE_NAME);
-CREATE INDEX idx_catalogues_type ON "APPATTACH_CATALOGUES" (CATALOGUE_TYPE);
+CREATE INDEX idx_catalogues_type ON "APPATTACH_CATALOGUES" (CATALOGUE_FACET_TYPE);
 CREATE INDEX idx_catalogues_reference ON "APPATTACH_CATALOGUES" (REFERENCE, REFERENCE_TYPE);
 
 -- 为全文搜索创建 GIN 索引

@@ -16,7 +16,7 @@ BEGIN;
 -- 创建测试用的附件分类数据
 INSERT INTO "APPATTACH_CATALOGUES" (
     "ID", "CATALOGUE_NAME", "REFERENCE", "REFERENCE_TYPE", "SEQUENCE_NUMBER",
-    "CATALOGUE_TYPE", "CATALOGUE_PURPOSE", "TEXT_VECTOR", "VECTOR_DIMENSION",
+    "CATALOGUE_FACET_TYPE", "CATALOGUE_PURPOSE", "TEXT_VECTOR", "VECTOR_DIMENSION",
     "PERMISSIONS", "IS_DELETED", "CREATION_TIME"
 ) VALUES 
 (
@@ -44,20 +44,20 @@ RAISE NOTICE '已插入测试数据';
 -- 2. 测试新增字段功能
 -- =====================================================
 
--- 测试 CATALOGUE_TYPE 字段
+-- 测试 CATALOGUE_FACET_TYPE 字段
 DO $$
 DECLARE
     test_result record;
 BEGIN
-    SELECT "CATALOGUE_TYPE", "CATALOGUE_PURPOSE" 
+    SELECT "CATALOGUE_FACET_TYPE", "CATALOGUE_PURPOSE" 
     INTO test_result
     FROM "APPATTACH_CATALOGUES" 
     WHERE "CATALOGUE_NAME" = '测试分类1';
     
-    IF test_result."CATALOGUE_TYPE" = 1 AND test_result."CATALOGUE_PURPOSE" = 1 THEN
-        RAISE NOTICE '✓ CATALOGUE_TYPE 和 CATALOGUE_PURPOSE 字段测试通过';
+    IF test_result."CATALOGUE_FACET_TYPE" = 1 AND test_result."CATALOGUE_PURPOSE" = 1 THEN
+        RAISE NOTICE '✓ CATALOGUE_FACET_TYPE 和 CATALOGUE_PURPOSE 字段测试通过';
     ELSE
-        RAISE NOTICE '✗ CATALOGUE_TYPE 和 CATALOGUE_PURPOSE 字段测试失败';
+        RAISE NOTICE '✗ CATALOGUE_FACET_TYPE 和 CATALOGUE_PURPOSE 字段测试失败';
     END IF;
 END $$;
 
@@ -110,7 +110,7 @@ BEGIN
     
     -- 执行查询
     PERFORM COUNT(*) FROM "APPATTACH_CATALOGUES" 
-    WHERE "CATALOGUE_TYPE" = 1 AND "IS_DELETED" = false;
+    WHERE "CATALOGUE_FACET_TYPE" = 1 AND "IS_DELETED" = false;
     
     end_time := clock_timestamp();
     execution_time := end_time - start_time;
@@ -163,7 +163,7 @@ DO $$
 BEGIN
     BEGIN
         UPDATE "APPATTACH_CATALOGUES" 
-        SET "CATALOGUE_TYPE" = 999 
+        SET "CATALOGUE_FACET_TYPE" = 999 
         WHERE "CATALOGUE_NAME" = '测试分类1';
         
         RAISE NOTICE '✗ 模板类型约束测试失败（应该被拒绝）';
@@ -225,7 +225,7 @@ END $$;
 -- 显示测试数据统计
 SELECT 
     COUNT(*) as total_test_records,
-    COUNT("CATALOGUE_TYPE") as catalogue_type_count,
+    COUNT("CATALOGUE_FACET_TYPE") as catalogue_type_count,
     COUNT("CATALOGUE_PURPOSE") as catalogue_purpose_count,
     COUNT("TEXT_VECTOR") as text_vector_count,
     COUNT("VECTOR_DIMENSION") as vector_dimension_count,

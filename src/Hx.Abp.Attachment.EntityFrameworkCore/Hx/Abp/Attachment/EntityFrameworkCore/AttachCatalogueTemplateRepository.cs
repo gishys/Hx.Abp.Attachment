@@ -1222,7 +1222,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         /// 按模板标识查询模板
         /// </summary>
         public async Task<List<AttachCatalogueTemplate>> GetTemplatesByIdentifierAsync(
-            int? templateType = null,
+            int? facetType = null,
             int? templatePurpose = null,
             bool onlyLatest = true)
         {
@@ -1237,9 +1237,9 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     queryable = queryable.Where(t => t.IsLatest);
                 }
 
-                if (templateType.HasValue)
+                if (facetType.HasValue)
                 {
-                    queryable = queryable.Where(t => (int)t.TemplateType == templateType.Value);
+                    queryable = queryable.Where(t => (int)t.FacetType == facetType.Value);
                 }
 
                 if (templatePurpose.HasValue)
@@ -1252,8 +1252,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     .ThenBy(t => t.TemplateName)
                     .ToListAsync();
 
-                Logger.LogInformation("按模板标识查询完成，类型：{templateType}，用途：{templatePurpose}，结果数量：{count}", 
-                    templateType, templatePurpose, templates.Count);
+                Logger.LogInformation("按模板标识查询完成，分面类型：{facetType}，用途：{templatePurpose}，结果数量：{count}", 
+                    facetType, templatePurpose, templates.Count);
 
                 return templates;
             }
@@ -1370,7 +1370,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 // 按模板类型统计
                 var typeCounts = await dbSet
                     .Where(t => !t.IsDeleted)
-                    .GroupBy(t => (int)t.TemplateType)
+                    .GroupBy(t => (int)t.FacetType)
                     .Select(g => new { Type = g.Key, Count = g.Count() })
                     .ToDictionaryAsync(x => x.Type.ToString(), x => x.Count);
 
@@ -1394,7 +1394,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     TotalCount = totalCount,
                     LatestCount = latestCount,
                     TemplatesWithVector = templatesWithVector,
-                    TemplateTypeCounts = typeCounts,
+                    FacetTypeCounts = typeCounts,
                     TemplatePurposeCounts = purposeCounts,
                     AverageVectorDimension = Math.Round(averageVectorDimension, 2)
                 };
@@ -1411,7 +1411,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     TotalCount = 0,
                     LatestCount = 0,
                     TemplatesWithVector = 0,
-                    TemplateTypeCounts = new Dictionary<string, int>(),
+                    FacetTypeCounts = new Dictionary<string, int>(),
                     TemplatePurposeCounts = new Dictionary<string, int>(),
                     AverageVectorDimension = 0.0
                 };

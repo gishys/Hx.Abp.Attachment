@@ -168,9 +168,9 @@ namespace Hx.Abp.Attachment.HttpApi
 
         [Route("search/by-identifier")]
         [HttpGet]
-        public virtual Task<List<AttachCatalogueDto>> GetByCatalogueIdentifierAsync(TemplateType? catalogueType = null, TemplatePurpose? cataloguePurpose = null)
+        public virtual Task<List<AttachCatalogueDto>> GetByCatalogueIdentifierAsync(FacetType? catalogueFacetType = null, TemplatePurpose? cataloguePurpose = null)
         {
-            return AttachCatalogueAppService.GetByCatalogueIdentifierAsync(catalogueType, cataloguePurpose);
+            return AttachCatalogueAppService.GetByCatalogueIdentifierAsync(catalogueFacetType, cataloguePurpose);
         }
 
         [Route("search/by-vector-dimension")]

@@ -20,9 +20,9 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public AttachReceiveType? AttachReceiveType { get; set; }
 
         /// <summary>
-        /// 模板类型 - 标识模板的层级和用途
+        /// 分面类型 - 标识模板的层级和用途
         /// </summary>
-        public TemplateType? TemplateType { get; set; }
+        public FacetType? FacetType { get; set; }
 
         /// <summary>
         /// 模板用途 - 标识模板的具体用途
@@ -86,9 +86,9 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public int TotalCount { get; set; }
 
         /// <summary>
-        /// 按模板类型统计
+        /// 按分面类型统计
         /// </summary>
-        public Dictionary<string, int> TemplateTypeCounts { get; set; } = [];
+        public Dictionary<string, int> FacetTypeCounts { get; set; } = [];
 
         /// <summary>
         /// 按模板用途统计

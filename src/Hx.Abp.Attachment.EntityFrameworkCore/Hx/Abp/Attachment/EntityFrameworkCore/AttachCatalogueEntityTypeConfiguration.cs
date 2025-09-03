@@ -22,7 +22,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                         "\"VECTOR_DIMENSION\" >= 0 AND \"VECTOR_DIMENSION\" <= 2048");
 
                     tableBuilder.HasCheckConstraint("CK_ATTACH_CATALOGUES_CATALOGUE_TYPE",
-                        "\"CATALOGUE_TYPE\" IN (1, 2, 3, 4, 99)");
+                        "\"CATALOGUE_FACET_TYPE\" IN (1, 2, 3, 4, 99)");
 
                     tableBuilder.HasCheckConstraint("CK_ATTACH_CATALOGUES_CATALOGUE_PURPOSE",
                         "\"CATALOGUE_PURPOSE\" IN (1, 2, 3, 4, 99)");
@@ -66,7 +66,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.Property(d => d.FullTextContentUpdatedTime).HasColumnName("FULL_TEXT_CONTENT_UPDATED_TIME");
 
             // 新增字段配置
-            builder.Property(d => d.CatalogueType).HasColumnName("CATALOGUE_TYPE")
+            builder.Property(d => d.CatalogueFacetType).HasColumnName("CATALOGUE_FACET_TYPE")
                 .HasConversion<int>();
 
             builder.Property(d => d.CataloguePurpose).HasColumnName("CATALOGUE_PURPOSE")
@@ -105,7 +105,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .HasAnnotation("ConcurrencyCheck", true);
 
             // 新增字段索引
-            builder.HasIndex(e => e.CatalogueType)
+            builder.HasIndex(e => e.CatalogueFacetType)
                 .HasDatabaseName("IDX_ATTACH_CATALOGUES_CATALOGUE_TYPE");
 
             builder.HasIndex(e => e.CataloguePurpose)
@@ -115,10 +115,10 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .HasDatabaseName("IDX_ATTACH_CATALOGUES_VECTOR_DIMENSION");
 
             // 复合索引
-            builder.HasIndex(e => new { e.CatalogueType, e.CataloguePurpose })
+            builder.HasIndex(e => new { e.CatalogueFacetType, e.CataloguePurpose })
                 .HasDatabaseName("IDX_ATTACH_CATALOGUES_TYPE_PURPOSE");
 
-            builder.HasIndex(e => new { e.ParentId, e.CatalogueType })
+            builder.HasIndex(e => new { e.ParentId, e.CatalogueFacetType })
                 .HasDatabaseName("IDX_ATTACH_CATALOGUES_PARENT_TYPE");
 
             // 关系配置

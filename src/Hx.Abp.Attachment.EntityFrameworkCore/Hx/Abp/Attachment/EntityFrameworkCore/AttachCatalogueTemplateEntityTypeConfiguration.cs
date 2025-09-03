@@ -21,8 +21,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     tableBuilder.HasCheckConstraint("CK_ATTACH_CATALOGUE_TEMPLATES_VECTOR_DIMENSION",
                         "\"VECTOR_DIMENSION\" >= 0 AND \"VECTOR_DIMENSION\" <= 2048");
 
-                    tableBuilder.HasCheckConstraint("CK_ATTACH_CATALOGUE_TEMPLATES_TEMPLATE_TYPE",
-                        "\"TEMPLATE_TYPE\" IN (1, 2, 3, 4, 99)");
+                    tableBuilder.HasCheckConstraint("CK_ATTACH_CATALOGUE_TEMPLATES_FACET_TYPE",
+                        "\"FACET_TYPE\" IN (0, 1, 2, 3, 4, 5, 6, 99)");
 
                     tableBuilder.HasCheckConstraint("CK_ATTACH_CATALOGUE_TEMPLATES_TEMPLATE_PURPOSE",
                         "\"TEMPLATE_PURPOSE\" IN (1, 2, 3, 4, 99)");
@@ -50,7 +50,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.Property(d => d.ParentId).HasColumnName("PARENT_ID");
 
             // 新增字段配置
-            builder.Property(d => d.TemplateType).HasColumnName("TEMPLATE_TYPE")
+            builder.Property(d => d.FacetType).HasColumnName("FACET_TYPE")
                 .HasConversion<int>();
 
             builder.Property(d => d.TemplatePurpose).HasColumnName("TEMPLATE_PURPOSE")
@@ -109,15 +109,15 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .HasDatabaseName("IDX_ATTACH_CATALOGUE_TEMPLATES_SEQUENCE");
 
             // 新增索引配置
-            builder.HasIndex(e => e.TemplateType)
-                .HasDatabaseName("IDX_ATTACH_CATALOGUE_TEMPLATES_TYPE")
+            builder.HasIndex(e => e.FacetType)
+                .HasDatabaseName("IDX_ATTACH_CATALOGUE_TEMPLATES_FACET_TYPE")
                 .HasFilter("\"IS_DELETED\" = false");
 
             builder.HasIndex(e => e.TemplatePurpose)
                 .HasDatabaseName("IDX_ATTACH_CATALOGUE_TEMPLATES_PURPOSE")
                 .HasFilter("\"IS_DELETED\" = false");
 
-            builder.HasIndex(e => new { e.TemplateType, e.TemplatePurpose })
+            builder.HasIndex(e => new { e.FacetType, e.TemplatePurpose })
                 .HasDatabaseName("IDX_ATTACH_CATALOGUE_TEMPLATES_IDENTIFIER_COMPOSITE")
                 .HasFilter("\"IS_DELETED\" = false");
 

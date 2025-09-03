@@ -190,18 +190,18 @@ dotnet run --project src/Hx.Abp.Attachment.Api
 
 #### APPATTACH_CATALOGUES (档案目录表)
 
-| 字段名            | 类型         | 说明     |
-| ----------------- | ------------ | -------- |
-| Id                | UUID         | 主键     |
-| CATALOGUE_NAME    | VARCHAR(255) | 目录名称 |
-| CATALOGUE_TYPE    | INTEGER      | 目录类型 |
-| CATALOGUE_PURPOSE | INTEGER      | 目录用途 |
-| PERMISSIONS       | JSONB        | 权限配置 |
-| TEXT_VECTOR       | JSONB        | 文本向量 |
-| VECTOR_DIMENSION  | INTEGER      | 向量维度 |
-| FULL_TEXT_CONTENT | TEXT         | 全文内容 |
-| REFERENCE         | VARCHAR(255) | 引用标识 |
-| REFERENCE_TYPE    | INTEGER      | 引用类型 |
+| 字段名               | 类型         | 说明     |
+| -------------------- | ------------ | -------- |
+| Id                   | UUID         | 主键     |
+| CATALOGUE_NAME       | VARCHAR(255) | 目录名称 |
+| CATALOGUE_FACET_TYPE | INTEGER      | 目录类型 |
+| CATALOGUE_PURPOSE    | INTEGER      | 目录用途 |
+| PERMISSIONS          | JSONB        | 权限配置 |
+| TEXT_VECTOR          | JSONB        | 文本向量 |
+| VECTOR_DIMENSION     | INTEGER      | 向量维度 |
+| FULL_TEXT_CONTENT    | TEXT         | 全文内容 |
+| REFERENCE            | VARCHAR(255) | 引用标识 |
+| REFERENCE_TYPE       | INTEGER      | 引用类型 |
 
 #### APPATTACH_CATALOGUE_TEMPLATES (档案目录模板表)
 
@@ -210,7 +210,7 @@ dotnet run --project src/Hx.Abp.Attachment.Api
 | Id                   | UUID         | 主键     |
 | TEMPLATE_NAME        | VARCHAR(255) | 模板名称 |
 | TEMPLATE_DESCRIPTION | TEXT         | 模板描述 |
-| CATALOGUE_TYPE       | INTEGER      | 目录类型 |
+| CATALOGUE_FACET_TYPE | INTEGER      | 目录类型 |
 | CATALOGUE_PURPOSE    | INTEGER      | 目录用途 |
 | PERMISSIONS          | JSONB        | 权限配置 |
 | IS_ACTIVE            | BOOLEAN      | 是否激活 |
@@ -228,7 +228,7 @@ CREATE INDEX idx_catalogues_reference ON "APPATTACH_CATALOGUES"
 
 -- 模板索引
 CREATE INDEX idx_templates_type_purpose ON "APPATTACH_CATALOGUE_TEMPLATES"
-(CATALOGUE_TYPE, CATALOGUE_PURPOSE);
+(CATALOGUE_FACET_TYPE, CATALOGUE_PURPOSE);
 ```
 
 ## 🧠 AI 能力集成

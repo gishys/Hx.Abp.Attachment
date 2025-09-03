@@ -26,9 +26,9 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public Guid? ParentId { get; set; }
         
         /// <summary>
-        /// 模板类型 - 标识模板的层级和用途
+        /// 分面类型 - 标识模板的层级和用途
         /// </summary>
-        public TemplateType TemplateType { get; set; } = TemplateType.General;
+        public FacetType FacetType { get; set; } = FacetType.General;
         
         /// <summary>
         /// 模板用途 - 标识模板的具体用途

@@ -31,7 +31,7 @@ namespace Hx.Abp.Attachment.Domain
 
         // 新增模板标识查询方法
         Task<List<AttachCatalogueTemplate>> GetTemplatesByIdentifierAsync(
-            int? templateType = null,
+            int? facetType = null,
             int? templatePurpose = null,
             bool onlyLatest = true);
 

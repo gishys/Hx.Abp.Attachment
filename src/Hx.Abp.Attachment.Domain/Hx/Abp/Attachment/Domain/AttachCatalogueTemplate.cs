@@ -73,9 +73,9 @@ namespace Hx.Abp.Attachment.Domain
         public virtual ICollection<AttachCatalogueTemplate> Children { get; private set; }
 
         /// <summary>
-        /// 模板类型 - 标识模板的层级和用途
+        /// 分面类型 - 标识模板的层级和用途
         /// </summary>
-        public virtual TemplateType TemplateType { get; private set; } = TemplateType.General;
+        public virtual FacetType FacetType { get; private set; } = FacetType.General;
 
         /// <summary>
         /// 模板用途 - 标识模板的具体用途
@@ -115,7 +115,7 @@ namespace Hx.Abp.Attachment.Domain
             [CanBeNull] string? semanticModel = null,
             int version = 1,
             bool isLatest = true,
-            TemplateType templateType = TemplateType.General,
+            FacetType facetType = FacetType.General,
             TemplatePurpose templatePurpose = TemplatePurpose.Classification,
             [CanBeNull] List<double>? textVector = null)
         {
@@ -131,7 +131,7 @@ namespace Hx.Abp.Attachment.Domain
             SemanticModel = semanticModel;
             Version = version;
             IsLatest = isLatest;
-            TemplateType = templateType;
+            FacetType = facetType;
             TemplatePurpose = templatePurpose;
             SetTextVector(textVector);
             Children = [];
@@ -147,7 +147,7 @@ namespace Hx.Abp.Attachment.Domain
             [CanBeNull] string namePattern,
             [CanBeNull] string ruleExpression,
             [CanBeNull] string semanticModel,
-            TemplateType templateType,
+            FacetType facetType,
             TemplatePurpose templatePurpose)
         {
             TemplateName = Check.NotNullOrWhiteSpace(templateName, nameof(templateName));
@@ -158,7 +158,7 @@ namespace Hx.Abp.Attachment.Domain
             NamePattern = namePattern;
             RuleExpression = ruleExpression;
             SemanticModel = semanticModel;
-            TemplateType = templateType;
+            FacetType = facetType;
             TemplatePurpose = templatePurpose;
         }
 
@@ -208,13 +208,13 @@ namespace Hx.Abp.Attachment.Domain
         /// <summary>
         /// 设置模板标识
         /// </summary>
-        /// <param name="templateType">模板类型</param>
+        /// <param name="facetType">分面类型</param>
         /// <param name="templatePurpose">模板用途</param>
         public virtual void SetTemplateIdentifiers(
-            TemplateType templateType,
+            FacetType facetType,
             TemplatePurpose templatePurpose)
         {
-            TemplateType = templateType;
+            FacetType = facetType;
             TemplatePurpose = templatePurpose;
         }
 
@@ -274,7 +274,7 @@ namespace Hx.Abp.Attachment.Domain
             SequenceNumber = source.SequenceNumber;
             IsStatic = source.IsStatic;
             ParentId = source.ParentId;
-            TemplateType = source.TemplateType;
+            FacetType = source.FacetType;
             TemplatePurpose = source.TemplatePurpose;
             SetTextVector(source.TextVector);
             Permissions = [.. source.Permissions.Select(p => new AttachCatalogueTemplatePermission(p.PermissionType, p.PermissionTarget, p.Action, p.Effect, p.AttributeConditions, p.EffectiveTime, p.ExpirationTime, p.Description))];
@@ -312,42 +312,52 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual string GetTemplateIdentifierDescription()
         {
-            return $"{TemplateType} - {TemplatePurpose}";
+            return $"{FacetType} - {TemplatePurpose}";
         }
 
         /// <summary>
         /// 检查是否匹配模板标识
         /// </summary>
-        /// <param name="templateType">模板类型</param>
+        /// <param name="facetType">分面类型</param>
         /// <param name="templatePurpose">模板用途</param>
         /// <returns>是否匹配</returns>
         public virtual bool MatchesTemplateIdentifier(
-            TemplateType? templateType = null,
+            FacetType? facetType = null,
             TemplatePurpose? templatePurpose = null)
         {
-            return (templateType == null || TemplateType == templateType) &&
+            return (facetType == null || FacetType == facetType) &&
                    (templatePurpose == null || TemplatePurpose == templatePurpose);
         }
 
         /// <summary>
-        /// 检查是否为项目级模板
+        /// 检查是否为项目类型分面
         /// </summary>
-        public virtual bool IsProjectTemplate => TemplateType == TemplateType.Project;
+        public virtual bool IsProjectTypeFacet => FacetType == FacetType.ProjectType;
 
         /// <summary>
-        /// 检查是否为阶段级模板
+        /// 检查是否为阶段分面
         /// </summary>
-        public virtual bool IsPhaseTemplate => TemplateType == TemplateType.Phase;
+        public virtual bool IsPhaseFacet => FacetType == FacetType.Phase;
 
         /// <summary>
-        /// 检查是否为业务分类模板
+        /// 检查是否为专业领域分面
         /// </summary>
-        public virtual bool IsBusinessCategoryTemplate => TemplateType == TemplateType.BusinessCategory;
+        public virtual bool IsDisciplineFacet => FacetType == FacetType.Discipline;
 
         /// <summary>
-        /// 检查是否为专业领域模板
+        /// 检查是否为文档类型分面
         /// </summary>
-        public virtual bool IsProfessionalTemplate => TemplateType == TemplateType.Professional;
+        public virtual bool IsDocumentTypeFacet => FacetType == FacetType.DocumentType;
+
+        /// <summary>
+        /// 检查是否为组织维度分面
+        /// </summary>
+        public virtual bool IsOrganizationFacet => FacetType == FacetType.Organization;
+
+        /// <summary>
+        /// 检查是否为时间切片分面
+        /// </summary>
+        public virtual bool IsTimeSliceFacet => FacetType == FacetType.TimeSlice;
 
         /// <summary>
         /// 添加权限

@@ -86,9 +86,9 @@ namespace Hx.Abp.Attachment.Domain
         public virtual float[]? Embedding { get; private set; }
 
         /// <summary>
-        /// 分类类型 - 标识分类的层级和用途
+        /// 分类分面类型 - 标识分类的层级和用途
         /// </summary>
-        public virtual TemplateType CatalogueType { get; private set; } = TemplateType.General;
+        public virtual FacetType CatalogueFacetType { get; private set; } = FacetType.General;
 
         /// <summary>
         /// 分类用途 - 标识分类的具体用途
@@ -143,7 +143,7 @@ namespace Hx.Abp.Attachment.Domain
             int attachCount = 0,
             int pageCount = 0,
             Guid? templateId = null,
-            TemplateType catalogueType = TemplateType.General,
+            FacetType catalogueFacetType = FacetType.General,
             TemplatePurpose cataloguePurpose = TemplatePurpose.Classification,
             [CanBeNull] List<double>? textVector = null)
         {
@@ -161,7 +161,7 @@ namespace Hx.Abp.Attachment.Domain
             PageCount = pageCount;
             IsStatic = isStatic;
             TemplateId = templateId;
-            CatalogueType = catalogueType;
+            CatalogueFacetType = catalogueFacetType;
             CataloguePurpose = cataloguePurpose;
             SetTextVector(textVector);
             AttachFiles = [];
@@ -304,13 +304,13 @@ namespace Hx.Abp.Attachment.Domain
         /// <summary>
         /// 设置分类标识
         /// </summary>
-        /// <param name="catalogueType">分类类型</param>
+        /// <param name="catalogueFacetType">分类分面类型</param>
         /// <param name="cataloguePurpose">分类用途</param>
         public virtual void SetCatalogueIdentifiers(
-            TemplateType catalogueType,
+            FacetType catalogueFacetType,
             TemplatePurpose cataloguePurpose)
         {
-            CatalogueType = catalogueType;
+            CatalogueFacetType = catalogueFacetType;
             CataloguePurpose = cataloguePurpose;
         }
 
@@ -363,42 +363,52 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual string GetCatalogueIdentifierDescription()
         {
-            return $"{CatalogueType} - {CataloguePurpose}";
+            return $"{CatalogueFacetType} - {CataloguePurpose}";
         }
 
         /// <summary>
         /// 检查是否匹配分类标识
         /// </summary>
-        /// <param name="catalogueType">分类类型</param>
+        /// <param name="catalogueFacetType">分类分面类型</param>
         /// <param name="cataloguePurpose">分类用途</param>
         /// <returns>是否匹配</returns>
         public virtual bool MatchesCatalogueIdentifier(
-            TemplateType? catalogueType = null,
+            FacetType? catalogueFacetType = null,
             TemplatePurpose? cataloguePurpose = null)
         {
-            return (catalogueType == null || CatalogueType == catalogueType) &&
+            return (catalogueFacetType == null || CatalogueFacetType == catalogueFacetType) &&
                    (cataloguePurpose == null || CataloguePurpose == cataloguePurpose);
         }
 
         /// <summary>
-        /// 检查是否为项目级分类
+        /// 检查是否为项目类型分面分类
         /// </summary>
-        public virtual bool IsProjectCatalogue => CatalogueType == TemplateType.Project;
+        public virtual bool IsProjectTypeFacetCatalogue => CatalogueFacetType == FacetType.ProjectType;
 
         /// <summary>
-        /// 检查是否为阶段级分类
+        /// 检查是否为阶段分面分类
         /// </summary>
-        public virtual bool IsPhaseCatalogue => CatalogueType == TemplateType.Phase;
+        public virtual bool IsPhaseFacetCatalogue => CatalogueFacetType == FacetType.Phase;
 
         /// <summary>
-        /// 检查是否为业务分类
+        /// 检查是否为专业领域分面分类
         /// </summary>
-        public virtual bool IsBusinessCategoryCatalogue => CatalogueType == TemplateType.BusinessCategory;
+        public virtual bool IsDisciplineFacetCatalogue => CatalogueFacetType == FacetType.Discipline;
 
         /// <summary>
-        /// 检查是否为专业领域分类
+        /// 检查是否为文档类型分面分类
         /// </summary>
-        public virtual bool IsProfessionalCatalogue => CatalogueType == TemplateType.Professional;
+        public virtual bool IsDocumentTypeFacetCatalogue => CatalogueFacetType == FacetType.DocumentType;
+
+        /// <summary>
+        /// 检查是否为组织维度分面分类
+        /// </summary>
+        public virtual bool IsOrganizationFacetCatalogue => CatalogueFacetType == FacetType.Organization;
+
+        /// <summary>
+        /// 检查是否为时间切片分面分类
+        /// </summary>
+        public virtual bool IsTimeSliceFacetCatalogue => CatalogueFacetType == FacetType.TimeSlice;
 
         /// <summary>
         /// 添加权限

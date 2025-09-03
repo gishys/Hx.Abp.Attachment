@@ -23,7 +23,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
 
         // 新增模板标识查询方法
         Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplatesByIdentifierAsync(
-            TemplateType? templateType = null,
+            FacetType? facetType = null,
             TemplatePurpose? templatePurpose = null,
             bool onlyLatest = true);
 

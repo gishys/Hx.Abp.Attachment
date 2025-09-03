@@ -61,7 +61,7 @@ namespace Hx.Abp.Attachment.Application
                     0, // attachCount
                     0, // pageCount
                     input.TemplateId,
-                    input.CatalogueType,
+                    input.CatalogueFacetType,
                     input.CataloguePurpose,
                     input.TextVector
                 );
@@ -105,7 +105,7 @@ namespace Hx.Abp.Attachment.Application
             catalogue.SetTemplateId(input.TemplateId);
 
             // 更新新增字段
-            catalogue.SetCatalogueIdentifiers(input.CatalogueType, input.CataloguePurpose);
+            catalogue.SetCatalogueIdentifiers(input.CatalogueFacetType, input.CataloguePurpose);
             catalogue.SetTextVector(input.TextVector);
 
             // 验证配置
@@ -221,12 +221,12 @@ namespace Hx.Abp.Attachment.Application
         /// <param name="catalogueType">分类类型</param>
         /// <param name="cataloguePurpose">分类用途</param>
         /// <returns></returns>
-        public virtual async Task<List<AttachCatalogueDto>> GetByCatalogueIdentifierAsync(TemplateType? catalogueType = null, TemplatePurpose? cataloguePurpose = null)
+        public virtual async Task<List<AttachCatalogueDto>> GetByCatalogueIdentifierAsync(FacetType? catalogueFacetType = null, TemplatePurpose? cataloguePurpose = null)
         {
             var catalogues = await CatalogueRepository.GetListAsync();
             
             var filteredCatalogues = catalogues.Where(c => 
-                c.MatchesCatalogueIdentifier(catalogueType, cataloguePurpose)).ToList();
+                c.MatchesCatalogueIdentifier(catalogueFacetType, cataloguePurpose)).ToList();
 
             var result = new List<AttachCatalogueDto>();
             foreach (var catalogue in filteredCatalogues)
@@ -392,7 +392,7 @@ namespace Hx.Abp.Attachment.Application
                         attachCount: 0,
                         pageCount: 0,
                         templateId: input.TemplateId,
-                        catalogueType: input.CatalogueType,
+                        catalogueFacetType: input.CatalogueFacetType,
                         cataloguePurpose: input.CataloguePurpose,
                         textVector: input.TextVector);
                 if (input.Children?.Count > 0)
@@ -857,7 +857,7 @@ namespace Hx.Abp.Attachment.Application
                 TemplateId = catalogue.TemplateId,
                 FullTextContent = catalogue.FullTextContent,
                 FullTextContentUpdatedTime = catalogue.FullTextContentUpdatedTime,
-                CatalogueType = catalogue.CatalogueType,
+                CatalogueFacetType = catalogue.CatalogueFacetType,
                 CataloguePurpose = catalogue.CataloguePurpose,
                 TextVector = catalogue.TextVector,
                 VectorDimension = catalogue.VectorDimension,

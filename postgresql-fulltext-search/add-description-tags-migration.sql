@@ -79,9 +79,9 @@ BEGIN
         -- 尝试使用中文配置，如果不存在则使用默认配置
         IF EXISTS (
             SELECT 1 FROM pg_ts_config 
-            WHERE cfgname = 'chinese'
+            WHERE cfgname = 'chinese_fts'
         ) THEN
-            config_name := 'chinese';
+            config_name := 'chinese_fts';
             RAISE NOTICE '使用中文全文检索配置: %', config_name;
         ELSE
             config_name := 'simple';
@@ -189,9 +189,3 @@ BEGIN
     RAISE NOTICE '📝 请执行: create-indexes-after-migration.sql';
     RAISE NOTICE '🔗 或手动创建所需的索引';
 END $$;
-
--- 10. 可选：安装中文全文检索扩展（需要超级用户权限）
--- 注意：以下命令需要超级用户权限，如果不需要可以注释掉
--- CREATE EXTENSION IF NOT EXISTS zhparser;
--- CREATE TEXT SEARCH CONFIGURATION chinese (PARSER = zhparser);
--- ALTER TEXT SEARCH CONFIGURATION chinese ALTER MAPPING FOR n,v,a,i,e,l,t WITH simple;

@@ -95,6 +95,11 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public List<AttachCatalogueTemplatePermissionDto> Permissions { get; set; } = [];
 
         /// <summary>
+        /// 元数据字段集合
+        /// </summary>
+        public List<MetaFieldDto> MetaFields { get; set; } = [];
+
+        /// <summary>
         /// 模板标识描述
         /// </summary>
         public string TemplateIdentifierDescription => $"{FacetType} - {TemplatePurpose}";

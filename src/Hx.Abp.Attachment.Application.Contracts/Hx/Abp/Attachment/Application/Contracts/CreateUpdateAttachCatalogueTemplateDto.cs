@@ -78,5 +78,10 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// 权限集合
         /// </summary>
         public List<AttachCatalogueTemplatePermissionDto> Permissions { get; set; } = [];
+
+        /// <summary>
+        /// 元数据字段集合
+        /// </summary>
+        public List<CreateUpdateMetaFieldDto> MetaFields { get; set; } = [];
     }
 }

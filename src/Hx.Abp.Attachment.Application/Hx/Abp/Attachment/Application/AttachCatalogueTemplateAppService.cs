@@ -476,5 +476,208 @@ namespace Hx.Abp.Attachment.Application
                 throw new UserFriendlyException("获取模板树失败，请稍后重试");
             }
         }
+
+        #region 元数据字段管理
+
+        public async Task<ListResultDto<MetaFieldDto>> GetTemplateMetaFieldsAsync(Guid templateId)
+        {
+            try
+            {
+                var template = await _templateRepository.GetAsync(templateId);
+                var metaFields = template.GetEnabledMetaFields().ToList();
+                var metaFieldDtos = ObjectMapper.Map<List<MetaField>, List<MetaFieldDto>>(metaFields);
+                
+                _logger.LogInformation("获取模板 {templateId} 的元数据字段完成，数量：{count}", templateId, metaFieldDtos.Count);
+                
+                return new ListResultDto<MetaFieldDto>(metaFieldDtos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取模板 {templateId} 的元数据字段失败", templateId);
+                throw new UserFriendlyException("获取元数据字段失败，请稍后重试");
+            }
+        }
+
+        public async Task<MetaFieldDto> AddMetaFieldToTemplateAsync(Guid templateId, CreateUpdateMetaFieldDto input)
+        {
+            try
+            {
+                var template = await _templateRepository.GetAsync(templateId);
+                
+                var metaField = new MetaField(
+                    input.EntityType,
+                    input.FieldKey,
+                    input.FieldName,
+                    input.DataType,
+                    input.IsRequired,
+                    input.Unit,
+                    input.RegexPattern,
+                    input.Options,
+                    input.Description,
+                    input.DefaultValue,
+                    input.Order,
+                    input.IsEnabled,
+                    input.Group,
+                    input.ValidationRules,
+                    input.Tags
+                );
+                
+                template.AddMetaField(metaField);
+                await _templateRepository.UpdateAsync(template);
+                
+                _logger.LogInformation("向模板 {templateId} 添加元数据字段成功：{fieldKey}", templateId, input.FieldKey);
+                
+                return ObjectMapper.Map<MetaField, MetaFieldDto>(metaField);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "向模板 {templateId} 添加元数据字段失败", templateId);
+                throw new UserFriendlyException("添加元数据字段失败，请稍后重试");
+            }
+        }
+
+        public async Task<MetaFieldDto> UpdateTemplateMetaFieldAsync(Guid templateId, string fieldKey, CreateUpdateMetaFieldDto input)
+        {
+            try
+            {
+                var template = await _templateRepository.GetAsync(templateId);
+                
+                var updatedMetaField = new MetaField(
+                    input.EntityType,
+                    input.FieldKey,
+                    input.FieldName,
+                    input.DataType,
+                    input.IsRequired,
+                    input.Unit,
+                    input.RegexPattern,
+                    input.Options,
+                    input.Description,
+                    input.DefaultValue,
+                    input.Order,
+                    input.IsEnabled,
+                    input.Group,
+                    input.ValidationRules,
+                    input.Tags
+                );
+                
+                template.UpdateMetaField(fieldKey, updatedMetaField);
+                await _templateRepository.UpdateAsync(template);
+                
+                _logger.LogInformation("更新模板 {templateId} 的元数据字段成功：{fieldKey}", templateId, fieldKey);
+                
+                return ObjectMapper.Map<MetaField, MetaFieldDto>(updatedMetaField);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "更新模板 {templateId} 的元数据字段失败：{fieldKey}", templateId, fieldKey);
+                throw new UserFriendlyException("更新元数据字段失败，请稍后重试");
+            }
+        }
+
+        public async Task RemoveMetaFieldFromTemplateAsync(Guid templateId, string fieldKey)
+        {
+            try
+            {
+                var template = await _templateRepository.GetAsync(templateId);
+                template.RemoveMetaField(fieldKey);
+                await _templateRepository.UpdateAsync(template);
+                
+                _logger.LogInformation("从模板 {templateId} 移除元数据字段成功：{fieldKey}", templateId, fieldKey);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "从模板 {templateId} 移除元数据字段失败：{fieldKey}", templateId, fieldKey);
+                throw new UserFriendlyException("移除元数据字段失败，请稍后重试");
+            }
+        }
+
+        public async Task<MetaFieldDto?> GetTemplateMetaFieldAsync(Guid templateId, string fieldKey)
+        {
+            try
+            {
+                var template = await _templateRepository.GetAsync(templateId);
+                var metaField = template.GetMetaField(fieldKey);
+                
+                if (metaField == null)
+                    return null;
+                    
+                return ObjectMapper.Map<MetaField, MetaFieldDto>(metaField);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取模板 {templateId} 的元数据字段失败：{fieldKey}", templateId, fieldKey);
+                throw new UserFriendlyException("获取元数据字段失败，请稍后重试");
+            }
+        }
+
+        public async Task<ListResultDto<MetaFieldDto>> QueryTemplateMetaFieldsAsync(Guid templateId, MetaFieldQueryDto input)
+        {
+            try
+            {
+                var template = await _templateRepository.GetAsync(templateId);
+                var metaFields = template.GetEnabledMetaFields().ToList();
+                
+                // 应用查询条件
+                var filteredFields = metaFields.AsQueryable();
+                
+                if (!string.IsNullOrWhiteSpace(input.EntityType))
+                    filteredFields = filteredFields.Where(f => f.EntityType == input.EntityType);
+                    
+                if (!string.IsNullOrWhiteSpace(input.DataType))
+                    filteredFields = filteredFields.Where(f => f.DataType == input.DataType);
+                    
+                if (input.IsRequired.HasValue)
+                    filteredFields = filteredFields.Where(f => f.IsRequired == input.IsRequired.Value);
+                    
+                if (input.IsEnabled.HasValue)
+                    filteredFields = filteredFields.Where(f => f.IsEnabled == input.IsEnabled.Value);
+                    
+                if (!string.IsNullOrWhiteSpace(input.Group))
+                    filteredFields = filteredFields.Where(f => f.Group == input.Group);
+                    
+                if (!string.IsNullOrWhiteSpace(input.SearchTerm))
+                    filteredFields = filteredFields.Where(f => f.MatchesSearch(input.SearchTerm));
+                    
+                if (input.Tags != null && input.Tags.Count > 0)
+                    filteredFields = filteredFields.Where(f => f.Tags != null && input.Tags.Any(tag => f.Tags.Contains(tag)));
+                
+                var result = filteredFields.OrderBy(f => f.Order).ToList();
+                var metaFieldDtos = ObjectMapper.Map<List<MetaField>, List<MetaFieldDto>>(result);
+                
+                _logger.LogInformation("查询模板 {templateId} 的元数据字段完成，数量：{count}", templateId, metaFieldDtos.Count);
+                
+                return new ListResultDto<MetaFieldDto>(metaFieldDtos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "查询模板 {templateId} 的元数据字段失败", templateId);
+                throw new UserFriendlyException("查询元数据字段失败，请稍后重试");
+            }
+        }
+
+        public async Task UpdateMetaFieldsOrderAsync(Guid templateId, List<string> fieldKeys)
+        {
+            try
+            {
+                var template = await _templateRepository.GetAsync(templateId);
+                
+                for (int i = 0; i < fieldKeys.Count; i++)
+                {
+                    var field = template.GetMetaField(fieldKeys[i]);
+                    field?.Update(order: i);
+                }
+                
+                await _templateRepository.UpdateAsync(template);
+                
+                _logger.LogInformation("更新模板 {templateId} 的元数据字段顺序成功，字段数量：{count}", templateId, fieldKeys.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "更新模板 {templateId} 的元数据字段顺序失败", templateId);
+                throw new UserFriendlyException("更新字段顺序失败，请稍后重试");
+            }
+        }
+
+        #endregion
     }
 }

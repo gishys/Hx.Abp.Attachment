@@ -257,5 +257,70 @@ namespace Hx.Abp.Attachment.HttpApi
             return AttachCatalogueTemplateAppService.GetRootTemplatesAsync(
                 facetType, templatePurpose, includeChildren, onlyLatest);
         }
+
+        // ============= 元数据字段管理接口 =============
+
+        /// <summary>
+        /// 获取模板的元数据字段列表
+        /// </summary>
+        [HttpGet("{templateId}/meta-fields")]
+        public virtual Task<ListResultDto<MetaFieldDto>> GetTemplateMetaFieldsAsync(Guid templateId)
+        {
+            return AttachCatalogueTemplateAppService.GetTemplateMetaFieldsAsync(templateId);
+        }
+
+        /// <summary>
+        /// 添加元数据字段到模板
+        /// </summary>
+        [HttpPost("{templateId}/meta-fields")]
+        public virtual Task<MetaFieldDto> AddMetaFieldToTemplateAsync(Guid templateId, [FromBody] CreateUpdateMetaFieldDto input)
+        {
+            return AttachCatalogueTemplateAppService.AddMetaFieldToTemplateAsync(templateId, input);
+        }
+
+        /// <summary>
+        /// 更新模板的元数据字段
+        /// </summary>
+        [HttpPut("{templateId}/meta-fields/{fieldKey}")]
+        public virtual Task<MetaFieldDto> UpdateTemplateMetaFieldAsync(Guid templateId, string fieldKey, [FromBody] CreateUpdateMetaFieldDto input)
+        {
+            return AttachCatalogueTemplateAppService.UpdateTemplateMetaFieldAsync(templateId, fieldKey, input);
+        }
+
+        /// <summary>
+        /// 从模板移除元数据字段
+        /// </summary>
+        [HttpDelete("{templateId}/meta-fields/{fieldKey}")]
+        public virtual Task RemoveMetaFieldFromTemplateAsync(Guid templateId, string fieldKey)
+        {
+            return AttachCatalogueTemplateAppService.RemoveMetaFieldFromTemplateAsync(templateId, fieldKey);
+        }
+
+        /// <summary>
+        /// 获取模板的元数据字段
+        /// </summary>
+        [HttpGet("{templateId}/meta-fields/{fieldKey}")]
+        public virtual Task<MetaFieldDto?> GetTemplateMetaFieldAsync(Guid templateId, string fieldKey)
+        {
+            return AttachCatalogueTemplateAppService.GetTemplateMetaFieldAsync(templateId, fieldKey);
+        }
+
+        /// <summary>
+        /// 根据条件查询元数据字段
+        /// </summary>
+        [HttpPost("{templateId}/meta-fields/query")]
+        public virtual Task<ListResultDto<MetaFieldDto>> QueryTemplateMetaFieldsAsync(Guid templateId, [FromBody] MetaFieldQueryDto input)
+        {
+            return AttachCatalogueTemplateAppService.QueryTemplateMetaFieldsAsync(templateId, input);
+        }
+
+        /// <summary>
+        /// 批量更新元数据字段顺序
+        /// </summary>
+        [HttpPut("{templateId}/meta-fields/order")]
+        public virtual Task UpdateMetaFieldsOrderAsync(Guid templateId, [FromBody] List<string> fieldKeys)
+        {
+            return AttachCatalogueTemplateAppService.UpdateMetaFieldsOrderAsync(templateId, fieldKeys);
+        }
     }
 }

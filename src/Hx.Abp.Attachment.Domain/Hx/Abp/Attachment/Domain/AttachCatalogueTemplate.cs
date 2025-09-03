@@ -98,6 +98,12 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual ICollection<AttachCatalogueTemplatePermission> Permissions { get; private set; } = [];
 
+        /// <summary>
+        /// 元数据字段集合（JSONB格式，存储元数据字段信息）
+        /// 用于命名实体识别(NER)、前端展示和业务场景配置
+        /// </summary>
+        public virtual ICollection<MetaField> MetaFields { get; private set; } = [];
+
 #pragma warning disable CS8618 // 在退出构造函数时，不可为 null 的字段必须包含非 null 值。请考虑声明为可以为 null。
         protected AttachCatalogueTemplate() { }
 #pragma warning restore CS8618 // 在退出构造函数时，不可为 null 的字段必须包含非 null 值。请考虑声明为可以为 null。
@@ -117,7 +123,8 @@ namespace Hx.Abp.Attachment.Domain
             TemplatePurpose templatePurpose = TemplatePurpose.Classification,
             [CanBeNull] List<double>? textVector = null,
             [CanBeNull] string? description = null,
-            [CanBeNull] List<string>? tags = null)
+            [CanBeNull] List<string>? tags = null,
+            [CanBeNull] List<MetaField>? metaFields = null)
         {
             Id = id;
             TemplateName = Check.NotNullOrWhiteSpace(templateName, nameof(templateName));
@@ -134,6 +141,7 @@ namespace Hx.Abp.Attachment.Domain
             SetTextVector(textVector);
             Description = description;
             Tags = tags ?? [];
+            MetaFields = metaFields ?? [];
             Children = [];
             Permissions = [];
         }
@@ -148,7 +156,8 @@ namespace Hx.Abp.Attachment.Domain
             FacetType facetType,
             TemplatePurpose templatePurpose,
             [CanBeNull] string? description = null,
-            [CanBeNull] List<string>? tags = null)
+            [CanBeNull] List<string>? tags = null,
+            [CanBeNull] List<MetaField>? metaFields = null)
         {
             TemplateName = Check.NotNullOrWhiteSpace(templateName, nameof(templateName));
             AttachReceiveType = attachReceiveType;
@@ -167,6 +176,11 @@ namespace Hx.Abp.Attachment.Domain
             if (tags != null)
             {
                 Tags = tags;
+            }
+            
+            if (metaFields != null)
+            {
+                MetaFields = metaFields;
             }
         }
 
@@ -232,6 +246,157 @@ namespace Hx.Abp.Attachment.Domain
         public virtual void RemoveTag(string tag)
         {
             Tags?.Remove(tag);
+        }
+
+        /// <summary>
+        /// 添加元数据字段
+        /// </summary>
+        /// <param name="metaField">元数据字段</param>
+        public virtual void AddMetaField(MetaField metaField)
+        {
+            ArgumentNullException.ThrowIfNull(metaField);
+            
+            MetaFields ??= [];
+            
+            // 检查字段键名是否已存在
+            if (MetaFields.Any(f => f.FieldKey == metaField.FieldKey))
+            {
+                throw new ArgumentException($"字段键名 '{metaField.FieldKey}' 已存在", nameof(metaField));
+            }
+            
+            MetaFields.Add(metaField);
+        }
+
+        /// <summary>
+        /// 移除元数据字段
+        /// </summary>
+        /// <param name="fieldKey">字段键名</param>
+        public virtual void RemoveMetaField(string fieldKey)
+        {
+            if (!string.IsNullOrWhiteSpace(fieldKey))
+            {
+                var field = MetaFields?.FirstOrDefault(f => f.FieldKey == fieldKey);
+                if (field != null)
+                {
+                    MetaFields?.Remove(field);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 更新元数据字段
+        /// </summary>
+        /// <param name="fieldKey">字段键名</param>
+        /// <param name="metaField">更新后的元数据字段</param>
+        public virtual void UpdateMetaField(string fieldKey, MetaField metaField)
+        {
+            ArgumentNullException.ThrowIfNull(metaField);
+            
+            if (string.IsNullOrWhiteSpace(fieldKey))
+                throw new ArgumentException("字段键名不能为空", nameof(fieldKey));
+            
+            var existingField = (MetaFields?.FirstOrDefault(f => f.FieldKey == fieldKey)) ?? throw new ArgumentException($"字段键名 '{fieldKey}' 不存在", nameof(fieldKey));
+
+            // 检查新字段键名是否与其他字段冲突
+            if (fieldKey != metaField.FieldKey && 
+                MetaFields?.Any(f => f.FieldKey == metaField.FieldKey) == true)
+            {
+                throw new ArgumentException($"字段键名 '{metaField.FieldKey}' 已存在", nameof(metaField));
+            }
+            
+            // 移除旧字段，添加新字段
+            MetaFields?.Remove(existingField);
+            MetaFields?.Add(metaField);
+        }
+
+        /// <summary>
+        /// 获取元数据字段
+        /// </summary>
+        /// <param name="fieldKey">字段键名</param>
+        /// <returns>元数据字段，如果不存在则返回null</returns>
+        public virtual MetaField? GetMetaField(string fieldKey)
+        {
+            if (string.IsNullOrWhiteSpace(fieldKey))
+                return null;
+                
+            return MetaFields?.FirstOrDefault(f => f.FieldKey == fieldKey);
+        }
+
+        /// <summary>
+        /// 获取所有启用的元数据字段
+        /// </summary>
+        /// <returns>启用的元数据字段列表</returns>
+        public virtual IEnumerable<MetaField> GetEnabledMetaFields()
+        {
+            return MetaFields?.Where(f => f.IsEnabled) ?? [];
+        }
+
+        /// <summary>
+        /// 根据实体类型获取元数据字段
+        /// </summary>
+        /// <param name="entityType">实体类型</param>
+        /// <returns>匹配的元数据字段列表</returns>
+        public virtual IEnumerable<MetaField> GetMetaFieldsByEntityType(string entityType)
+        {
+            if (string.IsNullOrWhiteSpace(entityType))
+                return [];
+                
+            return MetaFields?.Where(f => f.EntityType == entityType && f.IsEnabled) ?? [];
+        }
+
+        /// <summary>
+        /// 根据数据类型获取元数据字段
+        /// </summary>
+        /// <param name="dataType">数据类型</param>
+        /// <returns>匹配的元数据字段列表</returns>
+        public virtual IEnumerable<MetaField> GetMetaFieldsByDataType(string dataType)
+        {
+            if (string.IsNullOrWhiteSpace(dataType))
+                return [];
+                
+            return MetaFields?.Where(f => f.DataType == dataType && f.IsEnabled) ?? [];
+        }
+
+        /// <summary>
+        /// 获取必填的元数据字段
+        /// </summary>
+        /// <returns>必填的元数据字段列表</returns>
+        public virtual IEnumerable<MetaField> GetRequiredMetaFields()
+        {
+            return MetaFields?.Where(f => f.IsRequired && f.IsEnabled) ?? [];
+        }
+
+        /// <summary>
+        /// 验证元数据字段配置
+        /// </summary>
+        public virtual void ValidateMetaFields()
+        {
+            if (MetaFields == null || MetaFields.Count == 0)
+                return;
+                
+            foreach (var field in MetaFields)
+            {
+                try
+                {
+                    field.Validate();
+                }
+                catch (Exception ex)
+                {
+                    throw new ArgumentException($"元数据字段 '{field.FieldKey}' 验证失败: {ex.Message}", nameof(MetaFields));
+                }
+            }
+            
+            // 检查字段键名唯一性
+            var duplicateKeys = MetaFields
+                .GroupBy(f => f.FieldKey)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+                
+            if (duplicateKeys.Count > 0)
+            {
+                throw new ArgumentException($"存在重复的字段键名: {string.Join(", ", duplicateKeys)}", nameof(MetaFields));
+            }
         }
 
         /// <summary>
@@ -306,6 +471,9 @@ namespace Hx.Abp.Attachment.Domain
                     throw new ArgumentException($"规则表达式格式错误: {ex.Message}", nameof(RuleExpression));
                 }
             }
+
+            // 验证元数据字段配置
+            ValidateMetaFields();
         }
 
         /// <summary>
@@ -328,6 +496,7 @@ namespace Hx.Abp.Attachment.Domain
             SetTextVector(source.TextVector);
             Description = source.Description;
             Tags = source.Tags != null ? [.. source.Tags] : [];
+            MetaFields = source.MetaFields != null ? [.. source.MetaFields.Select(f => new MetaField(f.EntityType, f.FieldKey, f.FieldName, f.DataType, f.IsRequired, f.Unit, f.RegexPattern, f.Options, f.Description, f.DefaultValue, f.Order, f.IsEnabled, f.Group, f.ValidationRules, f.Tags != null ? [.. f.Tags] : []))] : [];
             Permissions = [.. source.Permissions.Select(p => new AttachCatalogueTemplatePermission(p.PermissionType, p.PermissionTarget, p.Action, p.Effect, p.AttributeConditions, p.EffectiveTime, p.ExpirationTime, p.Description))];
         }
 
@@ -514,6 +683,24 @@ namespace Hx.Abp.Attachment.Domain
             if (!string.IsNullOrWhiteSpace(RuleExpression))
             {
                 contentParts.Add(RuleExpression);
+            }
+            
+            // 添加元数据字段信息
+            if (MetaFields != null && MetaFields.Count > 0)
+            {
+                foreach (var field in MetaFields.Where(f => f.IsEnabled))
+                {
+                    contentParts.Add(field.FieldName);
+                    contentParts.Add(field.FieldKey);
+                    if (!string.IsNullOrWhiteSpace(field.Description))
+                    {
+                        contentParts.Add(field.Description);
+                    }
+                    if (field.Tags != null && field.Tags.Count > 0)
+                    {
+                        contentParts.AddRange(field.Tags);
+                    }
+                }
             }
             
             return string.Join(" ", contentParts);

@@ -55,5 +55,44 @@ namespace Hx.Abp.Attachment.Application.Contracts
             TemplatePurpose? templatePurpose = null,
             bool includeChildren = true,
             bool onlyLatest = true);
+
+        #region 元数据字段管理
+
+        /// <summary>
+        /// 获取模板的元数据字段列表
+        /// </summary>
+        Task<ListResultDto<MetaFieldDto>> GetTemplateMetaFieldsAsync(Guid templateId);
+
+        /// <summary>
+        /// 添加元数据字段到模板
+        /// </summary>
+        Task<MetaFieldDto> AddMetaFieldToTemplateAsync(Guid templateId, CreateUpdateMetaFieldDto input);
+
+        /// <summary>
+        /// 更新模板的元数据字段
+        /// </summary>
+        Task<MetaFieldDto> UpdateTemplateMetaFieldAsync(Guid templateId, string fieldKey, CreateUpdateMetaFieldDto input);
+
+        /// <summary>
+        /// 从模板移除元数据字段
+        /// </summary>
+        Task RemoveMetaFieldFromTemplateAsync(Guid templateId, string fieldKey);
+
+        /// <summary>
+        /// 获取模板的元数据字段
+        /// </summary>
+        Task<MetaFieldDto?> GetTemplateMetaFieldAsync(Guid templateId, string fieldKey);
+
+        /// <summary>
+        /// 根据条件查询元数据字段
+        /// </summary>
+        Task<ListResultDto<MetaFieldDto>> QueryTemplateMetaFieldsAsync(Guid templateId, MetaFieldQueryDto input);
+
+        /// <summary>
+        /// 批量更新元数据字段顺序
+        /// </summary>
+        Task UpdateMetaFieldsOrderAsync(Guid templateId, List<string> fieldKeys);
+
+        #endregion
     }
 }

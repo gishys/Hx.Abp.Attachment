@@ -30,6 +30,10 @@ namespace Hx.Abp.Attachment.Application
             // 权限相关映射
             CreateMap<AttachCatalogueTemplatePermission, AttachCatalogueTemplatePermissionDto>(MemberList.Destination);
             CreateMap<AttachCatalogueTemplatePermissionDto, AttachCatalogueTemplatePermission>(MemberList.Source);
+            
+            // 元数据字段映射
+            CreateMap<MetaField, MetaFieldDto>(MemberList.Destination);
+            CreateMap<CreateUpdateMetaFieldDto, MetaField>(MemberList.Source);
         }
     }
 }

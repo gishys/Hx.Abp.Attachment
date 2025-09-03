@@ -251,15 +251,15 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     WITH RankedResults AS (
                         SELECT c.*, 
                             ts_rank_cd(
-                                setweight(to_tsvector('chinese', coalesce(c.""CATALOGUE_NAME"",'')), 'A') || 
-                                setweight(to_tsvector('chinese', coalesce(c.""REFERENCE"",'')), 'B'),
-                                to_tsquery('chinese', @searchQuery)
+                                setweight(to_tsvector('chinese_fts', coalesce(c.""CATALOGUE_NAME"",'')), 'A') || 
+                                setweight(to_tsvector('chinese_fts', coalesce(c.""REFERENCE"",'')), 'B'),
+                                to_tsquery('chinese_fts', @searchQuery)
                             ) as rank
                         FROM ""ATTACH_CATALOGUES"" c
                         WHERE (
-                            setweight(to_tsvector('chinese', coalesce(c.""CATALOGUE_NAME"",'')), 'A') ||
-                            setweight(to_tsvector('chinese', coalesce(c.""REFERENCE"",'')), 'B')
-                        ) @@ to_tsquery('chinese', @searchQuery)
+                            setweight(to_tsvector('chinese_fts', coalesce(c.""CATALOGUE_NAME"",'')), 'A') ||
+                            setweight(to_tsvector('chinese_fts', coalesce(c.""REFERENCE"",'')), 'B')
+                        ) @@ to_tsquery('chinese_fts', @searchQuery)
                     )
                     SELECT * FROM RankedResults 
                     WHERE rank > 0";
@@ -388,22 +388,22 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                                 WHEN @hasEmbedding::boolean = true THEN
                                     (1 - (c.embedding <=> @queryEmbedding::real[])) * 0.6 + -- 向量相似度权重60%
                                     ts_rank_cd(
-                                        setweight(to_tsvector('chinese', coalesce(c.""CATALOGUE_NAME"",'')), 'A') || 
-                                        setweight(to_tsvector('chinese', coalesce(c.""REFERENCE"",'')), 'B'),
-                                        to_tsquery('chinese', @searchQuery)
+                                        setweight(to_tsvector('chinese_fts', coalesce(c.""CATALOGUE_NAME"",'')), 'A') || 
+                                        setweight(to_tsvector('chinese_fts', coalesce(c.""REFERENCE"",'')), 'B'),
+                                        to_tsquery('chinese_fts', @searchQuery)
                                     ) * 0.4 -- 全文搜索权重40%
                                 ELSE
                                     ts_rank_cd(
-                                        setweight(to_tsvector('chinese', coalesce(c.""CATALOGUE_NAME"",'')), 'A') || 
-                                        setweight(to_tsvector('chinese', coalesce(c.""REFERENCE"",'')), 'B'),
-                                        to_tsquery('chinese', @searchQuery)
+                                        setweight(to_tsvector('chinese_fts', coalesce(c.""CATALOGUE_NAME"",'')), 'A') || 
+                                        setweight(to_tsvector('chinese_fts', coalesce(c.""REFERENCE"",'')), 'B'),
+                                        to_tsquery('chinese_fts', @searchQuery)
                                     )
                             END as rank
                         FROM ""ATTACH_CATALOGUES"" c
                         WHERE (
-                            setweight(to_tsvector('chinese', coalesce(c.""CATALOGUE_NAME"",'')), 'A') ||
-                            setweight(to_tsvector('chinese', coalesce(c.""REFERENCE"",'')), 'B')
-                        ) @@ to_tsquery('chinese', @searchQuery)
+                            setweight(to_tsvector('chinese_fts', coalesce(c.""CATALOGUE_NAME"",'')), 'A') ||
+                            setweight(to_tsvector('chinese_fts', coalesce(c.""REFERENCE"",'')), 'B')
+                        ) @@ to_tsquery('chinese_fts', @searchQuery)
                         AND (@hasEmbedding::boolean = false OR 
                              (c.embedding IS NOT NULL AND 1 - (c.embedding <=> @queryEmbedding::real[]) >= @similarityThreshold))
                     )
@@ -458,15 +458,3 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         }
     }
 }
-
-//-- 需要添加向量运算符支持
-//CREATE EXTENSION IF NOT EXISTS vector;
-
-//-- 创建混合索引
-//CREATE INDEX idx_attach_catalogues_hybrid ON "ATTACH_CATALOGUES" USING gin(
-//    (
-//        setweight(to_tsvector('chinese', coalesce("CATALOGUE_NAME",'')), 'A') ||
-//        setweight(to_tsvector('chinese', coalesce("REFERENCE",'')), 'B')
-//    )
-//);
-//CREATE INDEX idx_attach_catalogues_embedding ON "ATTACH_CATALOGUES" USING ivfflat (embedding vector_cosine_ops);

@@ -109,6 +109,24 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .HasConversion(permissionsConverter)
                 .IsRequired(false);
 
+            // 元数据字段集合字段配置（JSONB格式）
+#pragma warning disable CS8600 // 将 null 文本或可能的 null 值转换为不可为 null 类型
+            var metaFieldsConverter = new ValueConverter<ICollection<MetaField>, string>(
+                // 转换为数据库值 - 空集合转换为空数组字符串，而不是null
+                v => v == null || v.Count == 0 ? "[]" : 
+                     System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions)null),
+                // 从数据库值转换
+                v => string.IsNullOrEmpty(v) || v == "[]" ? new List<MetaField>() : 
+                     System.Text.Json.JsonSerializer.Deserialize<List<MetaField>>(v, (System.Text.Json.JsonSerializerOptions)null) ?? new List<MetaField>()
+            );
+#pragma warning restore CS8600
+
+            builder.Property(d => d.MetaFields)
+                .HasColumnName("META_FIELDS")
+                .HasColumnType("jsonb")
+                .HasConversion(metaFieldsConverter)
+                .IsRequired(false);
+
             // 审计字段配置
             builder.Property(p => p.ExtraProperties).HasColumnName("EXTRA_PROPERTIES");
             builder.Property(p => p.ConcurrencyStamp).HasColumnName("CONCURRENCY_STAMP")

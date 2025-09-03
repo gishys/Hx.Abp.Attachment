@@ -22,6 +22,9 @@ namespace Hx.Abp.Attachment.Application
             // AttachCatalogueTemplate 映射
             CreateMap<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(MemberList.Destination)
                 .ForMember(dest => dest.Permissions, opt => opt.MapFrom(src => src.Permissions));
+            CreateMap<AttachCatalogueTemplate, AttachCatalogueTemplateTreeDto>(MemberList.Destination)
+                .ForMember(dest => dest.Permissions, opt => opt.MapFrom(src => src.Permissions))
+                .ForMember(dest => dest.Children, opt => opt.MapFrom(src => src.Children));
             CreateMap<CreateUpdateAttachCatalogueTemplateDto, AttachCatalogueTemplate>(MemberList.Source);
             
             // 权限相关映射

@@ -16,6 +16,17 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public string TemplateName { get; set; } = string.Empty;
 
         /// <summary>
+        /// 模板描述
+        /// </summary>
+        [StringLength(1000, ErrorMessage = "模板描述长度不能超过1000个字符")]
+        public string? Description { get; set; }
+
+        /// <summary>
+        /// 模板标签
+        /// </summary>
+        public List<string> Tags { get; set; } = [];
+
+        /// <summary>
         /// 附件类型
         /// </summary>
         [Required(ErrorMessage = "附件类型不能为空")]

@@ -15,6 +15,18 @@ namespace Hx.Abp.Attachment.Domain
         public virtual string TemplateName { get; private set; }
 
         /// <summary>
+        /// 模板描述
+        /// </summary>
+        [CanBeNull]
+        public virtual string? Description { get; private set; }
+
+        /// <summary>
+        /// 模板标签（JSON数组格式，用于全文检索）
+        /// </summary>
+        [CanBeNull]
+        public virtual List<string>? Tags { get; private set; }
+
+        /// <summary>
         /// 模板版本号
         /// </summary>
         public virtual int Version { get; private set; } = 1;
@@ -103,7 +115,9 @@ namespace Hx.Abp.Attachment.Domain
             bool isLatest = true,
             FacetType facetType = FacetType.General,
             TemplatePurpose templatePurpose = TemplatePurpose.Classification,
-            [CanBeNull] List<double>? textVector = null)
+            [CanBeNull] List<double>? textVector = null,
+            [CanBeNull] string? description = null,
+            [CanBeNull] List<string>? tags = null)
         {
             Id = id;
             TemplateName = Check.NotNullOrWhiteSpace(templateName, nameof(templateName));
@@ -118,6 +132,8 @@ namespace Hx.Abp.Attachment.Domain
             FacetType = facetType;
             TemplatePurpose = templatePurpose;
             SetTextVector(textVector);
+            Description = description;
+            Tags = tags ?? [];
             Children = [];
             Permissions = [];
         }
@@ -130,7 +146,9 @@ namespace Hx.Abp.Attachment.Domain
             bool isStatic,
             [CanBeNull] string ruleExpression,
             FacetType facetType,
-            TemplatePurpose templatePurpose)
+            TemplatePurpose templatePurpose,
+            [CanBeNull] string? description = null,
+            [CanBeNull] List<string>? tags = null)
         {
             TemplateName = Check.NotNullOrWhiteSpace(templateName, nameof(templateName));
             AttachReceiveType = attachReceiveType;
@@ -140,6 +158,16 @@ namespace Hx.Abp.Attachment.Domain
             RuleExpression = ruleExpression;
             FacetType = facetType;
             TemplatePurpose = templatePurpose;
+            
+            if (description != null)
+            {
+                Description = description;
+            }
+            
+            if (tags != null)
+            {
+                Tags = tags;
+            }
         }
 
         public virtual void SetVersion(int version, bool isLatest)
@@ -161,6 +189,49 @@ namespace Hx.Abp.Attachment.Domain
         public virtual void RemoveChildTemplate(AttachCatalogueTemplate child)
         {
             Children.Remove(child);
+        }
+
+        /// <summary>
+        /// 设置模板描述
+        /// </summary>
+        /// <param name="description">模板描述</param>
+        public virtual void SetDescription([CanBeNull] string? description)
+        {
+            Description = description;
+        }
+
+        /// <summary>
+        /// 设置模板标签
+        /// </summary>
+        /// <param name="tags">模板标签列表</param>
+        public virtual void SetTags([CanBeNull] List<string>? tags)
+        {
+            Tags = tags ?? [];
+        }
+
+        /// <summary>
+        /// 添加单个标签
+        /// </summary>
+        /// <param name="tag">标签</param>
+        public virtual void AddTag(string tag)
+        {
+            if (!string.IsNullOrWhiteSpace(tag))
+            {
+                Tags ??= [];
+                if (!Tags.Contains(tag))
+                {
+                    Tags.Add(tag);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 移除标签
+        /// </summary>
+        /// <param name="tag">要移除的标签</param>
+        public virtual void RemoveTag(string tag)
+        {
+            Tags?.Remove(tag);
         }
 
         /// <summary>
@@ -255,6 +326,8 @@ namespace Hx.Abp.Attachment.Domain
             FacetType = source.FacetType;
             TemplatePurpose = source.TemplatePurpose;
             SetTextVector(source.TextVector);
+            Description = source.Description;
+            Tags = source.Tags != null ? [.. source.Tags] : [];
             Permissions = [.. source.Permissions.Select(p => new AttachCatalogueTemplatePermission(p.PermissionType, p.PermissionTarget, p.Action, p.Effect, p.AttributeConditions, p.EffectiveTime, p.ExpirationTime, p.Description))];
         }
 
@@ -409,6 +482,73 @@ namespace Hx.Abp.Attachment.Domain
                 return directPermissions.Any(p => p.Effect == PermissionEffect.Allow);
             }
 
+            return false;
+        }
+
+        /// <summary>
+        /// 获取全文检索内容（用于倒排索引）
+        /// </summary>
+        public virtual string GetFullTextContent()
+        {
+            var contentParts = new List<string>();
+            
+            // 添加模板名称
+            if (!string.IsNullOrWhiteSpace(TemplateName))
+            {
+                contentParts.Add(TemplateName);
+            }
+            
+            // 添加描述
+            if (!string.IsNullOrWhiteSpace(Description))
+            {
+                contentParts.Add(Description);
+            }
+            
+            // 添加标签
+            if (Tags != null && Tags.Count > 0)
+            {
+                contentParts.AddRange(Tags);
+            }
+            
+            // 添加规则表达式（如果包含有意义的关键词）
+            if (!string.IsNullOrWhiteSpace(RuleExpression))
+            {
+                contentParts.Add(RuleExpression);
+            }
+            
+            return string.Join(" ", contentParts);
+        }
+
+        /// <summary>
+        /// 检查是否包含关键词（用于全文检索）
+        /// </summary>
+        /// <param name="keyword">关键词</param>
+        /// <param name="searchInTags">是否在标签中搜索</param>
+        /// <returns>是否包含关键词</returns>
+        public virtual bool ContainsKeyword(string keyword, bool searchInTags = true)
+        {
+            if (string.IsNullOrWhiteSpace(keyword))
+                return false;
+                
+            var lowerKeyword = keyword.ToLowerInvariant();
+            
+            // 在模板名称中搜索
+            if (TemplateName.Contains(lowerKeyword, StringComparison.InvariantCultureIgnoreCase))
+                return true;
+                
+            // 在描述中搜索
+            if (!string.IsNullOrWhiteSpace(Description) && 
+                Description.Contains(lowerKeyword, StringComparison.InvariantCultureIgnoreCase))
+                return true;
+                
+            // 在标签中搜索
+            if (searchInTags && Tags != null)
+            {
+                if (Tags.Any(tag => !string.IsNullOrWhiteSpace(tag) && 
+                                   tag.Contains(lowerKeyword, StringComparison.InvariantCultureIgnoreCase)))
+                    return true;
+            }
+            
             return false;
         }
 

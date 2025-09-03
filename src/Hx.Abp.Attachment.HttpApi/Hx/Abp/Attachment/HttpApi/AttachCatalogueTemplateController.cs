@@ -171,5 +171,91 @@ namespace Hx.Abp.Attachment.HttpApi
         {
             return AttachCatalogueTemplateAppService.GetTemplateStatisticsAsync();
         }
+
+        // ============= 混合检索接口 =============
+
+        /// <summary>
+        /// 混合检索模板（字面 + 语义）
+        /// </summary>
+        [HttpPost("search/hybrid")]
+        public virtual Task<ListResultDto<TemplateSearchResultDto>> SearchTemplatesHybridAsync(TemplateSearchInputDto input)
+        {
+            return AttachCatalogueTemplateAppService.SearchTemplatesHybridAsync(input);
+        }
+
+        /// <summary>
+        /// 文本检索模板
+        /// </summary>
+        [HttpGet("search/text")]
+        public virtual Task<ListResultDto<TemplateSearchResultDto>> SearchTemplatesByTextAsync(
+            [FromQuery] string keyword,
+            [FromQuery] FacetType? facetType = null,
+            [FromQuery] TemplatePurpose? templatePurpose = null,
+            [FromQuery] List<string>? tags = null,
+            [FromQuery] int maxResults = 20)
+        {
+            return AttachCatalogueTemplateAppService.SearchTemplatesByTextAsync(keyword, facetType, templatePurpose, tags, maxResults);
+        }
+
+        /// <summary>
+        /// 标签检索模板
+        /// </summary>
+        [HttpGet("search/tags")]
+        public virtual Task<ListResultDto<TemplateSearchResultDto>> SearchTemplatesByTagsAsync(
+            [FromQuery] List<string> tags,
+            [FromQuery] FacetType? facetType = null,
+            [FromQuery] TemplatePurpose? templatePurpose = null,
+            [FromQuery] int maxResults = 20)
+        {
+            return AttachCatalogueTemplateAppService.SearchTemplatesByTagsAsync(tags, facetType, templatePurpose, maxResults);
+        }
+
+        /// <summary>
+        /// 语义检索模板
+        /// </summary>
+        [HttpGet("search/semantic")]
+        public virtual Task<ListResultDto<TemplateSearchResultDto>> SearchTemplatesBySemanticAsync(
+            [FromQuery] string semanticQuery,
+            [FromQuery] FacetType? facetType = null,
+            [FromQuery] TemplatePurpose? templatePurpose = null,
+            [FromQuery] double similarityThreshold = 0.7,
+            [FromQuery] int maxResults = 20)
+        {
+            return AttachCatalogueTemplateAppService.SearchTemplatesBySemanticAsync(semanticQuery, facetType, templatePurpose, similarityThreshold, maxResults);
+        }
+
+        /// <summary>
+        /// 获取热门标签
+        /// </summary>
+        [HttpGet("tags/popular")]
+        public virtual Task<ListResultDto<string>> GetPopularTagsAsync([FromQuery] int topN = 20)
+        {
+            return AttachCatalogueTemplateAppService.GetPopularTagsAsync(topN);
+        }
+
+        /// <summary>
+        /// 获取标签统计
+        /// </summary>
+        [HttpGet("tags/statistics")]
+        public virtual Task<Dictionary<string, int>> GetTagStatisticsAsync()
+        {
+            return AttachCatalogueTemplateAppService.GetTagStatisticsAsync();
+        }
+
+        // ============= 树状结构查询接口 =============
+
+        /// <summary>
+        /// 获取根节点模板（用于树状展示）
+        /// </summary>
+        [HttpGet("tree/roots")]
+        public virtual Task<ListResultDto<AttachCatalogueTemplateTreeDto>> GetRootTemplatesAsync(
+            [FromQuery] FacetType? facetType = null,
+            [FromQuery] TemplatePurpose? templatePurpose = null,
+            [FromQuery] bool includeChildren = true,
+            [FromQuery] bool onlyLatest = true)
+        {
+            return AttachCatalogueTemplateAppService.GetRootTemplatesAsync(
+                facetType, templatePurpose, includeChildren, onlyLatest);
+        }
     }
 }

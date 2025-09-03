@@ -60,6 +60,37 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.Property(d => d.VectorDimension).HasColumnName("VECTOR_DIMENSION")
                 .HasDefaultValue(0);
 
+            // 新增字段配置
+            builder.Property(d => d.Description).HasColumnName("DESCRIPTION")
+                .HasColumnType("text")
+                .HasMaxLength(1000)
+                .UseCollation("und-x-icu")
+                .IsRequired(false);
+
+            builder.Property(d => d.Tags).HasColumnName("TAGS")
+                .HasColumnType("jsonb")
+                .HasDefaultValueSql("'[]'::jsonb");
+
+            // Tags字段配置（JSONB格式）
+#pragma warning disable CS8600 // 将 null 字面量或可能为 null 的值转换为非 null 类型。
+            var tagsConverter = new ValueConverter<List<string>, string>(
+                // 转换为数据库值 - 空集合转换为空数组字符串，而不是null
+                v => v == null || v.Count == 0 ? "[]" : 
+                     System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions)null),
+                // 从数据库值转换
+                v => string.IsNullOrEmpty(v) || v == "[]" ? new List<string>() : 
+                     System.Text.Json.JsonSerializer.Deserialize<List<string>>(v, (System.Text.Json.JsonSerializerOptions)null) ?? new List<string>()
+            );
+#pragma warning restore CS8600 // 将 null 字面量或可能为 null 的值转换为非 null 类型。
+
+#pragma warning disable CS8620 // 由于引用类型的可为 null 性差异，实参不能用于形参。
+            builder.Property(d => d.Tags)
+                .HasColumnName("TAGS")
+                .HasColumnType("jsonb")
+                .HasConversion(tagsConverter)
+                .HasDefaultValueSql("'[]'::jsonb");
+#pragma warning restore CS8620 // 由于引用类型的可为 null 性差异，实参不能用于形参。
+
             // 权限集合字段配置（JSONB格式）
 #pragma warning disable CS8600 // 将 null 文本或可能的 null 值转换为不可为 null 类型
             var permissionsConverter = new ValueConverter<ICollection<AttachCatalogueTemplatePermission>, string>(

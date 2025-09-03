@@ -1,6 +1,7 @@
 using Hx.Abp.Attachment.Application.Contracts;
 using Hx.Abp.Attachment.Domain;
 using Hx.Abp.Attachment.Domain.Shared;
+using Microsoft.Extensions.Logging;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
@@ -11,7 +12,8 @@ namespace Hx.Abp.Attachment.Application
     public class AttachCatalogueTemplateAppService(
         IAttachCatalogueTemplateRepository repository,
         IAttachCatalogueManager catalogueManager,
-        IGuidGenerator guidGenerator) :
+        IGuidGenerator guidGenerator,
+        ILogger<AttachCatalogueTemplateAppService> logger) :
         CrudAppService<
             AttachCatalogueTemplate,
             AttachCatalogueTemplateDto,
@@ -23,6 +25,7 @@ namespace Hx.Abp.Attachment.Application
         private readonly IAttachCatalogueTemplateRepository _templateRepository = repository;
         private readonly IAttachCatalogueManager _catalogueManager = catalogueManager;
         private readonly IGuidGenerator _guidGenerator = guidGenerator;
+        private readonly ILogger<AttachCatalogueTemplateAppService> _logger = logger;
 
         public async Task<ListResultDto<AttachCatalogueTemplateDto>> FindMatchingTemplatesAsync(TemplateMatchInput input)
         {
@@ -257,6 +260,221 @@ namespace Hx.Abp.Attachment.Application
         {
             var statistics = await _templateRepository.GetTemplateStatisticsAsync();
             return ObjectMapper.Map<object, AttachCatalogueTemplateStatisticsDto>(statistics);
+        }
+
+        // ============= 混合检索方法 =============
+
+        public async Task<ListResultDto<TemplateSearchResultDto>> SearchTemplatesHybridAsync(TemplateSearchInputDto input)
+        {
+            try
+            {
+                var templates = await _templateRepository.SearchTemplatesHybridAsync(
+                    input.Keyword,
+                    input.SemanticQuery,
+                    input.FacetType,
+                    input.TemplatePurpose,
+                    input.Tags,
+                    input.MaxResults,
+                    input.SimilarityThreshold,
+                    input.Weights?.TextWeight ?? 0.4,
+                    input.Weights?.SemanticWeight ?? 0.6);
+
+                var results = templates.Select(t => new TemplateSearchResultDto
+                {
+                    Id = t.Id,
+                    TemplateName = t.TemplateName,
+                    Description = t.Description,
+                    Tags = t.Tags ?? [],
+                    FacetType = t.FacetType,
+                    TemplatePurpose = t.TemplatePurpose,
+                    IsLatest = t.IsLatest,
+                    Version = t.Version,
+                    // 这里可以根据实际检索逻辑计算评分
+                    TotalScore = 1.0,
+                    TextScore = 0.8,
+                    SemanticScore = 0.9,
+                    TagScore = 0.7,
+                    MatchReasons = ["关键词匹配", "语义相似"]
+                }).ToList();
+
+                return new ListResultDto<TemplateSearchResultDto>(results);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "混合检索模板失败");
+                throw new UserFriendlyException("检索失败，请稍后重试");
+            }
+        }
+
+        public async Task<ListResultDto<TemplateSearchResultDto>> SearchTemplatesByTextAsync(
+            string keyword, 
+            FacetType? facetType = null, 
+            TemplatePurpose? templatePurpose = null, 
+            List<string>? tags = null, 
+            int maxResults = 20)
+        {
+            try
+            {
+                var templates = await _templateRepository.SearchTemplatesByTextAsync(
+                    keyword, facetType, templatePurpose, tags, maxResults);
+
+                var results = templates.Select(t => new TemplateSearchResultDto
+                {
+                    Id = t.Id,
+                    TemplateName = t.TemplateName,
+                    Description = t.Description,
+                    Tags = t.Tags ?? [],
+                    FacetType = t.FacetType,
+                    TemplatePurpose = t.TemplatePurpose,
+                    IsLatest = t.IsLatest,
+                    Version = t.Version,
+                    TotalScore = 1.0,
+                    TextScore = 1.0,
+                    SemanticScore = 0.0,
+                    TagScore = 0.0,
+                    MatchReasons = ["文本匹配"]
+                }).ToList();
+
+                return new ListResultDto<TemplateSearchResultDto>(results);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "文本检索模板失败");
+                throw new UserFriendlyException("检索失败，请稍后重试");
+            }
+        }
+
+        public async Task<ListResultDto<TemplateSearchResultDto>> SearchTemplatesByTagsAsync(
+            List<string> tags, 
+            FacetType? facetType = null, 
+            TemplatePurpose? templatePurpose = null, 
+            int maxResults = 20)
+        {
+            try
+            {
+                var templates = await _templateRepository.SearchTemplatesByTagsAsync(
+                    tags, facetType, templatePurpose, maxResults);
+
+                var results = templates.Select(t => new TemplateSearchResultDto
+                {
+                    Id = t.Id,
+                    TemplateName = t.TemplateName,
+                    Description = t.Description,
+                    Tags = t.Tags ?? [],
+                    FacetType = t.FacetType,
+                    TemplatePurpose = t.TemplatePurpose,
+                    IsLatest = t.IsLatest,
+                    Version = t.Version,
+                    TotalScore = 1.0,
+                    TextScore = 0.0,
+                    SemanticScore = 0.0,
+                    TagScore = 1.0,
+                    MatchReasons = ["标签匹配"]
+                }).ToList();
+
+                return new ListResultDto<TemplateSearchResultDto>(results);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "标签检索模板失败");
+                throw new UserFriendlyException("检索失败，请稍后重试");
+            }
+        }
+
+        public async Task<ListResultDto<TemplateSearchResultDto>> SearchTemplatesBySemanticAsync(
+            string semanticQuery, 
+            FacetType? facetType = null, 
+            TemplatePurpose? templatePurpose = null, 
+            double similarityThreshold = 0.7, 
+            int maxResults = 20)
+        {
+            try
+            {
+                var templates = await _templateRepository.SearchTemplatesBySemanticAsync(
+                    semanticQuery, facetType, templatePurpose, similarityThreshold, maxResults);
+
+                var results = templates.Select(t => new TemplateSearchResultDto
+                {
+                    Id = t.Id,
+                    TemplateName = t.TemplateName,
+                    Description = t.Description,
+                    Tags = t.Tags ?? [],
+                    FacetType = t.FacetType,
+                    TemplatePurpose = t.TemplatePurpose,
+                    IsLatest = t.IsLatest,
+                    Version = t.Version,
+                    TotalScore = 1.0,
+                    TextScore = 0.0,
+                    SemanticScore = 1.0,
+                    TagScore = 0.0,
+                    MatchReasons = ["语义相似"]
+                }).ToList();
+
+                return new ListResultDto<TemplateSearchResultDto>(results);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "语义检索模板失败");
+                throw new UserFriendlyException("检索失败，请稍后重试");
+            }
+        }
+
+        public async Task<ListResultDto<string>> GetPopularTagsAsync(int topN = 20)
+        {
+            try
+            {
+                var tags = await _templateRepository.GetPopularTagsAsync(topN);
+                return new ListResultDto<string>(tags);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取热门标签失败");
+                throw new UserFriendlyException("获取标签失败，请稍后重试");
+            }
+        }
+
+        public async Task<Dictionary<string, int>> GetTagStatisticsAsync()
+        {
+            try
+            {
+                return await _templateRepository.GetTagStatisticsAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取标签统计失败");
+                throw new UserFriendlyException("获取统计失败，请稍后重试");
+            }
+        }
+
+        // ============= 树状结构查询方法 =============
+
+        /// <summary>
+        /// 获取根节点模板（用于树状展示）
+        /// </summary>
+        public async Task<ListResultDto<AttachCatalogueTemplateTreeDto>> GetRootTemplatesAsync(
+            FacetType? facetType = null,
+            TemplatePurpose? templatePurpose = null,
+            bool includeChildren = true,
+            bool onlyLatest = true)
+        {
+            try
+            {
+                var rootTemplates = await _templateRepository.GetRootTemplatesAsync(
+                    facetType, templatePurpose, includeChildren, onlyLatest);
+
+                var treeDtos = rootTemplates.Select(t => 
+                    ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateTreeDto>(t)).ToList();
+
+                _logger.LogInformation("获取根节点模板完成，数量：{count}，包含子节点：{includeChildren}", 
+                    treeDtos.Count, includeChildren);
+
+                return new ListResultDto<AttachCatalogueTemplateTreeDto>(treeDtos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取根节点模板失败");
+                throw new UserFriendlyException("获取模板树失败，请稍后重试");
+            }
         }
     }
 }

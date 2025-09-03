@@ -1,4 +1,5 @@
 using Volo.Abp.Domain.Repositories;
+using Hx.Abp.Attachment.Domain.Shared;
 
 namespace Hx.Abp.Attachment.Domain
 {
@@ -99,6 +100,87 @@ namespace Hx.Abp.Attachment.Domain
         /// 获取模板使用统计概览
         /// </summary>
         Task<TemplateUsageOverview> GetTemplateUsageOverviewAsync();
+
+        #endregion
+
+        #region 混合检索方法
+
+        /// <summary>
+        /// 混合检索模板（字面 + 语义）
+        /// </summary>
+        Task<List<AttachCatalogueTemplate>> SearchTemplatesHybridAsync(
+            string? keyword = null,
+            string? semanticQuery = null,
+            FacetType? facetType = null,
+            TemplatePurpose? templatePurpose = null,
+            List<string>? tags = null,
+            int maxResults = 20,
+            double similarityThreshold = 0.7,
+            double textWeight = 0.4,
+            double semanticWeight = 0.6);
+
+        /// <summary>
+        /// 全文检索模板（基于倒排索引）
+        /// </summary>
+        Task<List<AttachCatalogueTemplate>> SearchTemplatesByTextAsync(
+            string keyword,
+            FacetType? facetType = null,
+            TemplatePurpose? templatePurpose = null,
+            List<string>? tags = null,
+            int maxResults = 20,
+            bool enableFuzzy = true,
+            bool enablePrefix = true);
+
+        /// <summary>
+        /// 标签检索模板
+        /// </summary>
+        Task<List<AttachCatalogueTemplate>> SearchTemplatesByTagsAsync(
+            List<string> tags,
+            FacetType? facetType = null,
+            TemplatePurpose? templatePurpose = null,
+            int maxResults = 20,
+            bool matchAll = false);
+
+        /// <summary>
+        /// 语义检索模板（基于向量相似度）
+        /// </summary>
+        Task<List<AttachCatalogueTemplate>> SearchTemplatesBySemanticAsync(
+            string semanticQuery,
+            FacetType? facetType = null,
+            TemplatePurpose? templatePurpose = null,
+            double similarityThreshold = 0.7,
+            int maxResults = 20);
+
+        /// <summary>
+        /// 获取热门标签
+        /// </summary>
+        Task<List<string>> GetPopularTagsAsync(int topN = 20);
+
+        /// <summary>
+        /// 获取标签统计
+        /// </summary>
+        Task<Dictionary<string, int>> GetTagStatisticsAsync();
+
+        #endregion
+
+        #region 树状结构查询方法
+
+        /// <summary>
+        /// 获取根节点模板（用于树状展示）
+        /// </summary>
+        Task<List<AttachCatalogueTemplate>> GetRootTemplatesAsync(
+            FacetType? facetType = null,
+            TemplatePurpose? templatePurpose = null,
+            bool includeChildren = true,
+            bool onlyLatest = true);
+
+        /// <summary>
+        /// 递归获取模板的完整子树
+        /// </summary>
+        Task<List<AttachCatalogueTemplate>> GetTemplateSubtreeAsync(
+            Guid rootId,
+            bool onlyLatest = true,
+            int maxDepth = 10);
 
         #endregion
     }

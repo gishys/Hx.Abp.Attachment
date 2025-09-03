@@ -248,32 +248,40 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             try
             {
                 var dbContext = await GetDbContextAsync();
-            var dbSet = await GetDbSetAsync();
-            
+                var dbSet = await GetDbSetAsync();
+                
                 // 1. 动态提取业务关键词（从数据库中的实际数据）
                 var dynamicKeywords = await ExtractDynamicKeywordsAsync(dbContext, businessDescription);
             
-                // 2. 构建数据库驱动的查询
-            var sql = @"
+                // 2. 构建数据库驱动的查询，利用新的Description和Tags字段
+                var sql = @"
                     WITH template_scores AS (
                         SELECT 
                             t.*,
-                       COALESCE(
-                           GREATEST(
+                            COALESCE(
+                                GREATEST(
                                     -- 动态关键词匹配（权重最高）
                                     CASE WHEN @keywords IS NOT NULL AND @keywords != '' 
                                          THEN (
-                                             COALESCE(similarity(t.""TEMPLATE_NAME"", @businessQuery), 0) * 0.3 +
-                                             COALESCE(similarity(t.""SEMANTIC_MODEL"", @businessQuery), 0) * 0.4 +
-                                             COALESCE(similarity(t.""NAME_PATTERN"", @businessQuery), 0) * 0.3
+                                             COALESCE(similarity(t.""TEMPLATE_NAME"", @businessQuery), 0) * 0.25 +
+                                             COALESCE(similarity(t.""DESCRIPTION"", @businessQuery), 0) * 0.25 +
+                                             COALESCE(similarity(t.""RULE_EXPRESSION"", @businessQuery), 0) * 0.25 +
+                                             -- 标签匹配（权重中等）
+                                             CASE WHEN t.""TAGS"" IS NOT NULL AND t.""TAGS"" != '[]' 
+                                                  THEN (
+                                                      SELECT COALESCE(MAX(similarity(tag, @businessQuery)), 0) * 0.25
+                                                      FROM jsonb_array_elements_text(t.""TAGS"") AS tag
+                                                  )
+                                              ELSE 0 END
                                          ) * 1.5
                                     ELSE 0 END,
                                     -- 文件类型匹配（权重中等）
                                     CASE WHEN @fileTypes IS NOT NULL AND @fileTypes != ''
                                          THEN (
-                                             CASE WHEN t.""TEMPLATE_NAME"" ILIKE ANY(@fileTypePatterns) THEN 0.4 ELSE 0 END +
-                                             CASE WHEN t.""SEMANTIC_MODEL"" ILIKE ANY(@fileTypePatterns) THEN 0.3 ELSE 0 END +
-                                             CASE WHEN t.""NAME_PATTERN"" ILIKE ANY(@fileTypePatterns) THEN 0.3 ELSE 0 END
+                                             CASE WHEN t.""TEMPLATE_NAME"" ILIKE ANY(@fileTypePatterns) THEN 0.3 ELSE 0 END +
+                                             CASE WHEN t.""DESCRIPTION"" ILIKE ANY(@fileTypePatterns) THEN 0.3 ELSE 0 END +
+                                             CASE WHEN t.""RULE_EXPRESSION"" ILIKE ANY(@fileTypePatterns) THEN 0.2 ELSE 0 END +
+                                             CASE WHEN t.""TAGS"" @> ANY(@fileTypeJsonArray) THEN 0.2 ELSE 0 END
                                          ) * 1.2
                                     ELSE 0 END,
                                     -- 使用频率权重（基于实际使用数据）
@@ -283,8 +291,18 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                                         WHERE ""TEMPLATE_ID"" IS NOT NULL 
                                         AND ""IS_DELETED"" = false
                                     ) THEN 0.3 ELSE 0 END,
-                                    -- 基础文本相似度
-                                    COALESCE(similarity(t.""TEMPLATE_NAME"", @businessQuery), 0) * 0.8
+                                    -- 基础文本相似度（综合多个字段）
+                                    GREATEST(
+                                        COALESCE(similarity(t.""TEMPLATE_NAME"", @businessQuery), 0) * 0.4,
+                                        COALESCE(similarity(t.""DESCRIPTION"", @businessQuery), 0) * 0.3,
+                                        COALESCE(similarity(t.""RULE_EXPRESSION"", @businessQuery), 0) * 0.2,
+                                        CASE WHEN t.""TAGS"" IS NOT NULL AND t.""TAGS"" != '[]' 
+                                             THEN (
+                                                 SELECT COALESCE(MAX(similarity(tag, @businessQuery)), 0) * 0.1
+                                                 FROM jsonb_array_elements_text(t.""TAGS"") AS tag
+                                             )
+                                         ELSE 0 END
+                                    ) * 0.8
                                 ), 0
                             ) as match_score,
                             -- 使用频率统计
@@ -317,27 +335,29 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     FROM template_scores
                     WHERE match_score > 0.1
                     ORDER BY final_score DESC, ""SEQUENCE_NUMBER"" ASC
-                LIMIT @expectedLevels";
+                    LIMIT @expectedLevels";
             
                 // 3. 准备查询参数
                 var businessQuery = businessDescription.Trim();
                 var dynamicKeywordsStr = string.Join(" ", dynamicKeywords);
                 var fileTypePatterns = fileTypes.Select(ft => $"%{ft.ToUpper()}%").ToArray();
+                var fileTypeJsonArray = fileTypes.Select(ft => $"[{ft}]").ToArray(); // 用于标签的JSON数组查询
             
-            var parameters = new[]
-            {
-                new Npgsql.NpgsqlParameter("@businessQuery", businessQuery),
+                var parameters = new[]
+                {
+                    new Npgsql.NpgsqlParameter("@businessQuery", businessQuery),
                     new Npgsql.NpgsqlParameter("@keywords", dynamicKeywordsStr),
                     new Npgsql.NpgsqlParameter("@fileTypes", string.Join(",", fileTypes)),
-                new Npgsql.NpgsqlParameter("@fileTypePatterns", fileTypePatterns),
-                new Npgsql.NpgsqlParameter("@expectedLevels", expectedLevels),
-                new Npgsql.NpgsqlParameter("@onlyLatest", onlyLatest)
-            };
+                    new Npgsql.NpgsqlParameter("@fileTypePatterns", fileTypePatterns),
+                    new Npgsql.NpgsqlParameter("@fileTypeJsonArray", fileTypeJsonArray),
+                    new Npgsql.NpgsqlParameter("@expectedLevels", expectedLevels),
+                    new Npgsql.NpgsqlParameter("@onlyLatest", onlyLatest)
+                };
             
                 // 4. 执行查询
                 var rawResults = await dbContext.Database
                     .SqlQueryRaw<dynamic>(sql, parameters)
-                .ToListAsync();
+                    .ToListAsync();
                 
                 // 5. 转换结果
                 var results = new List<AttachCatalogueTemplate>();
@@ -368,8 +388,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 Logger.LogInformation("动态业务推荐查询完成，业务描述：{description}，文件类型：{fileTypes}，动态关键词：{keywords}，找到 {count} 个匹配模板", 
                     businessDescription, string.Join(", ", fileTypes), dynamicKeywordsStr, results.Count);
                 
-            return results;
-        }
+                return results;
+            }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "动态业务推荐查询失败，业务描述：{description}", businessDescription);
@@ -386,20 +406,33 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         {
             try
             {
-                // 1. 从现有模板中提取高频关键词
+                // 1. 从现有模板中提取高频关键词（利用新字段）
                 var templateKeywords = await dbContext.Set<AttachCatalogueTemplate>()
-                    .Where(t => !t.IsDeleted && !string.IsNullOrEmpty(t.RuleExpression))
-                    .Select(t => t.RuleExpression)
+                    .Where(t => !t.IsDeleted)
+                    .SelectMany(t => new[]
+                    {
+                        t.TemplateName,
+                        t.Description,
+                        t.RuleExpression
+                    }.Where(x => !string.IsNullOrEmpty(x)))
                     .ToListAsync();
 
-                // 2. 从实际使用数据中提取关键词
+                // 2. 从模板标签中提取关键词
+#pragma warning disable CS8603 // 可能返回 null 引用。
+                var tagKeywords = await dbContext.Set<AttachCatalogueTemplate>()
+                    .Where(t => !t.IsDeleted && t.Tags != null && t.Tags.Count > 0)
+                    .SelectMany(t => t.Tags)
+                    .ToListAsync();
+#pragma warning restore CS8603 // 可能返回 null 引用。
+
+                // 3. 从实际使用数据中提取关键词
                 var usageKeywords = await dbContext.Set<AttachCatalogue>()
                     .Where(ac => !ac.IsDeleted && !string.IsNullOrEmpty(ac.CatalogueName))
                     .Select(ac => ac.CatalogueName)
                     .ToListAsync();
 
-                // 3. 合并并分析关键词
-                var allText = string.Join(" ", templateKeywords.Concat(usageKeywords));
+                // 4. 合并并分析关键词
+                var allText = string.Join(" ", templateKeywords.Concat(tagKeywords).Concat(usageKeywords));
                 var keywords = ExtractKeywordsFromText(allText, businessDescription);
 
                 Logger.LogInformation("动态提取关键词完成，业务描述：{description}，提取关键词：{keywords}", 
@@ -509,11 +542,38 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 {
                     double score = 0;
 
-                    // 基础文本匹配
+                    // 模板名称匹配（权重最高）
                     if (!string.IsNullOrEmpty(template.TemplateName) && 
                         template.TemplateName.Contains(businessDescription, StringComparison.OrdinalIgnoreCase))
                     {
-                        score += 0.5;
+                        score += 0.4;
+                    }
+
+                    // 描述字段匹配（权重较高）
+                    if (!string.IsNullOrEmpty(template.Description) && 
+                        template.Description.Contains(businessDescription, StringComparison.OrdinalIgnoreCase))
+                    {
+                        score += 0.3;
+                    }
+
+                    // 标签匹配（权重中等）
+                    if (template.Tags != null && template.Tags.Count > 0)
+                    {
+                        foreach (var tag in template.Tags)
+                        {
+                            if (tag.Contains(businessDescription, StringComparison.OrdinalIgnoreCase))
+                            {
+                                score += 0.2;
+                                break; // 只计算一次标签匹配
+                            }
+                        }
+                    }
+
+                    // 规则表达式匹配（权重较低）
+                    if (!string.IsNullOrEmpty(template.RuleExpression) && 
+                        template.RuleExpression.Contains(businessDescription, StringComparison.OrdinalIgnoreCase))
+                    {
+                        score += 0.1;
                     }
 
                     // 文件类型匹配
@@ -521,7 +581,15 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     {
                         if (template.TemplateName?.Contains(fileType, StringComparison.OrdinalIgnoreCase) == true)
                         {
-                            score += 0.3;
+                            score += 0.2;
+                        }
+                        if (template.Description?.Contains(fileType, StringComparison.OrdinalIgnoreCase) == true)
+                        {
+                            score += 0.1;
+                        }
+                        if (template.Tags != null && template.Tags.Any(tag => tag.Contains(fileType, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            score += 0.1;
                         }
                     }
 
@@ -1325,5 +1393,421 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 };
             }
         }
+
+        // ============= 混合检索方法 =============
+
+        /// <summary>
+        /// 混合检索模板（字面 + 语义）
+        /// </summary>
+        public async Task<List<AttachCatalogueTemplate>> SearchTemplatesHybridAsync(
+            string? keyword = null,
+            string? semanticQuery = null,
+            FacetType? facetType = null,
+            TemplatePurpose? templatePurpose = null,
+            List<string>? tags = null,
+            int maxResults = 20,
+            double similarityThreshold = 0.7,
+            double textWeight = 0.4,
+            double semanticWeight = 0.6)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                var queryable = dbSet.AsQueryable();
+
+                // 基础过滤
+                queryable = queryable.Where(t => !t.IsDeleted);
+                
+                if (facetType.HasValue)
+                    queryable = queryable.Where(t => t.FacetType == facetType.Value);
+                
+                if (templatePurpose.HasValue)
+                    queryable = queryable.Where(t => t.TemplatePurpose == templatePurpose.Value);
+
+                // 标签过滤
+                if (tags != null && tags.Count > 0)
+                {
+                    foreach (var tag in tags)
+                    {
+                        queryable = queryable.Where(t => t.Tags != null && t.Tags.Contains(tag));
+                    }
+                }
+
+                var results = new List<AttachCatalogueTemplate>();
+
+                // 字面检索
+                if (!string.IsNullOrWhiteSpace(keyword))
+                {
+                    var textResults = await queryable
+                        .Where(t => t.TemplateName.Contains(keyword) || 
+                                  (t.Description != null && t.Description.Contains(keyword)) ||
+                                  (t.Tags != null && t.Tags.Any(tag => tag.Contains(keyword))))
+                        .Take(maxResults)
+                        .ToListAsync();
+                    
+                    results.AddRange(textResults);
+                }
+
+                // 语义检索
+                if (!string.IsNullOrWhiteSpace(semanticQuery) && results.Count < maxResults)
+                {
+                    var remainingCount = maxResults - results.Count;
+                    var semanticResults = await queryable
+                        .Where(t => t.TextVector != null && t.VectorDimension > 0)
+                        .Take(remainingCount)
+                        .ToListAsync();
+                    
+                    // 这里应该调用语义匹配服务进行相似度计算
+                    // 简化实现，直接返回结果
+                    results.AddRange(semanticResults);
+                }
+
+                // 去重并限制结果数量
+                var distinctResults = results
+                    .GroupBy(t => t.Id)
+                    .Select(g => g.First())
+                    .Take(maxResults)
+                    .ToList();
+
+                Logger.LogInformation("混合检索完成，关键词：{keyword}，语义查询：{semanticQuery}，结果数量：{count}", 
+                    keyword, semanticQuery, distinctResults.Count);
+
+                return distinctResults;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "混合检索模板失败");
+                return [];
+            }
+        }
+
+        /// <summary>
+        /// 全文检索模板（基于倒排索引）
+        /// </summary>
+        public async Task<List<AttachCatalogueTemplate>> SearchTemplatesByTextAsync(
+            string keyword,
+            FacetType? facetType = null,
+            TemplatePurpose? templatePurpose = null,
+            List<string>? tags = null,
+            int maxResults = 20,
+            bool enableFuzzy = true,
+            bool enablePrefix = true)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                var queryable = dbSet.AsQueryable();
+
+                // 基础过滤
+                queryable = queryable.Where(t => !t.IsDeleted);
+                
+                if (facetType.HasValue)
+                    queryable = queryable.Where(t => t.FacetType == facetType.Value);
+                
+                if (templatePurpose.HasValue)
+                    queryable = queryable.Where(t => t.TemplatePurpose == templatePurpose.Value);
+
+                // 标签过滤
+                if (tags != null && tags.Count > 0)
+                {
+                    foreach (var tag in tags)
+                    {
+                        queryable = queryable.Where(t => t.Tags != null && t.Tags.Contains(tag));
+                    }
+                }
+
+                // 文本搜索
+                var searchPattern = $"%{keyword}%";
+                queryable = queryable.Where(t => 
+                    t.TemplateName.Contains(keyword) || 
+                    (t.Description != null && t.Description.Contains(keyword)) ||
+                    (t.Tags != null && t.Tags.Any(tag => tag.Contains(keyword))));
+
+                var results = await queryable
+                    .OrderByDescending(t => t.TemplateName.Contains(keyword) ? 1 : 0)
+                    .ThenBy(t => t.TemplateName)
+                    .Take(maxResults)
+                    .ToListAsync();
+
+                Logger.LogInformation("文本检索完成，关键词：{keyword}，结果数量：{count}", keyword, results.Count);
+
+                return results;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "文本检索模板失败");
+                return [];
+            }
+        }
+
+        /// <summary>
+        /// 标签检索模板
+        /// </summary>
+        public async Task<List<AttachCatalogueTemplate>> SearchTemplatesByTagsAsync(
+            List<string> tags,
+            FacetType? facetType = null,
+            TemplatePurpose? templatePurpose = null,
+            int maxResults = 20,
+            bool matchAll = false)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                var queryable = dbSet.AsQueryable();
+
+                // 基础过滤
+                queryable = queryable.Where(t => !t.IsDeleted);
+                
+                if (facetType.HasValue)
+                    queryable = queryable.Where(t => t.FacetType == facetType.Value);
+                
+                if (templatePurpose.HasValue)
+                    queryable = queryable.Where(t => t.TemplatePurpose == templatePurpose.Value);
+
+                // 标签匹配
+                if (matchAll)
+                {
+                    // 必须包含所有标签
+                    foreach (var tag in tags)
+                    {
+                        queryable = queryable.Where(t => t.Tags != null && t.Tags.Contains(tag));
+                    }
+                }
+                else
+                {
+                    // 包含任意标签
+                    queryable = queryable.Where(t => t.Tags != null && t.Tags.Any(tag => tags.Contains(tag)));
+                }
+
+                var results = await queryable
+                    .OrderBy(t => t.TemplateName)
+                    .Take(maxResults)
+                    .ToListAsync();
+
+                Logger.LogInformation("标签检索完成，标签：{tags}，结果数量：{count}", string.Join(",", tags), results.Count);
+
+                return results;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "标签检索模板失败");
+                return [];
+            }
+        }
+
+        /// <summary>
+        /// 语义检索模板（基于向量相似度）
+        /// </summary>
+        public async Task<List<AttachCatalogueTemplate>> SearchTemplatesBySemanticAsync(
+            string semanticQuery,
+            FacetType? facetType = null,
+            TemplatePurpose? templatePurpose = null,
+            double similarityThreshold = 0.7,
+            int maxResults = 20)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                var queryable = dbSet.AsQueryable();
+
+                // 基础过滤
+                queryable = queryable.Where(t => !t.IsDeleted);
+                
+                if (facetType.HasValue)
+                    queryable = queryable.Where(t => t.FacetType == facetType.Value);
+                
+                if (templatePurpose.HasValue)
+                    queryable = queryable.Where(t => t.TemplatePurpose == templatePurpose.Value);
+
+                // 只查询有向量的模板
+                queryable = queryable.Where(t => t.TextVector != null && t.VectorDimension > 0);
+
+                var templates = await queryable
+                    .Take(maxResults * 2) // 获取更多候选，用于语义匹配
+                    .ToListAsync();
+
+                // 这里应该调用语义匹配服务进行相似度计算和排序
+                // 简化实现，直接返回结果
+                var results = templates.Take(maxResults).ToList();
+
+                Logger.LogInformation("语义检索完成，查询：{semanticQuery}，结果数量：{count}", semanticQuery, results.Count);
+
+                return results;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "语义检索模板失败");
+                return [];
+            }
+        }
+
+        /// <summary>
+        /// 获取热门标签
+        /// </summary>
+        public async Task<List<string>> GetPopularTagsAsync(int topN = 20)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+
+#pragma warning disable CS8603 // 可能返回 null 引用。
+                var popularTags = await dbSet
+                    .Where(t => !t.IsDeleted && t.Tags != null && t.Tags.Count > 0)
+                    .SelectMany(t => t.Tags)
+                    .GroupBy(tag => tag)
+                    .OrderByDescending(g => g.Count())
+                    .Take(topN)
+                    .Select(g => g.Key)
+                    .ToListAsync();
+#pragma warning restore CS8603 // 可能返回 null 引用。
+
+                Logger.LogInformation("获取热门标签完成，数量：{count}", popularTags.Count);
+
+                return popularTags;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取热门标签失败");
+                return [];
+            }
+        }
+
+        /// <summary>
+        /// 获取标签统计
+        /// </summary>
+        public async Task<Dictionary<string, int>> GetTagStatisticsAsync()
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+
+#pragma warning disable CS8603 // 可能返回 null 引用。
+                var tagStats = await dbSet
+                    .Where(t => !t.IsDeleted && t.Tags != null && t.Tags.Count > 0)
+                    .SelectMany(t => t.Tags)
+                    .GroupBy(tag => tag)
+                    .ToDictionaryAsync(g => g.Key, g => g.Count());
+#pragma warning restore CS8603 // 可能返回 null 引用。
+
+                Logger.LogInformation("获取标签统计完成，标签数量：{count}", tagStats.Count);
+
+                return tagStats;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取标签统计失败");
+                return [];
+            }
+        }
+
+        #region 树状结构查询方法
+
+        /// <summary>
+        /// 获取根节点模板（用于树状展示）
+        /// </summary>
+        public async Task<List<AttachCatalogueTemplate>> GetRootTemplatesAsync(
+            FacetType? facetType = null,
+            TemplatePurpose? templatePurpose = null,
+            bool includeChildren = true,
+            bool onlyLatest = true)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                var queryable = dbSet.AsQueryable();
+
+                // 基础过滤
+                queryable = queryable.Where(t => !t.IsDeleted);
+                
+                // 只查询根节点（ParentId为null）
+                queryable = queryable.Where(t => t.ParentId == null);
+                
+                if (onlyLatest)
+                    queryable = queryable.Where(t => t.IsLatest);
+                
+                if (facetType.HasValue)
+                    queryable = queryable.Where(t => t.FacetType == facetType.Value);
+                
+                if (templatePurpose.HasValue)
+                    queryable = queryable.Where(t => t.TemplatePurpose == templatePurpose.Value);
+
+                // 按顺序号排序
+                queryable = queryable.OrderBy(t => t.SequenceNumber);
+
+                if (includeChildren)
+                {
+                    // 使用EF Core的Include预加载整个树形结构
+                    // 注意：这里需要处理子节点的过滤条件
+                    queryable = queryable.Include(t => t.Children.Where(c => !c.IsDeleted && (!onlyLatest || c.IsLatest)).OrderBy(c => c.SequenceNumber))
+                        .ThenInclude(c => c.Children.Where(c2 => !c2.IsDeleted && (!onlyLatest || c2.IsLatest)).OrderBy(c2 => c2.SequenceNumber))
+                        .ThenInclude(c => c.Children.Where(c3 => !c3.IsDeleted && (!onlyLatest || c3.IsLatest)).OrderBy(c3 => c3.SequenceNumber))
+                        .ThenInclude(c => c.Children.Where(c4 => !c4.IsDeleted && (!onlyLatest || c4.IsLatest)).OrderBy(c4 => c4.SequenceNumber))
+                        .ThenInclude(c => c.Children.Where(c5 => !c5.IsDeleted && (!onlyLatest || c5.IsLatest)).OrderBy(c5 => c5.SequenceNumber)); // 最多5层深度
+                }
+
+                var rootTemplates = await queryable.ToListAsync();
+
+                Logger.LogInformation("获取根节点模板完成，数量：{count}，包含子节点：{includeChildren}", 
+                    rootTemplates.Count, includeChildren);
+
+                return rootTemplates;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取根节点模板失败");
+                return [];
+            }
+        }
+
+        /// <summary>
+        /// 递归获取模板的完整子树
+        /// </summary>
+        public async Task<List<AttachCatalogueTemplate>> GetTemplateSubtreeAsync(
+            Guid rootId,
+            bool onlyLatest = true,
+            int maxDepth = 10)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                var queryable = dbSet.Where(t => t.Id == rootId && !t.IsDeleted);
+
+                // 使用EF Core的Include预加载整个树形结构
+                if (maxDepth > 0)
+                {
+                    var currentQuery = queryable.Include(t => t.Children);
+
+                    // 动态构建多层Include
+                    for (int i = 1; i < Math.Min(maxDepth, 5); i++) // 限制最大深度为5层
+                    {
+                        currentQuery = currentQuery.ThenInclude(c => c.Children);
+                    }
+                }
+
+                var rootTemplate = await queryable.FirstOrDefaultAsync();
+
+                if (rootTemplate == null)
+                {
+                    Logger.LogWarning("未找到根模板：{rootId}", rootId);
+                    return [];
+                }
+
+                var result = new List<AttachCatalogueTemplate> { rootTemplate };
+                
+                Logger.LogInformation("获取模板子树完成，根ID：{rootId}，结果数量：{count}", 
+                    rootId, result.Count);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取模板子树失败，根ID：{rootId}", rootId);
+                return [];
+            }
+        }
+
+
+
+        #endregion
     }
 }

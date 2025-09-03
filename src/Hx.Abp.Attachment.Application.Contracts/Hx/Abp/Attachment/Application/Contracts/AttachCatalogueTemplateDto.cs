@@ -14,6 +14,16 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public string TemplateName { get; set; } = string.Empty;
 
         /// <summary>
+        /// 模板描述
+        /// </summary>
+        public string? Description { get; set; }
+
+        /// <summary>
+        /// 模板标签
+        /// </summary>
+        public List<string> Tags { get; set; } = [];
+
+        /// <summary>
         /// 模板版本号
         /// </summary>
         public int Version { get; set; }

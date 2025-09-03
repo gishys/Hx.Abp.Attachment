@@ -41,9 +41,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.Property(d => d.Version).HasColumnName("VERSION").HasDefaultValue(1);
             builder.Property(d => d.IsLatest).HasColumnName("IS_LATEST").HasDefaultValue(true);
             builder.Property(d => d.AttachReceiveType).HasColumnName("ATTACH_RECEIVE_TYPE");
-            builder.Property(d => d.NamePattern).HasColumnName("NAME_PATTERN").HasMaxLength(512);
             builder.Property(d => d.RuleExpression).HasColumnName("RULE_EXPRESSION").HasColumnType("text");
-            builder.Property(d => d.SemanticModel).HasColumnName("SEMANTIC_MODEL").HasMaxLength(128);
             builder.Property(d => d.IsRequired).HasColumnName("IS_REQUIRED").HasDefaultValue(false);
             builder.Property(d => d.SequenceNumber).HasColumnName("SEQUENCE_NUMBER").HasDefaultValue(0);
             builder.Property(d => d.IsStatic).HasColumnName("IS_STATIC").HasDefaultValue(false);

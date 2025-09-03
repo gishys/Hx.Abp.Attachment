@@ -285,7 +285,7 @@ namespace Hx.Abp.Attachment.Domain
         /// <param name="textVector">文本向量</param>
         public virtual void SetTextVector([CanBeNull] List<double>? textVector)
         {
-            if (textVector != null)
+            if (textVector != null && textVector.Count > 0)
             {
                 if (textVector.Count < 64 || textVector.Count > 2048)
                 {
@@ -324,8 +324,8 @@ namespace Hx.Abp.Attachment.Domain
                 throw new ArgumentException("分类名称不能为空", nameof(CatalogueName));
             }
 
-            // 验证向量维度
-            if (TextVector != null && (VectorDimension < 64 || VectorDimension > 2048))
+            // 验证向量维度（只有当向量存在且不为空时才验证）
+            if (TextVector != null && TextVector.Count > 0 && (VectorDimension < 64 || VectorDimension > 2048))
             {
                 throw new ArgumentException("向量维度必须在64到2048之间", nameof(TextVector));
             }

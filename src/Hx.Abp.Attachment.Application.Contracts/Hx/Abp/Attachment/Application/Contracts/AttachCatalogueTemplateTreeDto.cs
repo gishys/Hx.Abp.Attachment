@@ -1,12 +1,14 @@
 using Hx.Abp.Attachment.Domain.Shared;
 using System;
 using System.Collections.Generic;
-using System.Text.Json.Serialization;
 using Volo.Abp.Application.Dtos;
 
 namespace Hx.Abp.Attachment.Application.Contracts
 {
-    public class AttachCatalogueTemplateDto : AuditedEntityDto<Guid>
+    /// <summary>
+    /// 模板层级结构 DTO（用于树形显示，避免循环引用）
+    /// </summary>
+    public class AttachCatalogueTemplateTreeDto : AuditedEntityDto<Guid>
     {
         /// <summary>
         /// 模板名称
@@ -54,12 +56,6 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public Guid? ParentId { get; set; }
 
         /// <summary>
-        /// 子模板集合
-        /// </summary>
-        [JsonIgnore]
-        public List<AttachCatalogueTemplateDto> Children { get; set; } = [];
-
-        /// <summary>
         /// 分面类型
         /// </summary>
         public FacetType FacetType { get; set; }
@@ -85,6 +81,11 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public List<AttachCatalogueTemplatePermissionDto> Permissions { get; set; } = [];
 
         /// <summary>
+        /// 子模板集合（用于树形结构）
+        /// </summary>
+        public List<AttachCatalogueTemplateTreeDto> Children { get; set; } = [];
+
+        /// <summary>
         /// 模板标识描述
         /// </summary>
         public string TemplateIdentifierDescription => $"{FacetType} - {TemplatePurpose}";
@@ -100,13 +101,20 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public bool IsLeaf => Children == null || Children.Count == 0;
 
         /// <summary>
-        /// 模板层级深度
+        /// 获取模板层级深度
         /// </summary>
-        public int Depth => IsRoot ? 0 : 1;
+        public int GetDepth()
+        {
+            if (IsRoot) return 0;
+            return 1; // 简化实现，实际应该递归计算
+        }
 
         /// <summary>
-        /// 模板路径
+        /// 获取模板路径
         /// </summary>
-        public string Path => TemplateName;
+        public string GetPath()
+        {
+            return TemplateName; // 简化实现，实际应该构建完整路径
+        }
     }
 }

@@ -609,24 +609,14 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public bool IsSuccess { get; set; }
 
         /// <summary>
-        /// 更新前的 SemanticModel
+        /// 更新前的规则表达式
         /// </summary>
-        public string? OldSemanticModel { get; set; }
+        public string? OldRuleExpression { get; set; }
 
         /// <summary>
-        /// 更新后的 SemanticModel
+        /// 更新后的规则表达式
         /// </summary>
-        public string? NewSemanticModel { get; set; }
-
-        /// <summary>
-        /// 更新前的 NamePattern
-        /// </summary>
-        public string? OldNamePattern { get; set; }
-
-        /// <summary>
-        /// 更新后的 NamePattern
-        /// </summary>
-        public string? NewNamePattern { get; set; }
+        public string? NewRuleExpression { get; set; }
 
         /// <summary>
         /// 错误信息

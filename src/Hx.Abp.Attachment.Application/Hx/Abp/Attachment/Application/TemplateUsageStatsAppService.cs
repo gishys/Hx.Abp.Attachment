@@ -163,7 +163,7 @@ namespace Hx.Abp.Attachment.Application
             {
                 _logger.LogInformation("开始获取热门模板，天数：{daysBack}，数量：{topN}，最小使用次数：{minUsageCount}", 
                     input.DaysBack, input.TopN, input.MinUsageCount);
-                var domainHotTemplates = await _templateRepository.GetHotTemplatesAsync(input.DaysBack, input.TopN, input.MinUsageCount);
+                var domainHotTemplates = await _templateRepository.GetHotTemplatesAsync(input.TopN, input.DaysBack);
                 
                 // 映射Domain值对象到DTO
                 var dtoHotTemplates = domainHotTemplates.Select((template, index) => new HotTemplateDto

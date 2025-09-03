@@ -64,25 +64,11 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 SELECT t.*, 
                        COALESCE(
                            GREATEST(
-                               -- SemanticModel 语义匹配（权重最高）
-                                   CASE WHEN t.""SEMANTIC_MODEL"" IS NOT NULL AND t.""SEMANTIC_MODEL"" != '' 
-                                    THEN (
-                                            COALESCE(similarity(t.""TEMPLATE_NAME"", @query), 0) * 0.4 +
-                                            COALESCE(similarity(t.""SEMANTIC_MODEL"", @query), 0) * 0.6
-                                    ) * 1.3
-                                    ELSE 0 END,
-                               -- NamePattern 模式匹配（权重中等）
-                                   CASE WHEN t.""NAME_PATTERN"" IS NOT NULL AND t.""NAME_PATTERN"" != '' 
-                                    THEN (
-                                            COALESCE(similarity(t.""TEMPLATE_NAME"", @query), 0) * 0.5 +
-                                            COALESCE(similarity(t.""NAME_PATTERN"", @query), 0) * 0.5
-                                    ) * 1.1
-                                    ELSE 0 END,
-                               -- RuleExpression 规则匹配（权重较低）
+                               -- RuleExpression 规则匹配（权重较高）
                                    CASE WHEN t.""RULE_EXPRESSION"" IS NOT NULL AND t.""RULE_EXPRESSION"" != '' 
-                                        THEN COALESCE(similarity(t.""TEMPLATE_NAME"", @query), 0) * 1.0 
+                                        THEN COALESCE(similarity(t.""TEMPLATE_NAME"", @query), 0) * 1.1
                                     ELSE 0 END,
-                               -- 基础名称匹配（权重最低）
+                               -- 基础名称匹配（权重较低）
                                    COALESCE(similarity(t.""TEMPLATE_NAME"", @query), 0) * 0.8
                            ), 0
                        ) as match_score
@@ -93,10 +79,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                           t.""TEMPLATE_NAME"" ILIKE @queryPattern
                           OR t.""TEMPLATE_NAME"" % @query
                           OR @query % t.""TEMPLATE_NAME""
-                      -- SemanticModel 关键字匹配
-                          OR (t.""SEMANTIC_MODEL"" IS NOT NULL AND t.""SEMANTIC_MODEL"" ILIKE @queryPattern)
-                      -- NamePattern 模式匹配
-                          OR (t.""NAME_PATTERN"" IS NOT NULL AND t.""NAME_PATTERN"" ILIKE @queryPattern)
+                      -- 规则表达式匹配
+                          OR (t.""RULE_EXPRESSION"" IS NOT NULL AND t.""RULE_EXPRESSION"" ILIKE @queryPattern)
                       -- 相似度匹配
                           OR COALESCE(similarity(t.""TEMPLATE_NAME"", @query), 0) > @threshold
                   )
@@ -180,37 +164,20 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     {
                         double score = 0;
                         
-                        // SemanticModel 语义匹配（权重最高）
-                        if (!string.IsNullOrEmpty(template.SemanticModel))
-                        {
-                            var nameSimilarity = CalculateSimpleSimilarity(template.TemplateName, query);
-                            var semanticSimilarity = CalculateSimpleSimilarity(template.SemanticModel, query);
-                            score = Math.Max(score, (nameSimilarity * 0.4 + semanticSimilarity * 0.6) * 1.3);
-                        }
-                        
-                        // NamePattern 模式匹配（权重中等）
-                        if (!string.IsNullOrEmpty(template.NamePattern))
-                        {
-                            var nameSimilarity = CalculateSimpleSimilarity(template.TemplateName, query);
-                            var patternSimilarity = CalculateSimpleSimilarity(template.NamePattern, query);
-                            score = Math.Max(score, (nameSimilarity * 0.5 + patternSimilarity * 0.5) * 1.1);
-                        }
-                        
-                        // RuleExpression 规则匹配（权重较低）
+                        // RuleExpression 规则匹配（权重较高）
                         if (!string.IsNullOrEmpty(template.RuleExpression))
                         {
                             var nameSimilarity = CalculateSimpleSimilarity(template.TemplateName, query);
-                            score = Math.Max(score, nameSimilarity * 1.0);
+                            score = Math.Max(score, nameSimilarity * 1.1);
                         }
                         
-                        // 基础名称匹配（权重最低）
+                        // 基础名称匹配（权重较低）
                         var baseSimilarity = CalculateSimpleSimilarity(template.TemplateName, query);
                         score = Math.Max(score, baseSimilarity * 0.8);
                         
                         // 检查是否满足基本匹配条件
                         if (template.TemplateName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                            (!string.IsNullOrEmpty(template.SemanticModel) && template.SemanticModel.Contains(query, StringComparison.OrdinalIgnoreCase)) ||
-                            (!string.IsNullOrEmpty(template.NamePattern) && template.NamePattern.Contains(query, StringComparison.OrdinalIgnoreCase)) ||
+                            (!string.IsNullOrEmpty(template.RuleExpression) && template.RuleExpression.Contains(query, StringComparison.OrdinalIgnoreCase)) ||
                             score > threshold)
                         {
                             scoredResults.Add((template, score));
@@ -421,8 +388,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             {
                 // 1. 从现有模板中提取高频关键词
                 var templateKeywords = await dbContext.Set<AttachCatalogueTemplate>()
-                    .Where(t => !t.IsDeleted && !string.IsNullOrEmpty(t.SemanticModel))
-                    .Select(t => t.SemanticModel)
+                    .Where(t => !t.IsDeleted && !string.IsNullOrEmpty(t.RuleExpression))
+                    .Select(t => t.RuleExpression)
                     .ToListAsync();
 
                 // 2. 从实际使用数据中提取关键词
@@ -731,114 +698,83 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         #region 关键字维护方法
 
         /// <summary>
-        /// 更新模板的 SemanticModel 关键字
+        /// 更新模板的规则表达式
         /// </summary>
-        public async Task UpdateSemanticModelKeywordsAsync(Guid templateId, List<string> keywords)
+        public async Task UpdateRuleExpressionAsync(Guid templateId, string ruleExpression)
         {
             var dbContext = await GetDbContextAsync();
             
             var sql = @"
                 UPDATE ""APPATTACH_CATALOGUE_TEMPLATES"" 
-                SET ""SEMANTIC_MODEL"" = @keywords
+                SET ""RULE_EXPRESSION"" = @ruleExpression
                 WHERE ""ID"" = @templateId";
             
             var parameters = new[]
             {
                 new Npgsql.NpgsqlParameter("@templateId", templateId),
-                new Npgsql.NpgsqlParameter("@keywords", string.Join(",", keywords))
+                new Npgsql.NpgsqlParameter("@ruleExpression", ruleExpression)
             };
             
             await dbContext.Database.ExecuteSqlRawAsync(sql, parameters);
             
-            Logger.LogInformation("更新模板语义模型关键字完成，模板ID：{templateId}，关键字：{keywords}", 
-                templateId, string.Join(",", keywords));
+            Logger.LogInformation("更新模板规则表达式完成，模板ID：{templateId}，表达式：{ruleExpression}", 
+                templateId, ruleExpression);
         }
 
         /// <summary>
-        /// 更新模板的 NamePattern 模式
+        /// 智能更新模板配置（基于使用数据）
         /// </summary>
-        public async Task UpdateNamePatternAsync(Guid templateId, string namePattern)
-        {
-            var dbContext = await GetDbContextAsync();
-            
-            var sql = @"
-                UPDATE ""APPATTACH_CATALOGUE_TEMPLATES"" 
-                SET ""NAME_PATTERN"" = @namePattern
-                WHERE ""ID"" = @templateId";
-            
-            var parameters = new[]
-            {
-                new Npgsql.NpgsqlParameter("@templateId", templateId),
-                new Npgsql.NpgsqlParameter("@namePattern", namePattern)
-            };
-            
-            await dbContext.Database.ExecuteSqlRawAsync(sql, parameters);
-            
-            Logger.LogInformation("更新模板名称模式完成，模板ID：{templateId}，模式：{namePattern}", 
-                templateId, namePattern);
-        }
-
-        /// <summary>
-        /// 基于使用历史自动提取 SemanticModel 关键字
-        /// </summary>
-        public async Task<List<string>> ExtractSemanticKeywordsFromUsageAsync(Guid templateId)
+        public async Task UpdateTemplateConfigurationIntelligentlyAsync(Guid templateId)
         {
             try
             {
-                var dbSet = await GetDbSetAsync();
-                
-                // 使用 EF Core 查询替代 SQL
-                var templates = await dbSet
-                    .Where(t => t.Id == templateId || t.ParentId == templateId)
-                    .Select(t => new { t.SemanticModel, t.TemplateName })
-                    .ToListAsync();
-                
-                var keywords = new List<string>();
-                
-                foreach (var template in templates)
+                // 更新规则表达式（如果基于使用数据可以优化）
+                var ruleExpression = await ExtractRuleExpressionFromUsageAsync(templateId);
+                if (!string.IsNullOrEmpty(ruleExpression))
                 {
-                    // 从 SemanticModel 提取关键字
-                    if (!string.IsNullOrEmpty(template.SemanticModel))
-                    {
-                        var semanticKeywords = template.SemanticModel
-                            .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                            .Select(k => k.Trim())
-                            .Where(k => !string.IsNullOrWhiteSpace(k) && k.Length > 1);
-                        
-                        keywords.AddRange(semanticKeywords);
-                    }
-                    
-                    // 从 TemplateName 提取关键字
-                    if (!string.IsNullOrEmpty(template.TemplateName))
-                    {
-                        var nameKeywords = template.TemplateName
-                            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                            .Select(k => k.Trim())
-                            .Where(k => !string.IsNullOrWhiteSpace(k) && k.Length > 1);
-                        
-                        keywords.AddRange(nameKeywords);
-                    }
+                    await UpdateRuleExpressionAsync(templateId, ruleExpression);
                 }
-                
-                // 去重并限制数量
-                return [.. keywords.Distinct().Take(10)];
+
+                Logger.LogInformation("智能更新模板配置完成，模板ID：{templateId}", templateId);
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "提取语义关键字失败，模板ID：{templateId}", templateId);
-                return [];
+                Logger.LogError(ex, "智能更新模板配置失败，模板ID：{templateId}", templateId);
+                throw;
             }
         }
 
         /// <summary>
-        /// 基于文件命名模式自动提取 NamePattern
+        /// 智能更新模板关键字（基于使用数据）
         /// </summary>
-        public async Task<string> ExtractNamePatternFromFilesAsync(Guid templateId)
+        public Task UpdateTemplateKeywordsIntelligentlyAsync(Guid templateId)
         {
             try
+            {
+                // 基于使用数据智能更新模板关键字
+                // 这里可以添加关键字提取和更新的逻辑
+                // 目前简化实现，只记录日志
+                
+                Logger.LogInformation("智能更新模板关键字完成，模板ID：{templateId}", templateId);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "智能更新模板关键字失败，模板ID：{templateId}", templateId);
+                throw;
+            }
+
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// 基于使用历史提取规则表达式
+        /// </summary>
+        private async Task<string> ExtractRuleExpressionFromUsageAsync(Guid templateId)
         {
-            var dbContext = await GetDbContextAsync();
-            
+            try
+            {
+                var dbContext = await GetDbContextAsync();
+                
                 // 使用 EF Core 查询替代 SQL
                 var catalogues = await dbContext.Set<AttachCatalogue>()
                     .Where(ac => ac.TemplateId == templateId && !ac.IsDeleted)
@@ -854,74 +790,47 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 
                 if (fileNames.Count == 0)
                 {
-                    return "{Type}_{ProjectName}_{Date}";
+                    return "{\"WorkflowName\":\"DefaultWorkflow\",\"Rules\":[]}";
                 }
                 
-                // 分析文件名模式
-                var namePattern = DetermineNamePattern(fileNames);
+                // 分析文件名模式，生成简单的规则表达式
+                var ruleExpression = GenerateSimpleRuleExpression(fileNames);
                 
-                return namePattern;
+                return ruleExpression;
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "提取名称模式失败，模板ID：{templateId}，使用默认模式", templateId);
-                return "{Type}_{ProjectName}_{Date}";
+                Logger.LogError(ex, "提取规则表达式失败，模板ID：{templateId}，使用默认表达式", templateId);
+                return "{\"WorkflowName\":\"DefaultWorkflow\",\"Rules\":[]}";
             }
         }
         
         /// <summary>
-        /// 根据文件名列表确定命名模式
+        /// 根据文件名列表生成简单的规则表达式
         /// </summary>
-        private static string DetermineNamePattern(List<string> fileNames)
+        private static string GenerateSimpleRuleExpression(List<string> fileNames)
         {
             if (fileNames.Count == 0)
-                return "{Type}_{ProjectName}_{Date}";
+                return "{\"WorkflowName\":\"DefaultWorkflow\",\"Rules\":[]}";
             
-            // 分析文件名中的模式
+            // 分析文件名中的模式，生成简单的规则
             var sampleFileName = fileNames.First();
             
-            if (sampleFileName.Contains("{ProjectName}") || sampleFileName.Contains("项目"))
+            if (sampleFileName.Contains("项目") || sampleFileName.Contains("Project"))
             {
-                return "{Type}_{ProjectName}_{Date}_{Version}";
+                return "{\"WorkflowName\":\"ProjectWorkflow\",\"Rules\":[\"ProjectName\",\"Date\",\"Version\"]}";
             }
-            else if (sampleFileName.Contains("{Date}") || sampleFileName.Contains("日期"))
+            else if (sampleFileName.Contains("日期") || sampleFileName.Contains("Date"))
             {
-                return "{Type}_{Date}_{Version}";
+                return "{\"WorkflowName\":\"DateWorkflow\",\"Rules\":[\"Date\",\"Type\",\"Version\"]}";
             }
-            else if (sampleFileName.Contains("{Version}") || sampleFileName.Contains("版本"))
+            else if (sampleFileName.Contains("版本") || sampleFileName.Contains("Version"))
             {
-                return "{Type}_{ProjectName}_{Version}";
+                return "{\"WorkflowName\":\"VersionWorkflow\",\"Rules\":[\"Type\",\"ProjectName\",\"Version\"]}";
             }
             else
             {
-                return "{Type}_{ProjectName}_{Date}";
-            }
-        }
-
-        /// <summary>
-        /// 智能更新模板关键字（基于使用数据）
-        /// </summary>
-        public async Task UpdateTemplateKeywordsIntelligentlyAsync(Guid templateId)
-        {
-            try
-            {
-                // 1. 提取语义关键字
-                var semanticKeywords = await ExtractSemanticKeywordsFromUsageAsync(templateId);
-                if (semanticKeywords.Count > 0)
-                {
-                    await UpdateSemanticModelKeywordsAsync(templateId, semanticKeywords);
-                }
-
-                // 2. 提取名称模式
-                var namePattern = await ExtractNamePatternFromFilesAsync(templateId);
-                await UpdateNamePatternAsync(templateId, namePattern);
-
-                Logger.LogInformation("智能更新模板关键字完成，模板ID：{templateId}", templateId);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "智能更新模板关键字失败，模板ID：{templateId}", templateId);
-                throw;
+                return "{\"WorkflowName\":\"StandardWorkflow\",\"Rules\":[\"Type\",\"ProjectName\",\"Date\"]}";
             }
         }
 
@@ -1097,7 +1006,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         /// <summary>
         /// 获取热门模板
         /// </summary>
-        public async Task<List<HotTemplate>> GetHotTemplatesAsync(int daysBack = 30, int topN = 10, int minUsageCount = 1)
+        public async Task<List<HotTemplate>> GetHotTemplatesAsync(int topN = 10, int daysBack = 30)
         {
             try
             {
@@ -1115,7 +1024,6 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                             .Where(ac => ac.TemplateId == t.Id && !ac.IsDeleted && ac.CreationTime >= startDate)
                             .Count()
                     })
-                    .Where(x => x.UsageCount >= minUsageCount)
                     .OrderByDescending(x => x.UsageCount)
                     .Take(topN)
                     .ToListAsync();

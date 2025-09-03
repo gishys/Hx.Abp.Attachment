@@ -96,11 +96,12 @@ namespace Hx.Abp.Attachment.Application
                     baseTemplate.IsRequired,
                     baseTemplate.IsStatic,
                     input.InheritFromParent ? baseTemplate.Id : null,
-                    baseTemplate.NamePattern,
                     baseTemplate.RuleExpression,
-                    baseTemplate.SemanticModel,
                     baseTemplate.Version + 1,
-                    true);
+                    true,
+                    baseTemplate.FacetType,
+                    baseTemplate.TemplatePurpose,
+                    baseTemplate.TextVector);
 
                 // 4. 保存新模板
                 await _templateRepository.InsertAsync(newTemplate);
@@ -336,8 +337,7 @@ namespace Hx.Abp.Attachment.Application
                         if (template != null)
                         {
                             updateDetail.TemplateName = template.TemplateName;
-                            updateDetail.OldSemanticModel = template.SemanticModel;
-                            updateDetail.OldNamePattern = template.NamePattern;
+                            updateDetail.OldRuleExpression = template.RuleExpression;
                         }
 
                         var success = await UpdateTemplateKeywordsIntelligentlyAsync(templateId);
@@ -350,8 +350,7 @@ namespace Hx.Abp.Attachment.Application
                             var updatedTemplate = await _templateRepository.GetAsync(templateId);
                             if (updatedTemplate != null)
                             {
-                                updateDetail.NewSemanticModel = updatedTemplate.SemanticModel;
-                                updateDetail.NewNamePattern = updatedTemplate.NamePattern;
+                                updateDetail.NewRuleExpression = updatedTemplate.RuleExpression;
                             }
                         }
                         else
@@ -478,60 +477,17 @@ namespace Hx.Abp.Attachment.Application
         {
             var queryLower = query.ToLowerInvariant();
             
-            // 1. 检查 SemanticModel 匹配（优先级最高）
-            if (!string.IsNullOrEmpty(template.SemanticModel) && 
-                HasKeywordMatch(template.SemanticModel, queryLower))
-            {
-                return "Semantic";
-            }
-            
-            // 2. 检查 NamePattern 匹配（优先级中等）
-            if (!string.IsNullOrEmpty(template.NamePattern) && 
-                HasPatternMatch(template.NamePattern, queryLower))
-            {
-                return "Pattern";
-            }
-            
-            // 3. 检查 RuleExpression 匹配（优先级较低）
+            // 1. 检查 RuleExpression 规则匹配（优先级较高）
             if (!string.IsNullOrEmpty(template.RuleExpression) && 
                 HasRuleMatch(template.RuleExpression, queryLower))
             {
                 return "Rule";
             }
             
-            // 4. 默认基于模板配置判断
-            if (!string.IsNullOrEmpty(template.SemanticModel))
-                return "Semantic";
-            if (!string.IsNullOrEmpty(template.NamePattern))
-                return "Pattern";
-            if (!string.IsNullOrEmpty(template.RuleExpression))
-                return "Rule";
-            
+            // 2. 默认基于模板名称匹配
             return "Name";
         }
 
-        /// <summary>
-        /// 检查关键字匹配
-        /// </summary>
-        private static bool HasKeywordMatch(string keywords, string queryLower)
-        {
-            if (string.IsNullOrEmpty(keywords)) return false;
-            
-            var keywordArray = keywords.Split(',', StringSplitOptions.RemoveEmptyEntries);
-            return keywordArray.Any(k => queryLower.Contains(k.Trim(), StringComparison.InvariantCultureIgnoreCase));
-        }
-        
-        /// <summary>
-        /// 检查模式匹配
-        /// </summary>
-        private static bool HasPatternMatch(string namePattern, string queryLower)
-        {
-            if (string.IsNullOrEmpty(namePattern)) return false;
-            
-            var patternKeywords = ExtractPatternKeywords(namePattern);
-            return patternKeywords.Any(k => queryLower.Contains(k, StringComparison.InvariantCultureIgnoreCase));
-        }
-        
         /// <summary>
         /// 检查规则匹配
         /// </summary>
@@ -542,30 +498,6 @@ namespace Hx.Abp.Attachment.Application
             var ruleKeywords = new[] { "规则", "条件", "表达式", "workflow" };
             return ruleKeywords.Any(k => queryLower.Contains(k));
         }
-        
-        /// <summary>
-        /// 从 NamePattern 中提取关键字
-        /// </summary>
-        private static List<string> ExtractPatternKeywords(string namePattern)
-        {
-            var keywords = new List<string>();
-            
-            if (string.IsNullOrEmpty(namePattern))
-                return keywords;
-            
-            // 提取模式中的占位符作为关键字
-            var placeholders = new[] { "ProjectName", "Date", "Version", "Type", "Name" };
-            
-            foreach (var placeholder in placeholders)
-            {
-                if (namePattern.Contains($"{{{placeholder}}}"))
-                {
-                    keywords.Add(placeholder);
-                }
-            }
-            
-            return keywords;
-        }
 
         /// <summary>
         /// 生成推荐原因
@@ -574,32 +506,10 @@ namespace Hx.Abp.Attachment.Application
         {
             return matchType switch
             {
-                "Semantic" => GenerateSemanticReason(template, query, score),
                 "Rule" => GenerateRuleReason(template, query, score),
-                "Pattern" => GeneratePatternReason(template, query, score),
                 "Name" => GenerateNameReason(template, query, score),
                 _ => $"基于 {matchType} 匹配，相似度 {score:F2}"
             };
-        }
-        
-        /// <summary>
-        /// 生成语义匹配原因
-        /// </summary>
-        private static string GenerateSemanticReason(AttachCatalogueTemplate template, string query, double score)
-        {
-            var reason = $"语义匹配度高 ({score:F2})";
-            
-            if (!string.IsNullOrEmpty(template.SemanticModel))
-            {
-                reason += $"，使用语义模型：{template.SemanticModel}";
-            }
-            
-            if (query.Length > 10)
-            {
-                reason += "，查询内容语义丰富";
-            }
-            
-            return reason;
         }
         
         /// <summary>
@@ -607,40 +517,16 @@ namespace Hx.Abp.Attachment.Application
         /// </summary>
         private static string GenerateRuleReason(AttachCatalogueTemplate template, string query, double score)
         {
-            var reason = $"规则匹配 ({score:F2})";
+            var reason = $"规则匹配度高 ({score:F2})";
             
             if (!string.IsNullOrEmpty(template.RuleExpression))
             {
-                var ruleKeywords = ExtractKeywordsFromRuleExpression(template.RuleExpression);
-                if (ruleKeywords.Count != 0)
-                {
-                    reason += $"，规则包含关键词：{string.Join(", ", ruleKeywords.Take(3))}";
-                }
+                reason += $"，使用规则引擎：{template.RuleExpression}";
             }
             
-            if (query.Contains("规则") || query.Contains("条件"))
+            if (query.Length > 10)
             {
-                reason += "，查询明确要求规则匹配";
-            }
-            
-            return reason;
-        }
-        
-        /// <summary>
-        /// 生成模式匹配原因
-        /// </summary>
-        private static string GeneratePatternReason(AttachCatalogueTemplate template, string query, double score)
-        {
-            var reason = $"模式匹配 ({score:F2})";
-            
-            if (!string.IsNullOrEmpty(template.NamePattern))
-            {
-                reason += $"，名称模式：{template.NamePattern}";
-            }
-            
-            if (query.Contains("模式") || query.Contains("格式"))
-            {
-                reason += "，查询要求特定命名模式";
+                reason += "，查询内容规则丰富";
             }
             
             return reason;

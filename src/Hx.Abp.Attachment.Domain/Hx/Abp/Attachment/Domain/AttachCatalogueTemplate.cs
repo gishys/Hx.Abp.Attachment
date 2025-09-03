@@ -30,22 +30,10 @@ namespace Hx.Abp.Attachment.Domain
         public virtual AttachReceiveType AttachReceiveType { get; private set; }
 
         /// <summary>
-        /// 分类名称规则
-        /// </summary>
-        [CanBeNull]
-        public virtual string? NamePattern { get; private set; }
-
-        /// <summary>
         /// 规则引擎表达式
         /// </summary>
         [CanBeNull]
         public virtual string? RuleExpression { get; private set; }
-
-        /// <summary>
-        /// AI语义匹配模型名称
-        /// </summary>
-        [CanBeNull]
-        public virtual string? SemanticModel { get; private set; }
 
         /// <summary>
         /// 是否必收
@@ -110,9 +98,7 @@ namespace Hx.Abp.Attachment.Domain
             bool isRequired = false,
             bool isStatic = false,
             Guid? parentId = null,
-            [CanBeNull] string? namePattern = null,
             [CanBeNull] string? ruleExpression = null,
-            [CanBeNull] string? semanticModel = null,
             int version = 1,
             bool isLatest = true,
             FacetType facetType = FacetType.General,
@@ -126,9 +112,7 @@ namespace Hx.Abp.Attachment.Domain
             IsRequired = isRequired;
             IsStatic = isStatic;
             ParentId = parentId;
-            NamePattern = namePattern;
             RuleExpression = ruleExpression;
-            SemanticModel = semanticModel;
             Version = version;
             IsLatest = isLatest;
             FacetType = facetType;
@@ -144,9 +128,7 @@ namespace Hx.Abp.Attachment.Domain
             int sequenceNumber,
             bool isRequired,
             bool isStatic,
-            [CanBeNull] string namePattern,
             [CanBeNull] string ruleExpression,
-            [CanBeNull] string semanticModel,
             FacetType facetType,
             TemplatePurpose templatePurpose)
         {
@@ -155,9 +137,7 @@ namespace Hx.Abp.Attachment.Domain
             SequenceNumber = sequenceNumber;
             IsRequired = isRequired;
             IsStatic = isStatic;
-            NamePattern = namePattern;
             RuleExpression = ruleExpression;
-            SemanticModel = semanticModel;
             FacetType = facetType;
             TemplatePurpose = templatePurpose;
         }
@@ -189,7 +169,7 @@ namespace Hx.Abp.Attachment.Domain
         /// <param name="textVector">文本向量</param>
         public virtual void SetTextVector([CanBeNull] List<double>? textVector)
         {
-            if (textVector != null)
+            if (textVector != null && textVector.Count > 0)
             {
                 if (textVector.Count < 64 || textVector.Count > 2048)
                 {
@@ -233,8 +213,8 @@ namespace Hx.Abp.Attachment.Domain
                 throw new ArgumentException("版本号必须大于0", nameof(Version));
             }
 
-            // 验证向量维度
-            if (TextVector != null && (VectorDimension < 64 || VectorDimension > 2048))
+            // 验证向量维度（只有当向量存在且不为空时才验证）
+            if (TextVector != null && TextVector.Count > 0 && (VectorDimension < 64 || VectorDimension > 2048))
             {
                 throw new ArgumentException("向量维度必须在64到2048之间", nameof(TextVector));
             }
@@ -267,9 +247,7 @@ namespace Hx.Abp.Attachment.Domain
 
             TemplateName = source.TemplateName;
             AttachReceiveType = source.AttachReceiveType;
-            NamePattern = source.NamePattern;
             RuleExpression = source.RuleExpression;
-            SemanticModel = source.SemanticModel;
             IsRequired = source.IsRequired;
             SequenceNumber = source.SequenceNumber;
             IsStatic = source.IsStatic;

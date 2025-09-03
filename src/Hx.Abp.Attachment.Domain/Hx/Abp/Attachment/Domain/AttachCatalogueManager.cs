@@ -59,11 +59,12 @@ namespace Hx.Abp.Attachment.Domain
                 isRequired: baseTemplate.IsRequired,
                 isStatic: baseTemplate.IsStatic,
                 parentId: newParentId ?? baseTemplate.ParentId,
-                namePattern: baseTemplate.NamePattern,
                 ruleExpression: baseTemplate.RuleExpression,
-                semanticModel: baseTemplate.SemanticModel,
                 version: nextVersion,
-                isLatest: false
+                isLatest: false,
+                facetType: baseTemplate.FacetType,
+                templatePurpose: baseTemplate.TemplatePurpose,
+                textVector: baseTemplate.TextVector
             );
 
             await _templateRepository.InsertAsync(newTemplate);
@@ -122,13 +123,7 @@ namespace Hx.Abp.Attachment.Domain
             AttachCatalogueTemplate template,
             Dictionary<string, object>? contextData)
         {
-            // 优先使用AI语义匹配
-            if (!string.IsNullOrEmpty(template.SemanticModel) && contextData != null)
-            {
-                return await _semanticMatcher.GenerateNameAsync(template.SemanticModel, contextData);
-            }
-
-            // 其次使用规则引擎
+            // 优先使用规则引擎
             if (!string.IsNullOrEmpty(template.RuleExpression) && contextData != null)
             {
                 var workflow = JsonConvert.DeserializeObject<Workflow>(template.RuleExpression);

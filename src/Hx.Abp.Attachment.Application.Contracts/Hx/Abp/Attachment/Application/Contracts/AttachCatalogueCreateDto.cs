@@ -1,5 +1,6 @@
 ﻿using Hx.Abp.Attachment.Domain.Shared;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Hx.Abp.Attachment.Application.Contracts
 {
@@ -52,6 +53,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 子文件夹
         /// </summary>
+        [JsonIgnore]
         public ICollection<AttachCatalogueCreateDto>? Children { get; set; }
         /// <summary>
         /// 子文件
@@ -74,9 +76,8 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public TemplatePurpose CataloguePurpose { get; set; } = TemplatePurpose.Classification;
 
         /// <summary>
-        /// 文本向量（64-2048维）
+        /// 文本向量（可为空，如果提供则维度必须在64-2048之间）
         /// </summary>
-        [Range(64, 2048, ErrorMessage = "向量维度必须在64到2048之间")]
         public List<double>? TextVector { get; set; }
     }
 }

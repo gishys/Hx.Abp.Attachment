@@ -54,7 +54,7 @@ namespace Hx.Abp.Attachment.Application
                 var dto = new TemplateUsageStatsDto
                 {
                     Id = domainStats.Id,
-                    TemplateName = domainStats.TemplateName,
+                    Name = domainStats.TemplateName,
                     UsageCount = domainStats.UsageCount,
                     UniqueReferences = domainStats.UniqueReferences,
                     LastUsedTime = domainStats.LastUsedTime,
@@ -125,11 +125,11 @@ namespace Hx.Abp.Attachment.Application
                 var dtoResults = domainResults.Select(result => new BatchTemplateUsageStatsDto
                 {
                     TemplateId = result.TemplateId,
-                    TemplateName = result.TemplateName,
+                    Name = result.TemplateName,
                     Stats = new TemplateUsageStatsDto
                     {
                         Id = result.TemplateId,
-                        TemplateName = result.TemplateName,
+                        Name = result.TemplateName,
                         UsageCount = result.TotalUsageCount,
                         RecentUsageCount = result.RecentUsageCount,
                         LastUsedTime = result.LastUsedTime,
@@ -169,7 +169,7 @@ namespace Hx.Abp.Attachment.Application
                 var dtoHotTemplates = domainHotTemplates.Select((template, index) => new HotTemplateDto
                 {
                     TemplateId = template.TemplateId,
-                    TemplateName = template.TemplateName,
+                    Name = template.TemplateName,
                     UsageCount = template.UsageCount,
                     Rank = index + 1,
                     UsageFrequency = template.AverageUsagePerDay

@@ -10,7 +10,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 模板名称
         /// </summary>
-        public string TemplateName { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>
         /// 使用次数
@@ -72,7 +72,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 模板名称
         /// </summary>
-        public string TemplateName { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>
         /// 使用统计
@@ -82,7 +82,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 使用趋势
         /// </summary>
-        public List<TemplateUsageTrendDto> Trends { get; set; } = new();
+        public List<TemplateUsageTrendDto> Trends { get; set; } = [];
 
         /// <summary>
         /// 是否成功获取
@@ -124,7 +124,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 模板ID列表
         /// </summary>
-        public List<Guid> TemplateIds { get; set; } = new();
+        public List<Guid> TemplateIds { get; set; } = [];
 
         /// <summary>
         /// 趋势分析天数（默认30天）
@@ -171,7 +171,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 模板名称
         /// </summary>
-        public string TemplateName { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>
         /// 使用次数

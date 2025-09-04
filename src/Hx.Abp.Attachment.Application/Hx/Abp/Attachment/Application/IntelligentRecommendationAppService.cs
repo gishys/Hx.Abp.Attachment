@@ -83,9 +83,9 @@ namespace Hx.Abp.Attachment.Application
                 var baseTemplate = await _templateRepository.GetAsync(input.BaseTemplateId) ?? throw new UserFriendlyException("基础模板不存在");
 
                 // 2. 生成新模板名称
-                var newTemplateName = string.IsNullOrWhiteSpace(input.NewTemplateName) 
+                var newTemplateName = string.IsNullOrWhiteSpace(input.NewName) 
                     ? $"{baseTemplate.TemplateName}_Modified_{DateTime.Now:yyyyMMdd_HHmmss}"
-                    : input.NewTemplateName;
+                    : input.NewName;
 
                 // 3. 创建新模板
                 var newTemplate = new AttachCatalogueTemplate(
@@ -326,7 +326,7 @@ namespace Hx.Abp.Attachment.Application
                     var updateDetail = new KeywordUpdateDetailDto
                     {
                         TemplateId = templateId,
-                        TemplateName = string.Empty,
+                        Name = string.Empty,
                         IsSuccess = false
                     };
 
@@ -336,7 +336,7 @@ namespace Hx.Abp.Attachment.Application
                         var template = await _templateRepository.GetAsync(templateId);
                         if (template != null)
                         {
-                            updateDetail.TemplateName = template.TemplateName;
+                            updateDetail.Name = template.TemplateName;
                             updateDetail.OldWorkflowConfig = template.WorkflowConfig;
                         }
 

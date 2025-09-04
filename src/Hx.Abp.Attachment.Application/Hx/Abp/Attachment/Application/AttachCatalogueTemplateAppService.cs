@@ -80,7 +80,7 @@ namespace Hx.Abp.Attachment.Application
                 // 创建实体
                 var template = new AttachCatalogueTemplate(
                     id: input.Id != Guid.Empty ? input.Id : _guidGenerator.Create(),
-                    templateName: input.TemplateName,
+                    templateName: input.Name,
                     attachReceiveType: input.AttachReceiveType,
                     sequenceNumber: input.SequenceNumber,
                     isRequired: input.IsRequired,
@@ -108,13 +108,13 @@ namespace Hx.Abp.Attachment.Application
                 // 保存实体
                 await _templateRepository.InsertAsync(template);
 
-                _logger.LogInformation("创建模板成功：{templateName}，路径：{templatePath}", input.TemplateName, templatePath);
+                _logger.LogInformation("创建模板成功：{templateName}，路径：{templatePath}", input.Name, templatePath);
 
                 return ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(template);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "创建模板失败：{templateName}", input.TemplateName);
+                _logger.LogError(ex, "创建模板失败：{templateName}", input.Name);
                 throw new UserFriendlyException("创建模板失败，请稍后重试");
             }
         }
@@ -179,7 +179,7 @@ namespace Hx.Abp.Attachment.Application
 
                 // 更新实体
                 template.Update(
-                    input.TemplateName,
+                    input.Name,
                     input.AttachReceiveType,
                     input.SequenceNumber,
                     input.IsRequired,
@@ -209,13 +209,13 @@ namespace Hx.Abp.Attachment.Application
                 // 保存实体
                 await _templateRepository.UpdateAsync(template);
 
-                _logger.LogInformation("更新模板成功：{templateName}，路径：{templatePath}", input.TemplateName, newTemplatePath);
+                _logger.LogInformation("更新模板成功：{templateName}，路径：{templatePath}", input.Name, newTemplatePath);
 
                 return ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(template);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "更新模板失败：{templateName}", input.TemplateName);
+                _logger.LogError(ex, "更新模板失败：{templateName}", input.Name);
                 throw new UserFriendlyException("更新模板失败，请稍后重试");
             }
         }
@@ -558,7 +558,7 @@ namespace Hx.Abp.Attachment.Application
                 var results = templates.Select(t => new TemplateSearchResultDto
                 {
                     Id = t.Id,
-                    TemplateName = t.TemplateName,
+                    Name = t.TemplateName,
                     Description = t.Description,
                     Tags = t.Tags ?? [],
                     FacetType = t.FacetType,
@@ -597,7 +597,7 @@ namespace Hx.Abp.Attachment.Application
                 var results = templates.Select(t => new TemplateSearchResultDto
                 {
                     Id = t.Id,
-                    TemplateName = t.TemplateName,
+                    Name = t.TemplateName,
                     Description = t.Description,
                     Tags = t.Tags ?? [],
                     FacetType = t.FacetType,
@@ -634,7 +634,7 @@ namespace Hx.Abp.Attachment.Application
                 var results = templates.Select(t => new TemplateSearchResultDto
                 {
                     Id = t.Id,
-                    TemplateName = t.TemplateName,
+                    Name = t.TemplateName,
                     Description = t.Description,
                     Tags = t.Tags ?? [],
                     FacetType = t.FacetType,
@@ -672,7 +672,7 @@ namespace Hx.Abp.Attachment.Application
                 var results = templates.Select(t => new TemplateSearchResultDto
                 {
                     Id = t.Id,
-                    TemplateName = t.TemplateName,
+                    Name = t.TemplateName,
                     Description = t.Description,
                     Tags = t.Tags ?? [],
                     FacetType = t.FacetType,

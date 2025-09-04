@@ -26,7 +26,7 @@
 
 -   **路径**: `POST /api/attach-catalogue-template`
 -   **功能**: 创建新的附件目录模板
--   **主要参数**: templateName, description, tags, workflowConfig, metaFields 等
+-   **主要参数**: name, description, tags, workflowConfig, metaFields 等
 
 ### 2. 获取根节点模板接口
 
@@ -68,7 +68,7 @@
       -H "Content-Type: application/json" \
       -H "Authorization: Bearer your-token" \
       -d '{
-        "templateName": "测试根级模板",
+        "name": "测试根级模板",
         "description": "这是一个测试用的根级模板",
         "tags": ["测试", "根级"],
         "attachReceiveType": 1,
@@ -153,7 +153,7 @@ const getRootTemplates = async (params = {}) => {
 
 ```json
 {
-    "templateName": "合同文档模板",
+    "name": "合同文档模板",
     "description": "用于存储各类合同文档的模板",
     "tags": ["合同", "法律", "重要"],
     "attachReceiveType": 1,
@@ -185,7 +185,7 @@ const getRootTemplates = async (params = {}) => {
 
 ```json
 {
-    "templateName": "采购合同模板",
+    "name": "采购合同模板",
     "description": "专门用于采购合同的子级模板",
     "tags": ["采购", "合同", "子模板"],
     "attachReceiveType": 1,
@@ -223,7 +223,7 @@ const getRootTemplates = async (params = {}) => {
 
 ```json
 {
-    "templateName": "系统日志模板",
+    "name": "系统日志模板",
     "description": "用于存储系统运行日志的模板",
     "tags": ["系统", "日志", "监控"],
     "attachReceiveType": 2,
@@ -288,7 +288,7 @@ const getRootTemplates = async (params = {}) => {
 
 ### 1. 创建模板时
 
--   确保 `templateName` 唯一且有意义
+-   确保 `name` 唯一且有意义
 -   合理设置 `workflowConfig` 的工作流参数
 -   根据业务需求设置 `metaFields` 元数据字段
 -   合理设置 `permissions` 权限配置

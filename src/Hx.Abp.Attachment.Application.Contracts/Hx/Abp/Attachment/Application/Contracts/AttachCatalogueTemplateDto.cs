@@ -1,6 +1,4 @@
 using Hx.Abp.Attachment.Domain.Shared;
-using System;
-using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using Volo.Abp.Application.Dtos;
 
@@ -11,7 +9,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 模板名称
         /// </summary>
-        public string TemplateName { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>
         /// 模板描述
@@ -129,6 +127,6 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 模板路径
         /// </summary>
-        public string Path => TemplateName;
+        public string? Path => TemplatePath;
     }
 }

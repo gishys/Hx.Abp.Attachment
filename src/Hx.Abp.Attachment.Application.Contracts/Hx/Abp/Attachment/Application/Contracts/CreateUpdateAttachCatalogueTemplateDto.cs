@@ -13,7 +13,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// </summary>
         [Required(ErrorMessage = "模板名称不能为空")]
         [StringLength(200, ErrorMessage = "模板名称长度不能超过200个字符")]
-        public string TemplateName { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>
         /// 模板描述

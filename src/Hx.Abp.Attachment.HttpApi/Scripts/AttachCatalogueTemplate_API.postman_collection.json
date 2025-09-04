@@ -42,7 +42,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"templateName\": \"测试根级模板\",\n  \"description\": \"这是一个测试用的根级模板\",\n  \"tags\": [\"测试\", \"根级\"],\n  \"attachReceiveType\": 1,\n  \"workflowConfig\": \"{\\\"workflowKey\\\":\\\"test_workflow\\\",\\\"timeout\\\":3600}\",\n  \"isRequired\": true,\n  \"sequenceNumber\": 100,\n  \"isStatic\": false,\n  \"facetType\": 0,\n  \"templatePurpose\": 1,\n  \"permissions\": [],\n  \"metaFields\": []\n}"
+              "raw": "{\n  \"name\": \"测试根级模板\",\n  \"description\": \"这是一个测试用的根级模板\",\n  \"tags\": [\"测试\", \"根级\"],\n  \"attachReceiveType\": 1,\n  \"workflowConfig\": \"{\\\"workflowKey\\\":\\\"test_workflow\\\",\\\"timeout\\\":3600}\",\n  \"isRequired\": true,\n  \"sequenceNumber\": 100,\n  \"isStatic\": false,\n  \"facetType\": 0,\n  \"templatePurpose\": 1,\n  \"permissions\": [],\n  \"metaFields\": []\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/attach-catalogue-template",
@@ -96,7 +96,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"templateName\": \"测试子级模板\",\n  \"description\": \"这是一个测试用的子级模板\",\n  \"tags\": [\"测试\", \"子级\"],\n  \"attachReceiveType\": 1,\n  \"workflowConfig\": \"{\\\"workflowKey\\\":\\\"child_workflow\\\",\\\"timeout\\\":1800}\",\n  \"isRequired\": true,\n  \"sequenceNumber\": 200,\n  \"isStatic\": false,\n  \"parentId\": \"{{rootTemplateId}}\",\n  \"facetType\": 0,\n  \"templatePurpose\": 1,\n  \"permissions\": [],\n  \"metaFields\": []\n}"
+              "raw": "{\n  \"name\": \"测试子级模板\",\n  \"description\": \"这是一个测试用的子级模板\",\n  \"tags\": [\"测试\", \"子级\"],\n  \"attachReceiveType\": 1,\n  \"workflowConfig\": \"{\\\"workflowKey\\\":\\\"child_workflow\\\",\\\"timeout\\\":1800}\",\n  \"isRequired\": true,\n  \"sequenceNumber\": 200,\n  \"isStatic\": false,\n  \"parentId\": \"{{rootTemplateId}}\",\n  \"facetType\": 0,\n  \"templatePurpose\": 1,\n  \"permissions\": [],\n  \"metaFields\": []\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/attach-catalogue-template",
@@ -149,7 +149,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"templateName\": \"带元数据字段的模板\",\n  \"description\": \"包含多个元数据字段的测试模板\",\n  \"tags\": [\"测试\", \"元数据\"],\n  \"attachReceiveType\": 1,\n  \"workflowConfig\": \"{\\\"workflowKey\\\":\\\"meta_workflow\\\",\\\"timeout\\\":3600}\",\n  \"isRequired\": true,\n  \"sequenceNumber\": 300,\n  \"isStatic\": false,\n  \"facetType\": 0,\n  \"templatePurpose\": 1,\n  \"permissions\": [],\n  \"metaFields\": [\n    {\n      \"fieldName\": \"contractType\",\n      \"fieldType\": \"string\",\n      \"isRequired\": true,\n      \"defaultValue\": \"服务合同\"\n    },\n    {\n      \"fieldName\": \"contractAmount\",\n      \"fieldType\": \"decimal\",\n      \"isRequired\": true,\n      \"defaultValue\": \"0.00\"\n    },\n    {\n      \"fieldName\": \"signDate\",\n      \"fieldType\": \"datetime\",\n      \"isRequired\": false,\n      \"defaultValue\": null\n    }\n  ]\n}"
+              "raw": "{\n  \"name\": \"带元数据字段的模板\",\n  \"description\": \"包含多个元数据字段的测试模板\",\n  \"tags\": [\"测试\", \"元数据\"],\n  \"attachReceiveType\": 1,\n  \"workflowConfig\": \"{\\\"workflowKey\\\":\\\"meta_workflow\\\",\\\"timeout\\\":3600}\",\n  \"isRequired\": true,\n  \"sequenceNumber\": 300,\n  \"isStatic\": false,\n  \"facetType\": 0,\n  \"templatePurpose\": 1,\n  \"permissions\": [],\n  \"metaFields\": [\n    {\n      \"fieldName\": \"contractType\",\n      \"fieldType\": \"string\",\n      \"isRequired\": true,\n      \"defaultValue\": \"服务合同\"\n    },\n    {\n      \"fieldName\": \"contractAmount\",\n      \"fieldType\": \"decimal\",\n      \"isRequired\": true,\n      \"defaultValue\": \"0.00\"\n    },\n    {\n      \"fieldName\": \"signDate\",\n      \"fieldType\": \"datetime\",\n      \"isRequired\": false,\n      \"defaultValue\": null\n    }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/attach-catalogue-template",
@@ -199,7 +199,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"templateName\": \"带权限的模板\",\n  \"description\": \"包含权限配置的测试模板\",\n  \"tags\": [\"测试\", \"权限\"],\n  \"attachReceiveType\": 1,\n  \"workflowConfig\": \"{\\\"workflowKey\\\":\\\"permission_workflow\\\",\\\"timeout\\\":3600}\",\n  \"isRequired\": true,\n  \"sequenceNumber\": 400,\n  \"isStatic\": false,\n  \"facetType\": 0,\n  \"templatePurpose\": 1,\n  \"permissions\": [\n    {\n      \"userId\": \"user123\",\n      \"permission\": \"read\"\n    },\n    {\n      \"userId\": \"user456\",\n      \"permission\": \"write\"\n    }\n  ],\n  \"metaFields\": []\n}"
+              "raw": "{\n  \"name\": \"带权限的模板\",\n  \"description\": \"包含权限配置的测试模板\",\n  \"tags\": [\"测试\", \"权限\"],\n  \"attachReceiveType\": 1,\n  \"workflowConfig\": \"{\\\"workflowKey\\\":\\\"permission_workflow\\\",\\\"timeout\\\":3600}\",\n  \"isRequired\": true,\n  \"sequenceNumber\": 400,\n  \"isStatic\": false,\n  \"facetType\": 0,\n  \"templatePurpose\": 1,\n  \"permissions\": [\n    {\n      \"userId\": \"user123\",\n      \"permission\": \"read\"\n    },\n    {\n      \"userId\": \"user456\",\n      \"permission\": \"write\"\n    }\n  ],\n  \"metaFields\": []\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/attach-catalogue-template",
@@ -293,7 +293,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"templateName\": \"这是一个非常长的模板名称，超过了系统允许的最大长度限制，应该会触发验证错误\",\n  \"description\": \"测试描述\",\n  \"tags\": [\"测试\"],\n  \"attachReceiveType\": 1,\n  \"isRequired\": true,\n  \"sequenceNumber\": 600,\n  \"isStatic\": false,\n  \"facetType\": 0,\n  \"templatePurpose\": 1\n}"
+              "raw": "{\n  \"name\": \"这是一个非常长的模板名称，超过了系统允许的最大长度限制，应该会触发验证错误\",\n  \"description\": \"测试描述\",\n  \"tags\": [\"测试\"],\n  \"attachReceiveType\": 1,\n  \"isRequired\": true,\n  \"sequenceNumber\": 600,\n  \"isStatic\": false,\n  \"facetType\": 0,\n  \"templatePurpose\": 1\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/attach-catalogue-template",
@@ -336,7 +336,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"templateName\": \"枚举值测试\",\n  \"description\": \"测试枚举值验证\",\n  \"tags\": [\"测试\"],\n  \"attachReceiveType\": 999,\n  \"isRequired\": true,\n  \"sequenceNumber\": 700,\n  \"isStatic\": false,\n  \"facetType\": 999,\n  \"templatePurpose\": 999\n}"
+              "raw": "{\n  \"name\": \"枚举值测试\",\n  \"description\": \"测试枚举值验证\",\n  \"tags\": [\"测试\"],\n  \"attachReceiveType\": 999,\n  \"isRequired\": true,\n  \"sequenceNumber\": 700,\n  \"isStatic\": false,\n  \"facetType\": 999,\n  \"templatePurpose\": 999\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/attach-catalogue-template",
@@ -379,7 +379,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"templateName\": \"有效工作流配置测试\",\n  \"description\": \"测试有效的工作流配置\",\n  \"tags\": [\"测试\", \"工作流\"],\n  \"attachReceiveType\": 1,\n  \"workflowConfig\": \"{\\\"workflowKey\\\":\\\"valid_workflow\\\",\\\"timeout\\\":3600,\\\"skipApprovers\\\":[\\\"admin\\\"],\\\"scripts\\\":[\\\"script1.js\\\"],\\\"webhooks\\\":[\\\"https://api.example.com/webhook\\\"]}\",\n  \"isRequired\": true,\n  \"sequenceNumber\": 800,\n  \"isStatic\": false,\n  \"facetType\": 0,\n  \"templatePurpose\": 1,\n  \"permissions\": [],\n  \"metaFields\": []\n}"
+              "raw": "{\n  \"name\": \"有效工作流配置测试\",\n  \"description\": \"测试有效的工作流配置\",\n  \"tags\": [\"测试\", \"工作流\"],\n  \"attachReceiveType\": 1,\n  \"workflowConfig\": \"{\\\"workflowKey\\\":\\\"valid_workflow\\\",\\\"timeout\\\":3600,\\\"skipApprovers\\\":[\\\"admin\\\"],\\\"scripts\\\":[\\\"script1.js\\\"],\\\"webhooks\\\":[\\\"https://api.example.com/webhook\\\"]}\",\n  \"isRequired\": true,\n  \"sequenceNumber\": 800,\n  \"isStatic\": false,\n  \"facetType\": 0,\n  \"templatePurpose\": 1,\n  \"permissions\": [],\n  \"metaFields\": []\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/attach-catalogue-template",
@@ -422,7 +422,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"templateName\": \"无效工作流配置测试\",\n  \"description\": \"测试无效的工作流配置\",\n  \"tags\": [\"测试\", \"工作流\"],\n  \"attachReceiveType\": 1,\n  \"workflowConfig\": \"{\\\"workflowKey\\\":\\\"invalid_workflow\\\",\\\"timeout\\\":\\\"invalid_timeout\\\"}\",\n  \"isRequired\": true,\n  \"sequenceNumber\": 900,\n  \"isStatic\": false,\n  \"facetType\": 0,\n  \"templatePurpose\": 1,\n  \"permissions\": [],\n  \"metaFields\": []\n}"
+              "raw": "{\n  \"name\": \"无效工作流配置测试\",\n  \"description\": \"测试无效的工作流配置\",\n  \"tags\": [\"测试\", \"工作流\"],\n  \"attachReceiveType\": 1,\n  \"workflowConfig\": \"{\\\"workflowKey\\\":\\\"invalid_workflow\\\",\\\"timeout\\\":\\\"invalid_timeout\\\"}\",\n  \"isRequired\": true,\n  \"sequenceNumber\": 900,\n  \"isStatic\": false,\n  \"facetType\": 0,\n  \"templatePurpose\": 1,\n  \"permissions\": [],\n  \"metaFields\": []\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/attach-catalogue-template",

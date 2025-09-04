@@ -13,7 +13,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 模板名称
         /// </summary>
-        public string TemplateName { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>
         /// 模板描述
@@ -122,9 +122,9 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 获取模板路径
         /// </summary>
-        public string GetPath()
+        public string? GetPath()
         {
-            return TemplateName; // 简化实现，实际应该构建完整路径
+            return Name; // 简化实现，实际应该构建完整路径
         }
     }
 }

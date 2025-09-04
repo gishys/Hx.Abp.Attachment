@@ -36,7 +36,7 @@
 
 ```json
 {
-    "templateName": "测试根级模板",
+    "name": "测试根级模板",
     "description": "这是一个测试用的根级模板",
     "tags": ["测试", "根级"],
     "attachReceiveType": 1,
@@ -81,7 +81,7 @@
 
 ```json
 {
-    "templateName": "测试子级模板",
+    "name": "测试子级模板",
     "description": "这是一个测试用的子级模板",
     "tags": ["测试", "子级"],
     "attachReceiveType": 1,
@@ -121,7 +121,7 @@
 
 ```json
 {
-    "templateName": "带元数据字段的模板",
+    "name": "带元数据字段的模板",
     "description": "包含多个元数据字段的测试模板",
     "tags": ["测试", "元数据"],
     "attachReceiveType": 1,
@@ -177,7 +177,7 @@
 
 ```json
 {
-    "templateName": "带权限的模板",
+    "name": "带权限的模板",
     "description": "包含权限配置的测试模板",
     "tags": ["测试", "权限"],
     "attachReceiveType": 1,
@@ -246,7 +246,7 @@
 
 ```json
 {
-    "templateName": "这是一个非常长的模板名称，超过了系统允许的最大长度限制，应该会触发验证错误",
+    "name": "这是一个非常长的模板名称，超过了系统允许的最大长度限制，应该会触发验证错误",
     "description": "测试描述",
     "tags": ["测试"],
     "attachReceiveType": 1,
@@ -269,7 +269,7 @@
 
 ```json
 {
-    "templateName": "枚举值测试",
+    "name": "枚举值测试",
     "description": "测试枚举值验证",
     "tags": ["测试"],
     "attachReceiveType": 999,
@@ -296,7 +296,7 @@
 
 ```json
 {
-    "templateName": "有效工作流配置测试",
+    "name": "有效工作流配置测试",
     "description": "测试有效的工作流配置",
     "tags": ["测试", "工作流"],
     "attachReceiveType": 1,
@@ -322,7 +322,7 @@
 
 ```json
 {
-    "templateName": "无效工作流配置测试",
+    "name": "无效工作流配置测试",
     "description": "测试无效的工作流配置",
     "tags": ["测试", "工作流"],
     "attachReceiveType": 1,

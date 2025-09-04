@@ -99,7 +99,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 模板名称
         /// </summary>
-        public string TemplateName { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>
         /// 模板描述

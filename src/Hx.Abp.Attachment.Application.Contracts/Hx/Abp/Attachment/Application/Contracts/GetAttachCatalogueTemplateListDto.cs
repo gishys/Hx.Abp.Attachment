@@ -12,7 +12,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 模板名称（模糊查询）
         /// </summary>
-        public string? TemplateName { get; set; }
+        public string? Name { get; set; }
 
         /// <summary>
         /// 附件类型

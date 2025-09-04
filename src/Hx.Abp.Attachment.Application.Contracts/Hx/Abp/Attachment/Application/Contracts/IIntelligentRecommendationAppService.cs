@@ -181,7 +181,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 新模板名称
         /// </summary>
-        public string NewTemplateName { get; set; } = string.Empty;
+        public string NewName { get; set; } = string.Empty;
 
         /// <summary>
         /// 修改描述
@@ -461,7 +461,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 模板名称
         /// </summary>
-        public string TemplateName { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>
         /// 使用次数
@@ -601,7 +601,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 模板名称
         /// </summary>
-        public string TemplateName { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>
         /// 更新是否成功

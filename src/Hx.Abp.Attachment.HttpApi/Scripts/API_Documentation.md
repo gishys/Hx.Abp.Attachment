@@ -21,7 +21,7 @@
 
 | 参数名            | 类型              | 必填 | 描述                  | 示例值                                               |
 | ----------------- | ----------------- | ---- | --------------------- | ---------------------------------------------------- |
-| templateName      | string            | 是   | 模板名称              | "合同文档模板"                                       |
+| name              | string            | 是   | 模板名称              | "合同文档模板"                                       |
 | description       | string            | 否   | 模板描述              | "用于存储各类合同文档的模板"                         |
 | tags              | string[]          | 否   | 标签数组              | ["合同", "法律", "重要"]                             |
 | attachReceiveType | AttachReceiveType | 是   | 附件接收类型          | 1                                                    |
@@ -64,7 +64,7 @@
 ```json
 {
     "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-    "templateName": "合同文档模板",
+    "name": "合同文档模板",
     "description": "用于存储各类合同文档的模板",
     "tags": ["合同", "法律", "重要"],
     "attachReceiveType": 1,
@@ -104,7 +104,7 @@
 
 ```json
 {
-    "templateName": "合同文档模板",
+    "name": "合同文档模板",
     "description": "用于存储各类合同文档的根级模板",
     "tags": ["合同", "法律", "重要"],
     "attachReceiveType": 1,
@@ -137,7 +137,7 @@
 
 ```json
 {
-    "templateName": "采购合同模板",
+    "name": "采购合同模板",
     "description": "专门用于采购合同的子级模板",
     "tags": ["采购", "合同", "子模板"],
     "attachReceiveType": 1,
@@ -175,7 +175,7 @@
 
 ```json
 {
-    "templateName": "系统日志模板",
+    "name": "系统日志模板",
     "description": "用于存储系统运行日志的模板",
     "tags": ["系统", "日志", "监控"],
     "attachReceiveType": 2,
@@ -218,7 +218,7 @@ curl -X POST "https://api.company.com/api/attach-catalogue-template" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-token" \
   -d '{
-    "templateName": "合同文档模板",
+    "name": "合同文档模板",
     "description": "用于存储各类合同文档的模板",
     "tags": ["合同", "法律", "重要"],
     "attachReceiveType": 1,
@@ -264,7 +264,7 @@ const createTemplate = async (templateData) => {
 
 // 使用示例
 const templateData = {
-    templateName: '合同文档模板',
+    name: '合同文档模板',
     description: '用于存储各类合同文档的模板',
     tags: ['合同', '法律', '重要'],
     attachReceiveType: 1,
@@ -318,7 +318,7 @@ createTemplate(templateData);
     "items": [
         {
             "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-            "templateName": "合同文档模板",
+            "name": "合同文档模板",
             "description": "用于存储各类合同文档的模板",
             "tags": ["合同", "法律", "重要"],
             "attachReceiveType": 1,
@@ -336,7 +336,7 @@ createTemplate(templateData);
             "children": [
                 {
                     "id": "4fa85f64-5717-4562-b3fc-2c963f66afa7",
-                    "templateName": "采购合同模板",
+                    "name": "采购合同模板",
                     "description": "专门用于采购合同的子级模板",
                     "tags": ["采购", "合同", "子模板"],
                     "attachReceiveType": 1,
@@ -498,7 +498,7 @@ getRootTemplates({
                 >
                     {{ template.children.length > 0 ? '▶' : '•' }}
                 </span>
-                <span class="template-name">{{ template.templateName }}</span>
+                <span class="template-name">{{ template.name }}</span>
                 <span class="template-description">{{
                     template.description
                 }}</span>
@@ -513,7 +513,7 @@ getRootTemplates({
                     :key="child.id"
                     class="child-node"
                 >
-                    <span class="child-name">{{ child.templateName }}</span>
+                    <span class="child-name">{{ child.name }}</span>
                     <span class="child-description">{{
                         child.description
                     }}</span>
@@ -601,7 +601,7 @@ export default {
 
 ### 1. 创建模板时
 
--   确保 `templateName` 唯一且有意义
+-   确保 `name` 唯一且有意义
 -   合理设置 `workflowConfig` 的工作流参数
 -   根据业务需求设置 `metaFields` 元数据字段
 -   合理设置 `permissions` 权限配置

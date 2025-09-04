@@ -31,6 +31,13 @@ namespace Hx.Abp.Attachment.Domain
         /// 分类名称
         /// </summary>
         public virtual string CatalogueName { get; private set; }
+
+        /// <summary>
+        /// 分类标签（JSON数组格式，用于全文检索）
+        /// </summary>
+        [CanBeNull]
+        public virtual List<string>? Tags { get; private set; }
+
         /// <summary>
         /// 附件数量
         /// </summary>
@@ -136,6 +143,7 @@ namespace Hx.Abp.Attachment.Domain
             Guid? templateId = null,
             FacetType catalogueFacetType = FacetType.General,
             TemplatePurpose cataloguePurpose = TemplatePurpose.Classification,
+            [CanBeNull] List<string>? tags = null,
             [CanBeNull] List<double>? textVector = null)
         {
             Id = id;
@@ -154,6 +162,7 @@ namespace Hx.Abp.Attachment.Domain
             TemplateId = templateId;
             CatalogueFacetType = catalogueFacetType;
             CataloguePurpose = cataloguePurpose;
+            Tags = tags ?? [];
             SetTextVector(textVector);
             AttachFiles = [];
             Children = [];
@@ -519,6 +528,40 @@ namespace Hx.Abp.Attachment.Domain
             summary += $", 启用: {enabledCount}, 有效: {effectiveCount}";
             
             return summary;
+        }
+
+        /// <summary>
+        /// 设置分类标签
+        /// </summary>
+        /// <param name="tags">分类标签列表</param>
+        public virtual void SetTags([CanBeNull] List<string>? tags)
+        {
+            Tags = tags ?? [];
+        }
+
+        /// <summary>
+        /// 添加单个标签
+        /// </summary>
+        /// <param name="tag">标签</param>
+        public virtual void AddTag(string tag)
+        {
+            if (!string.IsNullOrWhiteSpace(tag))
+            {
+                Tags ??= [];
+                if (!Tags.Contains(tag))
+                {
+                    Tags.Add(tag);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 移除标签
+        /// </summary>
+        /// <param name="tag">要移除的标签</param>
+        public virtual void RemoveTag(string tag)
+        {
+            Tags?.Remove(tag);
         }
     }
 }

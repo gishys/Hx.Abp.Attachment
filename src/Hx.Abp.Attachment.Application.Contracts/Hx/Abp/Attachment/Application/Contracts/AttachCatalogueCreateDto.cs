@@ -15,6 +15,11 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// </summary>
         [MaxLength(500)]
         public required string CatalogueName { get; set; }
+
+        /// <summary>
+        /// 分类标签
+        /// </summary>
+        public List<string> Tags { get; set; } = [];
         
         /// <summary>
         /// 序号

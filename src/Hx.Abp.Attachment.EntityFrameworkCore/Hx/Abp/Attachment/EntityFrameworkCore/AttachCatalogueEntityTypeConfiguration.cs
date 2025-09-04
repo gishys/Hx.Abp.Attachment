@@ -49,6 +49,10 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .HasMaxLength(128) // 增加长度以支持中文
                 .UseCollation("und-x-icu") // 使用ICU提供更好的中文排序支持
                 .IsRequired();
+
+            // Tags字段配置（JSON数组格式）
+            builder.Property(d => d.Tags).HasColumnName("TAGS").HasColumnType("jsonb");
+
             builder.Property(d => d.Reference).HasColumnName("REFERENCE").HasMaxLength(100).IsRequired();
             builder.Property(d => d.ReferenceType).HasColumnName("REFERENCE_TYPE");
             builder.Property(d => d.AttachCount).HasColumnName("ATTACH_COUNT").HasDefaultValue(0);

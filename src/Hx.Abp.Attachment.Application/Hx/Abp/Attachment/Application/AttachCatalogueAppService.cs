@@ -63,6 +63,7 @@ namespace Hx.Abp.Attachment.Application
                     input.TemplateId,
                     input.CatalogueFacetType,
                     input.CataloguePurpose,
+                    input.Tags,
                     input.TextVector
                 );
 
@@ -103,6 +104,7 @@ namespace Hx.Abp.Attachment.Application
             catalogue.SetIsRequired(input.IsRequired);
             catalogue.SetIsStatic(input.IsStatic);
             catalogue.SetTemplateId(input.TemplateId);
+            catalogue.SetTags(input.Tags);
 
             // 更新新增字段
             catalogue.SetCatalogueIdentifiers(input.CatalogueFacetType, input.CataloguePurpose);

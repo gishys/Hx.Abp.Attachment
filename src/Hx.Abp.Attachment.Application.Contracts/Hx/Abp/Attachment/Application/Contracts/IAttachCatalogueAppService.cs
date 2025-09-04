@@ -29,24 +29,6 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <returns>匹配的分类列表</returns>
         Task<List<AttachCatalogueDto>> SearchByFullTextAsync(string searchText, string? reference = null, int? referenceType = null, int limit = 10);
 
-        /// <summary>
-        /// 语义检索分类
-        /// </summary>
-        /// <param name="queryEmbedding">查询向量</param>
-        /// <param name="reference">业务引用</param>
-        /// <param name="referenceType">业务类型</param>
-        /// <param name="limit">返回数量限制</param>
-        /// <param name="similarityThreshold">相似度阈值</param>
-        /// <returns>匹配的分类列表</returns>
-        Task<List<AttachCatalogueDto>> SearchBySemanticAsync(float[] queryEmbedding, string? reference = null, int? referenceType = null, int limit = 10, float similarityThreshold = 0.7f);
-
-        /// <summary>
-        /// 更新分类的语义向量
-        /// </summary>
-        /// <param name="catalogueId">分类ID</param>
-        /// <param name="embedding">语义向量</param>
-        /// <returns>更新后的分类</returns>
-        Task<AttachCatalogueDto> UpdateEmbeddingAsync(Guid catalogueId, float[] embedding);
 
         /// <summary>
         /// 设置分类权限

@@ -789,47 +789,6 @@ namespace Hx.Abp.Attachment.Application
             return ObjectMapper.Map<List<AttachCatalogue>, List<AttachCatalogueDto>>(results);
         }
 
-        /// <summary>
-        /// 语义检索分类
-        /// </summary>
-        /// <param name="queryEmbedding">查询向量</param>
-        /// <param name="reference">业务引用</param>
-        /// <param name="referenceType">业务类型</param>
-        /// <param name="limit">返回数量限制</param>
-        /// <param name="similarityThreshold">相似度阈值</param>
-        /// <returns>匹配的分类列表</returns>
-        public virtual async Task<List<AttachCatalogueDto>> SearchBySemanticAsync(float[] queryEmbedding, string? reference = null, int? referenceType = null, int limit = 10, float similarityThreshold = 0.7f)
-        {
-            if (queryEmbedding == null || queryEmbedding.Length == 0)
-            {
-                throw new UserFriendlyException("查询向量不能为空");
-            }
-
-            var results = await CatalogueRepository.SearchBySemanticAsync(queryEmbedding, reference, referenceType, limit, similarityThreshold);
-            return ObjectMapper.Map<List<AttachCatalogue>, List<AttachCatalogueDto>>(results);
-        }
-
-        /// <summary>
-        /// 更新分类的语义向量
-        /// </summary>
-        /// <param name="catalogueId">分类ID</param>
-        /// <param name="embedding">语义向量</param>
-        /// <returns>更新后的分类</returns>
-        public virtual async Task<AttachCatalogueDto> UpdateEmbeddingAsync(Guid catalogueId, float[] embedding)
-        {
-            if (embedding == null || embedding.Length == 0)
-            {
-                throw new UserFriendlyException("语义向量不能为空");
-            }
-
-            using var uow = UnitOfWorkManager.Begin();
-            var catalogue = await CatalogueRepository.FindAsync(catalogueId) ?? throw new UserFriendlyException("分类不存在");
-            catalogue.SetEmbedding(embedding);
-            await CatalogueRepository.UpdateAsync(catalogue);
-            await uow.SaveChangesAsync();
-
-            return ObjectMapper.Map<AttachCatalogue, AttachCatalogueDto>(catalogue);
-        }
 
         /// <summary>
         /// 映射到DTO
@@ -853,7 +812,6 @@ namespace Hx.Abp.Attachment.Application
                 IsStatic = catalogue.IsStatic,
                 IsVerification = catalogue.IsVerification,
                 VerificationPassed = catalogue.VerificationPassed,
-                Embedding = catalogue.Embedding,
                 TemplateId = catalogue.TemplateId,
                 FullTextContent = catalogue.FullTextContent,
                 FullTextContentUpdatedTime = catalogue.FullTextContentUpdatedTime,

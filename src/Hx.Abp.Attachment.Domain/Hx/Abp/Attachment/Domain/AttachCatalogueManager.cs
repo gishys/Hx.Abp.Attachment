@@ -73,19 +73,6 @@ namespace Hx.Abp.Attachment.Domain
             return newTemplate;
         }
 
-        /// <summary>
-        /// 更新分类的语义向量
-        /// </summary>
-        /// <param name="catalogueId">分类ID</param>
-        /// <param name="embedding">语义向量</param>
-        /// <returns>更新后的分类</returns>
-        public async Task<AttachCatalogue> UpdateCatalogueEmbeddingAsync(Guid catalogueId, float[] embedding)
-        {
-            var catalogue = await _catalogueRepository.FindAsync(catalogueId) ?? throw new BusinessException("分类不存在");
-            catalogue.SetEmbedding(embedding);
-            await _catalogueRepository.UpdateAsync(catalogue);
-            return catalogue;
-        }
 
         private async Task CopyTemplateChildrenAsync(AttachCatalogueTemplate source, AttachCatalogueTemplate target)
         {

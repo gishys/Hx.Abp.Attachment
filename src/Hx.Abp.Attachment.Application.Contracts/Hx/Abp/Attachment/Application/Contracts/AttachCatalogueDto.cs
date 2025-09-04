@@ -57,11 +57,6 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public bool VerificationPassed { get; set; }
 
         /// <summary>
-        /// 语义检索向量
-        /// </summary>
-        public float[]? Embedding { get; set; }
-
-        /// <summary>
         /// 子文件夹
         /// </summary>
         [JsonIgnore]

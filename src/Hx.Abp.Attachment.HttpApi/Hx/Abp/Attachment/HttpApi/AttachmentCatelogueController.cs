@@ -122,19 +122,6 @@ namespace Hx.Abp.Attachment.HttpApi
             return AttachCatalogueAppService.SearchByFullTextAsync(searchText, reference, referenceType, limit);
         }
 
-        [Route("search/semantic")]
-        [HttpPost]
-        public virtual Task<List<AttachCatalogueDto>> SearchBySemanticAsync([FromBody] float[] queryEmbedding, string? reference = null, int? referenceType = null, int limit = 10, float similarityThreshold = 0.7f)
-        {
-            return AttachCatalogueAppService.SearchBySemanticAsync(queryEmbedding, reference, referenceType, limit, similarityThreshold);
-        }
-
-        [Route("update/embedding")]
-        [HttpPut]
-        public virtual Task<AttachCatalogueDto> UpdateEmbeddingAsync(Guid catalogueId, [FromBody] float[] embedding)
-        {
-            return AttachCatalogueAppService.UpdateEmbeddingAsync(catalogueId, embedding);
-        }
 
         // 新增的API端点
 

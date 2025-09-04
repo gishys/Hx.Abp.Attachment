@@ -75,15 +75,6 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual DateTime? FullTextContentUpdatedTime { get; private set; }
 
-        // 全文检索向量 - 不进行数据库映射，仅用于类型定义
-        [System.ComponentModel.DataAnnotations.Schema.NotMapped]
-        public virtual NpgsqlTsVector? SearchVector { get; private set; }
-
-        /// <summary>
-        /// 语义检索向量
-        /// </summary>
-        [System.ComponentModel.DataAnnotations.Schema.NotMapped]
-        public virtual float[]? Embedding { get; private set; }
 
         /// <summary>
         /// 分类分面类型 - 标识分类的层级和用途
@@ -226,11 +217,6 @@ namespace Hx.Abp.Attachment.Domain
         /// <param name="templateId">模板ID</param>
         public virtual void SetTemplateId(Guid? templateId) => TemplateId = templateId;
 
-        /// <summary>
-        /// 设置语义检索向量
-        /// </summary>
-        /// <param name="embedding">语义向量</param>
-        public virtual void SetEmbedding(float[]? embedding) => Embedding = embedding;
 
         /// <summary>
         /// 设置全文内容

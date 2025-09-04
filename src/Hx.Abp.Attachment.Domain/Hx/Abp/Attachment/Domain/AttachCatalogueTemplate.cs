@@ -2,7 +2,6 @@ using Hx.Abp.Attachment.Domain.Shared;
 using JetBrains.Annotations;
 using Volo.Abp;
 using Volo.Abp.Domain.Entities.Auditing;
-using System.Text.Json;
 
 namespace Hx.Abp.Attachment.Domain
 {

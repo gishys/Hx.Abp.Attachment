@@ -307,65 +307,15 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             }
         }
 
-        // 当前已有的语义搜索方法保持不变
-        public async Task<List<AttachCatalogue>> SearchBySemanticAsync(
-            float[] queryEmbedding,
-            string? reference = null,
-            int? referenceType = null,
-            int limit = 10,
-            float similarityThreshold = 0.7f,
-            CancellationToken cancellationToken = default)
-        {
-            // 保持现有实现不变
-            var sql = @"
-                SELECT c.*, 1 - (c.embedding <=> @queryEmbedding) as similarity_score
-                FROM ""ATTACH_CATALOGUES"" c
-                WHERE c.embedding IS NOT NULL";
-
-            var parameters = new List<object> {
-                new NpgsqlParameter("@queryEmbedding", queryEmbedding) 
-                { NpgsqlDbType = NpgsqlDbType.Real | NpgsqlDbType.Array }
-            };
-
-            // 添加业务引用过滤
-            if (!string.IsNullOrEmpty(reference))
-            {
-                sql += " AND c.\"REFERENCE\" = @reference";
-                parameters.Add(new NpgsqlParameter("@reference", reference));
-            }
-
-            if (referenceType.HasValue)
-            {
-                sql += " AND c.\"REFERENCETYPE\" = @referenceType";
-                parameters.Add(new NpgsqlParameter("@referenceType", referenceType.Value));
-            }
-
-            // 添加相似度过滤和排序
-            sql += @" 
-                AND 1 - (c.embedding <=> @queryEmbedding) >= @similarityThreshold
-                ORDER BY c.embedding <=> @queryEmbedding
-                LIMIT @limit";
-
-            parameters.Add(new NpgsqlParameter("@similarityThreshold", similarityThreshold));
-            parameters.Add(new NpgsqlParameter("@limit", limit));
-
-            var dbContext = await GetDbContextAsync();
-            var results = await dbContext.Set<AttachCatalogue>()
-                .FromSqlRaw(sql, [.. parameters])
-                .IncludeDetails()
-                .ToListAsync(cancellationToken);
-
-            return results;
-        }
 
         /// <summary>
-        /// 混合搜索：结合全文检索和语义检索
+        /// 混合搜索：结合全文检索和文本向量检索
         /// </summary>
         /// <param name="searchText">搜索文本</param>
         /// <param name="reference">业务引用</param>
         /// <param name="referenceType">业务类型</param>
         /// <param name="limit">返回数量限制</param>
-        /// <param name="queryEmbedding">语义向量</param>
+        /// <param name="queryTextVector">查询文本向量</param>
         /// <param name="similarityThreshold">相似度阈值</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>匹配的分类列表</returns>
@@ -374,19 +324,19 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             string? reference = null,
             int? referenceType = null,
             int limit = 10,
-            float[]? queryEmbedding = null,
+            string? queryTextVector = null,
             float similarityThreshold = 0.7f,
             CancellationToken cancellationToken = default)
         {
             try
             {
-                // 基础SQL，包含全文搜索和向量相似度计算
+                // 基础SQL，包含全文搜索和文本向量相似度计算
                 var sql = @"
                     WITH RankedResults AS (
                         SELECT c.*, 
                             CASE 
-                                WHEN @hasEmbedding::boolean = true THEN
-                                    (1 - (c.embedding <=> @queryEmbedding::real[])) * 0.6 + -- 向量相似度权重60%
+                                WHEN @hasTextVector::boolean = true THEN
+                                    (1 - (c.text_vector <=> @queryTextVector::text)) * 0.6 + -- 文本向量相似度权重60%
                                     ts_rank_cd(
                                         setweight(to_tsvector('chinese_fts', coalesce(c.""CATALOGUE_NAME"",'')), 'A') || 
                                         setweight(to_tsvector('chinese_fts', coalesce(c.""REFERENCE"",'')), 'B'),
@@ -404,8 +354,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                             setweight(to_tsvector('chinese_fts', coalesce(c.""CATALOGUE_NAME"",'')), 'A') ||
                             setweight(to_tsvector('chinese_fts', coalesce(c.""REFERENCE"",'')), 'B')
                         ) @@ to_tsquery('chinese_fts', @searchQuery)
-                        AND (@hasEmbedding::boolean = false OR 
-                             (c.embedding IS NOT NULL AND 1 - (c.embedding <=> @queryEmbedding::real[]) >= @similarityThreshold))
+                        AND (@hasTextVector::boolean = false OR 
+                             (c.text_vector IS NOT NULL AND 1 - (c.text_vector <=> @queryTextVector::text) >= @similarityThreshold))
                     )
                     SELECT * FROM RankedResults 
                     WHERE rank > 0";
@@ -417,9 +367,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
                 var parameters = new List<object> { 
                     new NpgsqlParameter("@searchQuery", searchQuery),
-                    new NpgsqlParameter("@hasEmbedding", queryEmbedding != null),
-                    new NpgsqlParameter("@queryEmbedding", 
-                        queryEmbedding ?? []) { NpgsqlDbType = NpgsqlDbType.Real | NpgsqlDbType.Array },
+                    new NpgsqlParameter("@hasTextVector", !string.IsNullOrEmpty(queryTextVector)),
+                    new NpgsqlParameter("@queryTextVector", queryTextVector ?? ""),
                     new NpgsqlParameter("@similarityThreshold", similarityThreshold)
                 };
 

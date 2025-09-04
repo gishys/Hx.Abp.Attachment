@@ -96,7 +96,7 @@ namespace Hx.Abp.Attachment.Application
                     baseTemplate.IsRequired,
                     baseTemplate.IsStatic,
                     input.InheritFromParent ? baseTemplate.Id : null,
-                    baseTemplate.RuleExpression,
+                    baseTemplate.WorkflowConfig,
                     baseTemplate.Version + 1,
                     true,
                     baseTemplate.FacetType,
@@ -337,7 +337,7 @@ namespace Hx.Abp.Attachment.Application
                         if (template != null)
                         {
                             updateDetail.TemplateName = template.TemplateName;
-                            updateDetail.OldRuleExpression = template.RuleExpression;
+                            updateDetail.OldWorkflowConfig = template.WorkflowConfig;
                         }
 
                         var success = await UpdateTemplateKeywordsIntelligentlyAsync(templateId);
@@ -350,7 +350,7 @@ namespace Hx.Abp.Attachment.Application
                             var updatedTemplate = await _templateRepository.GetAsync(templateId);
                             if (updatedTemplate != null)
                             {
-                                updateDetail.NewRuleExpression = updatedTemplate.RuleExpression;
+                                updateDetail.NewWorkflowConfig = updatedTemplate.WorkflowConfig;
                             }
                         }
                         else
@@ -477,9 +477,9 @@ namespace Hx.Abp.Attachment.Application
         {
             var queryLower = query.ToLowerInvariant();
             
-            // 1. 检查 RuleExpression 规则匹配（优先级较高）
-            if (!string.IsNullOrEmpty(template.RuleExpression) && 
-                HasRuleMatch(template.RuleExpression, queryLower))
+            // 1. 检查 WorkflowConfig 规则匹配（优先级较高）
+            if (!string.IsNullOrEmpty(template.WorkflowConfig) && 
+                HasRuleMatch(template.WorkflowConfig, queryLower))
             {
                 return "Rule";
             }
@@ -519,9 +519,9 @@ namespace Hx.Abp.Attachment.Application
         {
             var reason = $"规则匹配度高 ({score:F2})";
             
-            if (!string.IsNullOrEmpty(template.RuleExpression))
+            if (!string.IsNullOrEmpty(template.WorkflowConfig))
             {
-                reason += $"，使用规则引擎：{template.RuleExpression}";
+                reason += $"，使用工作流配置：{template.WorkflowConfig}";
             }
             
             if (query.Length > 10)
@@ -557,30 +557,6 @@ namespace Hx.Abp.Attachment.Application
             }
             
             return reason;
-        }
-        
-        /// <summary>
-        /// 从规则表达式中提取关键词
-        /// </summary>
-        private static List<string> ExtractKeywordsFromRuleExpression(string ruleExpression)
-        {
-            var keywords = new List<string>();
-            
-            if (string.IsNullOrEmpty(ruleExpression))
-                return keywords;
-                
-            // 提取常见的规则关键词
-            var commonKeywords = new[] { "WorkflowName", "DocumentType", "FileType", "Category", "Status" };
-            
-            foreach (var keyword in commonKeywords)
-            {
-                if (ruleExpression.Contains(keyword))
-                {
-                    keywords.Add(keyword);
-                }
-            }
-            
-            return keywords;
         }
 
         /// <summary>

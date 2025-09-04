@@ -64,11 +64,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 SELECT t.*, 
                        COALESCE(
                            GREATEST(
-                               -- RuleExpression 规则匹配（权重较高）
-                                   CASE WHEN t.""RULE_EXPRESSION"" IS NOT NULL AND t.""RULE_EXPRESSION"" != '' 
-                                        THEN COALESCE(similarity(t.""TEMPLATE_NAME"", @query), 0) * 1.1
-                                    ELSE 0 END,
-                               -- 基础名称匹配（权重较低）
+                               -- 基础名称匹配
                                    COALESCE(similarity(t.""TEMPLATE_NAME"", @query), 0) * 0.8
                            ), 0
                        ) as match_score
@@ -79,8 +75,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                           t.""TEMPLATE_NAME"" ILIKE @queryPattern
                           OR t.""TEMPLATE_NAME"" % @query
                           OR @query % t.""TEMPLATE_NAME""
-                      -- 规则表达式匹配
-                          OR (t.""RULE_EXPRESSION"" IS NOT NULL AND t.""RULE_EXPRESSION"" ILIKE @queryPattern)
+                      -- 工作流配置匹配
+                          OR (t.""WORKFLOW_CONFIG"" IS NOT NULL AND t.""WORKFLOW_CONFIG"" ILIKE @queryPattern)
                       -- 相似度匹配
                           OR COALESCE(similarity(t.""TEMPLATE_NAME"", @query), 0) > @threshold
                   )
@@ -164,8 +160,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     {
                         double score = 0;
                         
-                        // RuleExpression 规则匹配（权重较高）
-                        if (!string.IsNullOrEmpty(template.RuleExpression))
+                        // 工作流配置匹配（权重较高）
+                        if (!string.IsNullOrEmpty(template.WorkflowConfig))
                         {
                             var nameSimilarity = CalculateSimpleSimilarity(template.TemplateName, query);
                             score = Math.Max(score, nameSimilarity * 1.1);
@@ -177,7 +173,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                         
                         // 检查是否满足基本匹配条件
                         if (template.TemplateName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                            (!string.IsNullOrEmpty(template.RuleExpression) && template.RuleExpression.Contains(query, StringComparison.OrdinalIgnoreCase)) ||
+                            (!string.IsNullOrEmpty(template.WorkflowConfig) && template.WorkflowConfig.Contains(query, StringComparison.OrdinalIgnoreCase)) ||
                             score > threshold)
                         {
                             scoredResults.Add((template, score));
@@ -265,7 +261,6 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                                          THEN (
                                              COALESCE(similarity(t.""TEMPLATE_NAME"", @businessQuery), 0) * 0.25 +
                                              COALESCE(similarity(t.""DESCRIPTION"", @businessQuery), 0) * 0.25 +
-                                             COALESCE(similarity(t.""RULE_EXPRESSION"", @businessQuery), 0) * 0.25 +
                                              -- 标签匹配（权重中等）
                                              CASE WHEN t.""TAGS"" IS NOT NULL AND t.""TAGS"" != '[]' 
                                                   THEN (
@@ -280,7 +275,6 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                                          THEN (
                                              CASE WHEN t.""TEMPLATE_NAME"" ILIKE ANY(@fileTypePatterns) THEN 0.3 ELSE 0 END +
                                              CASE WHEN t.""DESCRIPTION"" ILIKE ANY(@fileTypePatterns) THEN 0.3 ELSE 0 END +
-                                             CASE WHEN t.""RULE_EXPRESSION"" ILIKE ANY(@fileTypePatterns) THEN 0.2 ELSE 0 END +
                                              CASE WHEN t.""TAGS"" @> ANY(@fileTypeJsonArray) THEN 0.2 ELSE 0 END
                                          ) * 1.2
                                     ELSE 0 END,
@@ -295,7 +289,6 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                                     GREATEST(
                                         COALESCE(similarity(t.""TEMPLATE_NAME"", @businessQuery), 0) * 0.4,
                                         COALESCE(similarity(t.""DESCRIPTION"", @businessQuery), 0) * 0.3,
-                                        COALESCE(similarity(t.""RULE_EXPRESSION"", @businessQuery), 0) * 0.2,
                                         CASE WHEN t.""TAGS"" IS NOT NULL AND t.""TAGS"" != '[]' 
                                              THEN (
                                                  SELECT COALESCE(MAX(similarity(tag, @businessQuery)), 0) * 0.1
@@ -413,7 +406,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     {
                         t.TemplateName,
                         t.Description,
-                        t.RuleExpression
+                        t.WorkflowConfig
                     }.Where(x => !string.IsNullOrEmpty(x)))
                     .ToListAsync();
 
@@ -569,9 +562,9 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                         }
                     }
 
-                    // 规则表达式匹配（权重较低）
-                    if (!string.IsNullOrEmpty(template.RuleExpression) && 
-                        template.RuleExpression.Contains(businessDescription, StringComparison.OrdinalIgnoreCase))
+                    // 工作流配置匹配（权重较低）
+                    if (!string.IsNullOrEmpty(template.WorkflowConfig) && 
+                        template.WorkflowConfig.Contains(businessDescription, StringComparison.OrdinalIgnoreCase))
                     {
                         score += 0.1;
                     }
@@ -678,12 +671,12 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             var templates = await queryable.ToListAsync();
             var matchedTemplates = new List<AttachCatalogueTemplate>();
 
-            foreach (var template in templates.Where(t => !string.IsNullOrEmpty(t.RuleExpression)))
+            foreach (var template in templates.Where(t => !string.IsNullOrEmpty(t.WorkflowConfig)))
             {
                 try
                 {
-                    if (string.IsNullOrEmpty(template.RuleExpression)) continue;
-                    var workflow = JsonConvert.DeserializeObject<Workflow>(template.RuleExpression);
+                    if (string.IsNullOrEmpty(template.WorkflowConfig)) continue;
+                    var workflow = JsonConvert.DeserializeObject<Workflow>(template.WorkflowConfig);
                     if (workflow == null) continue;
                     var resultList = await _rulesEngine.ExecuteAllRulesAsync(workflow.WorkflowName, context);
 
@@ -763,31 +756,32 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             }
         }
 
-        #region 关键字维护方法
-
         /// <summary>
-        /// 更新模板的规则表达式
+        /// 更新模板的工作流配置
         /// </summary>
-        public async Task UpdateRuleExpressionAsync(Guid templateId, string ruleExpression)
+        public async Task UpdateWorkflowConfigAsync(Guid templateId, string workflowConfig)
         {
             var dbContext = await GetDbContextAsync();
             
             var sql = @"
                 UPDATE ""APPATTACH_CATALOGUE_TEMPLATES"" 
-                SET ""RULE_EXPRESSION"" = @ruleExpression
+                SET ""WORKFLOW_CONFIG"" = @workflowConfig
                 WHERE ""ID"" = @templateId";
             
             var parameters = new[]
             {
                 new Npgsql.NpgsqlParameter("@templateId", templateId),
-                new Npgsql.NpgsqlParameter("@ruleExpression", ruleExpression)
+                new Npgsql.NpgsqlParameter("@workflowConfig", workflowConfig)
             };
             
             await dbContext.Database.ExecuteSqlRawAsync(sql, parameters);
             
-            Logger.LogInformation("更新模板规则表达式完成，模板ID：{templateId}，表达式：{ruleExpression}", 
-                templateId, ruleExpression);
+            Logger.LogInformation("更新模板工作流配置完成，模板ID：{templateId}，配置：{workflowConfig}", 
+                templateId, workflowConfig);
         }
+
+        #region 关键字维护方法
+
 
         /// <summary>
         /// 智能更新模板配置（基于使用数据）
@@ -796,11 +790,11 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         {
             try
             {
-                // 更新规则表达式（如果基于使用数据可以优化）
-                var ruleExpression = await ExtractRuleExpressionFromUsageAsync(templateId);
-                if (!string.IsNullOrEmpty(ruleExpression))
+                // 更新工作流配置（如果基于使用数据可以优化）
+                var workflowConfig = await ExtractWorkflowConfigFromUsageAsync(templateId);
+                if (!string.IsNullOrEmpty(workflowConfig))
                 {
-                    await UpdateRuleExpressionAsync(templateId, ruleExpression);
+                    await UpdateWorkflowConfigAsync(templateId, workflowConfig);
                 }
 
                 Logger.LogInformation("智能更新模板配置完成，模板ID：{templateId}", templateId);
@@ -835,9 +829,9 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         }
 
         /// <summary>
-        /// 基于使用历史提取规则表达式
+        /// 基于使用历史提取工作流配置
         /// </summary>
-        private async Task<string> ExtractRuleExpressionFromUsageAsync(Guid templateId)
+        private async Task<string> ExtractWorkflowConfigFromUsageAsync(Guid templateId)
         {
             try
             {
@@ -861,10 +855,10 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     return "{\"WorkflowName\":\"DefaultWorkflow\",\"Rules\":[]}";
                 }
                 
-                // 分析文件名模式，生成简单的规则表达式
-                var ruleExpression = GenerateSimpleRuleExpression(fileNames);
+                // 分析文件名模式，生成简单的工作流配置
+                var workflowConfig = GenerateSimpleWorkflowConfig(fileNames);
                 
-                return ruleExpression;
+                return workflowConfig;
             }
             catch (Exception ex)
             {
@@ -874,9 +868,9 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         }
         
         /// <summary>
-        /// 根据文件名列表生成简单的规则表达式
+        /// 根据文件名列表生成简单的工作流配置
         /// </summary>
-        private static string GenerateSimpleRuleExpression(List<string> fileNames)
+        private static string GenerateSimpleWorkflowConfig(List<string> fileNames)
         {
             if (fileNames.Count == 0)
                 return "{\"WorkflowName\":\"DefaultWorkflow\",\"Rules\":[]}";
@@ -1863,10 +1857,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 if (template.ParentId.HasValue && templateDict.TryGetValue(template.ParentId.Value, out var parent))
                 {
                     // 如果父节点的Children为null，跳过添加（这种情况应该很少见）
-                    if (parent.Children != null)
-                    {
-                        parent.Children.Add(template);
-                    }
+                    parent.Children?.Add(template);
                 }
             }
 

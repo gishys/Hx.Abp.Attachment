@@ -59,7 +59,7 @@ namespace Hx.Abp.Attachment.Domain
                 isRequired: baseTemplate.IsRequired,
                 isStatic: baseTemplate.IsStatic,
                 parentId: newParentId ?? baseTemplate.ParentId,
-                ruleExpression: baseTemplate.RuleExpression,
+                workflowConfig: baseTemplate.WorkflowConfig,
                 version: nextVersion,
                 isLatest: false,
                 facetType: baseTemplate.FacetType,
@@ -124,9 +124,9 @@ namespace Hx.Abp.Attachment.Domain
             Dictionary<string, object>? contextData)
         {
             // 优先使用规则引擎
-            if (!string.IsNullOrEmpty(template.RuleExpression) && contextData != null)
+            if (!string.IsNullOrEmpty(template.WorkflowConfig) && contextData != null)
             {
-                var workflow = JsonConvert.DeserializeObject<Workflow>(template.RuleExpression);
+                var workflow = JsonConvert.DeserializeObject<Workflow>(template.WorkflowConfig);
                 if (workflow != null)
                 {
                     var ruleParameters = contextData.Select(kvp => new RuleParameter(kvp.Key, kvp.Value)).ToArray();

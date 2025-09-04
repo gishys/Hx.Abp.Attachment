@@ -53,9 +53,9 @@ namespace Hx.Abp.Attachment.Domain
         #region 配置维护方法
 
         /// <summary>
-        /// 更新模板的规则表达式
+        /// 更新模板的工作流配置
         /// </summary>
-        Task UpdateRuleExpressionAsync(Guid templateId, string ruleExpression);
+        Task UpdateWorkflowConfigAsync(Guid templateId, string workflowConfig);
 
         /// <summary>
         /// 智能更新模板配置（基于使用数据）

@@ -39,9 +39,10 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public AttachReceiveType AttachReceiveType { get; set; }
 
         /// <summary>
-        /// 规则引擎表达式
+        /// 工作流配置（JSON格式，存储工作流引擎参数）
+        /// 包含：workflowKey、审批节点配置、超时设置、脚本触发、WebHook回调等
         /// </summary>
-        public string? RuleExpression { get; set; }
+        public string? WorkflowConfig { get; set; }
 
         /// <summary>
         /// 是否必收

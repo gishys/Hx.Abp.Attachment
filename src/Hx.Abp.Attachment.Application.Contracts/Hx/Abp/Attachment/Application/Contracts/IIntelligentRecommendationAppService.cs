@@ -609,14 +609,14 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public bool IsSuccess { get; set; }
 
         /// <summary>
-        /// 更新前的规则表达式
+        /// 更新前的工作流配置
         /// </summary>
-        public string? OldRuleExpression { get; set; }
+        public string? OldWorkflowConfig { get; set; }
 
         /// <summary>
-        /// 更新后的规则表达式
+        /// 更新后的工作流配置
         /// </summary>
-        public string? NewRuleExpression { get; set; }
+        public string? NewWorkflowConfig { get; set; }
 
         /// <summary>
         /// 错误信息

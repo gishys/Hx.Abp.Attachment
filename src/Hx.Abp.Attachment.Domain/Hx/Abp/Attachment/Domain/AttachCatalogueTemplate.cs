@@ -42,10 +42,11 @@ namespace Hx.Abp.Attachment.Domain
         public virtual AttachReceiveType AttachReceiveType { get; private set; }
 
         /// <summary>
-        /// 规则引擎表达式
+        /// 工作流配置（JSON格式，存储工作流引擎参数）
+        /// 包含：workflowKey、审批节点配置、超时设置、脚本触发、WebHook回调等
         /// </summary>
         [CanBeNull]
-        public virtual string? RuleExpression { get; private set; }
+        public virtual string? WorkflowConfig { get; private set; }
 
         /// <summary>
         /// 是否必收
@@ -123,7 +124,7 @@ namespace Hx.Abp.Attachment.Domain
             bool isRequired = false,
             bool isStatic = false,
             Guid? parentId = null,
-            [CanBeNull] string? ruleExpression = null,
+            [CanBeNull] string? workflowConfig = null,
             int version = 1,
             bool isLatest = true,
             FacetType facetType = FacetType.General,
@@ -141,7 +142,7 @@ namespace Hx.Abp.Attachment.Domain
             IsRequired = isRequired;
             IsStatic = isStatic;
             ParentId = parentId;
-            RuleExpression = ruleExpression;
+            WorkflowConfig = workflowConfig;
             Version = version;
             IsLatest = isLatest;
             FacetType = facetType;
@@ -163,7 +164,7 @@ namespace Hx.Abp.Attachment.Domain
             int sequenceNumber,
             bool isRequired,
             bool isStatic,
-            [CanBeNull] string? ruleExpression,
+            [CanBeNull] string? workflowConfig,
             FacetType facetType,
             TemplatePurpose templatePurpose,
             [CanBeNull] string? description = null,
@@ -176,7 +177,7 @@ namespace Hx.Abp.Attachment.Domain
             SequenceNumber = sequenceNumber;
             IsRequired = isRequired;
             IsStatic = isStatic;
-            RuleExpression = ruleExpression;
+            WorkflowConfig = workflowConfig;
             FacetType = facetType;
             TemplatePurpose = templatePurpose;
             
@@ -479,33 +480,28 @@ namespace Hx.Abp.Attachment.Domain
                 throw new ArgumentException("向量维度必须在64到2048之间", nameof(TextVector));
             }
 
-            // 验证规则表达式格式（如果提供）
-            if (!string.IsNullOrWhiteSpace(RuleExpression))
+            // 验证工作流配置格式（如果提供）
+            if (!string.IsNullOrWhiteSpace(WorkflowConfig))
             {
                 try
                 {
-                    // 基础格式验证：检查是否为有效的JSON格式
-                    if (RuleExpression.TrimStart().StartsWith('{') && RuleExpression.TrimEnd().EndsWith('}'))
+                    // 验证JSON格式
+                    if (WorkflowConfig.TrimStart().StartsWith('{') && WorkflowConfig.TrimEnd().EndsWith('}'))
                     {
-                        // 尝试解析JSON以验证格式
-                        System.Text.Json.JsonDocument.Parse(RuleExpression);
+                        var jsonDoc = System.Text.Json.JsonDocument.Parse(WorkflowConfig);
                     }
                     else
                     {
-                        // 如果不是JSON格式，进行基础字符串验证
-                        if (string.IsNullOrWhiteSpace(RuleExpression.Trim()))
-                        {
-                            throw new ArgumentException("规则表达式不能为空", nameof(RuleExpression));
-                        }
+                        throw new ArgumentException("工作流配置必须是有效的JSON格式", nameof(WorkflowConfig));
                     }
                 }
-                catch (System.Text.Json.JsonException)
+                catch (System.Text.Json.JsonException ex)
                 {
-                    throw new ArgumentException("规则表达式JSON格式不正确", nameof(RuleExpression));
+                    throw new ArgumentException($"工作流配置JSON格式不正确: {ex.Message}", nameof(WorkflowConfig));
                 }
                 catch (Exception ex)
                 {
-                    throw new ArgumentException($"规则表达式格式错误: {ex.Message}", nameof(RuleExpression));
+                    throw new ArgumentException($"工作流配置验证失败: {ex.Message}", nameof(WorkflowConfig));
                 }
             }
 
@@ -529,7 +525,7 @@ namespace Hx.Abp.Attachment.Domain
 
             TemplateName = source.TemplateName;
             AttachReceiveType = source.AttachReceiveType;
-            RuleExpression = source.RuleExpression;
+            WorkflowConfig = source.WorkflowConfig;
             IsRequired = source.IsRequired;
             SequenceNumber = source.SequenceNumber;
             IsStatic = source.IsStatic;
@@ -724,10 +720,10 @@ namespace Hx.Abp.Attachment.Domain
                 contentParts.AddRange(Tags);
             }
             
-            // 添加规则表达式（如果包含有意义的关键词）
-            if (!string.IsNullOrWhiteSpace(RuleExpression))
+            // 添加工作流配置（如果包含有意义的关键词）
+            if (!string.IsNullOrWhiteSpace(WorkflowConfig))
             {
-                contentParts.Add(RuleExpression);
+                contentParts.Add(WorkflowConfig);
             }
             
             // 添加元数据字段信息

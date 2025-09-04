@@ -41,7 +41,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.Property(d => d.Version).HasColumnName("VERSION").HasDefaultValue(1);
             builder.Property(d => d.IsLatest).HasColumnName("IS_LATEST").HasDefaultValue(true);
             builder.Property(d => d.AttachReceiveType).HasColumnName("ATTACH_RECEIVE_TYPE");
-            builder.Property(d => d.RuleExpression).HasColumnName("RULE_EXPRESSION").HasColumnType("text");
+            builder.Property(d => d.WorkflowConfig).HasColumnName("WORKFLOW_CONFIG").HasColumnType("text");
             builder.Property(d => d.IsRequired).HasColumnName("IS_REQUIRED").HasDefaultValue(false);
             builder.Property(d => d.SequenceNumber).HasColumnName("SEQUENCE_NUMBER").HasDefaultValue(0);
             builder.Property(d => d.IsStatic).HasColumnName("IS_STATIC").HasDefaultValue(false);
@@ -185,16 +185,6 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.HasIndex(e => new { e.TemplatePath, e.IsLatest })
                 .HasDatabaseName("IDX_ATTACH_CATALOGUE_TEMPLATES_PATH_LATEST")
                 .HasFilter("\"IS_DELETED\" = false");
-
-            // 全文搜索索引 - 通过原生SQL创建
-            // CREATE INDEX CONCURRENTLY IF NOT EXISTS IDX_ATTACH_CATALOGUE_TEMPLATES_FULLTEXT 
-            // ON "APPATTACH_CATALOGUE_TEMPLATES" USING GIN (
-            //     to_tsvector('chinese_fts', 
-            //         COALESCE("TEMPLATE_NAME", '') || ' ' || 
-            //         COALESCE("NAME_PATTERN", '') || ' ' ||
-            //         COALESCE("RULE_EXPRESSION", '')
-            //     )
-            // );
 
             // 关系配置
             builder.HasMany(d => d.Children)

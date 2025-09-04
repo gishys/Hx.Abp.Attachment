@@ -1854,7 +1854,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             // 为每个模板构建子节点集合
             foreach (var template in filteredTemplates)
             {
-                template.Children.Clear();
+                template.Children?.Clear();
             }
 
             // 构建父子关系
@@ -1862,14 +1862,18 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             {
                 if (template.ParentId.HasValue && templateDict.TryGetValue(template.ParentId.Value, out var parent))
                 {
-                    parent.Children.Add(template);
+                    // 如果父节点的Children为null，跳过添加（这种情况应该很少见）
+                    if (parent.Children != null)
+                    {
+                        parent.Children.Add(template);
+                    }
                 }
             }
 
             // 对每个节点的子节点进行排序
             foreach (var template in filteredTemplates)
             {
-                if (template.Children.Count > 0)
+                if (template.Children?.Count > 0)
                 {
                     var sortedChildren = template.Children.OrderBy(c => c.SequenceNumber).ToList();
                     template.Children.Clear();

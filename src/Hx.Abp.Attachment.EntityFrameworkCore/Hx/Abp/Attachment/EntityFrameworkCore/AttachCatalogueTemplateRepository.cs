@@ -14,29 +14,14 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 {
     public class AttachCatalogueTemplateRepository(
         IDbContextProvider<AttachmentDbContext> dbContextProvider,
-        ISemanticMatcher semanticMatcher,
         IRulesEngine rulesEngine,
         IGuidGenerator guidGenerator) :
         EfCoreRepository<AttachmentDbContext, AttachCatalogueTemplate, Guid>(dbContextProvider),
         IAttachCatalogueTemplateRepository
     {
-        private readonly ISemanticMatcher _semanticMatcher = semanticMatcher;
         private readonly IRulesEngine _rulesEngine = rulesEngine;
         private readonly IGuidGenerator _guidGenerator = guidGenerator;
 
-        public async Task<List<AttachCatalogueTemplate>> FindBySemanticMatchAsync(string query, bool onlyLatest = true)
-        {
-            var dbSet = await GetDbSetAsync();
-            var queryable = dbSet.AsQueryable();
-            if (onlyLatest)
-            {
-                queryable = queryable.Where(t => t.IsLatest);
-            }
-
-            var templates = await queryable.ToListAsync();
-            return await _semanticMatcher.MatchTemplatesAsync(query, templates);
-        }
-        
         public async Task<List<AttachCatalogueTemplate>> GetIntelligentRecommendationsAsync(
             string query, 
             double threshold = 0.3, 
@@ -45,10 +30,10 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             bool includeHistory = false)
         {
             try
-        {
-            var dbContext = await GetDbContextAsync();
-            var dbSet = await GetDbSetAsync();
-            
+            {
+                var dbContext = await GetDbContextAsync();
+                var dbSet = await GetDbSetAsync();
+                
                 // 首先检查数据库中是否有数据
                 var totalCount = await dbSet.CountAsync();
                 Logger.LogInformation("数据库中总共有 {totalCount} 个模板", totalCount);
@@ -58,92 +43,204 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     Logger.LogWarning("数据库中没有模板数据，返回空列表");
                     return [];
                 }
+
+                // 混合检索架构：向量召回 + 全文检索加权过滤 + 分数融合
+                var sql = @"
+                    WITH vector_recall AS (
+                        -- 第一阶段：向量召回 Top-N（语义检索）
+                        SELECT 
+                            t.*,
+                            -- 向量相似度计算（如果有向量数据）
+                            CASE 
+                                WHEN t.""TEXT_VECTOR"" IS NOT NULL AND t.""VECTOR_DIMENSION"" > 0 
+                                THEN (
+                                    -- 这里应该使用实际的向量相似度计算函数
+                                    -- 例如：1 - (t.""TEXT_VECTOR"" <-> @queryVector::vector)
+                                    -- 暂时使用文本相似度作为占位符
+                                    COALESCE(similarity(t.""TEMPLATE_NAME"", @query), 0) * 0.9
+                                )
+                                ELSE 0
+                            END as vector_score
+                        FROM ""APPATTACH_CATALOGUE_TEMPLATES"" t
+                        WHERE (@onlyLatest = false OR t.""IS_LATEST"" = true)
+                          AND t.""IS_DELETED"" = false
+                          AND (
+                              -- 向量过滤条件
+                              t.""TEXT_VECTOR"" IS NOT NULL 
+                              OR t.""TEMPLATE_NAME"" ILIKE @queryPattern
+                              OR t.""DESCRIPTION"" ILIKE @queryPattern
+                              OR t.""TAGS"" @> @queryTagsJson
+                          )
+                        ORDER BY vector_score DESC
+                        LIMIT @vectorTopN
+                    ),
+                    fulltext_scoring AS (
+                        -- 第二阶段：全文检索加权过滤和重排
+                        SELECT 
+                            vr.*,
+                            -- 全文检索分数计算
+                            COALESCE(
+                                GREATEST(
+                                    -- 模板名称匹配（权重最高）
+                                    CASE WHEN vr.""TEMPLATE_NAME"" ILIKE @queryPattern 
+                                         THEN COALESCE(similarity(vr.""TEMPLATE_NAME"", @query), 0) * 1.0
+                                         ELSE 0 END,
+                                    
+                                    -- 描述字段匹配（权重较高）
+                                    CASE WHEN vr.""DESCRIPTION"" IS NOT NULL AND vr.""DESCRIPTION"" ILIKE @queryPattern 
+                                         THEN COALESCE(similarity(vr.""DESCRIPTION"", @query), 0) * 0.8
+                                         ELSE 0 END,
+                                    
+                                    -- 标签匹配（权重中等）
+                                    CASE WHEN vr.""TAGS"" IS NOT NULL AND vr.""TAGS"" != '[]'::jsonb
+                                         THEN (
+                                             SELECT COALESCE(MAX(similarity(tag, @query)), 0) * 0.6
+                                             FROM jsonb_array_elements_text(vr.""TAGS"") AS tag
+                                         )
+                                         ELSE 0 END,
+                                    
+                                    -- 元数据字段匹配（权重中等）
+                                    CASE WHEN vr.""META_FIELDS"" IS NOT NULL AND vr.""META_FIELDS"" != '[]'::jsonb
+                                         THEN (
+                                             SELECT COALESCE(MAX(similarity(meta_field->>'FieldName', @query)), 0) * 0.5
+                                             FROM jsonb_array_elements(vr.""META_FIELDS"") AS meta_field
+                                         )
+                                         ELSE 0 END,
+                                    
+                                    -- 工作流配置匹配（权重较低）
+                                    CASE WHEN vr.""WORKFLOW_CONFIG"" IS NOT NULL AND vr.""WORKFLOW_CONFIG"" ILIKE @queryPattern 
+                                         THEN COALESCE(similarity(vr.""WORKFLOW_CONFIG"", @query), 0) * 0.3
+                                         ELSE 0 END,
+                                    
+                                    -- 模糊匹配（权重最低）
+                                    CASE WHEN vr.""TEMPLATE_NAME"" % @query OR @query % vr.""TEMPLATE_NAME""
+                                         THEN 0.2
+                                         ELSE 0 END
+                                ), 0
+                            ) as fulltext_score,
+                            
+                            -- 使用频率权重
+                            COALESCE((
+                                SELECT COUNT(*) 
+                                FROM ""APPATTACH_CATALOGUES"" ac 
+                                WHERE ac.""TEMPLATE_ID"" = vr.""ID"" 
+                                AND ac.""IS_DELETED"" = false
+                            ), 0) as usage_count,
+                            
+                            -- 最近使用时间
+                            (
+                                SELECT MAX(ac.""CREATION_TIME"")
+                                FROM ""APPATTACH_CATALOGUES"" ac 
+                                WHERE ac.""TEMPLATE_ID"" = vr.""ID"" 
+                                AND ac.""IS_DELETED"" = false
+                            ) as last_used_time
+                        FROM vector_recall vr
+                    )
+                    SELECT 
+                        *,
+                        -- 第三阶段：分数线性融合
+                        (
+                            -- 向量分数权重（语义）
+                            COALESCE(vector_score, 0) * 0.6 +
+                            -- 全文检索分数权重（字面）
+                            COALESCE(fulltext_score, 0) * 0.4 +
+                            -- 使用频率权重
+                            (usage_count * 0.05) +
+                            -- 时间衰减权重
+                            CASE WHEN last_used_time IS NOT NULL 
+                                 THEN GREATEST(0, 1 - EXTRACT(EPOCH FROM (NOW() - last_used_time)) / (30 * 24 * 3600)) * 0.1
+                                 ELSE 0 END
+                        ) as final_score,
+                        vector_score,
+                        fulltext_score
+                    FROM fulltext_scoring
+                    WHERE (
+                        -- 最终过滤条件
+                        COALESCE(vector_score, 0) > @vectorThreshold
+                        OR COALESCE(fulltext_score, 0) > @fulltextThreshold
+                        OR usage_count > 0
+                    )
+                    ORDER BY final_score DESC, ""SEQUENCE_NUMBER"" ASC
+                    LIMIT @topN";
+
+                // 准备查询参数
+                var queryPattern = $"%{query}%";
+                var queryWords = query.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var queryTagsJson = $"[{string.Join(",", queryWords.Select(w => $"\"{w}\""))}]";
+                var vectorTopN = Math.Max(topN * 3, 50); // 向量召回更多候选
+                var vectorThreshold = threshold * 0.5; // 向量阈值相对宽松
+                var fulltextThreshold = threshold; // 全文检索阈值
+
+                var parameters = new[]
+                {
+                    new Npgsql.NpgsqlParameter("@query", query),
+                    new Npgsql.NpgsqlParameter("@queryPattern", queryPattern),
+                    new Npgsql.NpgsqlParameter("@queryTagsJson", queryTagsJson),
+                    new Npgsql.NpgsqlParameter("@vectorTopN", vectorTopN),
+                    new Npgsql.NpgsqlParameter("@vectorThreshold", vectorThreshold),
+                    new Npgsql.NpgsqlParameter("@fulltextThreshold", fulltextThreshold),
+                    new Npgsql.NpgsqlParameter("@topN", topN),
+                    new Npgsql.NpgsqlParameter("@onlyLatest", onlyLatest)
+                };
                 
-                // 恢复原有的复杂业务逻辑，保持精度和准确性
-            var sql = @"
-                SELECT t.*, 
-                       COALESCE(
-                           GREATEST(
-                               -- 基础名称匹配
-                                   COALESCE(similarity(t.""TEMPLATE_NAME"", @query), 0) * 0.8
-                           ), 0
-                       ) as match_score
-                    FROM ""APPATTACH_CATALOGUE_TEMPLATES"" t
-                    WHERE (@onlyLatest = false OR t.""IS_LATEST"" = true)
-                  AND (
-                      -- 基础文本匹配
-                          t.""TEMPLATE_NAME"" ILIKE @queryPattern
-                          OR t.""TEMPLATE_NAME"" % @query
-                          OR @query % t.""TEMPLATE_NAME""
-                      -- 工作流配置匹配
-                          OR (t.""WORKFLOW_CONFIG"" IS NOT NULL AND t.""WORKFLOW_CONFIG"" ILIKE @queryPattern)
-                      -- 相似度匹配
-                          OR COALESCE(similarity(t.""TEMPLATE_NAME"", @query), 0) > @threshold
-                  )
-                    ORDER BY match_score DESC, t.""SEQUENCE_NUMBER"" ASC
-                LIMIT @topN";
-            
-            var queryPattern = $"%{query}%";
-            var parameters = new[]
-            {
-                new Npgsql.NpgsqlParameter("@query", query),
-                new Npgsql.NpgsqlParameter("@queryPattern", queryPattern),
-                new Npgsql.NpgsqlParameter("@threshold", threshold),
-                new Npgsql.NpgsqlParameter("@topN", topN),
-                new Npgsql.NpgsqlParameter("@onlyLatest", onlyLatest)
-            };
-            
-            // 使用动态查询来获取包含分数的结果
-            var rawResults = await dbContext.Database
-                .SqlQueryRaw<dynamic>(sql, parameters)
-                .ToListAsync();
+                // 执行混合检索查询
+                var rawResults = await dbContext.Database
+                    .SqlQueryRaw<dynamic>(sql, parameters)
+                    .ToListAsync();
+                        
+                Logger.LogInformation("混合检索查询返回 {rawCount} 个结果", rawResults?.Count ?? 0);
+                
+                var results = new List<AttachCatalogueTemplate>();
                     
-                Logger.LogInformation("原始查询返回 {rawCount} 个结果", rawResults?.Count ?? 0);
-                
-            var results = new List<AttachCatalogueTemplate>();
-                
                 // 检查查询结果是否为空
                 if (rawResults == null || rawResults.Count == 0)
                 {
-                    Logger.LogWarning("智能推荐查询没有返回任何结果，查询：{query}", query);
+                    Logger.LogWarning("混合检索查询没有返回任何结果，查询：{query}", query);
                     return results;
                 }
                 
-            foreach (var rawResult in rawResults)
+                foreach (var rawResult in rawResults)
                 {
                     try
-            {
-                // 从原始结果中提取模板ID
-                var templateId = Guid.Parse(rawResult.Id.ToString());
-                
-                // 获取完整的模板实体
-                var template = await dbSet.FindAsync(templateId);
-                if (template != null)
-                {
-                    // 将数据库计算的分数存储到扩展属性中
-                    if (rawResult.match_score != null)
                     {
-                        template.ExtraProperties["MatchScore"] = Convert.ToDouble(rawResult.match_score);
-                    }
-                    results.Add(template);
+                        // 从原始结果中提取模板ID
+                        var templateId = Guid.Parse(rawResult.Id.ToString());
+                        
+                        // 获取完整的模板实体
+                        var template = await dbSet.FindAsync(templateId);
+                        if (template != null)
+                        {
+                            // 存储各种分数信息
+                            if (rawResult.final_score != null)
+                                template.ExtraProperties["FinalScore"] = Convert.ToDouble(rawResult.final_score);
+                            if (rawResult.vector_score != null)
+                                template.ExtraProperties["VectorScore"] = Convert.ToDouble(rawResult.vector_score);
+                            if (rawResult.fulltext_score != null)
+                                template.ExtraProperties["FulltextScore"] = Convert.ToDouble(rawResult.fulltext_score);
+                            if (rawResult.usage_count != null)
+                                template.ExtraProperties["UsageCount"] = Convert.ToInt32(rawResult.usage_count);
+                            if (rawResult.last_used_time != null)
+                                template.ExtraProperties["LastUsedTime"] = rawResult.last_used_time;
+                            
+                            results.Add(template);
                         }
                     }
                     catch (Exception ex)
                     {
-                        Logger.LogWarning(ex, "处理查询结果时出错，跳过此结果");
+                        Logger.LogWarning(ex, "处理混合检索结果时出错，跳过此结果");
+                    }
                 }
-            }
-                
-            Logger.LogInformation("智能推荐查询完成，查询：{query}，找到 {count} 个匹配模板", 
-                query, results.Count);
-                
-            return results;
+                    
+                Logger.LogInformation("混合检索完成，查询：{query}，找到 {count} 个匹配模板", 
+                    query, results.Count);
+                    
+                return results;
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "智能推荐查询失败，查询：{query}", query);
+                Logger.LogError(ex, "混合检索查询失败，查询：{query}", query);
                 
-                // 如果复杂查询失败，尝试简化的业务逻辑搜索
+                // 如果混合检索失败，尝试简化的业务逻辑搜索
                 try
                 {
                     Logger.LogInformation("尝试使用简化业务逻辑搜索作为备选方案");
@@ -160,21 +257,41 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     {
                         double score = 0;
                         
-                        // 工作流配置匹配（权重较高）
-                        if (!string.IsNullOrEmpty(template.WorkflowConfig))
+                        // 模板名称匹配（权重最高）
+                        if (template.TemplateName.Contains(query, StringComparison.OrdinalIgnoreCase))
                         {
-                            var nameSimilarity = CalculateSimpleSimilarity(template.TemplateName, query);
-                            score = Math.Max(score, nameSimilarity * 1.1);
+                            score += 0.4;
                         }
                         
-                        // 基础名称匹配（权重较低）
-                        var baseSimilarity = CalculateSimpleSimilarity(template.TemplateName, query);
-                        score = Math.Max(score, baseSimilarity * 0.8);
+                        // 描述字段匹配（权重较高）
+                        if (!string.IsNullOrEmpty(template.Description) && 
+                            template.Description.Contains(query, StringComparison.OrdinalIgnoreCase))
+                        {
+                            score += 0.3;
+                        }
+                        
+                        // 标签匹配（权重中等）
+                        if (template.Tags != null && template.Tags.Count > 0)
+                        {
+                            foreach (var tag in template.Tags)
+                            {
+                                if (tag.Contains(query, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    score += 0.2;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // 工作流配置匹配（权重较低）
+                        if (!string.IsNullOrEmpty(template.WorkflowConfig) && 
+                            template.WorkflowConfig.Contains(query, StringComparison.OrdinalIgnoreCase))
+                        {
+                            score += 0.1;
+                        }
                         
                         // 检查是否满足基本匹配条件
-                        if (template.TemplateName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                            (!string.IsNullOrEmpty(template.WorkflowConfig) && template.WorkflowConfig.Contains(query, StringComparison.OrdinalIgnoreCase)) ||
-                            score > threshold)
+                        if (score > threshold)
                         {
                             scoredResults.Add((template, score));
                         }
@@ -188,6 +305,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                         .Select(x => 
                         {
                             x.template.ExtraProperties["MatchScore"] = x.score;
+                            x.template.ExtraProperties["FallbackMode"] = true;
                             return x.template;
                         })
                         .ToList();
@@ -1246,32 +1364,17 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         {
             try
             {
-                var dbSet = await GetDbSetAsync();
+                var similarTemplates = await GetIntelligentRecommendationsAsync(
+                    semanticQuery, 
+                    similarityThreshold, 
+                    maxResults, 
+                    true, 
+                    false);
                 
-                // 首先获取有向量的模板
-                var templatesWithVector = await dbSet
-                    .Where(t => t.IsLatest && t.TextVector != null && t.VectorDimension > 0)
-                    .ToListAsync();
-
-                if (templatesWithVector.Count == 0)
-                {
-                    Logger.LogWarning("没有找到包含向量的模板");
-                    return [];
-                }
-
-                // 使用语义匹配器查找相似模板
-                var similarTemplates = await _semanticMatcher.MatchTemplatesAsync(semanticQuery, templatesWithVector);
-                
-                // 过滤相似度阈值
-                var filteredTemplates = similarTemplates
-                    .Where(t => t.GetType().GetProperty("SimilarityScore")?.GetValue(t) is double score && score >= similarityThreshold)
-                    .Take(maxResults)
-                    .ToList();
-
                 Logger.LogInformation("查找相似模板完成，查询：{query}，阈值：{threshold}，结果数量：{count}", 
-                    semanticQuery, similarityThreshold, filteredTemplates.Count);
+                    semanticQuery, similarityThreshold, similarTemplates.Count);
 
-                return filteredTemplates;
+                return similarTemplates;
             }
             catch (Exception ex)
             {

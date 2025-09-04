@@ -44,22 +44,22 @@ namespace Hx.Abp.Attachment.Application
                 {
                     throw new UserFriendlyException($"已存在相同的分类名称: {input.CatalogueName}");
                 }
-                    int maxNumber = await CatalogueRepository.GetMaxSequenceNumberByReferenceAsync(input.ParentId, input.Reference, input.ReferenceType);
+                int maxNumber = await CatalogueRepository.GetMaxSequenceNumberByReferenceAsync(input.ParentId, input.Reference, input.ReferenceType);
                 // 创建新的分类实体
                 var catalogue = new AttachCatalogue(
-                    Guid.NewGuid(),
-                            input.AttachReceiveType,
-                            input.CatalogueName,
-                            ++maxNumber,
-                            input.Reference,
-                            input.ReferenceType,
-                            input.ParentId,
+                    GuidGenerator.Create(),
+                    input.AttachReceiveType,
+                    input.CatalogueName,
+                    ++maxNumber,
+                    input.Reference,
+                    input.ReferenceType,
+                    input.ParentId,
                     input.IsRequired,
                     input.IsVerification,
                     input.VerificationPassed,
                     input.IsStatic,
-                    0, // attachCount
-                    0, // pageCount
+                    0,
+                    0,
                     input.TemplateId,
                     input.CatalogueFacetType,
                     input.CataloguePurpose,
@@ -380,23 +380,24 @@ namespace Hx.Abp.Attachment.Application
             foreach (var input in inputs)
             {
                 var attachCatalogue = new AttachCatalogue(
-                        GuidGenerator.Create(),
-                        input.AttachReceiveType,
-                        input.CatalogueName,
-                        ++maxNumber,
-                        input.Reference,
-                        input.ReferenceType,
-                        input.ParentId,
-                        isRequired: input.IsRequired,
-                        isVerification: input.IsVerification,
-                        verificationPassed: input.VerificationPassed,
-                        isStatic: input.IsStatic,
-                        attachCount: 0,
-                        pageCount: 0,
-                        templateId: input.TemplateId,
-                        catalogueFacetType: input.CatalogueFacetType,
-                        cataloguePurpose: input.CataloguePurpose,
-                        textVector: input.TextVector);
+                    GuidGenerator.Create(),
+                    input.AttachReceiveType,
+                    input.CatalogueName,
+                    ++maxNumber,
+                    input.Reference,
+                    input.ReferenceType,
+                    input.ParentId,
+                    input.IsRequired,
+                    input.IsVerification,
+                    input.VerificationPassed,
+                    input.IsStatic,
+                    0,
+                    0,
+                    input.TemplateId,
+                    input.CatalogueFacetType,
+                    input.CataloguePurpose,
+                    input.Tags,
+                    input.TextVector);
                 if (input.Children?.Count > 0)
                 {
                     var children = await GetEntitys([.. input.Children], 0);

@@ -1,6 +1,5 @@
 using Hx.Abp.Attachment.Domain.Shared;
 using JetBrains.Annotations;
-using NpgsqlTypes;
 using System.Collections.ObjectModel;
 using Volo.Abp.Domain.Entities.Auditing;
 

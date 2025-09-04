@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "yXV/47u70xw=",
+  "dgSpecHash": "ukM2wzPtZi8=",
   "success": true,
-  "projectFilePath": "C:\\work\\projects\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj",
+  "projectFilePath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.Dmain.Shared\\Hx.Abp.Attachment.Dmain.Shared.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\24383\\.nuget\\packages\\bouncycastle.cryptography\\2.3.1\\bouncycastle.cryptography.2.3.1.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\fastexpressioncompiler\\5.0.2\\fastexpressioncompiler.5.0.2.nupkg.sha512",

@@ -5,7 +5,6 @@ namespace Hx.Abp.Attachment.Domain
 {
     public interface IAttachCatalogueTemplateRepository : IRepository<AttachCatalogueTemplate, Guid>
     {
-        Task<List<AttachCatalogueTemplate>> FindBySemanticMatchAsync(string query, bool onlyLatest = true);
         Task<List<AttachCatalogueTemplate>> FindByRuleMatchAsync(Dictionary<string, object> context, bool onlyLatest = true);
         Task<List<AttachCatalogueTemplate>> GetChildrenAsync(Guid parentId, bool onlyLatest = true);
 

@@ -226,7 +226,12 @@ namespace Hx.Abp.Attachment.Application
 
             if (!string.IsNullOrWhiteSpace(input.SemanticQuery))
             {
-                templates = await _templateRepository.FindBySemanticMatchAsync(input.SemanticQuery, input.OnlyLatest);
+                templates = await _templateRepository.GetIntelligentRecommendationsAsync(
+                    input.SemanticQuery, 
+                    input.Threshold, 
+                    input.TopN, 
+                    input.OnlyLatest, 
+                    input.IncludeHistory);
             }
             else if (input.ContextData != null && input.ContextData.Count > 0)
             {

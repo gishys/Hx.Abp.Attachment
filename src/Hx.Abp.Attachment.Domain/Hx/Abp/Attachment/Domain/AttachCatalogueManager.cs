@@ -12,13 +12,11 @@ namespace Hx.Abp.Attachment.Domain
         IRepository<AttachCatalogue, Guid> catalogueRepository,
         IAttachCatalogueTemplateRepository templateRepository,
         IRulesEngine rulesEngine,
-        ISemanticMatcher semanticMatcher,
         IGuidGenerator guidGenerator) : DomainService, IAttachCatalogueManager
     {
         private readonly IRepository<AttachCatalogue, Guid> _catalogueRepository = catalogueRepository;
         private readonly IAttachCatalogueTemplateRepository _templateRepository = templateRepository;
         private readonly IRulesEngine _rulesEngine = rulesEngine;
-        private readonly ISemanticMatcher _semanticMatcher = semanticMatcher;
         private readonly IGuidGenerator _guidGenerator = guidGenerator;
 
         public async Task<AttachCatalogue> GenerateFromTemplateAsync(

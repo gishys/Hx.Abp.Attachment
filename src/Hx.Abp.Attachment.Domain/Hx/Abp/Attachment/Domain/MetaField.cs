@@ -248,7 +248,6 @@ namespace Hx.Abp.Attachment.Domain
                     throw new ArgumentException($"正则表达式格式错误: {ex.Message}", nameof(RegexPattern));
                 }
             }
-
             // 验证枚举选项（如果提供）
             if (!string.IsNullOrWhiteSpace(Options))
             {
@@ -263,7 +262,6 @@ namespace Hx.Abp.Attachment.Domain
                     throw new ArgumentException($"枚举选项JSON格式错误: {ex.Message}", nameof(Options));
                 }
             }
-
             // 验证验证规则（如果提供）
             if (!string.IsNullOrWhiteSpace(ValidationRules))
             {

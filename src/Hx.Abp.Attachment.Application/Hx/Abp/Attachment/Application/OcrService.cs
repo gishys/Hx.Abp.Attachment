@@ -167,7 +167,7 @@ namespace Hx.Abp.Attachment.Application
                 }
 
                 // 创建临时目录
-                var tempDir = Path.Combine(Path.GetTempPath(), "pdf_ocr", Guid.NewGuid().ToString());
+                var tempDir = Path.Combine(Path.GetTempPath(), "pdf_ocr", GuidGenerator.Create().ToString());
                 Directory.CreateDirectory(tempDir);
                 List<string> imagePaths = [];
 
@@ -211,7 +211,7 @@ namespace Hx.Abp.Attachment.Application
                                 if (!string.IsNullOrWhiteSpace(result.Text) && result.TextRectangles != null)
                                 {
                                     var textBlock = new OcrTextBlock(
-                                        Guid.NewGuid(),
+                                        GuidGenerator.Create(),
                                         attachFile.Id,
                                         result.Text,
                                         result.Probability ?? 0.0f,
@@ -301,7 +301,7 @@ namespace Hx.Abp.Attachment.Application
                         if (!string.IsNullOrWhiteSpace(result.Text) && result.TextRectangles != null)
                         {
                             var textBlock = new OcrTextBlock(
-                                Guid.NewGuid(),
+                                GuidGenerator.Create(),
                                 attachFile.Id,
                                 result.Text,
                                 result.Probability ?? 0.0f,

@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Hx.Abp.Attachment.Dmain.Shared")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+093f046b451235b037e84b55dd355d88695c43a2")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2831cc4981161ab0a2e95ad1a295b8a5229da713")]
 [assembly: System.Reflection.AssemblyProductAttribute("Hx.Abp.Attachment.Dmain.Shared")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Hx.Abp.Attachment.Dmain.Shared")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

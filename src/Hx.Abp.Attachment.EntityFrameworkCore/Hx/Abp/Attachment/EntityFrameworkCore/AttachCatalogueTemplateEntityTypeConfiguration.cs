@@ -47,6 +47,11 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.Property(d => d.IsStatic).HasColumnName("IS_STATIC").HasDefaultValue(false);
             builder.Property(d => d.ParentId).HasColumnName("PARENT_ID");
 
+            // 模板路径字段配置
+            builder.Property(d => d.TemplatePath).HasColumnName("TEMPLATE_PATH")
+                .HasMaxLength(200)
+                .IsRequired(false);
+
             // 新增字段配置
             builder.Property(d => d.FacetType).HasColumnName("FACET_TYPE")
                 .HasConversion<int>();
@@ -171,6 +176,15 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.HasIndex(e => e.VectorDimension)
                 .HasDatabaseName("IDX_ATTACH_CATALOGUE_TEMPLATES_VECTOR_DIM")
                 .HasFilter("\"IS_DELETED\" = false AND \"VECTOR_DIMENSION\" > 0");
+
+            // 模板路径相关索引
+            builder.HasIndex(e => e.TemplatePath)
+                .HasDatabaseName("IDX_ATTACH_CATALOGUE_TEMPLATES_TEMPLATE_PATH")
+                .HasFilter("\"IS_DELETED\" = false AND \"TEMPLATE_PATH\" IS NOT NULL");
+
+            builder.HasIndex(e => new { e.TemplatePath, e.IsLatest })
+                .HasDatabaseName("IDX_ATTACH_CATALOGUE_TEMPLATES_PATH_LATEST")
+                .HasFilter("\"IS_DELETED\" = false");
 
             // 全文搜索索引 - 通过原生SQL创建
             // CREATE INDEX CONCURRENTLY IF NOT EXISTS IDX_ATTACH_CATALOGUE_TEMPLATES_FULLTEXT 

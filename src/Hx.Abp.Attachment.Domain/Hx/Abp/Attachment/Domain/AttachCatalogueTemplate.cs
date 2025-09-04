@@ -68,6 +68,13 @@ namespace Hx.Abp.Attachment.Domain
         public virtual Guid? ParentId { get; protected set; }
 
         /// <summary>
+        /// 模板路径（用于快速查询层级）
+        /// 格式：00001.00002.00003（5位数字，用点分隔）
+        /// </summary>
+        [CanBeNull]
+        public virtual string? TemplatePath { get; private set; }
+
+        /// <summary>
         /// 子模板集合
         /// </summary>
         public virtual ICollection<AttachCatalogueTemplate> Children { get; private set; }
@@ -124,7 +131,8 @@ namespace Hx.Abp.Attachment.Domain
             [CanBeNull] List<double>? textVector = null,
             [CanBeNull] string? description = null,
             [CanBeNull] List<string>? tags = null,
-            [CanBeNull] List<MetaField>? metaFields = null)
+            [CanBeNull] List<MetaField>? metaFields = null,
+            [CanBeNull] string? templatePath = null)
         {
             Id = id;
             TemplateName = Check.NotNullOrWhiteSpace(templateName, nameof(templateName));
@@ -144,6 +152,9 @@ namespace Hx.Abp.Attachment.Domain
             MetaFields = metaFields ?? [];
             Children = [];
             Permissions = [];
+            
+            // 设置模板路径
+            SetTemplatePath(templatePath);
         }
 
         public virtual void Update(
@@ -152,12 +163,13 @@ namespace Hx.Abp.Attachment.Domain
             int sequenceNumber,
             bool isRequired,
             bool isStatic,
-            [CanBeNull] string ruleExpression,
+            [CanBeNull] string? ruleExpression,
             FacetType facetType,
             TemplatePurpose templatePurpose,
             [CanBeNull] string? description = null,
             [CanBeNull] List<string>? tags = null,
-            [CanBeNull] List<MetaField>? metaFields = null)
+            [CanBeNull] List<MetaField>? metaFields = null,
+            [CanBeNull] string? templatePath = null)
         {
             TemplateName = Check.NotNullOrWhiteSpace(templateName, nameof(templateName));
             AttachReceiveType = attachReceiveType;
@@ -182,6 +194,11 @@ namespace Hx.Abp.Attachment.Domain
             {
                 MetaFields = metaFields;
             }
+            
+            if (templatePath != null)
+            {
+                SetTemplatePath(templatePath);
+            }
         }
 
         public virtual void SetVersion(int version, bool isLatest)
@@ -190,9 +207,16 @@ namespace Hx.Abp.Attachment.Domain
             IsLatest = isLatest;
         }
 
-        public virtual void ChangeParent(Guid? parentId)
+        public virtual void ChangeParent(Guid? parentId, [CanBeNull] string? parentTemplatePath = null)
         {
             ParentId = parentId;
+            
+            // 如果提供了父模板路径，自动计算新的模板路径
+            if (parentTemplatePath != null)
+            {
+                var newPath = CalculateNextTemplatePath(parentTemplatePath);
+                SetTemplatePath(newPath);
+            }
         }
 
         public virtual void AddChildTemplate(AttachCatalogueTemplate child)
@@ -460,16 +484,35 @@ namespace Hx.Abp.Attachment.Domain
             {
                 try
                 {
-                    // 这里可以添加更详细的规则表达式验证逻辑
-                    if (!RuleExpression.Contains("WorkflowName"))
+                    // 基础格式验证：检查是否为有效的JSON格式
+                    if (RuleExpression.TrimStart().StartsWith('{') && RuleExpression.TrimEnd().EndsWith('}'))
                     {
-                        throw new ArgumentException("规则表达式格式不正确，必须包含 WorkflowName", nameof(RuleExpression));
+                        // 尝试解析JSON以验证格式
+                        System.Text.Json.JsonDocument.Parse(RuleExpression);
                     }
+                    else
+                    {
+                        // 如果不是JSON格式，进行基础字符串验证
+                        if (string.IsNullOrWhiteSpace(RuleExpression.Trim()))
+                        {
+                            throw new ArgumentException("规则表达式不能为空", nameof(RuleExpression));
+                        }
+                    }
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    throw new ArgumentException("规则表达式JSON格式不正确", nameof(RuleExpression));
                 }
                 catch (Exception ex)
                 {
                     throw new ArgumentException($"规则表达式格式错误: {ex.Message}", nameof(RuleExpression));
                 }
+            }
+
+            // 验证模板路径格式
+            if (!IsValidTemplatePath(TemplatePath))
+            {
+                throw new ArgumentException("模板路径格式不正确", nameof(TemplatePath));
             }
 
             // 验证元数据字段配置
@@ -498,12 +541,15 @@ namespace Hx.Abp.Attachment.Domain
             Tags = source.Tags != null ? [.. source.Tags] : [];
             MetaFields = source.MetaFields != null ? [.. source.MetaFields.Select(f => new MetaField(f.EntityType, f.FieldKey, f.FieldName, f.DataType, f.IsRequired, f.Unit, f.RegexPattern, f.Options, f.Description, f.DefaultValue, f.Order, f.IsEnabled, f.Group, f.ValidationRules, f.Tags != null ? [.. f.Tags] : []))] : [];
             Permissions = [.. source.Permissions.Select(p => new AttachCatalogueTemplatePermission(p.PermissionType, p.PermissionTarget, p.Action, p.Effect, p.AttributeConditions, p.EffectiveTime, p.ExpirationTime, p.Description))];
+            
+            // 复制模板路径
+            SetTemplatePath(source.TemplatePath);
         }
 
         /// <summary>
         /// 检查是否为根模板
         /// </summary>
-        public virtual bool IsRoot => ParentId == null;
+        public virtual bool IsRoot => ParentId == null && IsRootTemplatePath(TemplatePath);
 
         /// <summary>
         /// 检查是否为叶子模板
@@ -515,8 +561,7 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual int GetDepth()
         {
-            if (IsRoot) return 0;
-            return 1; // 简化实现，实际应该递归计算
+            return GetTemplatePathDepth(TemplatePath);
         }
 
         /// <summary>
@@ -524,7 +569,7 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual string GetPath()
         {
-            return TemplateName; // 简化实现，实际应该构建完整路径
+            return TemplatePath ?? TemplateName; // 优先使用模板路径，否则使用模板名称
         }
 
         /// <summary>
@@ -755,5 +800,184 @@ namespace Hx.Abp.Attachment.Domain
             
             return summary;
         }
+
+        #region 模板路径管理
+
+        /// <summary>
+        /// 设置模板路径
+        /// </summary>
+        /// <param name="templatePath">模板路径</param>
+        public virtual void SetTemplatePath([CanBeNull] string? templatePath)
+        {
+            TemplatePath = templatePath;
+        }
+
+        /// <summary>
+        /// 生成下一个模板路径代码
+        /// 示例：如果当前路径为 "00019.00055.00001"，返回 "00019.00055.00002"
+        /// </summary>
+        /// <param name="currentPath">当前路径</param>
+        /// <returns>下一个路径代码</returns>
+        public static string CalculateNextTemplatePath(string? currentPath)
+        {
+            if (string.IsNullOrEmpty(currentPath))
+            {
+                return CreateTemplatePathCode(1);
+            }
+
+            var parentPath = GetParentTemplatePath(currentPath);
+            var lastUnitCode = GetLastUnitTemplatePathCode(currentPath);
+            return AppendTemplatePathCode(parentPath, CreateTemplatePathCode(Convert.ToInt32(lastUnitCode) + 1));
+        }
+
+        /// <summary>
+        /// 获取路径中的最后一个单元代码
+        /// 示例：如果路径为 "00019.00055.00001"，返回 "00001"
+        /// </summary>
+        /// <param name="templatePath">模板路径</param>
+        /// <returns>最后一个单元代码</returns>
+        public static string GetLastUnitTemplatePathCode(string templatePath)
+        {
+            if (string.IsNullOrEmpty(templatePath))
+            {
+                throw new ArgumentNullException(nameof(templatePath), "模板路径不能为空");
+            }
+
+            var splittedCode = templatePath.Split('.');
+            return splittedCode[^1];
+        }
+
+        /// <summary>
+        /// 获取父级模板路径
+        /// 示例：如果路径为 "00019.00055.00001"，返回 "00019.00055"
+        /// </summary>
+        /// <param name="templatePath">模板路径</param>
+        /// <returns>父级路径，如果是根节点则返回null</returns>
+        public static string? GetParentTemplatePath(string templatePath)
+        {
+            if (string.IsNullOrEmpty(templatePath))
+            {
+                throw new ArgumentNullException(nameof(templatePath), "模板路径不能为空");
+            }
+
+            var splittedCode = templatePath.Split('.');
+            if (splittedCode.Length == 1)
+            {
+                return null;
+            }
+
+            return string.Join(".", splittedCode.Take(splittedCode.Length - 1));
+        }
+
+        /// <summary>
+        /// 创建模板路径代码
+        /// 示例：如果数字为 4,2，则返回 "00004.00002"
+        /// </summary>
+        /// <param name="numbers">数字数组</param>
+        /// <returns>格式化的路径代码</returns>
+        public static string CreateTemplatePathCode(params int[] numbers)
+        {
+            if (numbers == null || numbers.Length == 0)
+            {
+                throw new ArgumentNullException(nameof(numbers), "数字数组不能为空");
+            }
+
+            return string.Join(".", numbers.Select(number => number.ToString("D5")));
+        }
+
+        /// <summary>
+        /// 将子路径代码追加到父路径代码
+        /// 示例：如果父路径为 "00001"，子路径为 "00042"，则返回 "00001.00042"
+        /// </summary>
+        /// <param name="parentPath">父路径，如果是根节点可以为null或空</param>
+        /// <param name="childPath">子路径代码</param>
+        /// <returns>完整的路径代码</returns>
+        public static string AppendTemplatePathCode(string? parentPath, string childPath)
+        {
+            if (string.IsNullOrEmpty(childPath))
+            {
+                throw new ArgumentNullException(nameof(childPath), "子路径代码不能为空");
+            }
+
+            if (string.IsNullOrEmpty(parentPath))
+            {
+                return childPath;
+            }
+
+            return parentPath + "." + childPath;
+        }
+
+        /// <summary>
+        /// 验证模板路径格式
+        /// </summary>
+        /// <param name="templatePath">模板路径</param>
+        /// <returns>是否为有效格式</returns>
+        public static bool IsValidTemplatePath(string? templatePath)
+        {
+            if (string.IsNullOrEmpty(templatePath))
+                return true; // 空路径是有效的（根节点）
+
+            var parts = templatePath.Split('.');
+            return parts.All(part => 
+                part.Length == 5 && 
+                part.All(char.IsDigit) && 
+                int.TryParse(part, out _));
+        }
+
+        /// <summary>
+        /// 获取模板路径的层级深度
+        /// </summary>
+        /// <param name="templatePath">模板路径</param>
+        /// <returns>层级深度（0表示根节点）</returns>
+        public static int GetTemplatePathDepth(string? templatePath)
+        {
+            if (string.IsNullOrEmpty(templatePath))
+                return 0;
+
+            return templatePath.Split('.').Length;
+        }
+
+        /// <summary>
+        /// 检查是否为根模板路径
+        /// </summary>
+        /// <param name="templatePath">模板路径</param>
+        /// <returns>是否为根路径</returns>
+        public static bool IsRootTemplatePath(string? templatePath)
+        {
+            return string.IsNullOrEmpty(templatePath);
+        }
+
+        /// <summary>
+        /// 检查两个模板路径是否为父子关系
+        /// </summary>
+        /// <param name="parentPath">父路径</param>
+        /// <param name="childPath">子路径</param>
+        /// <returns>是否为父子关系</returns>
+        public static bool IsParentChildPath(string? parentPath, string childPath)
+        {
+            if (string.IsNullOrEmpty(childPath))
+                return false;
+
+            if (string.IsNullOrEmpty(parentPath))
+                return GetTemplatePathDepth(childPath) == 1;
+
+            return childPath.StartsWith(parentPath + ".", StringComparison.Ordinal) &&
+                   GetTemplatePathDepth(childPath) == GetTemplatePathDepth(parentPath) + 1;
+        }
+
+        /// <summary>
+        /// 获取模板路径的显示名称（用于UI展示）
+        /// </summary>
+        /// <returns>格式化的路径显示名称</returns>
+        public virtual string GetTemplatePathDisplayName()
+        {
+            if (string.IsNullOrEmpty(TemplatePath))
+                return "根节点";
+
+            var parts = TemplatePath.Split('.');
+            return string.Join(" → ", parts.Select(part => int.Parse(part).ToString()));
+        }
+
+        #endregion
     }
 }

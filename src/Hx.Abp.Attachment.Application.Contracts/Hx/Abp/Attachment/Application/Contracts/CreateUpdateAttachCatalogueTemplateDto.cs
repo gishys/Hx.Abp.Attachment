@@ -60,6 +60,13 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public Guid? ParentId { get; set; }
 
         /// <summary>
+        /// 模板路径（用于快速查询层级）
+        /// 格式：00001.00002.00003（5位数字，用点分隔）
+        /// </summary>
+        [StringLength(200, ErrorMessage = "模板路径长度不能超过200个字符")]
+        public string? TemplatePath { get; set; }
+
+        /// <summary>
         /// 分面类型
         /// </summary>
         public FacetType FacetType { get; set; } = FacetType.General;

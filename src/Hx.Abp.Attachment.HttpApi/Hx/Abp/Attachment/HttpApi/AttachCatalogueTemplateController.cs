@@ -322,5 +322,59 @@ namespace Hx.Abp.Attachment.HttpApi
         {
             return AttachCatalogueTemplateAppService.UpdateMetaFieldsOrderAsync(templateId, fieldKeys);
         }
+
+        // ============= 模板路径相关接口 =============
+
+        /// <summary>
+        /// 根据路径获取模板
+        /// </summary>
+        [HttpGet("by-path")]
+        public virtual Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplatesByPathAsync(
+            [FromQuery] string? templatePath = null,
+            [FromQuery] bool includeChildren = false)
+        {
+            return AttachCatalogueTemplateAppService.GetTemplatesByPathAsync(templatePath, includeChildren);
+        }
+
+        /// <summary>
+        /// 根据路径深度获取模板
+        /// </summary>
+        [HttpGet("by-path-depth")]
+        public virtual Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplatesByPathDepthAsync(
+            [FromQuery] int depth,
+            [FromQuery] bool onlyLatest = true)
+        {
+            return AttachCatalogueTemplateAppService.GetTemplatesByPathDepthAsync(depth, onlyLatest);
+        }
+
+        /// <summary>
+        /// 计算下一个模板路径
+        /// </summary>
+        [HttpGet("calculate-next-path")]
+        public virtual Task<string> CalculateNextTemplatePathAsync([FromQuery] string? parentPath = null)
+        {
+            return AttachCatalogueTemplateAppService.CalculateNextTemplatePathAsync(parentPath);
+        }
+
+        /// <summary>
+        /// 验证模板路径格式
+        /// </summary>
+        [HttpGet("validate-path")]
+        public virtual Task<bool> ValidateTemplatePathAsync([FromQuery] string? templatePath = null)
+        {
+            return AttachCatalogueTemplateAppService.ValidateTemplatePathAsync(templatePath);
+        }
+
+        /// <summary>
+        /// 根据路径范围获取模板
+        /// </summary>
+        [HttpGet("by-path-range")]
+        public virtual Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplatesByPathRangeAsync(
+            [FromQuery] string? startPath = null,
+            [FromQuery] string? endPath = null,
+            [FromQuery] bool onlyLatest = true)
+        {
+            return AttachCatalogueTemplateAppService.GetTemplatesByPathRangeAsync(startPath, endPath, onlyLatest);
+        }
     }
 }

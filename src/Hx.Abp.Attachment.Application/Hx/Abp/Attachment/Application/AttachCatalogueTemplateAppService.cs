@@ -27,6 +27,199 @@ namespace Hx.Abp.Attachment.Application
         private readonly IGuidGenerator _guidGenerator = guidGenerator;
         private readonly ILogger<AttachCatalogueTemplateAppService> _logger = logger;
 
+        /// <summary>
+        /// 创建模板（支持自动路径维护）
+        /// </summary>
+        public override async Task<AttachCatalogueTemplateDto> CreateAsync(CreateUpdateAttachCatalogueTemplateDto input)
+        {
+            try
+            {
+                // 自动计算模板路径
+                string? templatePath = null;
+                if (input.ParentId.HasValue)
+                {
+                    // 有父级：获取父级路径，然后查找同级最大路径
+                    var parentTemplate = await _templateRepository.GetAsync(input.ParentId.Value);
+                    var maxPathAtSameLevel = await _templateRepository.GetMaxTemplatePathAtSameLevelAsync(parentTemplate.TemplatePath);
+
+                    if (string.IsNullOrEmpty(maxPathAtSameLevel))
+                    {
+                        // 没有同级，创建第一个子路径
+                        templatePath = AttachCatalogueTemplate.AppendTemplatePathCode(parentTemplate.TemplatePath, "00001");
+                    }
+                    else
+                    {
+                        // 有同级，获取最大路径的最后一个单元代码并+1
+                        var lastUnitCode = AttachCatalogueTemplate.GetLastUnitTemplatePathCode(maxPathAtSameLevel);
+                        var nextNumber = Convert.ToInt32(lastUnitCode) + 1;
+                        var nextUnitCode = nextNumber.ToString("D5");
+                        templatePath = AttachCatalogueTemplate.AppendTemplatePathCode(parentTemplate.TemplatePath, nextUnitCode);
+                    }
+                }
+                else
+                {
+                    // 没有父级：查找根级别最大路径
+                    var maxPathAtRootLevel = await _templateRepository.GetMaxTemplatePathAtSameLevelAsync(null);
+                    if (string.IsNullOrEmpty(maxPathAtRootLevel))
+                    {
+                        // 没有根级别模板，创建第一个
+                        templatePath = AttachCatalogueTemplate.CreateTemplatePathCode(1);
+                    }
+                    else
+                    {
+                        // 有根级别模板，获取最大路径并+1
+                        var nextNumber = Convert.ToInt32(maxPathAtRootLevel) + 1;
+                        templatePath = AttachCatalogueTemplate.CreateTemplatePathCode(nextNumber);
+                    }
+                    // 验证路径格式
+                    if (!AttachCatalogueTemplate.IsValidTemplatePath(templatePath))
+                    {
+                        throw new UserFriendlyException("模板路径格式不正确");
+                    }
+                }
+                // 创建实体
+                var template = new AttachCatalogueTemplate(
+                    id: input.Id != Guid.Empty ? input.Id : _guidGenerator.Create(),
+                    templateName: input.TemplateName,
+                    attachReceiveType: input.AttachReceiveType,
+                    sequenceNumber: input.SequenceNumber,
+                    isRequired: input.IsRequired,
+                    isStatic: input.IsStatic,
+                    parentId: input.ParentId,
+                    ruleExpression: input.RuleExpression,
+                    version: 1,
+                    isLatest: true,
+                    facetType: input.FacetType,
+                    templatePurpose: input.TemplatePurpose,
+                    textVector: input.TextVector,
+                    description: input.Description,
+                    tags: input.Tags,
+                    metaFields: input.MetaFields?.Select(mf => new MetaField(
+                        mf.EntityType, mf.FieldKey, mf.FieldName, mf.DataType, mf.IsRequired,
+                        mf.Unit, mf.RegexPattern, mf.Options, mf.Description, mf.DefaultValue,
+                        mf.Order, mf.IsEnabled, mf.Group, mf.ValidationRules, mf.Tags
+                    )).ToList(),
+                    templatePath: templatePath
+                );
+
+                // 验证配置
+                template.ValidateConfiguration();
+
+                // 保存实体
+                await _templateRepository.InsertAsync(template);
+
+                _logger.LogInformation("创建模板成功：{templateName}，路径：{templatePath}", input.TemplateName, templatePath);
+
+                return ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(template);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "创建模板失败：{templateName}", input.TemplateName);
+                throw new UserFriendlyException("创建模板失败，请稍后重试");
+            }
+        }
+
+        /// <summary>
+        /// 更新模板（支持路径维护）
+        /// </summary>
+        public override async Task<AttachCatalogueTemplateDto> UpdateAsync(Guid id, CreateUpdateAttachCatalogueTemplateDto input)
+        {
+            try
+            {
+                var template = await _templateRepository.GetAsync(id);
+
+                // 如果父模板发生变化，需要重新计算路径
+                string? newTemplatePath = input.TemplatePath;
+                if (template.ParentId != input.ParentId)
+                {
+                    if (input.ParentId.HasValue)
+                    {
+                        // 有父级：获取父级路径，然后查找同级最大路径
+                        var parentTemplate = await _templateRepository.GetAsync(input.ParentId.Value);
+                        var maxPathAtSameLevel = await _templateRepository.GetMaxTemplatePathAtSameLevelAsync(parentTemplate.TemplatePath);
+                        
+                        if (string.IsNullOrEmpty(maxPathAtSameLevel))
+                        {
+                            // 没有同级，创建第一个子路径
+                            newTemplatePath = AttachCatalogueTemplate.AppendTemplatePathCode(parentTemplate.TemplatePath, "00001");
+                        }
+                        else
+                        {
+                            // 有同级，获取最大路径的最后一个单元代码并+1
+                            var lastUnitCode = AttachCatalogueTemplate.GetLastUnitTemplatePathCode(maxPathAtSameLevel);
+                            var nextNumber = Convert.ToInt32(lastUnitCode) + 1;
+                            var nextUnitCode = nextNumber.ToString("D5");
+                            newTemplatePath = AttachCatalogueTemplate.AppendTemplatePathCode(parentTemplate.TemplatePath, nextUnitCode);
+                        }
+                    }
+                    else
+                    {
+                        // 成为根节点：查找根级别最大路径
+                        var maxPathAtRootLevel = await _templateRepository.GetMaxTemplatePathAtSameLevelAsync(null);
+                        
+                        if (string.IsNullOrEmpty(maxPathAtRootLevel))
+                        {
+                            // 没有根级别模板，创建第一个
+                            newTemplatePath = AttachCatalogueTemplate.CreateTemplatePathCode(1);
+                        }
+                        else
+                        {
+                            // 有根级别模板，获取最大路径并+1
+                            var nextNumber = Convert.ToInt32(maxPathAtRootLevel) + 1;
+                            newTemplatePath = AttachCatalogueTemplate.CreateTemplatePathCode(nextNumber);
+                        }
+                    }
+                }
+
+                // 验证路径格式
+                if (!AttachCatalogueTemplate.IsValidTemplatePath(newTemplatePath))
+                {
+                    throw new UserFriendlyException("模板路径格式不正确");
+                }
+
+                // 更新实体
+                template.Update(
+                    input.TemplateName,
+                    input.AttachReceiveType,
+                    input.SequenceNumber,
+                    input.IsRequired,
+                    input.IsStatic,
+                    input.RuleExpression,
+                    input.FacetType,
+                    input.TemplatePurpose,
+                    input.Description,
+                    input.Tags,
+                    input.MetaFields?.Select(mf => new MetaField(
+                        mf.EntityType, mf.FieldKey, mf.FieldName, mf.DataType, mf.IsRequired,
+                        mf.Unit, mf.RegexPattern, mf.Options, mf.Description, mf.DefaultValue,
+                        mf.Order, mf.IsEnabled, mf.Group, mf.ValidationRules, mf.Tags
+                    )).ToList(),
+                    newTemplatePath
+                );
+
+                // 如果父模板发生变化，更新父模板ID
+                if (template.ParentId != input.ParentId)
+                {
+                    template.ChangeParent(input.ParentId, newTemplatePath);
+                }
+
+                // 验证配置
+                template.ValidateConfiguration();
+
+                // 保存实体
+                await _templateRepository.UpdateAsync(template);
+
+                _logger.LogInformation("更新模板成功：{templateName}，路径：{templatePath}", input.TemplateName, newTemplatePath);
+
+                return ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(template);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "更新模板失败：{templateName}", input.TemplateName);
+                throw new UserFriendlyException("更新模板失败，请稍后重试");
+            }
+        }
+
         public async Task<ListResultDto<AttachCatalogueTemplateDto>> FindMatchingTemplatesAsync(TemplateMatchInput input)
         {
             List<AttachCatalogueTemplate> templates;
@@ -63,7 +256,8 @@ namespace Hx.Abp.Attachment.Application
                     : []
             };
 
-            await BuildTemplateTree(structure, rootTemplate);
+            // 使用基于路径的优化方法构建树形结构
+            await BuildTemplateTreeOptimized(structure, rootTemplate);
             return structure;
         }
 
@@ -79,6 +273,64 @@ namespace Hx.Abp.Attachment.Application
                 };
                 parent.Children?.Add(childDto);
                 await BuildTemplateTree(childDto, child);
+            }
+        }
+
+        /// <summary>
+        /// 基于路径优化的树形结构构建方法
+        /// 使用TemplatePath进行高效查询，避免递归调用
+        /// </summary>
+        private async Task BuildTemplateTreeOptimized(AttachCatalogueStructureDto parent, AttachCatalogueTemplate template)
+        {
+            try
+            {
+                // 使用基于路径的子树查询，一次性获取所有子节点
+                var allChildren = await _templateRepository.GetTemplateSubtreeAsync(template.Id, true, 10);
+
+                // 过滤掉根节点本身，只保留子节点
+                var children = allChildren.Where(t => t.Id != template.Id).ToList();
+
+                // 构建树形结构
+                var childStructures = new List<AttachCatalogueStructureDto>();
+                var childDict = children.ToDictionary(c => c.Id, c => c);
+
+                // 为每个子节点创建结构对象
+                foreach (var child in children)
+                {
+                    var childStructure = new AttachCatalogueStructureDto
+                    {
+                        Root = ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(child),
+                        Children = []
+                    };
+                    childStructures.Add(childStructure);
+                }
+
+                // 构建父子关系
+                foreach (var childStructure in childStructures)
+                {
+                    if (childStructure.Root != null && childDict.TryGetValue(childStructure.Root.Id, out var childTemplate))
+                    {
+                        if (childTemplate.ParentId == template.Id)
+                        {
+                            parent.Children?.Add(childStructure);
+                        }
+                        else if (childTemplate.ParentId.HasValue && childDict.TryGetValue(childTemplate.ParentId.Value, out var parentChild))
+                        {
+                            // 找到父级子节点
+                            var parentChildStructure = childStructures.FirstOrDefault(cs => cs.Root != null && cs.Root.Id == parentChild.Id);
+                            parentChildStructure?.Children?.Add(childStructure);
+                        }
+                    }
+                }
+
+                _logger.LogInformation("构建模板树形结构完成，根模板：{templateName}，子节点数量：{childCount}",
+                    template.TemplateName, children.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "构建模板树形结构失败，根模板：{templateName}", template.TemplateName);
+                // 如果优化方法失败，回退到原来的递归方法
+                await BuildTemplateTree(parent, template);
             }
         }
 
@@ -122,7 +374,15 @@ namespace Hx.Abp.Attachment.Application
                 isLatest: false,
                 facetType: input.FacetType,
                 templatePurpose: input.TemplatePurpose,
-                textVector: input.TextVector
+                textVector: input.TextVector,
+                description: input.Description,
+                tags: input.Tags,
+                metaFields: input.MetaFields?.Select(mf => new MetaField(
+                    mf.EntityType, mf.FieldKey, mf.FieldName, mf.DataType, mf.IsRequired,
+                    mf.Unit, mf.RegexPattern, mf.Options, mf.Description, mf.DefaultValue,
+                    mf.Order, mf.IsEnabled, mf.Group, mf.ValidationRules, mf.Tags
+                )).ToList(),
+                templatePath: input.TemplatePath
             );
 
             // 复制子结构
@@ -155,7 +415,15 @@ namespace Hx.Abp.Attachment.Application
                     isLatest: false,
                     facetType: child.FacetType,
                     templatePurpose: child.TemplatePurpose,
-                    textVector: child.TextVector
+                    textVector: child.TextVector,
+                    description: child.Description,
+                    tags: child.Tags,
+                    metaFields: child.MetaFields?.Select(mf => new MetaField(
+                        mf.EntityType, mf.FieldKey, mf.FieldName, mf.DataType, mf.IsRequired,
+                        mf.Unit, mf.RegexPattern, mf.Options, mf.Description, mf.DefaultValue,
+                        mf.Order, mf.IsEnabled, mf.Group, mf.ValidationRules, mf.Tags
+                    )).ToList(),
+                    templatePath: child.TemplatePath
                 );
 
                 await _templateRepository.InsertAsync(newChild);
@@ -200,7 +468,15 @@ namespace Hx.Abp.Attachment.Application
                 isLatest: false,
                 facetType: versionToRollback.FacetType,
                 templatePurpose: versionToRollback.TemplatePurpose,
-                textVector: versionToRollback.TextVector
+                textVector: versionToRollback.TextVector,
+                description: versionToRollback.Description,
+                tags: versionToRollback.Tags,
+                metaFields: versionToRollback.MetaFields?.Select(mf => new MetaField(
+                    mf.EntityType, mf.FieldKey, mf.FieldName, mf.DataType, mf.IsRequired,
+                    mf.Unit, mf.RegexPattern, mf.Options, mf.Description, mf.DefaultValue,
+                    mf.Order, mf.IsEnabled, mf.Group, mf.ValidationRules, mf.Tags
+                )).ToList(),
+                templatePath: versionToRollback.TemplatePath
             );
 
             // 复制子结构
@@ -450,6 +726,7 @@ namespace Hx.Abp.Attachment.Application
 
         /// <summary>
         /// 获取根节点模板（用于树状展示）
+        /// 基于TemplatePath优化，提高性能
         /// </summary>
         public async Task<ListResultDto<AttachCatalogueTemplateTreeDto>> GetRootTemplatesAsync(
             FacetType? facetType = null,
@@ -459,14 +736,15 @@ namespace Hx.Abp.Attachment.Application
         {
             try
             {
+                // 使用优化的基于路径的查询方法
                 var rootTemplates = await _templateRepository.GetRootTemplatesAsync(
                     facetType, templatePurpose, includeChildren, onlyLatest);
 
                 var treeDtos = rootTemplates.Select(t => 
                     ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateTreeDto>(t)).ToList();
 
-                _logger.LogInformation("获取根节点模板完成，数量：{count}，包含子节点：{includeChildren}", 
-                    treeDtos.Count, includeChildren);
+                _logger.LogInformation("获取根节点模板完成，数量：{count}，包含子节点：{includeChildren}，使用路径优化：{optimized}", 
+                    treeDtos.Count, includeChildren, includeChildren);
 
                 return new ListResultDto<AttachCatalogueTemplateTreeDto>(treeDtos);
             }
@@ -675,6 +953,113 @@ namespace Hx.Abp.Attachment.Application
             {
                 _logger.LogError(ex, "更新模板 {templateId} 的元数据字段顺序失败", templateId);
                 throw new UserFriendlyException("更新字段顺序失败，请稍后重试");
+            }
+        }
+
+        #endregion
+
+        #region 模板路径相关方法
+
+        /// <summary>
+        /// 根据路径获取模板
+        /// </summary>
+        public async Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplatesByPathAsync(string? templatePath, bool includeChildren = false)
+        {
+            try
+            {
+                var templates = await _templateRepository.GetTemplatesByPathAsync(templatePath, includeChildren);
+                var templateDtos = ObjectMapper.Map<List<AttachCatalogueTemplate>, List<AttachCatalogueTemplateDto>>(templates);
+                
+                _logger.LogInformation("根据路径获取模板完成，路径：{templatePath}，数量：{count}", templatePath, templateDtos.Count);
+                
+                return new ListResultDto<AttachCatalogueTemplateDto>(templateDtos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "根据路径获取模板失败，路径：{templatePath}", templatePath);
+                throw new UserFriendlyException("获取模板失败，请稍后重试");
+            }
+        }
+
+        /// <summary>
+        /// 根据路径深度获取模板
+        /// </summary>
+        public async Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplatesByPathDepthAsync(int depth, bool onlyLatest = true)
+        {
+            try
+            {
+                var templates = await _templateRepository.GetTemplatesByPathDepthAsync(depth, onlyLatest);
+                var templateDtos = ObjectMapper.Map<List<AttachCatalogueTemplate>, List<AttachCatalogueTemplateDto>>(templates);
+                
+                _logger.LogInformation("根据路径深度获取模板完成，深度：{depth}，数量：{count}", depth, templateDtos.Count);
+                
+                return new ListResultDto<AttachCatalogueTemplateDto>(templateDtos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "根据路径深度获取模板失败，深度：{depth}", depth);
+                throw new UserFriendlyException("获取模板失败，请稍后重试");
+            }
+        }
+
+        /// <summary>
+        /// 计算下一个模板路径
+        /// </summary>
+        public Task<string> CalculateNextTemplatePathAsync(string? parentPath)
+        {
+            try
+            {
+                var nextPath = AttachCatalogueTemplate.CalculateNextTemplatePath(parentPath);
+                
+                _logger.LogInformation("计算下一个模板路径完成，父路径：{parentPath}，下一个路径：{nextPath}", parentPath, nextPath);
+                
+                return Task.FromResult(nextPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "计算下一个模板路径失败，父路径：{parentPath}", parentPath);
+                throw new UserFriendlyException("计算路径失败，请稍后重试");
+            }
+        }
+
+        /// <summary>
+        /// 验证模板路径格式
+        /// </summary>
+        public Task<bool> ValidateTemplatePathAsync(string? templatePath)
+        {
+            try
+            {
+                var isValid = AttachCatalogueTemplate.IsValidTemplatePath(templatePath);
+                
+                _logger.LogInformation("验证模板路径完成，路径：{templatePath}，是否有效：{isValid}", templatePath, isValid);
+                
+                return Task.FromResult(isValid);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "验证模板路径失败，路径：{templatePath}", templatePath);
+                throw new UserFriendlyException("验证路径失败，请稍后重试");
+            }
+        }
+
+        /// <summary>
+        /// 根据路径范围获取模板
+        /// </summary>
+        public async Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplatesByPathRangeAsync(string? startPath, string? endPath, bool onlyLatest = true)
+        {
+            try
+            {
+                var templates = await _templateRepository.GetTemplatesByPathRangeAsync(startPath, endPath, onlyLatest);
+                var templateDtos = ObjectMapper.Map<List<AttachCatalogueTemplate>, List<AttachCatalogueTemplateDto>>(templates);
+                
+                _logger.LogInformation("根据路径范围获取模板完成，起始路径：{startPath}，结束路径：{endPath}，数量：{count}", startPath, endPath, templateDtos.Count);
+                
+                return new ListResultDto<AttachCatalogueTemplateDto>(templateDtos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "根据路径范围获取模板失败，起始路径：{startPath}，结束路径：{endPath}", startPath, endPath);
+                throw new UserFriendlyException("获取模板失败，请稍后重试");
             }
         }
 

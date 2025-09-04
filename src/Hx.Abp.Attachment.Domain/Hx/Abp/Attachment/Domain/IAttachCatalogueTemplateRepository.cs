@@ -183,5 +183,72 @@ namespace Hx.Abp.Attachment.Domain
             int maxDepth = 10);
 
         #endregion
+
+        #region 模板路径相关查询方法
+
+        /// <summary>
+        /// 根据模板路径获取模板
+        /// </summary>
+        Task<List<AttachCatalogueTemplate>> GetTemplatesByPathAsync(string? templatePath, bool includeChildren = false);
+
+        /// <summary>
+        /// 根据路径深度获取模板
+        /// </summary>
+        Task<List<AttachCatalogueTemplate>> GetTemplatesByPathDepthAsync(int depth, bool onlyLatest = true);
+
+        /// <summary>
+        /// 根据路径范围获取模板
+        /// </summary>
+        Task<List<AttachCatalogueTemplate>> GetTemplatesByPathRangeAsync(string? startPath, string? endPath, bool onlyLatest = true);
+
+        /// <summary>
+        /// 获取指定路径下的所有子模板
+        /// </summary>
+        Task<List<AttachCatalogueTemplate>> GetChildTemplatesByPathAsync(string parentPath, bool onlyLatest = true);
+
+        /// <summary>
+        /// 检查路径是否存在
+        /// </summary>
+        Task<bool> ExistsByPathAsync(string templatePath);
+
+        /// <summary>
+        /// 获取路径统计信息
+        /// </summary>
+        Task<Dictionary<int, int>> GetPathDepthStatisticsAsync(bool onlyLatest = true);
+
+        /// <summary>
+        /// 获取指定路径的直接子节点（不包含孙子节点）
+        /// </summary>
+        Task<List<AttachCatalogueTemplate>> GetDirectChildrenByPathAsync(string parentPath, bool onlyLatest = true);
+
+        /// <summary>
+        /// 获取指定路径的所有后代节点（包含所有层级的子节点）
+        /// </summary>
+        Task<List<AttachCatalogueTemplate>> GetAllDescendantsByPathAsync(string parentPath, bool onlyLatest = true, int? maxDepth = null);
+
+        /// <summary>
+        /// 获取指定路径的祖先节点（从根节点到指定路径的所有父节点）
+        /// </summary>
+        Task<List<AttachCatalogueTemplate>> GetAncestorsByPathAsync(string templatePath, bool onlyLatest = true);
+
+        /// <summary>
+        /// 获取指定路径的兄弟节点（同一父节点下的其他节点）
+        /// </summary>
+        Task<List<AttachCatalogueTemplate>> GetSiblingsByPathAsync(string templatePath, bool onlyLatest = true);
+
+        /// <summary>
+        /// 检查两个路径是否为祖先-后代关系
+        /// </summary>
+        Task<bool> IsAncestorDescendantAsync(string ancestorPath, string descendantPath);
+
+        /// <summary>
+        /// 获取同级模板中的最大路径（用于自动生成下一个路径）
+        /// </summary>
+        /// <param name="parentPath">父路径，null表示根级别</param>
+        /// <param name="onlyLatest">是否只查询最新版本</param>
+        /// <returns>同级中的最大路径，如果没有同级则返回null</returns>
+        Task<string?> GetMaxTemplatePathAtSameLevelAsync(string? parentPath, bool onlyLatest = true);
+
+        #endregion
     }
 }

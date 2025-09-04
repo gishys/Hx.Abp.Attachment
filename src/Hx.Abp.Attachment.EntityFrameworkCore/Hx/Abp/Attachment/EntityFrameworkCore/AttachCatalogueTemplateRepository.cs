@@ -1704,6 +1704,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
         /// <summary>
         /// 获取根节点模板（用于树状展示）
+        /// 基于TemplatePath优化，避免递归查询，提高性能
         /// </summary>
         public async Task<List<AttachCatalogueTemplate>> GetRootTemplatesAsync(
             FacetType? facetType = null,
@@ -1714,43 +1715,44 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             try
             {
                 var dbSet = await GetDbSetAsync();
-                var queryable = dbSet.AsQueryable();
-
-                // 基础过滤
-                queryable = queryable.Where(t => !t.IsDeleted);
                 
-                // 只查询根节点（ParentId为null）
-                queryable = queryable.Where(t => t.ParentId == null);
+                // 基础过滤条件
+                var baseFilter = dbSet.Where(t => !t.IsDeleted);
                 
                 if (onlyLatest)
-                    queryable = queryable.Where(t => t.IsLatest);
+                    baseFilter = baseFilter.Where(t => t.IsLatest);
                 
                 if (facetType.HasValue)
-                    queryable = queryable.Where(t => t.FacetType == facetType.Value);
+                    baseFilter = baseFilter.Where(t => t.FacetType == facetType.Value);
                 
                 if (templatePurpose.HasValue)
-                    queryable = queryable.Where(t => t.TemplatePurpose == templatePurpose.Value);
-
-                // 按顺序号排序
-                queryable = queryable.OrderBy(t => t.SequenceNumber);
+                    baseFilter = baseFilter.Where(t => t.TemplatePurpose == templatePurpose.Value);
 
                 if (includeChildren)
                 {
-                    // 使用EF Core的Include预加载整个树形结构
-                    // 注意：这里需要处理子节点的过滤条件
-                    queryable = queryable.Include(t => t.Children.Where(c => !c.IsDeleted && (!onlyLatest || c.IsLatest)).OrderBy(c => c.SequenceNumber))
-                        .ThenInclude(c => c.Children.Where(c2 => !c2.IsDeleted && (!onlyLatest || c2.IsLatest)).OrderBy(c2 => c2.SequenceNumber))
-                        .ThenInclude(c => c.Children.Where(c3 => !c3.IsDeleted && (!onlyLatest || c3.IsLatest)).OrderBy(c3 => c3.SequenceNumber))
-                        .ThenInclude(c => c.Children.Where(c4 => !c4.IsDeleted && (!onlyLatest || c4.IsLatest)).OrderBy(c4 => c4.SequenceNumber))
-                        .ThenInclude(c => c.Children.Where(c5 => !c5.IsDeleted && (!onlyLatest || c5.IsLatest)).OrderBy(c5 => c5.SequenceNumber)); // 最多5层深度
+                    // 使用TemplatePath进行高效查询，避免递归Include
+                    // 查询所有匹配条件的模板，然后通过路径构建树形结构
+                    var allTemplates = await baseFilter
+                        .OrderBy(t => t.TemplatePath)
+                        .ThenBy(t => t.SequenceNumber)
+                        .ToListAsync();
+
+                    // 通过路径构建树形结构
+                    return BuildTreeFromPath(allTemplates, onlyLatest);
                 }
+                else
+                {
+                    // 只查询根节点（TemplatePath为空或null，或者ParentId为null）
+                    var rootTemplates = await baseFilter
+                        .Where(t => t.ParentId == null || t.TemplatePath == null || t.TemplatePath == "")
+                        .OrderBy(t => t.SequenceNumber)
+                        .ToListAsync();
 
-                var rootTemplates = await queryable.ToListAsync();
+                    Logger.LogInformation("获取根节点模板完成，数量：{count}，包含子节点：{includeChildren}", 
+                        rootTemplates.Count, includeChildren);
 
-                Logger.LogInformation("获取根节点模板完成，数量：{count}，包含子节点：{includeChildren}", 
-                    rootTemplates.Count, includeChildren);
-
-                return rootTemplates;
+                    return rootTemplates;
+                }
             }
             catch (Exception ex)
             {
@@ -1760,7 +1762,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         }
 
         /// <summary>
-        /// 递归获取模板的完整子树
+        /// 获取模板的完整子树
+        /// 基于TemplatePath优化，使用路径前缀查询替代递归Include
         /// </summary>
         public async Task<List<AttachCatalogueTemplate>> GetTemplateSubtreeAsync(
             Guid rootId,
@@ -1770,21 +1773,11 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             try
             {
                 var dbSet = await GetDbSetAsync();
-                var queryable = dbSet.Where(t => t.Id == rootId && !t.IsDeleted);
-
-                // 使用EF Core的Include预加载整个树形结构
-                if (maxDepth > 0)
-                {
-                    var currentQuery = queryable.Include(t => t.Children);
-
-                    // 动态构建多层Include
-                    for (int i = 1; i < Math.Min(maxDepth, 5); i++) // 限制最大深度为5层
-                    {
-                        currentQuery = currentQuery.ThenInclude(c => c.Children);
-                    }
-                }
-
-                var rootTemplate = await queryable.FirstOrDefaultAsync();
+                
+                // 首先获取根模板
+                var rootTemplate = await dbSet
+                    .Where(t => t.Id == rootId && !t.IsDeleted)
+                    .FirstOrDefaultAsync();
 
                 if (rootTemplate == null)
                 {
@@ -1792,10 +1785,36 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     return [];
                 }
 
+                // 如果根模板没有路径，说明是根节点，直接返回
+                if (string.IsNullOrEmpty(rootTemplate.TemplatePath))
+                {
+                    return [rootTemplate];
+                }
+
+                // 使用路径前缀查询获取所有子节点
+                var childPathPrefix = rootTemplate.TemplatePath + ".";
+                var childTemplates = await dbSet
+                    .Where(t => !t.IsDeleted && 
+                               t.TemplatePath != null && 
+                               t.TemplatePath.StartsWith(childPathPrefix))
+                    .Where(t => !onlyLatest || t.IsLatest)
+                    .OrderBy(t => t.TemplatePath)
+                    .ThenBy(t => t.SequenceNumber)
+                    .ToListAsync();
+
+                // 如果指定了最大深度，过滤掉超出深度的节点
+                if (maxDepth > 0)
+                {
+                    var rootDepth = AttachCatalogueTemplate.GetTemplatePathDepth(rootTemplate.TemplatePath);
+                    childTemplates = [.. childTemplates.Where(t => AttachCatalogueTemplate.GetTemplatePathDepth(t.TemplatePath) <= rootDepth + maxDepth)];
+                }
+
+                // 构建树形结构
                 var result = new List<AttachCatalogueTemplate> { rootTemplate };
+                result.AddRange(childTemplates);
                 
-                Logger.LogInformation("获取模板子树完成，根ID：{rootId}，结果数量：{count}", 
-                    rootId, result.Count);
+                Logger.LogInformation("获取模板子树完成，根ID：{rootId}，结果数量：{count}，最大深度：{maxDepth}", 
+                    rootId, result.Count, maxDepth);
 
                 return result;
             }
@@ -1805,8 +1824,608 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 return [];
             }
         }
+        #endregion
 
+        #region 树形结构构建辅助方法
 
+        /// <summary>
+        /// 基于路径构建树形结构
+        /// 将平铺的模板列表转换为树形结构
+        /// </summary>
+        private List<AttachCatalogueTemplate> BuildTreeFromPath(List<AttachCatalogueTemplate> allTemplates, bool onlyLatest)
+        {
+            if (allTemplates.Count == 0)
+                return [];
+
+            // 如果只显示最新版本，过滤掉非最新版本的模板
+            var filteredTemplates = onlyLatest 
+                ? [.. allTemplates.Where(t => t.IsLatest)]
+                : allTemplates;
+
+            // 创建模板字典，便于快速查找
+            var templateDict = filteredTemplates.ToDictionary(t => t.Id, t => t);
+            
+            // 分离根节点和子节点
+            var rootTemplates = filteredTemplates
+                .Where(t => t.ParentId == null || string.IsNullOrEmpty(t.TemplatePath))
+                .OrderBy(t => t.SequenceNumber)
+                .ToList();
+
+            // 为每个模板构建子节点集合
+            foreach (var template in filteredTemplates)
+            {
+                template.Children.Clear();
+            }
+
+            // 构建父子关系
+            foreach (var template in filteredTemplates)
+            {
+                if (template.ParentId.HasValue && templateDict.TryGetValue(template.ParentId.Value, out var parent))
+                {
+                    parent.Children.Add(template);
+                }
+            }
+
+            // 对每个节点的子节点进行排序
+            foreach (var template in filteredTemplates)
+            {
+                if (template.Children.Count > 0)
+                {
+                    var sortedChildren = template.Children.OrderBy(c => c.SequenceNumber).ToList();
+                    template.Children.Clear();
+                    foreach (var child in sortedChildren)
+                    {
+                        template.Children.Add(child);
+                    }
+                }
+            }
+
+            Logger.LogInformation("构建树形结构完成，根节点数量：{rootCount}，总节点数量：{totalCount}，仅最新版本：{onlyLatest}", 
+                rootTemplates.Count, filteredTemplates.Count, onlyLatest);
+
+            return rootTemplates;
+        }
+
+        /// <summary>
+        /// 基于路径构建扁平树形结构（保持层级关系但返回扁平列表）
+        /// </summary>
+        private static List<AttachCatalogueTemplate> BuildFlatTreeFromPath(List<AttachCatalogueTemplate> allTemplates, bool onlyLatest)
+        {
+            if (allTemplates.Count == 0)
+                return [];
+
+            // 如果只显示最新版本，过滤掉非最新版本的模板
+            var filteredTemplates = onlyLatest 
+                ? allTemplates.Where(t => t.IsLatest)
+                : allTemplates;
+
+            // 按路径排序，确保父节点在子节点之前
+            return [.. filteredTemplates
+                .OrderBy(t => t.TemplatePath ?? "")
+                .ThenBy(t => t.SequenceNumber)];
+        }
+
+        #endregion
+
+        #region 模板路径相关查询方法
+
+        /// <summary>
+        /// 根据模板路径获取模板
+        /// </summary>
+        public async Task<List<AttachCatalogueTemplate>> GetTemplatesByPathAsync(string? templatePath, bool includeChildren = false)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                var queryable = dbSet.AsQueryable();
+
+                // 基础过滤
+                queryable = queryable.Where(t => !t.IsDeleted);
+
+                if (string.IsNullOrEmpty(templatePath))
+                {
+                    // 获取根节点
+                    queryable = queryable.Where(t => t.ParentId == null);
+                }
+                else
+                {
+                    // 根据路径查询
+                    queryable = queryable.Where(t => t.TemplatePath == templatePath);
+                }
+
+                if (includeChildren && !string.IsNullOrEmpty(templatePath))
+                {
+                    // 包含子节点，使用路径前缀匹配
+                    var childPathPrefix = templatePath + ".";
+                    queryable = queryable.Union(
+                        dbSet.Where(t => !t.IsDeleted && t.TemplatePath != null && t.TemplatePath.StartsWith(childPathPrefix))
+                    );
+                }
+
+                var templates = await queryable.OrderBy(t => t.TemplatePath).ThenBy(t => t.SequenceNumber).ToListAsync();
+
+                Logger.LogInformation("根据路径获取模板完成，路径：{templatePath}，数量：{count}", templatePath, templates.Count);
+
+                return templates;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "根据路径获取模板失败，路径：{templatePath}", templatePath);
+                return [];
+            }
+        }
+
+        /// <summary>
+        /// 根据路径深度获取模板
+        /// </summary>
+        public async Task<List<AttachCatalogueTemplate>> GetTemplatesByPathDepthAsync(int depth, bool onlyLatest = true)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                var queryable = dbSet.AsQueryable();
+
+                // 基础过滤
+                queryable = queryable.Where(t => !t.IsDeleted);
+
+                if (onlyLatest)
+                    queryable = queryable.Where(t => t.IsLatest);
+
+                if (depth == 0)
+                {
+                    // 根节点（路径为空）
+                    queryable = queryable.Where(t => t.ParentId == null);
+                }
+                else
+                {
+                    // 根据路径深度查询（通过点号数量判断）
+                    var dotCount = depth - 1;
+                    if (dotCount == 0)
+                    {
+                        // 第一层：路径格式为 "00001"
+                        queryable = queryable.Where(t => t.TemplatePath != null && !t.TemplatePath.Contains('.'));
+                    }
+                    else
+                    {
+                        // 其他层：通过SQL函数计算点号数量
+                        var sql = $@"
+                            SELECT * FROM ""APPATTACH_CATALOGUE_TEMPLATES"" 
+                            WHERE ""IS_DELETED"" = false 
+                            AND (@onlyLatest = false OR ""IS_LATEST"" = true)
+                            AND ""TEMPLATE_PATH"" IS NOT NULL
+                            AND LENGTH(""TEMPLATE_PATH"") - LENGTH(REPLACE(""TEMPLATE_PATH"", '.', '')) = @dotCount
+                            ORDER BY ""TEMPLATE_PATH"", ""SEQUENCE_NUMBER""";
+
+                        var parameters = new[]
+                        {
+                            new Npgsql.NpgsqlParameter("@onlyLatest", onlyLatest),
+                            new Npgsql.NpgsqlParameter("@dotCount", dotCount)
+                        };
+
+                        var templates = await dbSet.FromSqlRaw(sql, parameters).ToListAsync();
+                        return templates;
+                    }
+                }
+
+                var result = await queryable.OrderBy(t => t.TemplatePath).ThenBy(t => t.SequenceNumber).ToListAsync();
+
+                Logger.LogInformation("根据路径深度获取模板完成，深度：{depth}，数量：{count}", depth, result.Count);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "根据路径深度获取模板失败，深度：{depth}", depth);
+                return [];
+            }
+        }
+
+        /// <summary>
+        /// 根据路径范围获取模板
+        /// </summary>
+        public async Task<List<AttachCatalogueTemplate>> GetTemplatesByPathRangeAsync(string? startPath, string? endPath, bool onlyLatest = true)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                var queryable = dbSet.AsQueryable();
+
+                // 基础过滤
+                queryable = queryable.Where(t => !t.IsDeleted && t.TemplatePath != null);
+
+                if (onlyLatest)
+                    queryable = queryable.Where(t => t.IsLatest);
+
+                // 路径范围过滤
+                if (!string.IsNullOrEmpty(startPath))
+                    queryable = queryable.Where(t => string.Compare(t.TemplatePath, startPath) >= 0);
+
+                if (!string.IsNullOrEmpty(endPath))
+                    queryable = queryable.Where(t => string.Compare(t.TemplatePath, endPath) <= 0);
+
+                var templates = await queryable.OrderBy(t => t.TemplatePath).ThenBy(t => t.SequenceNumber).ToListAsync();
+
+                Logger.LogInformation("根据路径范围获取模板完成，起始路径：{startPath}，结束路径：{endPath}，数量：{count}", 
+                    startPath, endPath, templates.Count);
+
+                return templates;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "根据路径范围获取模板失败，起始路径：{startPath}，结束路径：{endPath}", startPath, endPath);
+                return [];
+            }
+        }
+
+        /// <summary>
+        /// 获取指定路径下的所有子模板
+        /// </summary>
+        public async Task<List<AttachCatalogueTemplate>> GetChildTemplatesByPathAsync(string parentPath, bool onlyLatest = true)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                var queryable = dbSet.AsQueryable();
+
+                // 基础过滤
+                queryable = queryable.Where(t => !t.IsDeleted && t.TemplatePath != null);
+
+                if (onlyLatest)
+                    queryable = queryable.Where(t => t.IsLatest);
+
+                // 子路径过滤（以父路径为前缀）
+                var childPathPrefix = parentPath + ".";
+                queryable = queryable.Where(t => t.TemplatePath != null && t.TemplatePath.StartsWith(childPathPrefix));
+
+                var templates = await queryable.OrderBy(t => t.TemplatePath).ThenBy(t => t.SequenceNumber).ToListAsync();
+
+                Logger.LogInformation("获取子模板完成，父路径：{parentPath}，数量：{count}", parentPath, templates.Count);
+
+                return templates;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取子模板失败，父路径：{parentPath}", parentPath);
+                return [];
+            }
+        }
+
+        /// <summary>
+        /// 检查路径是否存在
+        /// </summary>
+        public async Task<bool> ExistsByPathAsync(string templatePath)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                var exists = await dbSet.AnyAsync(t => !t.IsDeleted && t.TemplatePath == templatePath);
+
+                Logger.LogInformation("检查路径是否存在完成，路径：{templatePath}，存在：{exists}", templatePath, exists);
+
+                return exists;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "检查路径是否存在失败，路径：{templatePath}", templatePath);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 获取路径统计信息
+        /// </summary>
+        public async Task<Dictionary<int, int>> GetPathDepthStatisticsAsync(bool onlyLatest = true)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                var queryable = dbSet.AsQueryable();
+
+                // 基础过滤
+                queryable = queryable.Where(t => !t.IsDeleted && t.TemplatePath != null);
+
+                if (onlyLatest)
+                    queryable = queryable.Where(t => t.IsLatest);
+
+                var templates = await queryable.Select(t => t.TemplatePath).ToListAsync();
+
+                var statistics = new Dictionary<int, int>();
+                foreach (var path in templates)
+                {
+                    var depth = AttachCatalogueTemplate.GetTemplatePathDepth(path);
+                    if (statistics.TryGetValue(depth, out int value))
+                        statistics[depth] = ++value;
+                    else
+                        statistics[depth] = 1;
+                }
+
+                Logger.LogInformation("获取路径统计信息完成，统计项数：{count}", statistics.Count);
+
+                return statistics;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取路径统计信息失败");
+                return [];
+            }
+        }
+
+        /// <summary>
+        /// 获取指定路径的直接子节点（不包含孙子节点）
+        /// </summary>
+        public async Task<List<AttachCatalogueTemplate>> GetDirectChildrenByPathAsync(string? parentPath, bool onlyLatest = true)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                var queryable = dbSet.AsQueryable();
+
+                // 基础过滤
+                queryable = queryable.Where(t => !t.IsDeleted && t.TemplatePath != null);
+
+                if (onlyLatest)
+                    queryable = queryable.Where(t => t.IsLatest);
+
+                if (string.IsNullOrEmpty(parentPath))
+                {
+                    // 获取根节点的直接子节点（路径格式为 "00001"）
+                    queryable = queryable.Where(t => t.TemplatePath != null && !t.TemplatePath.Contains('.'));
+                }
+                else
+                {
+                    // 获取指定路径的直接子节点（路径格式为 "parentPath.00001"）
+                    var directChildPrefix = parentPath + ".";
+                    queryable = queryable.Where(t => t.TemplatePath != null && t.TemplatePath.StartsWith(directChildPrefix) &&
+                                                   !t.TemplatePath.Substring(directChildPrefix.Length).Contains('.'));
+                }
+
+                var templates = await queryable.OrderBy(t => t.TemplatePath).ThenBy(t => t.SequenceNumber).ToListAsync();
+
+                Logger.LogInformation("获取直接子节点完成，父路径：{parentPath}，数量：{count}", parentPath, templates.Count);
+
+                return templates;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取直接子节点失败，父路径：{parentPath}", parentPath);
+                return [];
+            }
+        }
+
+        /// <summary>
+        /// 获取指定路径的所有后代节点（包含所有层级的子节点）
+        /// </summary>
+        public async Task<List<AttachCatalogueTemplate>> GetAllDescendantsByPathAsync(string parentPath, bool onlyLatest = true, int? maxDepth = null)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                var queryable = dbSet.AsQueryable();
+
+                // 基础过滤
+                queryable = queryable.Where(t => !t.IsDeleted && t.TemplatePath != null);
+
+                if (onlyLatest)
+                    queryable = queryable.Where(t => t.IsLatest);
+
+                if (string.IsNullOrEmpty(parentPath))
+                {
+                    // 获取所有非根节点
+                    queryable = queryable.Where(t => t.TemplatePath != null && t.TemplatePath != "");
+                }
+                else
+                {
+                    // 获取指定路径的所有后代节点
+                    var descendantPrefix = parentPath + ".";
+                    queryable = queryable.Where(t => t.TemplatePath != null && t.TemplatePath.StartsWith(descendantPrefix));
+                }
+
+                var templates = await queryable.OrderBy(t => t.TemplatePath).ThenBy(t => t.SequenceNumber).ToListAsync();
+
+                // 如果指定了最大深度，过滤掉超出深度的节点
+                if (maxDepth.HasValue)
+                {
+                    var parentDepth = string.IsNullOrEmpty(parentPath) ? 0 : AttachCatalogueTemplate.GetTemplatePathDepth(parentPath);
+                    templates = [.. templates.Where(t => AttachCatalogueTemplate.GetTemplatePathDepth(t.TemplatePath) <= parentDepth + maxDepth.Value)];
+                }
+
+                Logger.LogInformation("获取所有后代节点完成，父路径：{parentPath}，数量：{count}，最大深度：{maxDepth}", 
+                    parentPath, templates.Count, maxDepth);
+
+                return templates;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取所有后代节点失败，父路径：{parentPath}", parentPath);
+                return [];
+            }
+        }
+
+        /// <summary>
+        /// 获取指定路径的祖先节点（从根节点到指定路径的所有父节点）
+        /// </summary>
+        public async Task<List<AttachCatalogueTemplate>> GetAncestorsByPathAsync(string templatePath, bool onlyLatest = true)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(templatePath))
+                {
+                    return [];
+                }
+
+                var dbSet = await GetDbSetAsync();
+                var ancestors = new List<AttachCatalogueTemplate>();
+
+                // 逐级获取祖先节点
+                var currentPath = templatePath;
+                while (!string.IsNullOrEmpty(currentPath))
+                {
+                    var parentPath = AttachCatalogueTemplate.GetParentTemplatePath(currentPath);
+                    if (string.IsNullOrEmpty(parentPath))
+                    {
+                        // 到达根节点
+                        var rootTemplates = await dbSet
+                            .Where(t => !t.IsDeleted && (t.TemplatePath == null || t.TemplatePath == ""))
+                            .Where(t => !onlyLatest || t.IsLatest)
+                            .ToListAsync();
+                        ancestors.AddRange(rootTemplates);
+                        break;
+                    }
+
+                    var parentTemplates = await dbSet
+                        .Where(t => !t.IsDeleted && t.TemplatePath == parentPath)
+                        .Where(t => !onlyLatest || t.IsLatest)
+                        .ToListAsync();
+                    ancestors.AddRange(parentTemplates);
+
+                    currentPath = parentPath;
+                }
+
+                // 按路径深度排序（从根到叶子）
+                ancestors = [.. ancestors.OrderBy(t => AttachCatalogueTemplate.GetTemplatePathDepth(t.TemplatePath))];
+
+                Logger.LogInformation("获取祖先节点完成，目标路径：{templatePath}，数量：{count}", templatePath, ancestors.Count);
+
+                return ancestors;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取祖先节点失败，目标路径：{templatePath}", templatePath);
+                return [];
+            }
+        }
+
+        /// <summary>
+        /// 获取指定路径的兄弟节点（同一父节点下的其他节点）
+        /// </summary>
+        public async Task<List<AttachCatalogueTemplate>> GetSiblingsByPathAsync(string templatePath, bool onlyLatest = true)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(templatePath))
+                {
+                    // 根节点的兄弟节点就是其他根节点
+                    var dbSet = await GetDbSetAsync();
+                    var rootTemplates = await dbSet
+                        .Where(t => !t.IsDeleted && (t.TemplatePath == null || t.TemplatePath == ""))
+                        .Where(t => !onlyLatest || t.IsLatest)
+                        .OrderBy(t => t.SequenceNumber)
+                        .ToListAsync();
+
+                    Logger.LogInformation("获取根节点兄弟节点完成，数量：{count}", rootTemplates.Count);
+                    return rootTemplates;
+                }
+
+                var parentPath = AttachCatalogueTemplate.GetParentTemplatePath(templatePath);
+                var siblings = await GetDirectChildrenByPathAsync(parentPath, onlyLatest);
+
+                // 排除自己
+                siblings = [.. siblings.Where(t => t.TemplatePath != templatePath)];
+
+                Logger.LogInformation("获取兄弟节点完成，目标路径：{templatePath}，数量：{count}", templatePath, siblings.Count);
+
+                return siblings;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取兄弟节点失败，目标路径：{templatePath}", templatePath);
+                return [];
+            }
+        }
+
+        /// <summary>
+        /// 检查两个路径是否为祖先-后代关系
+        /// </summary>
+        public Task<bool> IsAncestorDescendantAsync(string ancestorPath, string descendantPath)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(ancestorPath) || string.IsNullOrEmpty(descendantPath))
+                {
+                    return Task.FromResult(false);
+                }
+
+                // 使用路径前缀检查
+                var result = descendantPath.StartsWith(ancestorPath + ".", StringComparison.Ordinal);
+
+                Logger.LogInformation("检查祖先-后代关系完成，祖先路径：{ancestorPath}，后代路径：{descendantPath}，结果：{result}", 
+                    ancestorPath, descendantPath, result);
+
+                return Task.FromResult(result);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "检查祖先-后代关系失败，祖先路径：{ancestorPath}，后代路径：{descendantPath}", ancestorPath, descendantPath);
+                return Task.FromResult(false);
+            }
+        }
+
+        /// <summary>
+        /// 获取同级模板中的最大路径（用于自动生成下一个路径）
+        /// </summary>
+        public async Task<string?> GetMaxTemplatePathAtSameLevelAsync(string? parentPath, bool onlyLatest = true)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                var queryable = dbSet.AsQueryable();
+
+                // 基础过滤
+                queryable = queryable.Where(t => !t.IsDeleted && t.TemplatePath != null);
+
+                if (onlyLatest)
+                    queryable = queryable.Where(t => t.IsLatest);
+
+                if (string.IsNullOrEmpty(parentPath))
+                {
+                    // 获取根级别的模板（ParentId为null的模板）
+                    queryable = queryable.Where(t => t.ParentId == null);
+                }
+                else
+                {
+                    // 获取指定父路径下的直接子节点（路径格式为 "parentPath.00001"）
+                    var directChildPrefix = parentPath + ".";
+                    queryable = queryable.Where(t => t.TemplatePath != null && t.TemplatePath.StartsWith(directChildPrefix));
+                }
+
+                // 获取所有匹配的路径，然后在内存中进行数值排序
+                var paths = await queryable
+                    .Select(t => t.TemplatePath)
+                    .ToListAsync();
+
+                string? maxPath = null;
+                if (paths.Count != 0)
+                {
+                    if (string.IsNullOrEmpty(parentPath))
+                    {
+                        // 根级别：直接比较路径的数值
+                        maxPath = paths
+                            .Where(p => !string.IsNullOrEmpty(p) && !p.Contains('.'))
+                            .OrderByDescending(p => Convert.ToInt32(p))
+                            .FirstOrDefault();
+                    }
+                    else
+                    {
+                        // 子级别：比较路径最后一个单元代码的数值
+                        // 过滤出直接子节点（路径中只有一个点号）
+                        var directChildPrefix = parentPath + ".";
+                        maxPath = paths
+                            .Where(p => !string.IsNullOrEmpty(p) && p.StartsWith(directChildPrefix) && !p[directChildPrefix.Length..].Contains('.'))
+                            .OrderByDescending(p => Convert.ToInt32(AttachCatalogueTemplate.GetLastUnitTemplatePathCode(p!)))
+                            .FirstOrDefault();
+                    }
+                }
+
+                Logger.LogInformation("获取同级最大路径完成，父路径：{parentPath}，最大路径：{maxPath}", parentPath, maxPath);
+
+                return maxPath;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取同级最大路径失败，父路径：{parentPath}", parentPath);
+                return null;
+            }
+        }
 
         #endregion
     }

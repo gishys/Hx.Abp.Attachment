@@ -43,6 +43,13 @@ namespace Hx.Abp.Attachment.Application.Contracts
 
         // 新增混合检索方法
         Task<ListResultDto<TemplateSearchResultDto>> SearchTemplatesHybridAsync(TemplateSearchInputDto input);
+
+        // 新增模板路径相关方法
+        Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplatesByPathAsync(string? templatePath, bool includeChildren = false);
+        Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplatesByPathDepthAsync(int depth, bool onlyLatest = true);
+        Task<string> CalculateNextTemplatePathAsync(string? parentPath);
+        Task<bool> ValidateTemplatePathAsync(string? templatePath);
+        Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplatesByPathRangeAsync(string? startPath, string? endPath, bool onlyLatest = true);
         Task<ListResultDto<TemplateSearchResultDto>> SearchTemplatesByTextAsync(string keyword, FacetType? facetType = null, TemplatePurpose? templatePurpose = null, List<string>? tags = null, int maxResults = 20);
         Task<ListResultDto<TemplateSearchResultDto>> SearchTemplatesByTagsAsync(List<string> tags, FacetType? facetType = null, TemplatePurpose? templatePurpose = null, int maxResults = 20);
         Task<ListResultDto<TemplateSearchResultDto>> SearchTemplatesBySemanticAsync(string semanticQuery, FacetType? facetType = null, TemplatePurpose? templatePurpose = null, double similarityThreshold = 0.7, int maxResults = 20);

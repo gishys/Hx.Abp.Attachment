@@ -64,6 +64,12 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public Guid? ParentId { get; set; }
 
         /// <summary>
+        /// 模板路径（用于快速查询层级）
+        /// 格式：00001.00002.00003（5位数字，用点分隔）
+        /// </summary>
+        public string? TemplatePath { get; set; }
+
+        /// <summary>
         /// 子模板集合
         /// </summary>
         [JsonIgnore]

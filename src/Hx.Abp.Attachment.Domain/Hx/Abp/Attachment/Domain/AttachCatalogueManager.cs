@@ -5,6 +5,7 @@ using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
 using Volo.Abp.Guids;
+using static Hx.Abp.Attachment.Domain.Shared.AttachmentPermissions;
 
 namespace Hx.Abp.Attachment.Domain
 {
@@ -97,7 +98,12 @@ namespace Hx.Abp.Attachment.Domain
                 referenceType: referenceType,
                 parentId: parentId,
                 isRequired: template.IsRequired,
-                isStatic: template.IsStatic
+                isStatic: template.IsStatic,
+                templateId: template.Id,
+                catalogueFacetType: template.FacetType,
+                cataloguePurpose: template.TemplatePurpose,
+                tags: template.Tags,
+                textVector: template.TextVector
             );
 
             await _catalogueRepository.InsertAsync(catalogue);

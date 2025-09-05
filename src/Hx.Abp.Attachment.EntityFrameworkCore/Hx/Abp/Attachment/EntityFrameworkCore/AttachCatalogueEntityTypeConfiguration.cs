@@ -50,8 +50,24 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .UseCollation("und-x-icu") // 使用ICU提供更好的中文排序支持
                 .IsRequired();
 
+            // 创建Tags字段的值转换器
+#pragma warning disable CS8600 // 将 null 字面量或可能为 null 的值转换为非 null 类型。
+            var tagsConverter = new ValueConverter<List<string>?, string>(
+                // 转换为数据库值 - 空集合转换为空数组字符串，而不是null
+                v => v == null || v.Count == 0 ? "[]" : 
+                     JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                // 从数据库值转换
+                v => string.IsNullOrEmpty(v) || v == "[]" ? new List<string>() : 
+                     JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions)null) ?? new List<string>()
+            );
+#pragma warning restore CS8600 // 将 null 字面量或可能为 null 的值转换为非 null 类型。
+
             // Tags字段配置（JSON数组格式）
-            builder.Property(d => d.Tags).HasColumnName("TAGS").HasColumnType("jsonb");
+            builder.Property(d => d.Tags)
+                .HasColumnName("TAGS")
+                .HasColumnType("jsonb")
+                .HasConversion(tagsConverter)
+                .IsRequired(false);
 
             builder.Property(d => d.Reference).HasColumnName("REFERENCE").HasMaxLength(100).IsRequired();
             builder.Property(d => d.ReferenceType).HasColumnName("REFERENCE_TYPE");

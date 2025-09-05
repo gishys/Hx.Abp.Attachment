@@ -792,6 +792,27 @@ namespace Hx.Abp.Attachment.Application
             return ObjectMapper.Map<List<AttachCatalogue>, List<AttachCatalogueDto>>(results);
         }
 
+        /// <summary>
+        /// 混合检索分类：结合全文检索和文本向量检索
+        /// </summary>
+        /// <param name="searchText">搜索文本</param>
+        /// <param name="reference">业务引用</param>
+        /// <param name="referenceType">业务类型</param>
+        /// <param name="limit">返回数量限制</param>
+        /// <param name="queryTextVector">查询文本向量</param>
+        /// <param name="similarityThreshold">相似度阈值</param>
+        /// <returns>匹配的分类列表</returns>
+        public virtual async Task<List<AttachCatalogueDto>> SearchByHybridAsync(string searchText, string? reference = null, int? referenceType = null, int limit = 10, string? queryTextVector = null, float similarityThreshold = 0.7f)
+        {
+            if (string.IsNullOrWhiteSpace(searchText))
+            {
+                throw new UserFriendlyException("搜索文本不能为空");
+            }
+
+            var results = await CatalogueRepository.SearchByHybridAsync(searchText, reference, referenceType, limit, queryTextVector, similarityThreshold);
+            return ObjectMapper.Map<List<AttachCatalogue>, List<AttachCatalogueDto>>(results);
+        }
+
 
         /// <summary>
         /// 映射到DTO

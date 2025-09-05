@@ -29,6 +29,18 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <returns>匹配的分类列表</returns>
         Task<List<AttachCatalogueDto>> SearchByFullTextAsync(string searchText, string? reference = null, int? referenceType = null, int limit = 10);
 
+        /// <summary>
+        /// 混合检索分类：结合全文检索和文本向量检索
+        /// </summary>
+        /// <param name="searchText">搜索文本</param>
+        /// <param name="reference">业务引用</param>
+        /// <param name="referenceType">业务类型</param>
+        /// <param name="limit">返回数量限制</param>
+        /// <param name="queryTextVector">查询文本向量</param>
+        /// <param name="similarityThreshold">相似度阈值</param>
+        /// <returns>匹配的分类列表</returns>
+        Task<List<AttachCatalogueDto>> SearchByHybridAsync(string searchText, string? reference = null, int? referenceType = null, int limit = 10, string? queryTextVector = null, float similarityThreshold = 0.7f);
+
 
         /// <summary>
         /// 设置分类权限

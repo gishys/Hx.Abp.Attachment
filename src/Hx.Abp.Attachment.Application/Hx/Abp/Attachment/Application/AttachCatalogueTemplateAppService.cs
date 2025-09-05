@@ -558,7 +558,8 @@ namespace Hx.Abp.Attachment.Application
                     input.MaxResults,
                     input.SimilarityThreshold,
                     input.Weights?.TextWeight ?? 0.4,
-                    input.Weights?.SemanticWeight ?? 0.6);
+                    input.Weights?.SemanticWeight ?? 0.6,
+                    input.OnlyLatest);
 
                 var results = templates.Select(t => new TemplateSearchResultDto
                 {

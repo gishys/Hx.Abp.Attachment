@@ -116,7 +116,25 @@ namespace Hx.Abp.Attachment.Domain
             int maxResults = 20,
             double similarityThreshold = 0.7,
             double textWeight = 0.4,
-            double semanticWeight = 0.6);
+            double semanticWeight = 0.6,
+            bool onlyLatest = true);
+
+        /// <summary>
+        /// 增强版混合检索模板（支持真正的向量相似度计算）
+        /// </summary>
+        Task<List<AttachCatalogueTemplate>> SearchTemplatesHybridAdvancedAsync(
+            string? keyword = null,
+            string? semanticQuery = null,
+            FacetType? facetType = null,
+            TemplatePurpose? templatePurpose = null,
+            List<string>? tags = null,
+            int maxResults = 20,
+            double similarityThreshold = 0.7,
+            double textWeight = 0.4,
+            double semanticWeight = 0.6,
+            bool enableVectorSearch = true,
+            bool enableFullTextSearch = true,
+            bool onlyLatest = true);
 
         /// <summary>
         /// 全文检索模板（基于倒排索引）

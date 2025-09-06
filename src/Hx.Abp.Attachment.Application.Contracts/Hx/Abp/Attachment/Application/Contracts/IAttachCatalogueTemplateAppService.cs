@@ -12,7 +12,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
             CreateUpdateAttachCatalogueTemplateDto>
     {
         Task<ListResultDto<AttachCatalogueTemplateDto>> FindMatchingTemplatesAsync(TemplateMatchInput input);
-        Task<AttachCatalogueStructureDto> GetTemplateStructureAsync(Guid id, bool includeHistory = false);
+        Task<TemplateStructureDto> GetTemplateStructureAsync(Guid id, bool includeHistory = false);
         Task GenerateCatalogueFromTemplateAsync(GenerateCatalogueInput input);
 
         // 新增版本管理方法

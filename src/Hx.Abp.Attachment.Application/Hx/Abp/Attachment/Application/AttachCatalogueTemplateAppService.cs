@@ -248,44 +248,49 @@ namespace Hx.Abp.Attachment.Application
                 ObjectMapper.Map<List<AttachCatalogueTemplate>, List<AttachCatalogueTemplateDto>>(templates));
         }
 
-        public async Task<AttachCatalogueStructureDto> GetTemplateStructureAsync(Guid id, bool includeHistory = false)
+        public async Task<TemplateStructureDto> GetTemplateStructureAsync(Guid id, bool includeHistory = false)
         {
-            var rootTemplate = await _templateRepository.GetAsync(id);
-            var structure = new AttachCatalogueStructureDto
-            {
-                Root = ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(rootTemplate),
-                Children = [],
-                History = includeHistory
-                    ? ObjectMapper.Map<List<AttachCatalogueTemplate>, List<AttachCatalogueTemplateDto>>(
-                        await _templateRepository.GetTemplateHistoryAsync(id))
-                    : []
-            };
-
+            // 获取当前模板
+            var currentTemplate = await _templateRepository.GetAsync(id);
+            
+            // 构建版本列表
+            var versions = new List<AttachCatalogueTemplateDto>();
+            
+            // 添加当前版本
+            var currentVersionDto = ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(currentTemplate);
+            
             // 使用基于路径的优化方法构建树形结构
-            await BuildTemplateTreeOptimized(structure, rootTemplate);
-            return structure;
-        }
-
-        private async Task BuildTemplateTree(AttachCatalogueStructureDto parent, AttachCatalogueTemplate template)
-        {
-            var children = await _templateRepository.GetChildrenAsync(template.Id);
-            foreach (var child in children)
+            await BuildTemplateTreeByPath(currentVersionDto, currentTemplate);
+            versions.Add(currentVersionDto);
+            
+            // 如果需要包含历史版本
+            if (includeHistory)
             {
-                var childDto = new AttachCatalogueStructureDto
+                var historyTemplates = await _templateRepository.GetTemplateHistoryAsync(id);
+                foreach (var historyTemplate in historyTemplates.Where(t => t.Id != id))
                 {
-                    Root = ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(child),
-                    Children = []
-                };
-                parent.Children?.Add(childDto);
-                await BuildTemplateTree(childDto, child);
+                    var historyDto = ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(historyTemplate);
+                    
+                    // 为历史版本也构建树形结构
+                    await BuildTemplateTreeByPath(historyDto, historyTemplate);
+                    versions.Add(historyDto);
+                }
             }
+            
+            // 按版本号降序排列
+            versions = [.. versions.OrderByDescending(v => v.Version)];
+            
+            return new TemplateStructureDto
+            {
+                Versions = versions
+            };
         }
 
         /// <summary>
-        /// 基于路径优化的树形结构构建方法
-        /// 使用TemplatePath进行高效查询，避免递归调用
+        /// 基于路径构建模板树形结构（优化版本）
+        /// 使用TemplatePath进行高效查询，避免递归调用，提升性能
         /// </summary>
-        private async Task BuildTemplateTreeOptimized(AttachCatalogueStructureDto parent, AttachCatalogueTemplate template)
+        private async Task BuildTemplateTreeByPath(AttachCatalogueTemplateDto templateDto, AttachCatalogueTemplate template)
         {
             try
             {
@@ -295,49 +300,94 @@ namespace Hx.Abp.Attachment.Application
                 // 过滤掉根节点本身，只保留子节点
                 var children = allChildren.Where(t => t.Id != template.Id).ToList();
 
-                // 构建树形结构
-                var childStructures = new List<AttachCatalogueStructureDto>();
-                var childDict = children.ToDictionary(c => c.Id, c => c);
-
-                // 为每个子节点创建结构对象
-                foreach (var child in children)
+                if (children.Count != 0)
                 {
-                    var childStructure = new AttachCatalogueStructureDto
-                    {
-                        Root = ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(child),
-                        Children = []
-                    };
-                    childStructures.Add(childStructure);
-                }
+                    // 转换为DTO并构建树形结构
+                    var childDtos = children.Select(c => ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(c)).ToList();
+                    
+                    // 构建父子关系映射
+                    var childDict = childDtos.ToDictionary(c => c.Id, c => c);
+                    var childTemplateDict = children.ToDictionary(c => c.Id, c => c);
 
-                // 构建父子关系
-                foreach (var childStructure in childStructures)
-                {
-                    if (childStructure.Root != null && childDict.TryGetValue(childStructure.Root.Id, out var childTemplate))
+                    // 构建树形结构
+                    templateDto.Children = [];
+                    
+                    foreach (var childDto in childDtos)
                     {
-                        if (childTemplate.ParentId == template.Id)
+                        if (childTemplateDict.TryGetValue(childDto.Id, out var childTemplate))
                         {
-                            parent.Children?.Add(childStructure);
-                        }
-                        else if (childTemplate.ParentId.HasValue && childDict.TryGetValue(childTemplate.ParentId.Value, out var parentChild))
-                        {
-                            // 找到父级子节点
-                            var parentChildStructure = childStructures.FirstOrDefault(cs => cs.Root != null && cs.Root.Id == parentChild.Id);
-                            parentChildStructure?.Children?.Add(childStructure);
+                            if (childTemplate.ParentId == template.Id)
+                            {
+                                // 直接子节点
+                                templateDto.Children.Add(childDto);
+                            }
+                            else if (childTemplate.ParentId.HasValue && childDict.TryGetValue(childTemplate.ParentId.Value, out var parentChildDto))
+                            {
+                                // 间接子节点，添加到对应的父节点
+                                parentChildDto.Children ??= [];
+                                
+                                parentChildDto.Children.Add(childDto);
+                            }
                         }
                     }
+
+                    // 按顺序号排序
+                    SortChildrenBySequence(templateDto.Children);
                 }
 
-                _logger.LogInformation("构建模板树形结构完成，根模板：{templateName}，子节点数量：{childCount}",
+                _logger.LogInformation("基于路径构建模板树形结构完成，根模板：{templateName}，子节点数量：{childCount}",
                     template.TemplateName, children.Count);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "构建模板树形结构失败，根模板：{templateName}", template.TemplateName);
+                _logger.LogError(ex, "基于路径构建模板树形结构失败，根模板：{templateName}", template.TemplateName);
                 // 如果优化方法失败，回退到原来的递归方法
-                await BuildTemplateTree(parent, template);
+                await BuildTemplateTreeWithChildren(templateDto, template);
             }
         }
+
+        /// <summary>
+        /// 递归排序子节点
+        /// </summary>
+        private static void SortChildrenBySequence(List<AttachCatalogueTemplateDto> children)
+        {
+            if (children == null || children.Count == 0) return;
+
+            // 按顺序号排序
+            children.Sort((a, b) => a.SequenceNumber.CompareTo(b.SequenceNumber));
+
+            // 递归排序每个子节点的子节点
+            foreach (var child in children)
+            {
+                SortChildrenBySequence(child.Children);
+            }
+        }
+
+        /// <summary>
+        /// 构建模板树形结构（包含子模板）- 备用方法
+        /// 基于行业最佳实践，直接在模板DTO中构建Children属性
+        /// </summary>
+        private async Task BuildTemplateTreeWithChildren(AttachCatalogueTemplateDto templateDto, AttachCatalogueTemplate template)
+        {
+            // 获取子模板
+            var children = await _templateRepository.GetChildrenAsync(template.Id);
+            
+            if (children.Count != 0)
+            {
+                templateDto.Children = [];
+                
+                foreach (var child in children.OrderBy(c => c.SequenceNumber))
+                {
+                    var childDto = ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(child);
+                    
+                    // 递归构建子模板的树形结构
+                    await BuildTemplateTreeWithChildren(childDto, child);
+                    
+                    templateDto.Children.Add(childDto);
+                }
+            }
+        }
+
 
         public async Task GenerateCatalogueFromTemplateAsync(GenerateCatalogueInput input)
         {

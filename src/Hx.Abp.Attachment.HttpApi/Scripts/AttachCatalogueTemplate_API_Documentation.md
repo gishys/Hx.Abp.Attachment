@@ -667,6 +667,211 @@ const searchTemplatesBySemantic = async (semanticQuery, filters = {}) => {
 | includeChildren | boolean         | 否   | 是否包含子节点     | true   |
 | onlyLatest      | boolean         | 否   | 是否只返回最新版本 | true   |
 
+#### 响应参数
+
+**成功响应** (200 OK):
+
+| 字段名     | 类型                         | 必填 | 描述           | 示例值         |
+| ---------- | ---------------------------- | ---- | -------------- | -------------- |
+| items      | AttachCatalogueTemplateDto[] | 是   | 根节点模板列表 | 见下方详细说明 |
+| totalCount | number                       | 是   | 总数量         | 10             |
+
+**AttachCatalogueTemplateDto 详细字段说明**:
+
+| 字段名                        | 类型                                   | 必填 | 描述                  | 示例值                                   |
+| ----------------------------- | -------------------------------------- | ---- | --------------------- | ---------------------------------------- |
+| id                            | string                                 | 是   | 模板 ID               | "3fa85f64-5717-4562-b3fc-2c963f66afa6"   |
+| name                          | string                                 | 是   | 模板名称              | "项目文档模板"                           |
+| description                   | string                                 | 否   | 模板描述              | "用于管理项目相关文档的模板"             |
+| tags                          | string[]                               | 否   | 模板标签              | ["项目", "文档", "管理"]                 |
+| version                       | number                                 | 是   | 模板版本号            | 1                                        |
+| isLatest                      | boolean                                | 是   | 是否为最新版本        | true                                     |
+| attachReceiveType             | AttachReceiveType                      | 是   | 附件类型              | 1                                        |
+| workflowConfig                | string                                 | 否   | 工作流配置(JSON 格式) | "{\"workflowKey\":\"project_approval\"}" |
+| isRequired                    | boolean                                | 是   | 是否必收              | true                                     |
+| sequenceNumber                | number                                 | 是   | 顺序号                | 1                                        |
+| isStatic                      | boolean                                | 是   | 是否静态              | false                                    |
+| parentId                      | string                                 | 否   | 父模板 ID             | "3fa85f64-5717-4562-b3fc-2c963f66afa7"   |
+| templatePath                  | string                                 | 否   | 模板路径              | "00001.00002"                            |
+| children                      | AttachCatalogueTemplateDto[]           | 否   | 子模板集合            | 递归结构，同父级结构                     |
+| facetType                     | FacetType                              | 是   | 分面类型              | 0                                        |
+| templatePurpose               | TemplatePurpose                        | 是   | 模板用途              | 1                                        |
+| textVector                    | number[]                               | 否   | 文本向量              | [0.1, 0.2, 0.3, ...]                     |
+| vectorDimension               | number                                 | 是   | 向量维度              | 768                                      |
+| permissions                   | AttachCatalogueTemplatePermissionDto[] | 否   | 权限集合              | 见下方权限字段说明                       |
+| metaFields                    | MetaFieldDto[]                         | 否   | 元数据字段集合        | 见下方元数据字段说明                     |
+| templateIdentifierDescription | string                                 | 是   | 模板标识描述          | "通用分面 - 分类管理"                    |
+| isRoot                        | boolean                                | 是   | 是否为根模板          | true                                     |
+| isLeaf                        | boolean                                | 是   | 是否为叶子模板        | false                                    |
+| depth                         | number                                 | 是   | 模板层级深度          | 0                                        |
+| path                          | string                                 | 否   | 模板路径              | "00001.00002"                            |
+| creationTime                  | string                                 | 是   | 创建时间              | "2024-01-01T00:00:00Z"                   |
+| lastModificationTime          | string                                 | 否   | 最后修改时间          | "2024-01-01T00:00:00Z"                   |
+| creatorId                     | string                                 | 否   | 创建者 ID             | "3fa85f64-5717-4562-b3fc-2c963f66afa8"   |
+| lastModifierId                | string                                 | 否   | 最后修改者 ID         | "3fa85f64-5717-4562-b3fc-2c963f66afa9"   |
+
+**AttachCatalogueTemplatePermissionDto 权限字段说明**:
+
+| 字段名              | 类型             | 必填 | 描述                | 示例值                                 |
+| ------------------- | ---------------- | ---- | ------------------- | -------------------------------------- |
+| id                  | string           | 是   | 权限 ID             | "3fa85f64-5717-4562-b3fc-2c963f66afaa" |
+| permissionType      | string           | 是   | 权限类型            | "Role"                                 |
+| permissionTarget    | string           | 是   | 权限目标            | "Admin"                                |
+| action              | PermissionAction | 是   | 权限操作            | 1                                      |
+| effect              | PermissionEffect | 是   | 权限效果            | 0                                      |
+| attributeConditions | string           | 否   | 属性条件(JSON 格式) | "{\"department\":\"IT\"}"              |
+| isEnabled           | boolean          | 是   | 是否启用            | true                                   |
+| effectiveTime       | string           | 否   | 生效时间            | "2024-01-01T00:00:00Z"                 |
+| expirationTime      | string           | 否   | 失效时间            | "2024-12-31T23:59:59Z"                 |
+| description         | string           | 否   | 权限描述            | "管理员权限"                           |
+
+**MetaFieldDto 元数据字段说明**:
+
+| 字段名               | 类型     | 必填 | 描述                | 示例值                                |
+| -------------------- | -------- | ---- | ------------------- | ------------------------------------- |
+| entityType           | string   | 是   | 实体类型            | "Project"                             |
+| fieldKey             | string   | 是   | 字段键名            | "project_name"                        |
+| fieldName            | string   | 是   | 字段显示名称        | "项目名称"                            |
+| dataType             | string   | 是   | 数据类型            | "string"                              |
+| unit                 | string   | 否   | 单位                | "万元"                                |
+| isRequired           | boolean  | 是   | 是否必填            | true                                  |
+| regexPattern         | string   | 否   | 正则表达式模式      | "^[A-Za-z0-9]+$"                      |
+| options              | string   | 否   | 枚举选项(JSON 格式) | "[\"选项 1\",\"选项 2\"]"             |
+| description          | string   | 否   | 字段描述            | "项目名称字段"                        |
+| defaultValue         | string   | 否   | 默认值              | ""                                    |
+| order                | number   | 是   | 字段顺序            | 1                                     |
+| isEnabled            | boolean  | 是   | 是否启用            | true                                  |
+| group                | string   | 否   | 字段分组            | "基本信息"                            |
+| validationRules      | string   | 否   | 验证规则(JSON 格式) | "{\"minLength\":1,\"maxLength\":100}" |
+| tags                 | string[] | 否   | 元数据标签          | ["重要", "必填"]                      |
+| creationTime         | string   | 是   | 创建时间            | "2024-01-01T00:00:00Z"                |
+| lastModificationTime | string   | 否   | 最后修改时间        | "2024-01-01T00:00:00Z"                |
+
+#### 响应示例
+
+````json
+{
+  "items": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "name": "项目文档模板",
+      "description": "用于管理项目相关文档的模板",
+      "tags": ["项目", "文档", "管理"],
+      "version": 1,
+      "isLatest": true,
+      "attachReceiveType": 1,
+      "workflowConfig": "{\"workflowKey\":\"project_approval\",\"steps\":[{\"name\":\"初审\",\"approver\":\"project_manager\"}]}",
+      "isRequired": true,
+      "sequenceNumber": 1,
+      "isStatic": false,
+      "parentId": null,
+      "templatePath": "00001",
+      "children": [
+        {
+          "id": "3fa85f64-5717-4562-b3fc-2c963f66afa7",
+          "name": "设计文档",
+          "description": "项目设计相关文档",
+          "tags": ["设计", "技术"],
+          "version": 1,
+          "isLatest": true,
+          "attachReceiveType": 1,
+          "workflowConfig": null,
+          "isRequired": true,
+          "sequenceNumber": 1,
+          "isStatic": false,
+          "parentId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+          "templatePath": "00001.00001",
+          "children": [],
+          "facetType": 0,
+          "templatePurpose": 1,
+          "textVector": [0.1, 0.2, 0.3],
+          "vectorDimension": 768,
+          "permissions": [],
+          "metaFields": [
+            {
+              "entityType": "Project",
+              "fieldKey": "project_name",
+              "fieldName": "项目名称",
+              "dataType": "string",
+              "unit": null,
+              "isRequired": true,
+              "regexPattern": "^[A-Za-z0-9]+$",
+              "options": null,
+              "description": "项目名称字段",
+              "defaultValue": "",
+              "order": 1,
+              "isEnabled": true,
+              "group": "基本信息",
+              "validationRules": "{\"minLength\":1,\"maxLength\":100}",
+              "tags": ["重要", "必填"],
+              "creationTime": "2024-01-01T00:00:00Z",
+              "lastModificationTime": "2024-01-01T00:00:00Z"
+            }
+          ],
+          "templateIdentifierDescription": "通用分面 - 分类管理",
+          "isRoot": false,
+          "isLeaf": true,
+          "depth": 1,
+          "path": "00001.00001",
+          "creationTime": "2024-01-01T00:00:00Z",
+          "lastModificationTime": "2024-01-01T00:00:00Z",
+          "creatorId": "3fa85f64-5717-4562-b3fc-2c963f66afa8",
+          "lastModifierId": "3fa85f64-5717-4562-b3fc-2c963f66afa9"
+        }
+      ],
+      "facetType": 0,
+      "templatePurpose": 1,
+      "textVector": [0.1, 0.2, 0.3],
+      "vectorDimension": 768,
+      "permissions": [
+        {
+          "id": "3fa85f64-5717-4562-b3fc-2c963f66afaa",
+          "permissionType": "Role",
+          "permissionTarget": "Admin",
+          "action": 1,
+          "effect": 0,
+          "attributeConditions": "{\"department\":\"IT\"}",
+          "isEnabled": true,
+          "effectiveTime": "2024-01-01T00:00:00Z",
+          "expirationTime": "2024-12-31T23:59:59Z",
+          "description": "管理员权限"
+        }
+      ],
+      "metaFields": [
+        {
+          "entityType": "Project",
+          "fieldKey": "project_name",
+          "fieldName": "项目名称",
+          "dataType": "string",
+          "unit": null,
+          "isRequired": true,
+          "regexPattern": "^[A-Za-z0-9]+$",
+          "options": null,
+          "description": "项目名称字段",
+          "defaultValue": "",
+          "order": 1,
+          "isEnabled": true,
+          "group": "基本信息",
+          "validationRules": "{\"minLength\":1,\"maxLength\":100}",
+          "tags": ["重要", "必填"],
+          "creationTime": "2024-01-01T00:00:00Z",
+          "lastModificationTime": "2024-01-01T00:00:00Z"
+        }
+      ],
+      "templateIdentifierDescription": "通用分面 - 分类管理",
+      "isRoot": true,
+      "isLeaf": false,
+      "depth": 0,
+      "path": "00001",
+      "creationTime": "2024-01-01T00:00:00Z",
+      "lastModificationTime": "2024-01-01T00:00:00Z",
+      "creatorId": "3fa85f64-5717-4562-b3fc-2c963f66afa8",
+      "lastModifierId": "3fa85f64-5717-4562-b3fc-2c963f66afa9"
+    }
+  ],
+  "totalCount": 1
+}
+
 #### React Axios 调用示例
 
 ```javascript
@@ -697,7 +902,7 @@ const getRootTemplates = async (params = {}) => {
         throw error;
     }
 };
-```
+````
 
 ---
 
@@ -785,9 +990,274 @@ const getTemplateStatistics = async () => {
 -   使用缓存减少重复请求
 -   合理设置 `includeChildren` 参数
 
+### 10. 获取模板结构接口
+
+#### 接口信息
+
+-   **接口路径**: `GET /api/attach-catalogue-template/structure/{id}`
+-   **接口描述**: 获取模板的完整结构，包含当前版本、历史版本和子模板树形结构
+-   **请求方式**: GET
+
+#### 请求参数
+
+**路径参数**:
+
+| 参数名 | 类型   | 必填 | 描述    | 示例值                                 |
+| ------ | ------ | ---- | ------- | -------------------------------------- |
+| id     | string | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+
+**查询参数**:
+
+| 参数名         | 类型    | 必填 | 描述             | 示例值 |
+| -------------- | ------- | ---- | ---------------- | ------ |
+| includeHistory | boolean | 否   | 是否包含历史版本 | true   |
+
+#### 响应参数
+
+**成功响应** (200 OK):
+
+| 字段名          | 类型                         | 必填 | 描述                         | 示例值             |
+| --------------- | ---------------------------- | ---- | ---------------------------- | ------------------ |
+| versions        | AttachCatalogueTemplateDto[] | 是   | 模板版本列表（按版本号降序） | 见下方详细说明     |
+| currentVersion  | AttachCatalogueTemplateDto   | 否   | 当前版本（最新版本）         | 从 versions 中提取 |
+| historyVersions | AttachCatalogueTemplateDto[] | 否   | 历史版本列表                 | 从 versions 中提取 |
+| basicInfo       | TemplateBasicInfoDto         | 否   | 模板基本信息                 | 见下方基本信息说明 |
+| versionStats    | TemplateVersionStatsDto      | 是   | 版本统计信息                 | 见下方统计信息说明 |
+
+**TemplateBasicInfoDto 基本信息说明**:
+
+| 字段名               | 类型            | 必填 | 描述           | 示例值                                 |
+| -------------------- | --------------- | ---- | -------------- | -------------------------------------- |
+| id                   | string          | 是   | 模板 ID        | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| name                 | string          | 是   | 模板名称       | "项目文档模板"                         |
+| description          | string          | 否   | 模板描述       | "用于管理项目相关文档的模板"           |
+| version              | number          | 是   | 版本号         | 2                                      |
+| isLatest             | boolean         | 是   | 是否为最新版本 | true                                   |
+| facetType            | FacetType       | 是   | 分面类型       | 0                                      |
+| templatePurpose      | TemplatePurpose | 是   | 模板用途       | 1                                      |
+| creationTime         | string          | 是   | 创建时间       | "2024-01-01T00:00:00Z"                 |
+| lastModificationTime | string          | 否   | 最后修改时间   | "2024-01-01T00:00:00Z"                 |
+
+**TemplateVersionStatsDto 统计信息说明**:
+
+| 字段名               | 类型    | 必填 | 描述           | 示例值                                 |
+| -------------------- | ------- | ---- | -------------- | -------------------------------------- |
+| totalVersions        | number  | 是   | 总版本数       | 3                                      |
+| currentVersionNumber | number  | 是   | 当前版本号     | 2                                      |
+| hasHistory           | boolean | 是   | 是否有历史版本 | true                                   |
+| latestVersionId      | string  | 否   | 最新版本 ID    | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| firstCreatedTime     | string  | 是   | 首次创建时间   | "2024-01-01T00:00:00Z"                 |
+| lastModifiedTime     | string  | 是   | 最后修改时间   | "2024-01-15T10:30:00Z"                 |
+
+#### 响应示例
+
+```json
+{
+    "versions": [
+        {
+            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "name": "项目文档模板",
+            "description": "用于管理项目相关文档的模板",
+            "tags": ["项目", "文档", "管理"],
+            "version": 2,
+            "isLatest": true,
+            "attachReceiveType": 1,
+            "workflowConfig": "{\"workflowKey\":\"project_approval_v2\"}",
+            "isRequired": true,
+            "sequenceNumber": 1,
+            "isStatic": false,
+            "parentId": null,
+            "templatePath": "00001",
+            "children": [
+                {
+                    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa7",
+                    "name": "设计文档",
+                    "description": "项目设计相关文档",
+                    "tags": ["设计", "技术"],
+                    "version": 2,
+                    "isLatest": true,
+                    "attachReceiveType": 1,
+                    "workflowConfig": null,
+                    "isRequired": true,
+                    "sequenceNumber": 1,
+                    "isStatic": false,
+                    "parentId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "templatePath": "00001.00001",
+                    "children": [],
+                    "facetType": 0,
+                    "templatePurpose": 1,
+                    "textVector": [0.1, 0.2, 0.3],
+                    "vectorDimension": 768,
+                    "permissions": [],
+                    "metaFields": [],
+                    "templateIdentifierDescription": "通用分面 - 分类管理",
+                    "isRoot": false,
+                    "isLeaf": true,
+                    "depth": 1,
+                    "path": "00001.00001",
+                    "creationTime": "2024-01-01T00:00:00Z",
+                    "lastModificationTime": "2024-01-15T10:30:00Z",
+                    "creatorId": "3fa85f64-5717-4562-b3fc-2c963f66afa8",
+                    "lastModifierId": "3fa85f64-5717-4562-b3fc-2c963f66afa9"
+                }
+            ],
+            "facetType": 0,
+            "templatePurpose": 1,
+            "textVector": [0.1, 0.2, 0.3],
+            "vectorDimension": 768,
+            "permissions": [],
+            "metaFields": [],
+            "templateIdentifierDescription": "通用分面 - 分类管理",
+            "isRoot": true,
+            "isLeaf": false,
+            "depth": 0,
+            "path": "00001",
+            "creationTime": "2024-01-01T00:00:00Z",
+            "lastModificationTime": "2024-01-15T10:30:00Z",
+            "creatorId": "3fa85f64-5717-4562-b3fc-2c963f66afa8",
+            "lastModifierId": "3fa85f64-5717-4562-b3fc-2c963f66afa9"
+        },
+        {
+            "id": "3fa85f64-5717-4562-b3fc-2c963f66afaa",
+            "name": "项目文档模板",
+            "description": "用于管理项目相关文档的模板（历史版本）",
+            "tags": ["项目", "文档", "管理"],
+            "version": 1,
+            "isLatest": false,
+            "attachReceiveType": 1,
+            "workflowConfig": "{\"workflowKey\":\"project_approval_v1\"}",
+            "isRequired": true,
+            "sequenceNumber": 1,
+            "isStatic": false,
+            "parentId": null,
+            "templatePath": "00001",
+            "children": [],
+            "facetType": 0,
+            "templatePurpose": 1,
+            "textVector": [0.1, 0.2, 0.3],
+            "vectorDimension": 768,
+            "permissions": [],
+            "metaFields": [],
+            "templateIdentifierDescription": "通用分面 - 分类管理",
+            "isRoot": true,
+            "isLeaf": true,
+            "depth": 0,
+            "path": "00001",
+            "creationTime": "2024-01-01T00:00:00Z",
+            "lastModificationTime": "2024-01-10T15:20:00Z",
+            "creatorId": "3fa85f64-5717-4562-b3fc-2c963f66afa8",
+            "lastModifierId": "3fa85f64-5717-4562-b3fc-2c963f66afa9"
+        }
+    ],
+    "currentVersion": {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "name": "项目文档模板",
+        "description": "用于管理项目相关文档的模板",
+        "version": 2,
+        "isLatest": true,
+        "facetType": 0,
+        "templatePurpose": 1,
+        "creationTime": "2024-01-01T00:00:00Z",
+        "lastModificationTime": "2024-01-15T10:30:00Z"
+    },
+    "historyVersions": [
+        {
+            "id": "3fa85f64-5717-4562-b3fc-2c963f66afaa",
+            "name": "项目文档模板",
+            "description": "用于管理项目相关文档的模板（历史版本）",
+            "version": 1,
+            "isLatest": false,
+            "facetType": 0,
+            "templatePurpose": 1,
+            "creationTime": "2024-01-01T00:00:00Z",
+            "lastModificationTime": "2024-01-10T15:20:00Z"
+        }
+    ],
+    "basicInfo": {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "name": "项目文档模板",
+        "description": "用于管理项目相关文档的模板",
+        "version": 2,
+        "isLatest": true,
+        "facetType": 0,
+        "templatePurpose": 1,
+        "creationTime": "2024-01-01T00:00:00Z",
+        "lastModificationTime": "2024-01-15T10:30:00Z"
+    },
+    "versionStats": {
+        "totalVersions": 2,
+        "currentVersionNumber": 2,
+        "hasHistory": true,
+        "latestVersionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "firstCreatedTime": "2024-01-01T00:00:00Z",
+        "lastModifiedTime": "2024-01-15T10:30:00Z"
+    }
+}
+```
+
+#### React Axios 调用示例
+
+```javascript
+const getTemplateStructure = async (templateId, includeHistory = false) => {
+    try {
+        const response = await axios.get(
+            `/api/attach-catalogue-template/structure/${templateId}`,
+            {
+                params: {
+                    includeHistory: includeHistory,
+                },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('获取模板结构成功:', response.data);
+
+        // 使用优化后的数据结构
+        const {
+            versions,
+            currentVersion,
+            historyVersions,
+            basicInfo,
+            versionStats,
+        } = response.data;
+
+        // 当前版本（包含完整的子模板树形结构）
+        console.log('当前版本:', currentVersion);
+
+        // 历史版本列表
+        console.log('历史版本:', historyVersions);
+
+        // 基本信息
+        console.log('基本信息:', basicInfo);
+
+        // 版本统计
+        console.log('版本统计:', versionStats);
+
+        return response.data;
+    } catch (error) {
+        console.error(
+            '获取模板结构失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+#### 使用说明
+
+-   使用 `currentVersion` 获取当前版本信息
+-   使用 `historyVersions` 获取历史版本列表
+-   使用 `basicInfo` 获取模板基本信息
+-   使用 `versionStats` 获取版本统计信息
+-   通过 `currentVersion.children` 访问子模板树形结构
+
 ## 版本信息
 
 -   **文档版本**: 1.0
 -   **API 版本**: v1
 -   **最后更新**: 2024-12-19
 -   **维护人员**: 开发团队
+

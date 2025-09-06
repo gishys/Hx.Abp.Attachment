@@ -69,10 +69,11 @@ namespace Hx.Abp.Attachment.HttpApi
         }
 
         /// <summary>
-        /// 获取模板结构
+        /// 获取模板结构（优化版本）
+        /// 返回包含当前版本、历史版本和子模板树形结构的完整信息
         /// </summary>
         [HttpGet("{id}/structure")]
-        public virtual Task<AttachCatalogueStructureDto> GetTemplateStructureAsync(Guid id, bool includeHistory = false)
+        public virtual Task<TemplateStructureDto> GetTemplateStructureAsync(Guid id, bool includeHistory = false)
         {
             return AttachCatalogueTemplateAppService.GetTemplateStructureAsync(id, includeHistory);
         }

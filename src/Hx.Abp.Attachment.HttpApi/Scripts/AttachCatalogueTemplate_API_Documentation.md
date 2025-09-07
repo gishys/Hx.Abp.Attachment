@@ -447,7 +447,7 @@ const deleteTemplate = async (templateId) => {
 #### 接口信息
 
 -   **接口路径**: `POST /api/attach-catalogue-template/search/hybrid`
--   **接口描述**: 混合检索模板（字面 + 语义）
+-   **接口描述**: 混合检索模板（字面 + 语义），基于行业最佳实践实现向量召回 + 全文检索加权过滤 + 分数融合
 -   **请求方式**: POST
 -   **Content-Type**: application/json
 
@@ -455,26 +455,26 @@ const deleteTemplate = async (templateId) => {
 
 **请求体**: `TemplateSearchInputDto`
 
-| 参数名              | 类型                | 必填 | 描述                   | 示例值           |
-| ------------------- | ------------------- | ---- | ---------------------- | ---------------- |
-| keyword             | string              | 否   | 搜索关键词（字面检索） | "合同"           |
-| semanticQuery       | string              | 否   | 语义查询（向量检索）   | "合同文档"       |
-| facetType           | FacetType           | 否   | 分面类型过滤           | 0                |
-| templatePurpose     | TemplatePurpose     | 否   | 模板用途过滤           | 1                |
-| tags                | string[]            | 否   | 标签过滤               | ["合同", "法律"] |
-| onlyLatest          | boolean             | 否   | 是否只搜索最新版本     | true             |
-| maxResults          | int                 | 否   | 最大返回结果数         | 20               |
-| similarityThreshold | double              | 否   | 向量相似度阈值         | 0.7              |
-| weights             | HybridSearchWeights | 否   | 混合检索权重配置       | 见下方           |
+| 参数名              | 类型                | 必填 | 描述                      | 示例值           |
+| ------------------- | ------------------- | ---- | ------------------------- | ---------------- |
+| keyword             | string              | 否   | 搜索关键词（字面检索）    | "合同"           |
+| semanticQuery       | string              | 否   | 语义查询（向量检索）      | "合同文档"       |
+| facetType           | FacetType           | 否   | 分面类型过滤              | 0                |
+| templatePurpose     | TemplatePurpose     | 否   | 模板用途过滤              | 1                |
+| tags                | string[]            | 否   | 标签过滤（精确匹配）      | ["合同", "法律"] |
+| onlyLatest          | boolean             | 否   | 是否只搜索最新版本        | true             |
+| maxResults          | int                 | 否   | 最大返回结果数（1-100）   | 20               |
+| similarityThreshold | double              | 否   | 向量相似度阈值（0.0-1.0） | 0.7              |
+| weights             | HybridSearchWeights | 否   | 混合检索权重配置          | 见下方           |
 
 **HybridSearchWeights**:
 
-| 参数名         | 类型   | 必填 | 描述         | 示例值 |
-| -------------- | ------ | ---- | ------------ | ------ |
-| textWeight     | double | 否   | 字面检索权重 | 0.4    |
-| semanticWeight | double | 否   | 语义检索权重 | 0.6    |
-| tagWeight      | double | 否   | 标签匹配权重 | 0.3    |
-| nameWeight     | double | 否   | 名称匹配权重 | 0.5    |
+| 参数名         | 类型   | 必填 | 描述                    | 示例值 |
+| -------------- | ------ | ---- | ----------------------- | ------ |
+| textWeight     | double | 否   | 字面检索权重（0.0-1.0） | 0.4    |
+| semanticWeight | double | 否   | 语义检索权重（0.0-1.0） | 0.6    |
+| tagWeight      | double | 否   | 标签匹配权重（0.0-1.0） | 0.3    |
+| nameWeight     | double | 否   | 名称匹配权重（0.0-1.0） | 0.5    |
 
 #### 响应结果
 
@@ -501,6 +501,32 @@ const deleteTemplate = async (templateId) => {
     ]
 }
 ```
+
+**响应参数说明**:
+
+| 参数名          | 类型            | 描述                    |
+| --------------- | --------------- | ----------------------- |
+| id              | Guid            | 模板唯一标识            |
+| name            | string          | 模板名称                |
+| description     | string          | 模板描述                |
+| tags            | string[]        | 模板标签列表            |
+| facetType       | FacetType       | 分面类型（见枚举说明）  |
+| templatePurpose | TemplatePurpose | 模板用途（见枚举说明）  |
+| totalScore      | double          | 综合评分（0.0-1.0）     |
+| textScore       | double          | 字面检索评分（0.0-1.0） |
+| semanticScore   | double          | 语义检索评分（0.0-1.0） |
+| tagScore        | double          | 标签匹配评分（0.0-1.0） |
+| matchReasons    | string[]        | 匹配原因列表            |
+| isLatest        | boolean         | 是否为最新版本          |
+| version         | int             | 版本号                  |
+
+#### 使用说明
+
+1. **混合检索策略**: 系统采用向量召回 + 全文检索加权过滤 + 分数融合的混合检索策略
+2. **参数要求**: `keyword` 和 `semanticQuery` 至少提供一个，不能同时为空
+3. **权重配置**: 权重值应在 0.0-1.0 之间，系统会自动进行归一化处理
+4. **结果排序**: 结果按综合评分降序排列，评分相同时按序列号升序排列
+5. **性能优化**: 系统使用 CTE（公用表表达式）和索引优化查询性能
 
 #### React Axios 调用示例
 
@@ -544,7 +570,200 @@ const searchTemplatesHybrid = async (searchParams) => {
 
 ---
 
-### 7. 文本检索模板接口
+### 7. 获取模板历史接口
+
+#### 接口信息
+
+-   **接口路径**: `GET /api/attach-catalogue-template/{id}/history`
+-   **接口描述**: 获取指定模板的所有历史版本
+-   **请求方式**: GET
+-   **Content-Type**: application/json
+
+#### 请求参数
+
+**路径参数**:
+
+| 参数名 | 类型 | 必填 | 描述         | 示例值                                 |
+| ------ | ---- | ---- | ------------ | -------------------------------------- |
+| id     | Guid | 是   | 模板唯一标识 | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+
+#### 响应结果
+
+**成功响应** (200 OK):
+
+```json
+{
+    "items": [
+        {
+            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "name": "合同文档模板",
+            "description": "用于存储各类合同文档的模板",
+            "tags": ["合同", "法律", "重要"],
+            "version": 3,
+            "isLatest": true,
+            "attachReceiveType": 1,
+            "workflowConfig": "{\"workflowKey\":\"contract_approval\",\"timeout\":3600}",
+            "isRequired": true,
+            "sequenceNumber": 1,
+            "isStatic": false,
+            "parentId": null,
+            "templatePath": "00001",
+            "children": [],
+            "facetType": 0,
+            "templatePurpose": 1,
+            "textVector": [0.1, 0.2, 0.3],
+            "vectorDimension": 3,
+            "permissions": [
+                {
+                    "id": "4fa85f64-5717-4562-b3fc-2c963f66afa7",
+                    "userId": "user123",
+                    "userName": "张三",
+                    "action": 0,
+                    "effect": 0,
+                    "resource": "template"
+                }
+            ],
+            "metaFields": [
+                {
+                    "id": "5fa85f64-5717-4562-b3fc-2c963f66afa8",
+                    "fieldName": "合同编号",
+                    "fieldType": "string",
+                    "isRequired": true,
+                    "defaultValue": "",
+                    "description": "合同唯一编号"
+                }
+            ],
+            "templateIdentifierDescription": "General - Classification",
+            "isRoot": true,
+            "isLeaf": true,
+            "depth": 0,
+            "path": "00001",
+            "creationTime": "2024-01-15T10:30:00Z",
+            "lastModificationTime": "2024-01-20T14:45:00Z",
+            "creatorId": "user123",
+            "lastModifierId": "user456"
+        },
+        {
+            "id": "6fa85f64-5717-4562-b3fc-2c963f66afa9",
+            "name": "合同文档模板",
+            "description": "用于存储各类合同文档的模板（历史版本）",
+            "tags": ["合同", "法律"],
+            "version": 2,
+            "isLatest": false,
+            "attachReceiveType": 1,
+            "workflowConfig": null,
+            "isRequired": true,
+            "sequenceNumber": 1,
+            "isStatic": false,
+            "parentId": null,
+            "templatePath": "00001",
+            "children": [],
+            "facetType": 0,
+            "templatePurpose": 1,
+            "textVector": null,
+            "vectorDimension": 0,
+            "permissions": [],
+            "metaFields": [],
+            "templateIdentifierDescription": "General - Classification",
+            "isRoot": true,
+            "isLeaf": true,
+            "depth": 0,
+            "path": "00001",
+            "creationTime": "2024-01-10T09:15:00Z",
+            "lastModificationTime": "2024-01-12T16:20:00Z",
+            "creatorId": "user123",
+            "lastModifierId": "user123"
+        }
+    ]
+}
+```
+
+**响应参数说明**:
+
+| 参数名                        | 类型                                   | 描述                    |
+| ----------------------------- | -------------------------------------- | ----------------------- |
+| items                         | AttachCatalogueTemplateDto[]           | 模板历史版本列表        |
+| id                            | Guid                                   | 模板唯一标识            |
+| name                          | string                                 | 模板名称                |
+| description                   | string                                 | 模板描述                |
+| tags                          | string[]                               | 模板标签列表            |
+| version                       | int                                    | 版本号                  |
+| isLatest                      | boolean                                | 是否为最新版本          |
+| attachReceiveType             | AttachReceiveType                      | 附件类型（见枚举说明）  |
+| workflowConfig                | string                                 | 工作流配置（JSON 格式） |
+| isRequired                    | boolean                                | 是否必收                |
+| sequenceNumber                | int                                    | 顺序号                  |
+| isStatic                      | boolean                                | 是否静态                |
+| parentId                      | Guid?                                  | 父模板 ID               |
+| templatePath                  | string                                 | 模板路径                |
+| children                      | AttachCatalogueTemplateDto[]           | 子模板集合              |
+| facetType                     | FacetType                              | 分面类型（见枚举说明）  |
+| templatePurpose               | TemplatePurpose                        | 模板用途（见枚举说明）  |
+| textVector                    | double[]                               | 文本向量                |
+| vectorDimension               | int                                    | 向量维度                |
+| permissions                   | AttachCatalogueTemplatePermissionDto[] | 权限集合                |
+| metaFields                    | MetaFieldDto[]                         | 元数据字段集合          |
+| templateIdentifierDescription | string                                 | 模板标识描述            |
+| isRoot                        | boolean                                | 是否为根模板            |
+| isLeaf                        | boolean                                | 是否为叶子模板          |
+| depth                         | int                                    | 模板层级深度            |
+| path                          | string                                 | 模板路径                |
+| creationTime                  | DateTime                               | 创建时间                |
+| lastModificationTime          | DateTime                               | 最后修改时间            |
+| creatorId                     | Guid                                   | 创建者 ID               |
+| lastModifierId                | Guid                                   | 最后修改者 ID           |
+
+#### 使用说明
+
+1. **版本管理**: 返回指定模板的所有历史版本，按版本号降序排列
+2. **版本标识**: 通过 `isLatest` 字段可以识别哪个是当前最新版本
+3. **历史追踪**: 可以查看模板的演进历史和变更记录
+4. **权限继承**: 历史版本会保留创建时的权限配置
+5. **元数据保留**: 历史版本的元数据字段配置会被完整保留
+
+#### React Axios 调用示例
+
+```javascript
+const getTemplateHistory = async (templateId) => {
+    try {
+        const response = await axios.get(
+            `/api/attach-catalogue-template/${templateId}/history`,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('获取模板历史成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '获取模板历史失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+
+// 使用示例
+const templateId = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
+getTemplateHistory(templateId).then((history) => {
+    console.log(`模板 ${templateId} 共有 ${history.items.length} 个版本`);
+    history.items.forEach((template) => {
+        console.log(
+            `版本 ${template.version}: ${template.name} (${
+                template.isLatest ? '最新' : '历史'
+            })`
+        );
+    });
+});
+```
+
+---
+
+### 8. 文本检索模板接口
 
 #### 接口信息
 
@@ -911,8 +1130,58 @@ const getRootTemplates = async (params = {}) => {
 #### 接口信息
 
 -   **接口路径**: `GET /api/attach-catalogue-template/statistics`
--   **接口描述**: 获取模板统计信息
+-   **接口描述**: 获取模板统计信息，包含基础统计、分面类型统计、模板用途统计、树形结构统计等
 -   **请求方式**: GET
+
+#### 请求参数
+
+**无请求参数**
+
+#### 响应参数
+
+**成功响应** (200 OK):
+
+| 字段名                     | 类型   | 必填 | 描述                 | 示例值                 |
+| -------------------------- | ------ | ---- | -------------------- | ---------------------- |
+| totalCount                 | number | 是   | 总模板数量           | 150                    |
+| rootTemplateCount          | number | 是   | 根节点模板数量       | 25                     |
+| childTemplateCount         | number | 是   | 子节点模板数量       | 125                    |
+| latestVersionCount         | number | 是   | 最新版本模板数量     | 150                    |
+| historyVersionCount        | number | 是   | 历史版本模板数量     | 45                     |
+| generalFacetCount          | number | 是   | 通用分面模板数量     | 80                     |
+| disciplineFacetCount       | number | 是   | 专业领域分面模板数量 | 70                     |
+| classificationPurposeCount | number | 是   | 分类管理用途模板数量 | 60                     |
+| documentPurposeCount       | number | 是   | 文档管理用途模板数量 | 50                     |
+| workflowPurposeCount       | number | 是   | 工作流用途模板数量   | 40                     |
+| templatesWithVector        | number | 是   | 有向量的模板数量     | 120                    |
+| averageVectorDimension     | number | 是   | 平均向量维度         | 768.5                  |
+| maxTreeDepth               | number | 是   | 最大树深度           | 5                      |
+| averageChildrenCount       | number | 是   | 平均子节点数量       | 3.2                    |
+| latestCreationTime         | string | 否   | 最近创建时间         | "2024-01-15T10:30:00Z" |
+| latestModificationTime     | string | 否   | 最近修改时间         | "2024-01-15T14:20:00Z" |
+
+#### 响应示例
+
+```json
+{
+    "totalCount": 150,
+    "rootTemplateCount": 25,
+    "childTemplateCount": 125,
+    "latestVersionCount": 150,
+    "historyVersionCount": 45,
+    "generalFacetCount": 80,
+    "disciplineFacetCount": 70,
+    "classificationPurposeCount": 60,
+    "documentPurposeCount": 50,
+    "workflowPurposeCount": 40,
+    "templatesWithVector": 120,
+    "averageVectorDimension": 768.5,
+    "maxTreeDepth": 5,
+    "averageChildrenCount": 3.2,
+    "latestCreationTime": "2024-01-15T10:30:00Z",
+    "latestModificationTime": "2024-01-15T14:20:00Z"
+}
+```
 
 #### React Axios 调用示例
 
@@ -929,6 +1198,24 @@ const getTemplateStatistics = async () => {
         );
 
         console.log('获取统计信息成功:', response.data);
+
+        // 使用统计数据
+        const {
+            totalCount,
+            rootTemplateCount,
+            childTemplateCount,
+            generalFacetCount,
+            disciplineFacetCount,
+            maxTreeDepth,
+            averageChildrenCount,
+        } = response.data;
+
+        console.log(`总模板数量: ${totalCount}`);
+        console.log(`根节点数量: ${rootTemplateCount}`);
+        console.log(`子节点数量: ${childTemplateCount}`);
+        console.log(`最大树深度: ${maxTreeDepth}`);
+        console.log(`平均子节点数: ${averageChildrenCount}`);
+
         return response.data;
     } catch (error) {
         console.error(
@@ -939,6 +1226,14 @@ const getTemplateStatistics = async () => {
     }
 };
 ```
+
+#### 使用说明
+
+-   该接口提供模板系统的全面统计信息
+-   统计数据基于动态分类树的业务需求设计
+-   所有统计字段使用简单类型（数字、字符串），便于前端展示
+-   统计数据实时计算，反映当前系统状态
+-   可用于系统监控、数据分析和管理决策
 
 ---
 

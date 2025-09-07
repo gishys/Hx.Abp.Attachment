@@ -63,7 +63,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
     {
         private readonly IRulesEngine _rulesEngine = rulesEngine;
         private readonly IGuidGenerator _guidGenerator = guidGenerator;
-
+        
         public async Task<List<AttachCatalogueTemplate>> GetIntelligentRecommendationsAsync(
             string query, 
             double threshold = 0.3, 
@@ -72,10 +72,10 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             bool includeHistory = false)
         {
             try
-            {
-                var dbContext = await GetDbContextAsync();
-                var dbSet = await GetDbSetAsync();
-                
+        {
+            var dbContext = await GetDbContextAsync();
+            var dbSet = await GetDbSetAsync();
+            
                 // 首先检查数据库中是否有数据
                 var totalCount = await dbSet.CountAsync();
                 Logger.LogInformation("数据库中总共有 {totalCount} 个模板", totalCount);
@@ -85,9 +85,9 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     Logger.LogWarning("数据库中没有模板数据，返回空列表");
                     return [];
                 }
-
+                
                 // 混合检索架构：向量召回 + 全文检索加权过滤 + 分数融合
-                var sql = @"
+            var sql = @"
                     WITH vector_recall AS (
                         -- 第一阶段：向量召回 Top-N（语义检索）
                         SELECT 
@@ -103,8 +103,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                                 )
                                 ELSE 0
                             END as vector_score
-                        FROM ""APPATTACH_CATALOGUE_TEMPLATES"" t
-                        WHERE (@onlyLatest = false OR t.""IS_LATEST"" = true)
+                    FROM ""APPATTACH_CATALOGUE_TEMPLATES"" t
+                    WHERE (@onlyLatest = false OR t.""IS_LATEST"" = true)
                           AND t.""IS_DELETED"" = false
                           AND (
                               -- 向量过滤条件
@@ -211,37 +211,37 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                         OR usage_count > 0
                     )
                     ORDER BY final_score DESC, ""SEQUENCE_NUMBER"" ASC
-                    LIMIT @topN";
-
+                LIMIT @topN";
+            
                 // 准备查询参数
-                var queryPattern = $"%{query}%";
+            var queryPattern = $"%{query}%";
                 var queryWords = query.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 var queryTagsJson = $"[{string.Join(",", queryWords.Select(w => $"\"{w}\""))}]";
                 var vectorTopN = Math.Max(topN * 3, 50); // 向量召回更多候选
                 var vectorThreshold = threshold * 0.5; // 向量阈值相对宽松
                 var fulltextThreshold = threshold; // 全文检索阈值
 
-                var parameters = new[]
-                {
-                    new Npgsql.NpgsqlParameter("@query", query),
-                    new Npgsql.NpgsqlParameter("@queryPattern", queryPattern),
+            var parameters = new[]
+            {
+                new Npgsql.NpgsqlParameter("@query", query),
+                new Npgsql.NpgsqlParameter("@queryPattern", queryPattern),
                     new Npgsql.NpgsqlParameter("@queryTagsJson", queryTagsJson),
                     new Npgsql.NpgsqlParameter("@vectorTopN", vectorTopN),
                     new Npgsql.NpgsqlParameter("@vectorThreshold", vectorThreshold),
                     new Npgsql.NpgsqlParameter("@fulltextThreshold", fulltextThreshold),
-                    new Npgsql.NpgsqlParameter("@topN", topN),
-                    new Npgsql.NpgsqlParameter("@onlyLatest", onlyLatest)
-                };
-                
+                new Npgsql.NpgsqlParameter("@topN", topN),
+                new Npgsql.NpgsqlParameter("@onlyLatest", onlyLatest)
+            };
+            
                 // 执行混合检索查询
-                var rawResults = await dbContext.Database
-                    .SqlQueryRaw<dynamic>(sql, parameters)
-                    .ToListAsync();
-                        
+            var rawResults = await dbContext.Database
+                .SqlQueryRaw<dynamic>(sql, parameters)
+                .ToListAsync();
+                    
                 Logger.LogInformation("混合检索查询返回 {rawCount} 个结果", rawResults?.Count ?? 0);
                 
-                var results = new List<AttachCatalogueTemplate>();
-                    
+            var results = new List<AttachCatalogueTemplate>();
+                
                 // 检查查询结果是否为空
                 if (rawResults == null || rawResults.Count == 0)
                 {
@@ -249,17 +249,17 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     return results;
                 }
                 
-                foreach (var rawResult in rawResults)
+            foreach (var rawResult in rawResults)
                 {
                     try
-                    {
-                        // 从原始结果中提取模板ID
-                        var templateId = Guid.Parse(rawResult.Id.ToString());
-                        
-                        // 获取完整的模板实体
-                        var template = await dbSet.FindAsync(templateId);
-                        if (template != null)
-                        {
+            {
+                // 从原始结果中提取模板ID
+                var templateId = Guid.Parse(rawResult.Id.ToString());
+                
+                // 获取完整的模板实体
+                var template = await dbSet.FindAsync(templateId);
+                if (template != null)
+                {
                             // 存储各种分数信息
                             if (rawResult.final_score != null)
                                 template.ExtraProperties["FinalScore"] = Convert.ToDouble(rawResult.final_score);
@@ -272,19 +272,19 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                             if (rawResult.last_used_time != null)
                                 template.ExtraProperties["LastUsedTime"] = rawResult.last_used_time;
                             
-                            results.Add(template);
+                    results.Add(template);
                         }
                     }
                     catch (Exception ex)
                     {
                         Logger.LogWarning(ex, "处理混合检索结果时出错，跳过此结果");
-                    }
                 }
-                    
+            }
+                
                 Logger.LogInformation("混合检索完成，查询：{query}，找到 {count} 个匹配模板", 
-                    query, results.Count);
-                    
-                return results;
+                query, results.Count);
+                
+            return results;
             }
             catch (Exception ex)
             {
@@ -1420,7 +1420,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     maxResults, 
                     true, 
                     false);
-                
+
                 Logger.LogInformation("查找相似模板完成，查询：{query}，阈值：{threshold}，结果数量：{count}", 
                     semanticQuery, similarityThreshold, similarTemplates.Count);
 
@@ -1478,8 +1478,9 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
         /// <summary>
         /// 获取模板统计信息
+        /// 基于动态分类树业务需求，返回简单类型的统计数据
         /// </summary>
-        public async Task<object> GetTemplateStatisticsAsync()
+        public async Task<TemplateStatistics> GetTemplateStatisticsAsync()
         {
             try
             {
@@ -1488,56 +1489,119 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 // 基础统计
                 var totalCount = await dbSet.Where(t => !t.IsDeleted).CountAsync();
                 var latestCount = await dbSet.Where(t => !t.IsDeleted && t.IsLatest).CountAsync();
-                var templatesWithVector = await dbSet.Where(t => !t.IsDeleted && t.TextVector != null && t.VectorDimension > 0).CountAsync();
+                var historyCount = await dbSet.Where(t => !t.IsDeleted && !t.IsLatest).CountAsync();
                 
-                // 按模板类型统计
-                var typeCounts = await dbSet
-                    .Where(t => !t.IsDeleted)
-                    .GroupBy(t => (int)t.FacetType)
-                    .Select(g => new { Type = g.Key, Count = g.Count() })
-                    .ToDictionaryAsync(x => x.Type.ToString(), x => x.Count);
-
-                // 按模板用途统计
-                var purposeCounts = await dbSet
-                    .Where(t => !t.IsDeleted)
-                    .GroupBy(t => (int)t.TemplatePurpose)
-                    .Select(g => new { Purpose = g.Key, Count = g.Count() })
-                    .ToDictionaryAsync(x => x.Purpose.ToString(), x => x.Count);
-
-                // 向量维度统计
+                // 根节点和子节点统计
+                var rootCount = await dbSet.Where(t => !t.IsDeleted && t.ParentId == null).CountAsync();
+                var childCount = await dbSet.Where(t => !t.IsDeleted && t.ParentId != null).CountAsync();
+                
+                // 分面类型统计
+                var generalFacetCount = await dbSet.Where(t => !t.IsDeleted && t.FacetType == FacetType.General).CountAsync();
+                var professionalFacetCount = await dbSet.Where(t => !t.IsDeleted && t.FacetType == FacetType.Discipline).CountAsync();
+                
+                // 模板用途统计
+                var classificationPurposeCount = await dbSet.Where(t => !t.IsDeleted && t.TemplatePurpose == TemplatePurpose.Classification).CountAsync();
+                var documentPurposeCount = await dbSet.Where(t => !t.IsDeleted && t.TemplatePurpose == TemplatePurpose.Document).CountAsync();
+                var workflowPurposeCount = await dbSet.Where(t => !t.IsDeleted && t.TemplatePurpose == TemplatePurpose.Workflow).CountAsync();
+                
+                // 向量相关统计
+                var templatesWithVector = await dbSet.Where(t => !t.IsDeleted && t.TextVector != null && t.VectorDimension > 0).CountAsync();
                 var vectorTemplates = await dbSet
                     .Where(t => !t.IsDeleted && t.VectorDimension > 0)
                     .Select(t => t.VectorDimension)
                     .ToListAsync();
-
                 var averageVectorDimension = vectorTemplates.Count != 0 ? vectorTemplates.Average() : 0.0;
 
-                var statistics = new
+                // 树形结构统计
+                var templatesWithPath = await dbSet
+                    .Where(t => !t.IsDeleted && t.TemplatePath != null)
+                    .Select(t => t.TemplatePath)
+                    .ToListAsync();
+                
+                var maxTreeDepth = 0;
+                var totalChildrenCount = 0;
+                var parentTemplates = 0;
+                
+                foreach (var path in templatesWithPath)
                 {
-                    TotalCount = totalCount,
-                    LatestCount = latestCount,
-                    TemplatesWithVector = templatesWithVector,
-                    FacetTypeCounts = typeCounts,
-                    TemplatePurposeCounts = purposeCounts,
-                    AverageVectorDimension = Math.Round(averageVectorDimension, 2)
-                };
+                    // 空值检查，虽然查询已过滤null，但编译器仍需要显式检查
+                    if (string.IsNullOrEmpty(path)) continue;
+                    
+                    var depth = AttachCatalogueTemplate.GetTemplatePathDepth(path);
+                    maxTreeDepth = Math.Max(maxTreeDepth, depth);
+                    
+                    if (depth == 0) // 根节点
+                    {
+                        parentTemplates++;
+                        // 计算子节点数量，添加空值检查
+                        var childrenCount = templatesWithPath.Count(p => 
+                            !string.IsNullOrEmpty(p) && 
+                            p.StartsWith(path + ".") && 
+                            !p[(path.Length + 1)..].Contains('.'));
+                        totalChildrenCount += childrenCount;
+                    }
+                }
+                
+                var averageChildrenCount = parentTemplates > 0 ? (double)totalChildrenCount / parentTemplates : 0.0;
+                
+                // 时间统计
+                var latestCreationTime = await dbSet
+                    .Where(t => !t.IsDeleted)
+                    .OrderByDescending(t => t.CreationTime)
+                    .Select(t => t.CreationTime)
+                    .FirstOrDefaultAsync();
+                
+                var latestModificationTime = await dbSet
+                    .Where(t => !t.IsDeleted)
+                    .OrderByDescending(t => t.LastModificationTime)
+                    .Select(t => t.LastModificationTime)
+                    .FirstOrDefaultAsync();
 
-                Logger.LogInformation("获取模板统计信息完成，总数量：{totalCount}", totalCount);
+                var statistics = new TemplateStatistics(
+                    totalCount,
+                    rootCount,
+                    childCount,
+                    latestCount,
+                    historyCount,
+                    generalFacetCount,
+                    professionalFacetCount,
+                    classificationPurposeCount,
+                    documentPurposeCount,
+                    workflowPurposeCount,
+                    templatesWithVector,
+                    Math.Round(averageVectorDimension, 2),
+                    maxTreeDepth,
+                    Math.Round(averageChildrenCount, 2),
+                    latestCreationTime,
+                    latestModificationTime
+                );
+
+                Logger.LogInformation("获取模板统计信息完成，总数量：{totalCount}，根节点：{rootCount}，最大深度：{maxDepth}", 
+                    totalCount, rootCount, maxTreeDepth);
 
                 return statistics;
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "获取模板统计信息失败");
-                return new
-                {
-                    TotalCount = 0,
-                    LatestCount = 0,
-                    TemplatesWithVector = 0,
-                    FacetTypeCounts = new Dictionary<string, int>(),
-                    TemplatePurposeCounts = new Dictionary<string, int>(),
-                    AverageVectorDimension = 0.0
-                };
+                return new TemplateStatistics(
+                    totalCount: 0,
+                    rootTemplateCount: 0,
+                    childTemplateCount: 0,
+                    latestVersionCount: 0,
+                    historyVersionCount: 0,
+                    generalFacetCount: 0,
+                    disciplineFacetCount: 0,
+                    classificationPurposeCount: 0,
+                    documentPurposeCount: 0,
+                    workflowPurposeCount: 0,
+                    templatesWithVector: 0,
+                    averageVectorDimension: 0.0,
+                    maxTreeDepth: 0,
+                    averageChildrenCount: 0.0,
+                    latestCreationTime: null,
+                    latestModificationTime: null
+                );
             }
         }
 

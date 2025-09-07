@@ -77,6 +77,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
 
     /// <summary>
     /// 分类模板统计DTO
+    /// 基于动态分类树业务需求，使用简单类型便于前端展示和API传输
     /// </summary>
     public class AttachCatalogueTemplateStatisticsDto
     {
@@ -86,14 +87,49 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public int TotalCount { get; set; }
 
         /// <summary>
-        /// 按分面类型统计
+        /// 根节点模板数量
         /// </summary>
-        public Dictionary<string, int> FacetTypeCounts { get; set; } = [];
+        public int RootTemplateCount { get; set; }
 
         /// <summary>
-        /// 按模板用途统计
+        /// 子节点模板数量
         /// </summary>
-        public Dictionary<string, int> TemplatePurposeCounts { get; set; } = [];
+        public int ChildTemplateCount { get; set; }
+
+        /// <summary>
+        /// 最新版本模板数量
+        /// </summary>
+        public int LatestVersionCount { get; set; }
+
+        /// <summary>
+        /// 历史版本模板数量
+        /// </summary>
+        public int HistoryVersionCount { get; set; }
+
+        /// <summary>
+        /// 通用分面模板数量
+        /// </summary>
+        public int GeneralFacetCount { get; set; }
+
+        /// <summary>
+        /// 专业领域分面模板数量
+        /// </summary>
+        public int DisciplineFacetCount { get; set; }
+
+        /// <summary>
+        /// 分类管理用途模板数量
+        /// </summary>
+        public int ClassificationPurposeCount { get; set; }
+
+        /// <summary>
+        /// 文档管理用途模板数量
+        /// </summary>
+        public int DocumentPurposeCount { get; set; }
+
+        /// <summary>
+        /// 工作流用途模板数量
+        /// </summary>
+        public int WorkflowPurposeCount { get; set; }
 
         /// <summary>
         /// 有向量的模板数量
@@ -104,5 +140,25 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// 平均向量维度
         /// </summary>
         public double AverageVectorDimension { get; set; }
+
+        /// <summary>
+        /// 最大树深度
+        /// </summary>
+        public int MaxTreeDepth { get; set; }
+
+        /// <summary>
+        /// 平均子节点数量
+        /// </summary>
+        public double AverageChildrenCount { get; set; }
+
+        /// <summary>
+        /// 最近创建时间
+        /// </summary>
+        public string? LatestCreationTime { get; set; }
+
+        /// <summary>
+        /// 最近修改时间
+        /// </summary>
+        public string? LatestModificationTime { get; set; }
     }
 }

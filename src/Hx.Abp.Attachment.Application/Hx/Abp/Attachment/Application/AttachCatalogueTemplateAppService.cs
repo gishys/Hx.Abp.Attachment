@@ -589,8 +589,40 @@ namespace Hx.Abp.Attachment.Application
         // ============= 新增统计方法 =============
         public async Task<AttachCatalogueTemplateStatisticsDto> GetTemplateStatisticsAsync()
         {
-            var statistics = await _templateRepository.GetTemplateStatisticsAsync();
-            return ObjectMapper.Map<object, AttachCatalogueTemplateStatisticsDto>(statistics);
+            try
+            {
+                _logger.LogInformation("开始获取模板统计信息");
+                var domainStatistics = await _templateRepository.GetTemplateStatisticsAsync();
+                
+                // 映射Domain值对象到Application DTO
+                var dto = new AttachCatalogueTemplateStatisticsDto
+                {
+                    TotalCount = domainStatistics.TotalCount,
+                    RootTemplateCount = domainStatistics.RootTemplateCount,
+                    ChildTemplateCount = domainStatistics.ChildTemplateCount,
+                    LatestVersionCount = domainStatistics.LatestVersionCount,
+                    HistoryVersionCount = domainStatistics.HistoryVersionCount,
+                    GeneralFacetCount = domainStatistics.GeneralFacetCount,
+                    DisciplineFacetCount = domainStatistics.DisciplineFacetCount,
+                    ClassificationPurposeCount = domainStatistics.ClassificationPurposeCount,
+                    DocumentPurposeCount = domainStatistics.DocumentPurposeCount,
+                    WorkflowPurposeCount = domainStatistics.WorkflowPurposeCount,
+                    TemplatesWithVector = domainStatistics.TemplatesWithVector,
+                    AverageVectorDimension = domainStatistics.AverageVectorDimension,
+                    MaxTreeDepth = domainStatistics.MaxTreeDepth,
+                    AverageChildrenCount = domainStatistics.AverageChildrenCount,
+                    LatestCreationTime = domainStatistics.LatestCreationTime?.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    LatestModificationTime = domainStatistics.LatestModificationTime?.ToString("yyyy-MM-ddTHH:mm:ssZ")
+                };
+                
+                _logger.LogInformation("获取模板统计信息完成，总数量：{totalCount}", dto.TotalCount);
+                return dto;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取模板统计信息失败");
+                throw new UserFriendlyException("获取统计信息失败，请稍后重试");
+            }
         }
 
         // ============= 混合检索方法 =============

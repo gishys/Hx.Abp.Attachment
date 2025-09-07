@@ -47,7 +47,7 @@ namespace Hx.Abp.Attachment.Domain
             bool onlyLatest = true);
 
         // 新增统计方法
-        Task<object> GetTemplateStatisticsAsync();
+        Task<TemplateStatistics> GetTemplateStatisticsAsync();
 
         #region 配置维护方法
 

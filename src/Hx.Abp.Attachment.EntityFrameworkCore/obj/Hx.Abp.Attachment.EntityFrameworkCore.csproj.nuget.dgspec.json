@@ -242,6 +242,10 @@
               "target": "Package",
               "version": "[0.2.0, )"
             },
+            "Volo.Abp": {
+              "target": "Package",
+              "version": "[8.1.1, )"
+            },
             "Volo.Abp.Users.EntityFrameworkCore": {
               "target": "Package",
               "version": "[8.1.1, )"

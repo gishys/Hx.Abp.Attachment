@@ -1,5 +1,5 @@
-using Volo.Abp.Domain.Repositories;
 using Hx.Abp.Attachment.Domain.Shared;
+using Volo.Abp.Domain.Repositories;
 
 namespace Hx.Abp.Attachment.Domain
 {
@@ -9,11 +9,12 @@ namespace Hx.Abp.Attachment.Domain
         Task<List<AttachCatalogueTemplate>> GetChildrenAsync(Guid parentId, bool onlyLatest = true);
 
         // 新增版本相关方法
-        Task<AttachCatalogueTemplate?> GetLatestVersionAsync(string templateName);
-        Task<List<AttachCatalogueTemplate>> GetAllVersionsAsync(string templateName);
+        Task<AttachCatalogueTemplate?> GetLatestVersionAsync(Guid templateId);
+        Task<List<AttachCatalogueTemplate>> GetAllVersionsAsync(Guid templateId);
         Task<List<AttachCatalogueTemplate>> GetTemplateHistoryAsync(Guid templateId);
-        Task SetAsLatestVersionAsync(Guid templateId);
-        Task SetAllOtherVersionsAsNotLatestAsync(string templateName, Guid excludeId);
+        Task<AttachCatalogueTemplate?> GetByVersionAsync(Guid templateId, int version);
+        Task SetAsLatestVersionAsync(Guid templateId, int version);
+        Task SetAllOtherVersionsAsNotLatestAsync(Guid templateId, int excludeVersion);
         
         // 新增智能推荐方法
         Task<List<AttachCatalogueTemplate>> GetIntelligentRecommendationsAsync(

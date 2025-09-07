@@ -21,6 +21,7 @@
 
 | 参数名            | 类型                                   | 必填 | 描述                  | 示例值                                               |
 | ----------------- | -------------------------------------- | ---- | --------------------- | ---------------------------------------------------- |
+| templateId        | Guid?                                  | 否   | 模板 ID（业务标识）   | "3fa85f64-5717-4562-b3fc-2c963f66afa6"               |
 | name              | string                                 | 是   | 模板名称              | "合同文档模板"                                       |
 | description       | string                                 | 否   | 模板描述              | "用于存储各类合同文档的模板"                         |
 | tags              | string[]                               | 否   | 标签数组              | ["合同", "法律", "重要"]                             |
@@ -309,17 +310,18 @@ const getTemplateList = async (params = {}) => {
 
 #### 接口信息
 
--   **接口路径**: `GET /api/attach-catalogue-template/{id}`
--   **接口描述**: 根据 ID 获取单个分类模板详情
+-   **接口路径**: `GET /api/attach-catalogue-template/{templateId}/{version}`
+-   **接口描述**: 根据模板 ID 和版本号获取单个分类模板详情
 -   **请求方式**: GET
 
 #### 请求参数
 
 **路径参数**:
 
-| 参数名 | 类型 | 必填 | 描述    | 示例值                                 |
-| ------ | ---- | ---- | ------- | -------------------------------------- |
-| id     | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| 参数名     | 类型 | 必填 | 描述    | 示例值                                 |
+| ---------- | ---- | ---- | ------- | -------------------------------------- |
+| templateId | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| version    | int  | 是   | 版本号  | 1                                      |
 
 #### React Axios 调用示例
 
@@ -353,7 +355,7 @@ const getTemplateById = async (templateId) => {
 
 #### 接口信息
 
--   **接口路径**: `PUT /api/attach-catalogue-template/{id}`
+-   **接口路径**: `PUT /api/attach-catalogue-template/{templateId}/{version}`
 -   **接口描述**: 更新指定的分类模板
 -   **请求方式**: PUT
 -   **Content-Type**: application/json
@@ -362,9 +364,10 @@ const getTemplateById = async (templateId) => {
 
 **路径参数**:
 
-| 参数名 | 类型 | 必填 | 描述    | 示例值                                 |
-| ------ | ---- | ---- | ------- | -------------------------------------- |
-| id     | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| 参数名     | 类型 | 必填 | 描述    | 示例值                                 |
+| ---------- | ---- | ---- | ------- | -------------------------------------- |
+| templateId | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| version    | int  | 是   | 版本号  | 1                                      |
 
 **请求体**: `CreateUpdateAttachCatalogueTemplateDto` (同创建接口)
 
@@ -409,17 +412,18 @@ const updateTemplate = async (templateId, updateData) => {
 
 #### 接口信息
 
--   **接口路径**: `DELETE /api/attach-catalogue-template/{id}`
--   **接口描述**: 删除指定的分类模板
+-   **接口路径**: `DELETE /api/attach-catalogue-template/{templateId}/{version}`
+-   **接口描述**: 删除指定的分类模板版本
 -   **请求方式**: DELETE
 
 #### 请求参数
 
 **路径参数**:
 
-| 参数名 | 类型 | 必填 | 描述    | 示例值                                 |
-| ------ | ---- | ---- | ------- | -------------------------------------- |
-| id     | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| 参数名     | 类型 | 必填 | 描述    | 示例值                                 |
+| ---------- | ---- | ---- | ------- | -------------------------------------- |
+| templateId | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| version    | int  | 是   | 版本号  | 1                                      |
 
 #### React Axios 调用示例
 
@@ -485,6 +489,7 @@ const deleteTemplate = async (templateId) => {
     "items": [
         {
             "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "templateId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
             "name": "合同文档模板",
             "description": "用于存储各类合同文档的模板",
             "tags": ["合同", "法律", "重要"],
@@ -574,7 +579,7 @@ const searchTemplatesHybrid = async (searchParams) => {
 
 #### 接口信息
 
--   **接口路径**: `GET /api/attach-catalogue-template/{id}/history`
+-   **接口路径**: `GET /api/attach-catalogue-template/{templateId}/history`
 -   **接口描述**: 获取指定模板的所有历史版本
 -   **请求方式**: GET
 -   **Content-Type**: application/json
@@ -583,9 +588,9 @@ const searchTemplatesHybrid = async (searchParams) => {
 
 **路径参数**:
 
-| 参数名 | 类型 | 必填 | 描述         | 示例值                                 |
-| ------ | ---- | ---- | ------------ | -------------------------------------- |
-| id     | Guid | 是   | 模板唯一标识 | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| 参数名     | 类型 | 必填 | 描述    | 示例值                                 |
+| ---------- | ---- | ---- | ------- | -------------------------------------- |
+| templateId | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
 
 #### 响应结果
 
@@ -596,6 +601,7 @@ const searchTemplatesHybrid = async (searchParams) => {
     "items": [
         {
             "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "templateId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
             "name": "合同文档模板",
             "description": "用于存储各类合同文档的模板",
             "tags": ["合同", "法律", "重要"],

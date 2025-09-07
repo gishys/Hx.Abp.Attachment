@@ -1778,6 +1778,22 @@
           }
         }
       },
+      "Volo.Abp/8.1.1": {
+        "type": "package",
+        "dependencies": {
+          "Volo.Abp.Core": "8.1.1"
+        },
+        "compile": {
+          "lib/net8.0/Volo.Abp.dll": {
+            "related": ".pdb;.xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/Volo.Abp.dll": {
+            "related": ".pdb;.xml"
+          }
+        }
+      },
       "Volo.Abp.Auditing/8.1.1": {
         "type": "package",
         "dependencies": {
@@ -6400,6 +6416,27 @@
         "timezoneconverter.nuspec"
       ]
     },
+    "Volo.Abp/8.1.1": {
+      "sha512": "fJMIRkY4B7/GnUWCo2mPr7ajvqjc2zoeyIdBOmfdhaspB/gpyhmRJMRXuZKJPmAziratySs56ITyOA65AVJ9zw==",
+      "type": "package",
+      "path": "volo.abp/8.1.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "NuGet.md",
+        "lib/net8.0/Volo.Abp.dll",
+        "lib/net8.0/Volo.Abp.pdb",
+        "lib/net8.0/Volo.Abp.xml",
+        "lib/netstandard2.0/Volo.Abp.dll",
+        "lib/netstandard2.0/Volo.Abp.pdb",
+        "lib/netstandard2.0/Volo.Abp.xml",
+        "lib/netstandard2.1/Volo.Abp.dll",
+        "lib/netstandard2.1/Volo.Abp.pdb",
+        "lib/netstandard2.1/Volo.Abp.xml",
+        "volo.abp.8.1.1.nupkg.sha512",
+        "volo.abp.nuspec"
+      ]
+    },
     "Volo.Abp.Auditing/8.1.1": {
       "sha512": "ft29kbMs2t07jApe3y9e2f9uExIigjIbPzaKkV1SuvdVyVn3TUiTNylrAsZB9WU6WDGgbQSz29/W3MC4EWSeOQ==",
       "type": "package",
@@ -7277,6 +7314,7 @@
       "Newtonsoft.Json >= 13.0.3",
       "Npgsql.EntityFrameworkCore.PostgreSQL >= 8.0.2",
       "Pgvector.EntityFrameworkCore >= 0.2.0",
+      "Volo.Abp >= 8.1.1",
       "Volo.Abp.Users.EntityFrameworkCore >= 8.1.1"
     ]
   },
@@ -7353,6 +7391,10 @@
           "Pgvector.EntityFrameworkCore": {
             "target": "Package",
             "version": "[0.2.0, )"
+          },
+          "Volo.Abp": {
+            "target": "Package",
+            "version": "[8.1.1, )"
           },
           "Volo.Abp.Users.EntityFrameworkCore": {
             "target": "Package",

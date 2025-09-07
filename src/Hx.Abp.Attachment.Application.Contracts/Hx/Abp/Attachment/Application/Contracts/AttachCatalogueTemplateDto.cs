@@ -7,6 +7,11 @@ namespace Hx.Abp.Attachment.Application.Contracts
     public class AttachCatalogueTemplateDto : AuditedEntityDto<Guid>
     {
         /// <summary>
+        /// 模板ID（业务标识，同一模板的所有版本共享相同的ID）
+        /// </summary>
+        public Guid TemplateId { get; set; }
+
+        /// <summary>
         /// 模板名称
         /// </summary>
         public string Name { get; set; } = string.Empty;

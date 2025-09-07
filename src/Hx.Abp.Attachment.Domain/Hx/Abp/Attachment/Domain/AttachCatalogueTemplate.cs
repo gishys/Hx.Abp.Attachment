@@ -8,6 +8,16 @@ namespace Hx.Abp.Attachment.Domain
     public class AttachCatalogueTemplate : FullAuditedAggregateRoot<Guid>
     {
         /// <summary>
+        /// 模板ID（业务标识，同一模板的所有版本共享相同的ID）
+        /// </summary>
+        public new virtual Guid Id { get; private set; }
+
+        /// <summary>
+        /// 版本号
+        /// </summary>
+        public virtual int Version { get; private set; }
+
+        /// <summary>
         /// 模板名称
         /// </summary>
         [NotNull]
@@ -25,10 +35,6 @@ namespace Hx.Abp.Attachment.Domain
         [CanBeNull]
         public virtual List<string>? Tags { get; private set; }
 
-        /// <summary>
-        /// 模板版本号
-        /// </summary>
-        public virtual int Version { get; private set; } = 1;
 
         /// <summary>
         /// 是否为最新版本
@@ -116,7 +122,8 @@ namespace Hx.Abp.Attachment.Domain
 #pragma warning restore CS8618 // 在退出构造函数时，不可为 null 的字段必须包含非 null 值。请考虑声明为可以为 null。
 
         public AttachCatalogueTemplate(
-            Guid id,
+            Guid templateId,
+            int version,
             [NotNull] string templateName,
             AttachReceiveType attachReceiveType,
             int sequenceNumber,
@@ -124,7 +131,6 @@ namespace Hx.Abp.Attachment.Domain
             bool isStatic = false,
             Guid? parentId = null,
             [CanBeNull] string? workflowConfig = null,
-            int version = 1,
             bool isLatest = true,
             FacetType facetType = FacetType.General,
             TemplatePurpose templatePurpose = TemplatePurpose.Classification,
@@ -134,7 +140,8 @@ namespace Hx.Abp.Attachment.Domain
             [CanBeNull] List<MetaField>? metaFields = null,
             [CanBeNull] string? templatePath = null)
         {
-            Id = id;
+            Id = templateId;
+            Version = version;
             TemplateName = Check.NotNullOrWhiteSpace(templateName, nameof(templateName));
             AttachReceiveType = attachReceiveType;
             SequenceNumber = sequenceNumber;
@@ -142,7 +149,6 @@ namespace Hx.Abp.Attachment.Domain
             IsStatic = isStatic;
             ParentId = parentId;
             WorkflowConfig = workflowConfig;
-            Version = version;
             IsLatest = isLatest;
             FacetType = facetType;
             TemplatePurpose = templatePurpose;
@@ -201,10 +207,37 @@ namespace Hx.Abp.Attachment.Domain
             }
         }
 
-        public virtual void SetVersion(int version, bool isLatest)
+        public virtual void SetIsLatest(bool isLatest)
         {
-            Version = version;
             IsLatest = isLatest;
+        }
+
+        /// <summary>
+        /// 创建新版本的模板
+        /// </summary>
+        /// <param name="newVersion">新版本号</param>
+        /// <param name="isLatest">是否是最新版本</param>
+        /// <returns>新版本的模板实例</returns>
+        public virtual AttachCatalogueTemplate CreateNewVersion(int newVersion, bool isLatest = true)
+        {
+            return new AttachCatalogueTemplate(
+                Id, // 使用 Id 获取模板ID
+                newVersion,
+                TemplateName,
+                AttachReceiveType,
+                SequenceNumber,
+                IsRequired,
+                IsStatic,
+                ParentId,
+                WorkflowConfig,
+                isLatest,
+                FacetType,
+                TemplatePurpose,
+                TextVector,
+                Description,
+                Tags,
+                MetaFields?.ToList(),
+                TemplatePath);
         }
 
         public virtual void ChangeParent(Guid? parentId, [CanBeNull] string? parentTemplatePath = null)
@@ -515,7 +548,7 @@ namespace Hx.Abp.Attachment.Domain
         }
 
         /// <summary>
-        /// 复制模板配置
+        /// 复制模板配置（不复制主键信息）
         /// </summary>
         /// <param name="source">源模板</param>
         public virtual void CopyFrom(AttachCatalogueTemplate source)
@@ -971,6 +1004,51 @@ namespace Hx.Abp.Attachment.Domain
 
             var parts = TemplatePath.Split('.');
             return string.Join(" → ", parts.Select(part => int.Parse(part).ToString()));
+        }
+
+        #endregion
+
+        #region 复合主键相关方法
+
+        /// <summary>
+        /// 获取复合主键
+        /// </summary>
+        /// <returns>复合主键对象</returns>
+        public override object[] GetKeys()
+        {
+            return [Id, Version];
+        }
+
+        /// <summary>
+        /// 重写Equals方法，支持复合主键比较
+        /// </summary>
+        /// <param name="obj">要比较的对象</param>
+        /// <returns>是否相等</returns>
+        public override bool Equals(object? obj)
+        {
+            if (obj is AttachCatalogueTemplate other)
+            {
+                return Id == other.Id && Version == other.Version;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 重写GetHashCode方法，支持复合主键
+        /// </summary>
+        /// <returns>哈希码</returns>
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Id, Version);
+        }
+
+        /// <summary>
+        /// 重写ToString方法
+        /// </summary>
+        /// <returns>字符串表示</returns>
+        public override string ToString()
+        {
+            return $"{Id}_{Version}";
         }
 
         #endregion

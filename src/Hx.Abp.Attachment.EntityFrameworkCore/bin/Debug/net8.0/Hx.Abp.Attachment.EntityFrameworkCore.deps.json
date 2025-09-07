@@ -14,6 +14,7 @@
           "Newtonsoft.Json": "13.0.3",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "8.0.2",
           "Pgvector.EntityFrameworkCore": "0.2.0",
+          "Volo.Abp": "8.1.1",
           "Volo.Abp.Users.EntityFrameworkCore": "8.1.1"
         },
         "runtime": {
@@ -1053,6 +1054,17 @@
           "lib/net6.0/TimeZoneConverter.dll": {
             "assemblyVersion": "6.1.0.0",
             "fileVersion": "6.1.0.0"
+          }
+        }
+      },
+      "Volo.Abp/8.1.1": {
+        "dependencies": {
+          "Volo.Abp.Core": "8.1.1"
+        },
+        "runtime": {
+          "lib/net8.0/Volo.Abp.dll": {
+            "assemblyVersion": "8.1.1.0",
+            "fileVersion": "8.1.1.0"
           }
         }
       },
@@ -2312,6 +2324,13 @@
       "sha512": "sha512-UGdtyKWJqXXinyvGB9X6NVoIYbTAidoZYmn3aXzxeEYC9+OL8vF36eDt1qjb6RqBkWDl4v7iE84ecI+dFhA80A==",
       "path": "timezoneconverter/6.1.0",
       "hashPath": "timezoneconverter.6.1.0.nupkg.sha512"
+    },
+    "Volo.Abp/8.1.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-fJMIRkY4B7/GnUWCo2mPr7ajvqjc2zoeyIdBOmfdhaspB/gpyhmRJMRXuZKJPmAziratySs56ITyOA65AVJ9zw==",
+      "path": "volo.abp/8.1.1",
+      "hashPath": "volo.abp.8.1.1.nupkg.sha512"
     },
     "Volo.Abp.Auditing/8.1.1": {
       "type": "package",

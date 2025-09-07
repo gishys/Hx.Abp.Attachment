@@ -1,4 +1,5 @@
 using Hx.Abp.Attachment.Domain;
+using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
@@ -28,16 +29,16 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                         "\"TEMPLATE_PURPOSE\" IN (1, 2, 3, 4, 99)");
                 });
             
-            // 主键配置
-            builder.HasKey(d => d.Id).HasName("PK_ATTACH_CATALOGUE_TEMPLATES");
+            // 复合主键配置
+            builder.HasKey(d => new { d.Id, d.Version }).HasName("PK_ATTACH_CATALOGUE_TEMPLATES");
 
             // 基础字段配置
+            builder.Property(d => d.Id).HasColumnName("TEMPLATE_ID");
             builder.Property(d => d.TemplateName).HasColumnName("TEMPLATE_NAME")
                 .HasMaxLength(256)
                 .UseCollation("und-x-icu")
                 .IsRequired();
 
-            builder.Property(d => d.Id).HasColumnName("ID");
             builder.Property(d => d.Version).HasColumnName("VERSION").HasDefaultValue(1);
             builder.Property(d => d.IsLatest).HasColumnName("IS_LATEST").HasDefaultValue(true);
             builder.Property(d => d.AttachReceiveType).HasColumnName("ATTACH_RECEIVE_TYPE");
@@ -145,13 +146,15 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.Property(p => p.DeletionTime).HasColumnName("DELETION_TIME");
 
             // 索引配置
-            builder.HasIndex(e => new { e.TemplateName, e.Version })
-                .HasDatabaseName("UK_ATTACH_CATALOGUE_TEMPLATES_NAME_VERSION")
-                .HasFilter("\"IS_DELETED\" = false")
+            // 模板名称唯一性约束（同一模板名称只能有一个最新版本）
+            builder.HasIndex(e => new { e.TemplateName, e.IsLatest })
+                .HasDatabaseName("UK_ATTACH_CATALOGUE_TEMPLATES_NAME_LATEST")
+                .HasFilter("\"IS_DELETED\" = false AND \"IS_LATEST\" = true")
                 .IsUnique();
 
-            builder.HasIndex(e => new { e.TemplateName, e.IsLatest })
-                .HasDatabaseName("IDX_ATTACH_CATALOGUE_TEMPLATES_NAME_LATEST")
+            // 模板ID和最新版本索引
+            builder.HasIndex(e => new { e.Id, e.IsLatest })
+                .HasDatabaseName("IDX_ATTACH_CATALOGUE_TEMPLATES_ID_LATEST")
                 .HasFilter("\"IS_DELETED\" = false AND \"IS_LATEST\" = true");
 
             builder.HasIndex(e => e.ParentId)
@@ -187,9 +190,12 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .HasFilter("\"IS_DELETED\" = false");
 
             // 关系配置
+            // 注意：由于使用复合主键，自引用关系需要特殊处理
+            // ParentId 引用的是 Id，而不是复合主键
             builder.HasMany(d => d.Children)
                 .WithOne()
                 .HasForeignKey(d => d.ParentId)
+                .HasPrincipalKey(d => d.Id) // 指定引用的是 Id 字段
                 .HasConstraintName("FK_ATTACH_CATALOGUE_TEMPLATES_PARENT")
                 .OnDelete(DeleteBehavior.Cascade);
         }

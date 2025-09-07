@@ -8,11 +8,38 @@ namespace Hx.Abp.Attachment.HttpApi
 {
     [RemoteService]
     [Route("api/attach-catalogue-template")]
-    public class AttachCatalogueTemplateController(IAttachCatalogueTemplateAppService attachCatalogueTemplateAppService) : IAttachCatalogueTemplateAppService
+    public class AttachCatalogueTemplateController(IAttachCatalogueTemplateAppService attachCatalogueTemplateAppService)
     {
         private readonly IAttachCatalogueTemplateAppService _attachCatalogueTemplateAppService = attachCatalogueTemplateAppService;
 
         public IAttachCatalogueTemplateAppService AttachCatalogueTemplateAppService => _attachCatalogueTemplateAppService;
+
+        /// <summary>
+        /// 获取模板（最新版本）
+        /// </summary>
+        [HttpGet("{id}")]
+        public virtual Task<AttachCatalogueTemplateDto> GetAsync(Guid id)
+        {
+            return AttachCatalogueTemplateAppService.GetAsync(id);
+        }
+
+        /// <summary>
+        /// 更新模板（最新版本）
+        /// </summary>
+        [HttpPut("{id}")]
+        public virtual Task<AttachCatalogueTemplateDto> UpdateAsync(Guid id, CreateUpdateAttachCatalogueTemplateDto input)
+        {
+            return AttachCatalogueTemplateAppService.UpdateAsync(id, input);
+        }
+
+        /// <summary>
+        /// 删除模板（所有版本）
+        /// </summary>
+        [HttpDelete("{id}")]
+        public virtual Task DeleteAsync(Guid id)
+        {
+            return AttachCatalogueTemplateAppService.DeleteAsync(id);
+        }
 
         /// <summary>
         /// 获取分类模板列表
@@ -26,10 +53,10 @@ namespace Hx.Abp.Attachment.HttpApi
         /// <summary>
         /// 根据ID获取分类模板
         /// </summary>
-        [HttpGet("{id}")]
-        public virtual Task<AttachCatalogueTemplateDto> GetAsync(Guid id)
+        [HttpGet("{templateId}/{version}")]
+        public virtual Task<AttachCatalogueTemplateDto> GetByVersionAsync(Guid templateId, int version)
         {
-            return AttachCatalogueTemplateAppService.GetAsync(id);
+            return AttachCatalogueTemplateAppService.GetByVersionAsync(templateId, version);
         }
 
         /// <summary>
@@ -44,19 +71,19 @@ namespace Hx.Abp.Attachment.HttpApi
         /// <summary>
         /// 更新分类模板
         /// </summary>
-        [HttpPut("{id}")]
-        public virtual Task<AttachCatalogueTemplateDto> UpdateAsync(Guid id, CreateUpdateAttachCatalogueTemplateDto input)
+        [HttpPut("{templateId}/{version}")]
+        public virtual Task<AttachCatalogueTemplateDto> UpdateVersionAsync(Guid templateId, int version, CreateUpdateAttachCatalogueTemplateDto input)
         {
-            return AttachCatalogueTemplateAppService.UpdateAsync(id, input);
+            return AttachCatalogueTemplateAppService.UpdateVersionAsync(templateId, version, input);
         }
 
         /// <summary>
         /// 删除分类模板
         /// </summary>
-        [HttpDelete("{id}")]
-        public virtual Task DeleteAsync(Guid id)
+        [HttpDelete("{templateId}/{version}")]
+        public virtual Task DeleteVersionAsync(Guid templateId, int version)
         {
-            return AttachCatalogueTemplateAppService.DeleteAsync(id);
+            return AttachCatalogueTemplateAppService.DeleteVersionAsync(templateId, version);
         }
 
         /// <summary>
@@ -72,10 +99,10 @@ namespace Hx.Abp.Attachment.HttpApi
         /// 获取模板结构（优化版本）
         /// 返回包含当前版本、历史版本和子模板树形结构的完整信息
         /// </summary>
-        [HttpGet("{id}/structure")]
-        public virtual Task<TemplateStructureDto> GetTemplateStructureAsync(Guid id, bool includeHistory = false)
+        [HttpGet("{templateId}/structure")]
+        public virtual Task<TemplateStructureDto> GetTemplateStructureAsync(Guid templateId, bool includeHistory = false)
         {
-            return AttachCatalogueTemplateAppService.GetTemplateStructureAsync(id, includeHistory);
+            return AttachCatalogueTemplateAppService.GetTemplateStructureAsync(templateId, includeHistory);
         }
 
         /// <summary>
@@ -90,37 +117,37 @@ namespace Hx.Abp.Attachment.HttpApi
         /// <summary>
         /// 创建新版本
         /// </summary>
-        [HttpPost("{id}/new-version")]
-        public virtual Task<AttachCatalogueTemplateDto> CreateNewVersionAsync(Guid id, CreateUpdateAttachCatalogueTemplateDto input)
+        [HttpPost("{templateId}/new-version")]
+        public virtual Task<AttachCatalogueTemplateDto> CreateNewVersionAsync(Guid templateId, CreateUpdateAttachCatalogueTemplateDto input)
         {
-            return AttachCatalogueTemplateAppService.CreateNewVersionAsync(id, input);
+            return AttachCatalogueTemplateAppService.CreateNewVersionAsync(templateId, input);
         }
 
         /// <summary>
         /// 设为最新版本
         /// </summary>
-        [HttpPut("{id}/set-latest")]
-        public virtual Task<AttachCatalogueTemplateDto> SetAsLatestVersionAsync(Guid id)
+        [HttpPut("{templateId}/{version}/set-latest")]
+        public virtual Task<AttachCatalogueTemplateDto> SetAsLatestVersionAsync(Guid templateId, int version)
         {
-            return AttachCatalogueTemplateAppService.SetAsLatestVersionAsync(id);
+            return AttachCatalogueTemplateAppService.SetAsLatestVersionAsync(templateId, version);
         }
 
         /// <summary>
         /// 获取模板历史
         /// </summary>
-        [HttpGet("{id}/history")]
-        public virtual Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplateHistoryAsync(Guid id)
+        [HttpGet("{templateId}/history")]
+        public virtual Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplateHistoryAsync(Guid templateId)
         {
-            return AttachCatalogueTemplateAppService.GetTemplateHistoryAsync(id);
+            return AttachCatalogueTemplateAppService.GetTemplateHistoryAsync(templateId);
         }
 
         /// <summary>
         /// 回滚到指定版本
         /// </summary>
-        [HttpPost("{id}/rollback")]
-        public virtual Task<AttachCatalogueTemplateDto> RollbackToVersionAsync(Guid id)
+        [HttpPost("{templateId}/{version}/rollback")]
+        public virtual Task<AttachCatalogueTemplateDto> RollbackToVersionAsync(Guid templateId, int version)
         {
-            return AttachCatalogueTemplateAppService.RollbackToVersionAsync(id);
+            return AttachCatalogueTemplateAppService.RollbackToVersionAsync(templateId, version);
         }
 
         // ============= 新增模板标识查询接口 =============

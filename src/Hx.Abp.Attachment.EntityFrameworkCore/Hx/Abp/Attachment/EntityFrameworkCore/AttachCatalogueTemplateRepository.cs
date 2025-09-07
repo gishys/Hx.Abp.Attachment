@@ -8,6 +8,7 @@ using RulesEngine.Interfaces;
 using RulesEngine.Models;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq.Dynamic.Core;
+using Volo.Abp;
 using System.Text;
 using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
@@ -877,49 +878,55 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         }
 
         // 新增版本管理方法
-        public async Task<AttachCatalogueTemplate?> GetLatestVersionAsync(string templateName)
+        public async Task<AttachCatalogueTemplate?> GetLatestVersionAsync(Guid templateId)
         {
             return await (await GetDbSetAsync())
-                .Where(t => t.TemplateName == templateName && t.IsLatest)
+                .Where(t => t.Id == templateId && t.IsLatest)
                 .OrderByDescending(t => t.Version)
                 .FirstOrDefaultAsync();
         }
 
-        public async Task<List<AttachCatalogueTemplate>> GetAllVersionsAsync(string templateName)
+        public async Task<List<AttachCatalogueTemplate>> GetAllVersionsAsync(Guid templateId)
         {
             return await (await GetDbSetAsync())
-                .Where(t => t.TemplateName == templateName)
+                .Where(t => t.Id == templateId)
                 .OrderByDescending(t => t.Version)
                 .ToListAsync();
         }
 
         public async Task<List<AttachCatalogueTemplate>> GetTemplateHistoryAsync(Guid templateId)
         {
-            var template = await GetAsync(templateId);
             return await (await GetDbSetAsync())
-                .Where(t => t.TemplateName == template.TemplateName)
+                .Where(t => t.Id == templateId)
                 .OrderByDescending(t => t.Version)
                 .ToListAsync();
         }
 
-        public async Task SetAsLatestVersionAsync(Guid templateId)
+        public async Task<AttachCatalogueTemplate?> GetByVersionAsync(Guid templateId, int version)
         {
-            var template = await GetAsync(templateId);
-            await SetAllOtherVersionsAsNotLatestAsync(template.TemplateName, templateId);
+            return await (await GetDbSetAsync())
+                .Where(t => t.Id == templateId && t.Version == version)
+                .FirstOrDefaultAsync();
+        }
 
-            template.SetVersion(template.Version, true);
+        public async Task SetAsLatestVersionAsync(Guid templateId, int version)
+        {
+            var template = await GetByVersionAsync(templateId, version) ?? throw new UserFriendlyException($"未找到模板 {templateId} 的版本 {version}");
+            await SetAllOtherVersionsAsNotLatestAsync(templateId, version);
+
+            template.SetIsLatest(true);
             await UpdateAsync(template, autoSave: true);
         }
 
-        public async Task SetAllOtherVersionsAsNotLatestAsync(string templateName, Guid excludeId)
+        public async Task SetAllOtherVersionsAsNotLatestAsync(Guid templateId, int excludeVersion)
         {
             var templates = await (await GetDbSetAsync())
-                .Where(t => t.TemplateName == templateName && t.Id != excludeId)
+                .Where(t => t.Id == templateId && t.Version != excludeVersion)
                 .ToListAsync();
 
             foreach (var template in templates)
             {
-                template.SetVersion(template.Version, false);
+                template.SetIsLatest(false);
                 await UpdateAsync(template);
             }
         }

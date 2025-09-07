@@ -17,9 +17,14 @@ namespace Hx.Abp.Attachment.Application.Contracts
 
         // 新增版本管理方法
         Task<AttachCatalogueTemplateDto> CreateNewVersionAsync(Guid baseTemplateId, CreateUpdateAttachCatalogueTemplateDto input);
-        Task<AttachCatalogueTemplateDto> SetAsLatestVersionAsync(Guid templateId);
+        Task<AttachCatalogueTemplateDto> SetAsLatestVersionAsync(Guid templateId, int version);
         Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplateHistoryAsync(Guid templateId);
-        Task<AttachCatalogueTemplateDto> RollbackToVersionAsync(Guid templateId);
+        Task<AttachCatalogueTemplateDto> RollbackToVersionAsync(Guid templateId, int version);
+        
+        // 新增基于版本的操作方法
+        Task<AttachCatalogueTemplateDto> GetByVersionAsync(Guid templateId, int version);
+        Task<AttachCatalogueTemplateDto> UpdateVersionAsync(Guid templateId, int version, CreateUpdateAttachCatalogueTemplateDto input);
+        Task DeleteVersionAsync(Guid templateId, int version);
 
         // 新增模板标识查询方法
         Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplatesByIdentifierAsync(

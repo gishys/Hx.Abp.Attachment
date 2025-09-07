@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "c2i7EoxhXPE=",
+  "dgSpecHash": "N8NVu2K9LRY=",
   "success": true,
   "projectFilePath": "D:\\work\\attachment\\src\\Hx.Abp.Attachment.EntityFrameworkCore\\Hx.Abp.Attachment.EntityFrameworkCore.csproj",
   "expectedPackageFiles": [
@@ -108,6 +108,7 @@
     "C:\\Users\\24383\\.nuget\\packages\\system.threading.tasks\\4.3.0\\system.threading.tasks.4.3.0.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\system.windows.extensions\\6.0.0\\system.windows.extensions.6.0.0.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\timezoneconverter\\6.1.0\\timezoneconverter.6.1.0.nupkg.sha512",
+    "C:\\Users\\24383\\.nuget\\packages\\volo.abp\\8.1.1\\volo.abp.8.1.1.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\volo.abp.auditing\\8.1.1\\volo.abp.auditing.8.1.1.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\volo.abp.auditing.contracts\\8.1.1\\volo.abp.auditing.contracts.8.1.1.nupkg.sha512",
     "C:\\Users\\24383\\.nuget\\packages\\volo.abp.backgroundworkers\\8.1.1\\volo.abp.backgroundworkers.8.1.1.nupkg.sha512",

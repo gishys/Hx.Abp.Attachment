@@ -29,7 +29,7 @@ namespace Hx.Abp.Attachment.Domain
             // 检查是否为最新版本
             if (!template.IsLatest)
             {
-                var latest = await _templateRepository.GetLatestVersionAsync(template.TemplateName);
+                var latest = await _templateRepository.GetLatestVersionAsync(template.Id);
                 if (latest != null && latest.Id != template.Id)
                 {
                     throw new BusinessException("Template:NotLatestVersion")
@@ -51,7 +51,7 @@ namespace Hx.Abp.Attachment.Domain
             var nextVersion = allVersions.Count > 0 ? allVersions.Max(t => t.Version) + 1 : 1;
 
             var newTemplate = new AttachCatalogueTemplate(
-                id: _guidGenerator.Create(),
+                templateId: _guidGenerator.Create(),
                 templateName: baseTemplate.TemplateName,
                 attachReceiveType: baseTemplate.AttachReceiveType,
                 sequenceNumber: baseTemplate.SequenceNumber,

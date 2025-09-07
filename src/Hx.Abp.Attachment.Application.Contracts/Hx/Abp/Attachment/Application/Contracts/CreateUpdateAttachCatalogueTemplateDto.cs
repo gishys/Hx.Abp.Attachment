@@ -9,6 +9,12 @@ namespace Hx.Abp.Attachment.Application.Contracts
     public class CreateUpdateAttachCatalogueTemplateDto : EntityDto<Guid>
     {
         /// <summary>
+        /// 模板ID（业务标识，同一模板的所有版本共享相同的ID）
+        /// 创建时可以为空，系统会自动生成
+        /// </summary>
+        public Guid? TemplateId { get; set; }
+
+        /// <summary>
         /// 模板名称
         /// </summary>
         [Required(ErrorMessage = "模板名称不能为空")]

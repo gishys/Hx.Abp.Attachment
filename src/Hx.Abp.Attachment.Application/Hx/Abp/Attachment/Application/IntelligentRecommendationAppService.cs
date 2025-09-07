@@ -1,6 +1,7 @@
 using Hx.Abp.Attachment.Application.Contracts;
 using Hx.Abp.Attachment.Domain;
 using Microsoft.Extensions.Logging;
+using System.Linq;
 using Volo.Abp;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Guids;
@@ -80,7 +81,7 @@ namespace Hx.Abp.Attachment.Application
                 _logger.LogInformation("开始基于现有模板生成新模板，基础模板：{baseTemplateId}", input.BaseTemplateId);
 
                 // 1. 获取基础模板
-                var baseTemplate = await _templateRepository.GetAsync(input.BaseTemplateId) ?? throw new UserFriendlyException("基础模板不存在");
+                var baseTemplate = await _templateRepository.GetLatestVersionAsync(input.BaseTemplateId) ?? throw new UserFriendlyException("基础模板不存在");
 
                 // 2. 生成新模板名称
                 var newTemplateName = string.IsNullOrWhiteSpace(input.NewName) 
@@ -90,6 +91,7 @@ namespace Hx.Abp.Attachment.Application
                 // 3. 创建新模板
                 var newTemplate = new AttachCatalogueTemplate(
                     _guidGenerator.Create(),
+                    1, // 新模板的版本号从1开始
                     newTemplateName,
                     baseTemplate.AttachReceiveType,
                     baseTemplate.SequenceNumber,
@@ -97,11 +99,14 @@ namespace Hx.Abp.Attachment.Application
                     baseTemplate.IsStatic,
                     input.InheritFromParent ? baseTemplate.Id : null,
                     baseTemplate.WorkflowConfig,
-                    baseTemplate.Version + 1,
-                    true,
+                    true, // isLatest
                     baseTemplate.FacetType,
                     baseTemplate.TemplatePurpose,
-                    baseTemplate.TextVector);
+                    baseTemplate.TextVector,
+                    baseTemplate.Description,
+                    baseTemplate.Tags,
+                    baseTemplate.MetaFields?.ToList(),
+                    baseTemplate.TemplatePath);
 
                 // 4. 保存新模板
                 await _templateRepository.InsertAsync(newTemplate);
@@ -333,7 +338,7 @@ namespace Hx.Abp.Attachment.Application
                     try
                     {
                         // 获取模板信息
-                        var template = await _templateRepository.GetAsync(templateId);
+                        var template = await _templateRepository.GetLatestVersionAsync(templateId);
                         if (template != null)
                         {
                             updateDetail.Name = template.TemplateName;
@@ -347,7 +352,7 @@ namespace Hx.Abp.Attachment.Application
                             updateDetail.IsSuccess = true;
 
                             // 获取更新后的信息
-                            var updatedTemplate = await _templateRepository.GetAsync(templateId);
+                            var updatedTemplate = await _templateRepository.GetLatestVersionAsync(templateId);
                             if (updatedTemplate != null)
                             {
                                 updateDetail.NewWorkflowConfig = updatedTemplate.WorkflowConfig;

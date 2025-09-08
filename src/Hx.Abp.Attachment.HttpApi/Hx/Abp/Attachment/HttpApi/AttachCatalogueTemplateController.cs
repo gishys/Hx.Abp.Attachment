@@ -53,10 +53,10 @@ namespace Hx.Abp.Attachment.HttpApi
         /// <summary>
         /// 根据ID获取分类模板
         /// </summary>
-        [HttpGet("{templateId}/{version}")]
-        public virtual Task<AttachCatalogueTemplateDto> GetByVersionAsync(Guid templateId, int version)
+        [HttpGet("{id}/{version}")]
+        public virtual Task<AttachCatalogueTemplateDto> GetByVersionAsync(Guid id, int version)
         {
-            return AttachCatalogueTemplateAppService.GetByVersionAsync(templateId, version);
+            return AttachCatalogueTemplateAppService.GetByVersionAsync(id, version);
         }
 
         /// <summary>
@@ -71,19 +71,19 @@ namespace Hx.Abp.Attachment.HttpApi
         /// <summary>
         /// 更新分类模板
         /// </summary>
-        [HttpPut("{templateId}/{version}")]
-        public virtual Task<AttachCatalogueTemplateDto> UpdateVersionAsync(Guid templateId, int version, CreateUpdateAttachCatalogueTemplateDto input)
+        [HttpPut("{id}/{version}")]
+        public virtual Task<AttachCatalogueTemplateDto> UpdateVersionAsync(Guid id, int version, CreateUpdateAttachCatalogueTemplateDto input)
         {
-            return AttachCatalogueTemplateAppService.UpdateVersionAsync(templateId, version, input);
+            return AttachCatalogueTemplateAppService.UpdateVersionAsync(id, version, input);
         }
 
         /// <summary>
         /// 删除分类模板
         /// </summary>
-        [HttpDelete("{templateId}/{version}")]
-        public virtual Task DeleteVersionAsync(Guid templateId, int version)
+        [HttpDelete("{id}/{version}")]
+        public virtual Task DeleteVersionAsync(Guid id, int version)
         {
-            return AttachCatalogueTemplateAppService.DeleteVersionAsync(templateId, version);
+            return AttachCatalogueTemplateAppService.DeleteVersionAsync(id, version);
         }
 
         /// <summary>
@@ -99,10 +99,10 @@ namespace Hx.Abp.Attachment.HttpApi
         /// 获取模板结构（优化版本）
         /// 返回包含当前版本、历史版本和子模板树形结构的完整信息
         /// </summary>
-        [HttpGet("{templateId}/structure")]
-        public virtual Task<TemplateStructureDto> GetTemplateStructureAsync(Guid templateId, bool includeHistory = false)
+        [HttpGet("{id}/structure")]
+        public virtual Task<TemplateStructureDto> GetTemplateStructureAsync(Guid id, bool includeHistory = false)
         {
-            return AttachCatalogueTemplateAppService.GetTemplateStructureAsync(templateId, includeHistory);
+            return AttachCatalogueTemplateAppService.GetTemplateStructureAsync(id, includeHistory);
         }
 
         /// <summary>
@@ -117,37 +117,37 @@ namespace Hx.Abp.Attachment.HttpApi
         /// <summary>
         /// 创建新版本
         /// </summary>
-        [HttpPost("{templateId}/new-version")]
-        public virtual Task<AttachCatalogueTemplateDto> CreateNewVersionAsync(Guid templateId, CreateUpdateAttachCatalogueTemplateDto input)
+        [HttpPost("{id}/new-version")]
+        public virtual Task<AttachCatalogueTemplateDto> CreateNewVersionAsync(Guid id, CreateUpdateAttachCatalogueTemplateDto input)
         {
-            return AttachCatalogueTemplateAppService.CreateNewVersionAsync(templateId, input);
+            return AttachCatalogueTemplateAppService.CreateNewVersionAsync(id, input);
         }
 
         /// <summary>
         /// 设为最新版本
         /// </summary>
-        [HttpPut("{templateId}/{version}/set-latest")]
-        public virtual Task<AttachCatalogueTemplateDto> SetAsLatestVersionAsync(Guid templateId, int version)
+        [HttpPut("{id}/{version}/set-latest")]
+        public virtual Task<AttachCatalogueTemplateDto> SetAsLatestVersionAsync(Guid id, int version)
         {
-            return AttachCatalogueTemplateAppService.SetAsLatestVersionAsync(templateId, version);
+            return AttachCatalogueTemplateAppService.SetAsLatestVersionAsync(id, version);
         }
 
         /// <summary>
         /// 获取模板历史
         /// </summary>
-        [HttpGet("{templateId}/history")]
-        public virtual Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplateHistoryAsync(Guid templateId)
+        [HttpGet("{id}/history")]
+        public virtual Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplateHistoryAsync(Guid id)
         {
-            return AttachCatalogueTemplateAppService.GetTemplateHistoryAsync(templateId);
+            return AttachCatalogueTemplateAppService.GetTemplateHistoryAsync(id);
         }
 
         /// <summary>
         /// 回滚到指定版本
         /// </summary>
-        [HttpPost("{templateId}/{version}/rollback")]
-        public virtual Task<AttachCatalogueTemplateDto> RollbackToVersionAsync(Guid templateId, int version)
+        [HttpPost("{id}/{version}/rollback")]
+        public virtual Task<AttachCatalogueTemplateDto> RollbackToVersionAsync(Guid id, int version)
         {
-            return AttachCatalogueTemplateAppService.RollbackToVersionAsync(templateId, version);
+            return AttachCatalogueTemplateAppService.RollbackToVersionAsync(id, version);
         }
 
         // ============= 新增模板标识查询接口 =============
@@ -291,64 +291,64 @@ namespace Hx.Abp.Attachment.HttpApi
         /// <summary>
         /// 获取模板的元数据字段列表
         /// </summary>
-        [HttpGet("{templateId}/meta-fields")]
-        public virtual Task<ListResultDto<MetaFieldDto>> GetTemplateMetaFieldsAsync(Guid templateId)
+        [HttpGet("{id}/meta-fields")]
+        public virtual Task<ListResultDto<MetaFieldDto>> GetTemplateMetaFieldsAsync(Guid id)
         {
-            return AttachCatalogueTemplateAppService.GetTemplateMetaFieldsAsync(templateId);
+            return AttachCatalogueTemplateAppService.GetTemplateMetaFieldsAsync(id);
         }
 
         /// <summary>
         /// 添加元数据字段到模板
         /// </summary>
-        [HttpPost("{templateId}/meta-fields")]
-        public virtual Task<MetaFieldDto> AddMetaFieldToTemplateAsync(Guid templateId, [FromBody] CreateUpdateMetaFieldDto input)
+        [HttpPost("{id}/meta-fields")]
+        public virtual Task<MetaFieldDto> AddMetaFieldToTemplateAsync(Guid id, [FromBody] CreateUpdateMetaFieldDto input)
         {
-            return AttachCatalogueTemplateAppService.AddMetaFieldToTemplateAsync(templateId, input);
+            return AttachCatalogueTemplateAppService.AddMetaFieldToTemplateAsync(id, input);
         }
 
         /// <summary>
         /// 更新模板的元数据字段
         /// </summary>
-        [HttpPut("{templateId}/meta-fields/{fieldKey}")]
-        public virtual Task<MetaFieldDto> UpdateTemplateMetaFieldAsync(Guid templateId, string fieldKey, [FromBody] CreateUpdateMetaFieldDto input)
+        [HttpPut("{id}/meta-fields/{fieldKey}")]
+        public virtual Task<MetaFieldDto> UpdateTemplateMetaFieldAsync(Guid id, string fieldKey, [FromBody] CreateUpdateMetaFieldDto input)
         {
-            return AttachCatalogueTemplateAppService.UpdateTemplateMetaFieldAsync(templateId, fieldKey, input);
+            return AttachCatalogueTemplateAppService.UpdateTemplateMetaFieldAsync(id, fieldKey, input);
         }
 
         /// <summary>
         /// 从模板移除元数据字段
         /// </summary>
-        [HttpDelete("{templateId}/meta-fields/{fieldKey}")]
-        public virtual Task RemoveMetaFieldFromTemplateAsync(Guid templateId, string fieldKey)
+        [HttpDelete("{id}/meta-fields/{fieldKey}")]
+        public virtual Task RemoveMetaFieldFromTemplateAsync(Guid id, string fieldKey)
         {
-            return AttachCatalogueTemplateAppService.RemoveMetaFieldFromTemplateAsync(templateId, fieldKey);
+            return AttachCatalogueTemplateAppService.RemoveMetaFieldFromTemplateAsync(id, fieldKey);
         }
 
         /// <summary>
         /// 获取模板的元数据字段
         /// </summary>
-        [HttpGet("{templateId}/meta-fields/{fieldKey}")]
-        public virtual Task<MetaFieldDto?> GetTemplateMetaFieldAsync(Guid templateId, string fieldKey)
+        [HttpGet("{id}/meta-fields/{fieldKey}")]
+        public virtual Task<MetaFieldDto?> GetTemplateMetaFieldAsync(Guid id, string fieldKey)
         {
-            return AttachCatalogueTemplateAppService.GetTemplateMetaFieldAsync(templateId, fieldKey);
+            return AttachCatalogueTemplateAppService.GetTemplateMetaFieldAsync(id, fieldKey);
         }
 
         /// <summary>
         /// 根据条件查询元数据字段
         /// </summary>
-        [HttpPost("{templateId}/meta-fields/query")]
-        public virtual Task<ListResultDto<MetaFieldDto>> QueryTemplateMetaFieldsAsync(Guid templateId, [FromBody] MetaFieldQueryDto input)
+        [HttpPost("{id}/meta-fields/query")]
+        public virtual Task<ListResultDto<MetaFieldDto>> QueryTemplateMetaFieldsAsync(Guid id, [FromBody] MetaFieldQueryDto input)
         {
-            return AttachCatalogueTemplateAppService.QueryTemplateMetaFieldsAsync(templateId, input);
+            return AttachCatalogueTemplateAppService.QueryTemplateMetaFieldsAsync(id, input);
         }
 
         /// <summary>
         /// 批量更新元数据字段顺序
         /// </summary>
-        [HttpPut("{templateId}/meta-fields/order")]
-        public virtual Task UpdateMetaFieldsOrderAsync(Guid templateId, [FromBody] List<string> fieldKeys)
+        [HttpPut("{id}/meta-fields/order")]
+        public virtual Task UpdateMetaFieldsOrderAsync(Guid id, [FromBody] List<string> fieldKeys)
         {
-            return AttachCatalogueTemplateAppService.UpdateMetaFieldsOrderAsync(templateId, fieldKeys);
+            return AttachCatalogueTemplateAppService.UpdateMetaFieldsOrderAsync(id, fieldKeys);
         }
 
         // ============= 模板路径相关接口 =============

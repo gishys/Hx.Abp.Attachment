@@ -33,7 +33,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.HasKey(d => new { d.Id, d.Version }).HasName("PK_ATTACH_CATALOGUE_TEMPLATES");
 
             // 基础字段配置
-            builder.Property(d => d.Id).HasColumnName("TEMPLATE_ID");
+            builder.Property(d => d.Id).HasColumnName("ID");
             builder.Property(d => d.TemplateName).HasColumnName("TEMPLATE_NAME")
                 .HasMaxLength(256)
                 .UseCollation("und-x-icu")
@@ -47,6 +47,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.Property(d => d.SequenceNumber).HasColumnName("SEQUENCE_NUMBER").HasDefaultValue(0);
             builder.Property(d => d.IsStatic).HasColumnName("IS_STATIC").HasDefaultValue(false);
             builder.Property(d => d.ParentId).HasColumnName("PARENT_ID");
+            builder.Property(d => d.ParentVersion).HasColumnName("PARENT_VERSION");
 
             // 模板路径字段配置
             builder.Property(d => d.TemplatePath).HasColumnName("TEMPLATE_PATH")
@@ -72,10 +73,6 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .HasMaxLength(1000)
                 .UseCollation("und-x-icu")
                 .IsRequired(false);
-
-            builder.Property(d => d.Tags).HasColumnName("TAGS")
-                .HasColumnType("jsonb")
-                .HasDefaultValueSql("'[]'::jsonb");
 
             // Tags字段配置（JSONB格式）
 #pragma warning disable CS8600 // 将 null 字面量或可能为 null 的值转换为非 null 类型。
@@ -191,11 +188,11 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
             // 关系配置
             // 注意：由于使用复合主键，自引用关系需要特殊处理
-            // ParentId 引用的是 Id，而不是复合主键
+            // 使用 ParentId 和 ParentVersion 作为外键，引用复合主键
             builder.HasMany(d => d.Children)
                 .WithOne()
-                .HasForeignKey(d => d.ParentId)
-                .HasPrincipalKey(d => d.Id) // 指定引用的是 Id 字段
+                .HasForeignKey(d => new { d.ParentId, d.ParentVersion })
+                .HasPrincipalKey(d => new { d.Id, d.Version }) // 引用复合主键
                 .HasConstraintName("FK_ATTACH_CATALOGUE_TEMPLATES_PARENT")
                 .OnDelete(DeleteBehavior.Cascade);
         }

@@ -22,6 +22,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
     public class TemplateSearchResultDto
     {
         public Guid Id { get; set; }
+        public int Version { get; set; }
         public string TemplateName { get; set; } = string.Empty;
         public string? Description { get; set; }
         public FacetType FacetType { get; set; }
@@ -59,7 +60,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         IDbContextProvider<AttachmentDbContext> dbContextProvider,
         IRulesEngine rulesEngine,
         IGuidGenerator guidGenerator) :
-        EfCoreRepository<AttachmentDbContext, AttachCatalogueTemplate, Guid>(dbContextProvider),
+        EfCoreRepository<AttachmentDbContext, AttachCatalogueTemplate>(dbContextProvider),
         IAttachCatalogueTemplateRepository
     {
         private readonly IRulesEngine _rulesEngine = rulesEngine;
@@ -866,6 +867,21 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         {
             var queryable = (await GetDbSetAsync())
                 .Where(t => t.ParentId == parentId);
+
+            if (onlyLatest)
+            {
+                queryable = queryable.Where(t => t.IsLatest);
+            }
+
+            return await queryable
+                .OrderBy(t => t.SequenceNumber)
+                .ToListAsync();
+        }
+
+        public async Task<List<AttachCatalogueTemplate>> GetChildrenByParentAsync(Guid parentId, int parentVersion, bool onlyLatest = true)
+        {
+            var queryable = (await GetDbSetAsync())
+                .Where(t => t.ParentId == parentId && t.ParentVersion == parentVersion);
 
             if (onlyLatest)
             {
@@ -1760,7 +1776,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                         FROM fulltext_scoring fs
                     )
                     SELECT 
-                        ""ID"" as ""Id"", ""TEMPLATE_NAME"" as ""TemplateName"", ""DESCRIPTION"" as ""Description"", 
+                        ""ID"" as ""Id"", ""VERSION"" as ""Version"", ""TEMPLATE_NAME"" as ""TemplateName"", ""DESCRIPTION"" as ""Description"", 
                         ""FACET_TYPE"" as ""FacetType"", ""TEMPLATE_PURPOSE"" as ""TemplatePurpose"",
                         ""VECTOR_DIMENSION"" as ""VectorDimension"", ""IS_LATEST"" as ""IsLatest"", ""IS_DELETED"" as ""IsDeleted"", 
                         ""CREATION_TIME"" as ""CreationTime"", ""CREATOR_ID"" as ""CreatorId"", 
@@ -1803,7 +1819,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 var results = new List<AttachCatalogueTemplate>();
                 foreach (var rawResult in rawResults)
                 {
-                    var template = await dbContext.Set<AttachCatalogueTemplate>().FindAsync(rawResult.Id);
+                    var template = await dbContext.Set<AttachCatalogueTemplate>().FindAsync(rawResult.Id, rawResult.Version);
                     if (template != null)
                     {
                         // 存储评分信息到 ExtraProperties
@@ -2009,7 +2025,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                         FROM fulltext_scoring fs
                     )
                     SELECT 
-                        ""ID"" as ""Id"", ""TEMPLATE_NAME"" as ""TemplateName"", ""DESCRIPTION"" as ""Description"", 
+                        ""ID"" as ""Id"", ""VERSION"" as ""Version"", ""TEMPLATE_NAME"" as ""TemplateName"", ""DESCRIPTION"" as ""Description"", 
                         ""FACET_TYPE"" as ""FacetType"", ""TEMPLATE_PURPOSE"" as ""TemplatePurpose"",
                         ""VECTOR_DIMENSION"" as ""VectorDimension"", ""IS_LATEST"" as ""IsLatest"", ""IS_DELETED"" as ""IsDeleted"", 
                         ""CREATION_TIME"" as ""CreationTime"", ""CREATOR_ID"" as ""CreatorId"", 
@@ -2053,7 +2069,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 var results = new List<AttachCatalogueTemplate>();
                 foreach (var rawResult in rawResults)
                 {
-                    var template = await dbContext.Set<AttachCatalogueTemplate>().FindAsync(rawResult.Id);
+                    var template = await dbContext.Set<AttachCatalogueTemplate>().FindAsync(rawResult.Id, rawResult.Version);
                     if (template != null)
                     {
                         // 存储评分信息到 ExtraProperties

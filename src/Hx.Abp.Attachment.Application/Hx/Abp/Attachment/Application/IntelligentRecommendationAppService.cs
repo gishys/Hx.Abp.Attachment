@@ -98,6 +98,7 @@ namespace Hx.Abp.Attachment.Application
                     baseTemplate.IsRequired,
                     baseTemplate.IsStatic,
                     input.InheritFromParent ? baseTemplate.Id : null,
+                    input.InheritFromParent ? baseTemplate.ParentVersion : null,
                     baseTemplate.WorkflowConfig,
                     true, // isLatest
                     baseTemplate.FacetType,

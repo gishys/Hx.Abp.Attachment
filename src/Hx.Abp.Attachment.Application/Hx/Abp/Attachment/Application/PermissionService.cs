@@ -5,34 +5,26 @@ using Microsoft.Extensions.Logging;
 using Volo.Abp;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Authorization.Permissions;
-using Volo.Abp.Domain.Repositories;
 
 namespace Hx.Abp.Attachment.Application
 {
     /// <summary>
     /// 权限服务实现 - 基于ABP vNext权限系统简化实现
     /// </summary>
-    public class PermissionService : ApplicationService, IPermissionService
+    public class PermissionService(
+        IAttachCatalogueTemplateRepository templateRepository,
+        IPermissionChecker permissionChecker,
+        ILogger<PermissionService> logger) : ApplicationService, IPermissionService
     {
-        private readonly IRepository<AttachCatalogueTemplate, Guid> _templateRepository;
-        private readonly IPermissionChecker _permissionChecker;
-        private readonly ILogger<PermissionService> _logger;
-
-        public PermissionService(
-            IRepository<AttachCatalogueTemplate, Guid> templateRepository,
-            IPermissionChecker permissionChecker,
-            ILogger<PermissionService> logger)
-        {
-            _templateRepository = templateRepository;
-            _permissionChecker = permissionChecker;
-            _logger = logger;
-        }
+        private readonly IAttachCatalogueTemplateRepository _templateRepository = templateRepository;
+        private readonly IPermissionChecker _permissionChecker = permissionChecker;
+        private readonly ILogger<PermissionService> _logger = logger;
 
         public async Task<bool> HasPermissionAsync(Guid userId, Guid templateId, PermissionAction action)
         {
             try
             {
-                var template = await _templateRepository.GetAsync(templateId);
+                var template = await _templateRepository.GetLatestVersionAsync(templateId);
                 if (template == null) return false;
 
                 // 首先检查ABP内置权限
@@ -97,9 +89,7 @@ namespace Hx.Abp.Attachment.Application
         {
             try
             {
-                var template = await _templateRepository.GetAsync(templateId);
-                if (template == null) throw new UserFriendlyException($"模板不存在: {templateId}");
-
+                var template = await _templateRepository.GetLatestVersionAsync(templateId) ?? throw new UserFriendlyException($"模板不存在: {templateId}");
                 var result = new List<AttachCatalogueTemplatePermissionResultDto>();
                 
                 if (template.Permissions != null)
@@ -123,8 +113,7 @@ namespace Hx.Abp.Attachment.Application
         {
             try
             {
-                var template = await _templateRepository.GetAsync(templateId);
-                if (template == null) throw new UserFriendlyException($"模板不存在: {templateId}");
+                var template = await _templateRepository.GetLatestVersionAsync(templateId) ?? throw new UserFriendlyException($"模板不存在: {templateId}");
 
                 // 清空现有权限
                 template.Permissions?.Clear();
@@ -152,9 +141,7 @@ namespace Hx.Abp.Attachment.Application
         {
             try
             {
-                var template = await _templateRepository.GetAsync(templateId);
-                if (template == null) throw new UserFriendlyException($"模板不存在: {templateId}");
-
+                var template = await _templateRepository.GetLatestVersionAsync(templateId) ?? throw new UserFriendlyException($"模板不存在: {templateId}");
                 var permission = MapToDomainEntity(permissionDto);
                 template.AddPermission(permission);
                 await _templateRepository.UpdateAsync(template);
@@ -170,8 +157,7 @@ namespace Hx.Abp.Attachment.Application
         {
             try
             {
-                var template = await _templateRepository.GetAsync(templateId);
-                if (template == null) throw new UserFriendlyException($"模板不存在: {templateId}");
+                var template = await _templateRepository.GetLatestVersionAsync(templateId) ?? throw new UserFriendlyException($"模板不存在: {templateId}");
 
                 // 查找并更新权限
                 var existingPermission = template.Permissions?.FirstOrDefault(p => p.GetHashCode() == permissionId.GetHashCode());
@@ -202,8 +188,7 @@ namespace Hx.Abp.Attachment.Application
         {
             try
             {
-                var template = await _templateRepository.GetAsync(templateId);
-                if (template == null) throw new UserFriendlyException($"模板不存在: {templateId}");
+                var template = await _templateRepository.GetLatestVersionAsync(templateId) ?? throw new UserFriendlyException($"模板不存在: {templateId}");
 
                 // 查找并移除权限
                 var permission = template.Permissions?.FirstOrDefault(p => p.GetHashCode() == permissionId.GetHashCode());
@@ -228,10 +213,8 @@ namespace Hx.Abp.Attachment.Application
         {
             try
             {
-                var template = await _templateRepository.GetAsync(templateId);
-                if (template == null) throw new UserFriendlyException($"模板不存在: {templateId}");
-
-                return template.GetPermissionSummary();
+                var template = await _templateRepository.GetLatestVersionAsync(templateId);
+                return template == null ? throw new UserFriendlyException($"模板不存在: {templateId}") : template.GetPermissionSummary();
             }
             catch (Exception ex)
             {
@@ -263,14 +246,14 @@ namespace Hx.Abp.Attachment.Application
             catch (Exception ex)
             {
                 _logger.LogError(ex, "检查权限冲突时发生错误");
-                return new List<string> { $"检查权限冲突时发生错误: {ex.Message}" };
+                return [$"检查权限冲突时发生错误: {ex.Message}"];
             }
         }
 
         /// <summary>
         /// 根据权限操作获取ABP权限名称
         /// </summary>
-        private string GetPermissionName(PermissionAction action)
+        private static string GetPermissionName(PermissionAction action)
         {
             return action switch
             {
@@ -293,7 +276,7 @@ namespace Hx.Abp.Attachment.Application
         /// <summary>
         /// 将DTO映射到领域实体
         /// </summary>
-        private AttachCatalogueTemplatePermission MapToDomainEntity(CreateAttachCatalogueTemplatePermissionDto dto)
+        private static AttachCatalogueTemplatePermission MapToDomainEntity(CreateAttachCatalogueTemplatePermissionDto dto)
         {
             return new AttachCatalogueTemplatePermission(
                 dto.PermissionType,
@@ -310,7 +293,7 @@ namespace Hx.Abp.Attachment.Application
         /// <summary>
         /// 将DTO映射到领域实体
         /// </summary>
-        private AttachCatalogueTemplatePermission MapToDomainEntity(UpdateAttachCatalogueTemplatePermissionDto dto)
+        private static AttachCatalogueTemplatePermission MapToDomainEntity(UpdateAttachCatalogueTemplatePermissionDto dto)
         {
             return new AttachCatalogueTemplatePermission(
                 dto.PermissionType,
@@ -327,7 +310,7 @@ namespace Hx.Abp.Attachment.Application
         /// <summary>
         /// 将领域实体映射到结果DTO
         /// </summary>
-        private AttachCatalogueTemplatePermissionResultDto MapToResultDto(AttachCatalogueTemplatePermission permission)
+        private static AttachCatalogueTemplatePermissionResultDto MapToResultDto(AttachCatalogueTemplatePermission permission)
         {
             return new AttachCatalogueTemplatePermissionResultDto
             {

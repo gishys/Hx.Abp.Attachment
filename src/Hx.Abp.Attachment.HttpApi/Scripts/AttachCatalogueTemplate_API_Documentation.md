@@ -21,7 +21,7 @@
 
 | 参数名            | 类型                                   | 必填 | 描述                  | 示例值                                               |
 | ----------------- | -------------------------------------- | ---- | --------------------- | ---------------------------------------------------- |
-| templateId        | Guid?                                  | 否   | 模板 ID（业务标识）   | "3fa85f64-5717-4562-b3fc-2c963f66afa6"               |
+| id                | Guid?                                  | 否   | 模板 ID（业务标识）   | "3fa85f64-5717-4562-b3fc-2c963f66afa6"               |
 | name              | string                                 | 是   | 模板名称              | "合同文档模板"                                       |
 | description       | string                                 | 否   | 模板描述              | "用于存储各类合同文档的模板"                         |
 | tags              | string[]                               | 否   | 标签数组              | ["合同", "法律", "重要"]                             |
@@ -31,6 +31,7 @@
 | sequenceNumber    | int                                    | 是   | 排序号                | 100                                                  |
 | isStatic          | boolean                                | 是   | 是否静态模板          | false                                                |
 | parentId          | Guid?                                  | 否   | 父模板 ID             | "3fa85f64-5717-4562-b3fc-2c963f66afa6"               |
+| parentVersion     | int?                                   | 否   | 父模板版本号          | 1                                                    |
 | templatePath      | string                                 | 否   | 模板路径              | "00001.00002"                                        |
 | facetType         | FacetType                              | 是   | 分面类型              | 0                                                    |
 | templatePurpose   | TemplatePurpose                        | 是   | 模板用途              | 1                                                    |
@@ -44,19 +45,34 @@
 | 字段名 | 类型 | 必填 | 说明 | 示例值 |
 |------------|----------------|------|--------------|---------------------------|
 | id | Guid? | 否 | 权限 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
-| roleName | string | 是 | 角色名称 | "Admin" |
+| permissionType | string | 是 | 权限类型 | "Role" |
+| permissionTarget | string | 是 | 权限目标 | "Admin" |
 | action | PermissionAction | 是 | 权限动作 | 1 |
-| effect | PermissionEffect | 是 | 权限效果 | 0 |
+| effect | PermissionEffect | 是 | 权限效果 | 1 |
+| attributeConditions | string? | 否 | 属性条件(JSON 格式) | "{\"department\":\"IT\"}" |
+| isEnabled | boolean | 是 | 是否启用 | true |
+| effectiveTime | DateTime? | 否 | 生效时间 | "2024-01-01T00:00:00Z" |
+| expirationTime | DateTime? | 否 | 失效时间 | "2024-12-31T23:59:59Z" |
+| description | string? | 否 | 权限描述 | "管理员权限" |
 
 **CreateUpdateMetaFieldDto**:
 | 字段名 | 类型 | 必填 | 说明 | 示例值 |
 |--------------|--------|------|--------------|---------------------------|
-| id | Guid? | 否 | 字段 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa8" |
-| fieldName | string | 是 | 字段名称 | "身份证号" |
-| fieldType | string | 是 | 字段类型 | "string" |
+| entityType | string | 是 | 实体类型 | "Project" |
+| fieldKey | string | 是 | 字段键名 | "project_name" |
+| fieldName | string | 是 | 字段显示名称 | "项目名称" |
+| dataType | string | 是 | 数据类型 | "string" |
+| unit | string? | 否 | 单位 | "万元" |
 | isRequired | bool | 是 | 是否必填 | true |
-| defaultValue | string | 否 | 默认值 | "" |
-| description | string | 否 | 字段描述 | "身份证号码" |
+| regexPattern | string? | 否 | 正则表达式模式 | "^[A-Za-z0-9]+$" |
+| options | string? | 否 | 枚举选项(JSON 格式) | "[\"选项 1\",\"选项 2\"]" |
+| description | string? | 否 | 字段描述 | "项目名称字段" |
+| defaultValue | string? | 否 | 默认值 | "" |
+| order | int | 是 | 字段顺序 | 1 |
+| isEnabled | bool | 是 | 是否启用 | true |
+| group | string? | 否 | 字段分组 | "基本信息" |
+| validationRules | string? | 否 | 验证规则(JSON 格式) | "{\"minLength\":1,\"maxLength\":100}" |
+| tags | string[] | 否 | 元数据标签 | ["重要", "必填"] |
 
 #### 枚举值说明
 
@@ -91,17 +107,25 @@
 
 **PermissionAction**:
 
--   0: 查看
--   1: 创建
--   2: 编辑
--   3: 删除
--   4: 下载
--   5: 上传
+-   1: 查看
+-   2: 创建
+-   3: 编辑
+-   4: 删除
+-   5: 审批
+-   6: 发布
+-   7: 归档
+-   8: 导出
+-   9: 导入
+-   10: 管理权限
+-   11: 管理配置
+-   12: 查看审计日志
+-   99: 所有权限
 
 **PermissionEffect**:
 
--   0: 允许
--   1: 拒绝
+-   1: 允许
+-   2: 拒绝
+-   3: 继承
 
 #### 响应结果
 
@@ -119,6 +143,7 @@
     "sequenceNumber": 100,
     "isStatic": false,
     "parentId": null,
+    "parentVersion": null,
     "templatePath": "00001",
     "facetType": 0,
     "templatePurpose": 1,
@@ -126,33 +151,67 @@
     "permissions": [
         {
             "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-            "roleName": "Admin",
-            "action": 1,
-            "effect": 0
+            "permissionType": "Role",
+            "permissionTarget": "Admin",
+            "action": 2,
+            "effect": 1,
+            "attributeConditions": null,
+            "isEnabled": true,
+            "effectiveTime": "2024-01-01T00:00:00Z",
+            "expirationTime": "2024-12-31T23:59:59Z",
+            "description": "管理员权限"
         },
         {
             "id": null,
-            "roleName": "User",
-            "action": 0,
-            "effect": 0
+            "permissionType": "Role",
+            "permissionTarget": "User",
+            "action": 1,
+            "effect": 1,
+            "attributeConditions": null,
+            "isEnabled": true,
+            "effectiveTime": null,
+            "expirationTime": null,
+            "description": "用户查看权限"
         }
     ],
     "metaFields": [
         {
-            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa8",
-            "fieldName": "身份证号",
-            "fieldType": "string",
+            "entityType": "Project",
+            "fieldKey": "project_name",
+            "fieldName": "项目名称",
+            "dataType": "string",
+            "unit": null,
             "isRequired": true,
+            "regexPattern": "^[A-Za-z0-9]+$",
+            "options": null,
+            "description": "项目名称字段",
             "defaultValue": "",
-            "description": "身份证号码"
+            "order": 1,
+            "isEnabled": true,
+            "group": "基本信息",
+            "validationRules": "{\"minLength\":1,\"maxLength\":100}",
+            "tags": ["重要", "必填"],
+            "creationTime": "2024-01-01T00:00:00Z",
+            "lastModificationTime": "2024-01-01T00:00:00Z"
         },
         {
-            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa9",
+            "entityType": "Project",
+            "fieldKey": "apply_date",
             "fieldName": "申请日期",
-            "fieldType": "datetime",
+            "dataType": "datetime",
+            "unit": null,
             "isRequired": false,
+            "regexPattern": null,
+            "options": null,
+            "description": "申请提交日期",
             "defaultValue": "",
-            "description": "申请提交日期"
+            "order": 2,
+            "isEnabled": true,
+            "group": "基本信息",
+            "validationRules": null,
+            "tags": ["日期"],
+            "creationTime": "2024-01-01T00:00:00Z",
+            "lastModificationTime": "2024-01-01T00:00:00Z"
         }
     ],
     "creationTime": "2024-12-19T10:00:00Z",
@@ -191,33 +250,63 @@ const createTemplate = async (templateData) => {
                 permissions: [
                     {
                         id: null,
-                        roleName: 'Admin',
-                        action: 1, // 创建
-                        effect: 0, // 允许
+                        permissionType: 'Role',
+                        permissionTarget: 'Admin',
+                        action: 2, // 创建
+                        effect: 1, // 允许
+                        attributeConditions: null,
+                        isEnabled: true,
+                        effectiveTime: '2024-01-01T00:00:00Z',
+                        expirationTime: '2024-12-31T23:59:59Z',
+                        description: '管理员权限',
                     },
                     {
                         id: null,
-                        roleName: 'User',
-                        action: 0, // 查看
-                        effect: 0, // 允许
+                        permissionType: 'Role',
+                        permissionTarget: 'User',
+                        action: 1, // 查看
+                        effect: 1, // 允许
+                        attributeConditions: null,
+                        isEnabled: true,
+                        effectiveTime: null,
+                        expirationTime: null,
+                        description: '用户查看权限',
                     },
                 ],
                 metaFields: [
                     {
-                        id: null,
-                        fieldName: '身份证号',
-                        fieldType: 'string',
+                        entityType: 'Project',
+                        fieldKey: 'project_name',
+                        fieldName: '项目名称',
+                        dataType: 'string',
+                        unit: null,
                         isRequired: true,
+                        regexPattern: '^[A-Za-z0-9]+$',
+                        options: null,
+                        description: '项目名称字段',
                         defaultValue: '',
-                        description: '身份证号码',
+                        order: 1,
+                        isEnabled: true,
+                        group: '基本信息',
+                        validationRules: '{"minLength":1,"maxLength":100}',
+                        tags: ['重要', '必填'],
                     },
                     {
-                        id: null,
+                        entityType: 'Project',
+                        fieldKey: 'apply_date',
                         fieldName: '申请日期',
-                        fieldType: 'datetime',
+                        dataType: 'datetime',
+                        unit: null,
                         isRequired: false,
-                        defaultValue: '',
+                        regexPattern: null,
+                        options: null,
                         description: '申请提交日期',
+                        defaultValue: '',
+                        order: 2,
+                        isEnabled: true,
+                        group: '基本信息',
+                        validationRules: null,
+                        tags: ['日期'],
                     },
                 ],
             },
@@ -306,11 +395,55 @@ const getTemplateList = async (params = {}) => {
 
 ---
 
-### 3. 根据 ID 获取分类模板接口
+### 3. 获取模板（最新版本）接口
 
 #### 接口信息
 
--   **接口路径**: `GET /api/attach-catalogue-template/{templateId}/{version}`
+-   **接口路径**: `GET /api/attach-catalogue-template/{id}`
+-   **接口描述**: 获取指定模板的最新版本
+-   **请求方式**: GET
+
+#### 请求参数
+
+**路径参数**:
+
+| 参数名 | 类型 | 必填 | 描述    | 示例值                                 |
+| ------ | ---- | ---- | ------- | -------------------------------------- |
+| id     | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+
+#### React Axios 调用示例
+
+```javascript
+const getLatestTemplate = async (id) => {
+    try {
+        const response = await axios.get(
+            `/api/attach-catalogue-template/${id}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('获取最新版本模板成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '获取最新版本模板失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
+### 4. 根据 ID 获取分类模板接口
+
+#### 接口信息
+
+-   **接口路径**: `GET /api/attach-catalogue-template/{id}/{version}`
 -   **接口描述**: 根据模板 ID 和版本号获取单个分类模板详情
 -   **请求方式**: GET
 
@@ -318,18 +451,18 @@ const getTemplateList = async (params = {}) => {
 
 **路径参数**:
 
-| 参数名     | 类型 | 必填 | 描述    | 示例值                                 |
-| ---------- | ---- | ---- | ------- | -------------------------------------- |
-| templateId | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
-| version    | int  | 是   | 版本号  | 1                                      |
+| 参数名  | 类型 | 必填 | 描述    | 示例值                                 |
+| ------- | ---- | ---- | ------- | -------------------------------------- |
+| id      | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| version | int  | 是   | 版本号  | 1                                      |
 
 #### React Axios 调用示例
 
 ```javascript
-const getTemplateById = async (templateId) => {
+const getTemplateById = async (id, version = 1) => {
     try {
         const response = await axios.get(
-            `/api/attach-catalogue-template/${templateId}`,
+            `/api/attach-catalogue-template/${id}/${version}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -351,11 +484,70 @@ const getTemplateById = async (templateId) => {
 
 ---
 
-### 4. 更新分类模板接口
+### 5. 更新模板（最新版本）接口
 
 #### 接口信息
 
--   **接口路径**: `PUT /api/attach-catalogue-template/{templateId}/{version}`
+-   **接口路径**: `PUT /api/attach-catalogue-template/{id}`
+-   **接口描述**: 更新指定模板的最新版本
+-   **请求方式**: PUT
+-   **Content-Type**: application/json
+
+#### 请求参数
+
+**路径参数**:
+
+| 参数名 | 类型 | 必填 | 描述    | 示例值                                 |
+| ------ | ---- | ---- | ------- | -------------------------------------- |
+| id     | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+
+**请求体**: `CreateUpdateAttachCatalogueTemplateDto` (同创建接口)
+
+#### React Axios 调用示例
+
+```javascript
+const updateLatestTemplate = async (id, updateData) => {
+    try {
+        const response = await axios.put(
+            `/api/attach-catalogue-template/${id}`,
+            {
+                name: '更新后的合同文档模板',
+                description: '更新后的描述',
+                tags: ['合同', '法律', '重要', '更新'],
+                attachReceiveType: 2,
+                isRequired: true,
+                sequenceNumber: 100,
+                isStatic: false,
+                facetType: 0,
+                templatePurpose: 1,
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('最新版本模板更新成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '最新版本模板更新失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
+### 6. 更新分类模板接口
+
+#### 接口信息
+
+-   **接口路径**: `PUT /api/attach-catalogue-template/{id}/{version}`
 -   **接口描述**: 更新指定的分类模板
 -   **请求方式**: PUT
 -   **Content-Type**: application/json
@@ -364,20 +556,20 @@ const getTemplateById = async (templateId) => {
 
 **路径参数**:
 
-| 参数名     | 类型 | 必填 | 描述    | 示例值                                 |
-| ---------- | ---- | ---- | ------- | -------------------------------------- |
-| templateId | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
-| version    | int  | 是   | 版本号  | 1                                      |
+| 参数名  | 类型 | 必填 | 描述    | 示例值                                 |
+| ------- | ---- | ---- | ------- | -------------------------------------- |
+| id      | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| version | int  | 是   | 版本号  | 1                                      |
 
 **请求体**: `CreateUpdateAttachCatalogueTemplateDto` (同创建接口)
 
 #### React Axios 调用示例
 
 ```javascript
-const updateTemplate = async (templateId, updateData) => {
+const updateTemplate = async (id, version, updateData) => {
     try {
         const response = await axios.put(
-            `/api/attach-catalogue-template/${templateId}`,
+            `/api/attach-catalogue-template/${id}/${version}`,
             {
                 name: '更新后的合同文档模板',
                 description: '更新后的描述',
@@ -408,11 +600,48 @@ const updateTemplate = async (templateId, updateData) => {
 
 ---
 
-### 5. 删除分类模板接口
+### 7. 删除模板（所有版本）接口
 
 #### 接口信息
 
--   **接口路径**: `DELETE /api/attach-catalogue-template/{templateId}/{version}`
+-   **接口路径**: `DELETE /api/attach-catalogue-template/{id}`
+-   **接口描述**: 删除指定模板的所有版本
+-   **请求方式**: DELETE
+
+#### 请求参数
+
+**路径参数**:
+
+| 参数名 | 类型 | 必填 | 描述    | 示例值                                 |
+| ------ | ---- | ---- | ------- | -------------------------------------- |
+| id     | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+
+#### React Axios 调用示例
+
+```javascript
+const deleteAllTemplateVersions = async (id) => {
+    try {
+        await axios.delete(`/api/attach-catalogue-template/${id}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        console.log('模板所有版本删除成功');
+    } catch (error) {
+        console.error('模板删除失败:', error.response?.data || error.message);
+        throw error;
+    }
+};
+```
+
+---
+
+### 8. 删除分类模板接口
+
+#### 接口信息
+
+-   **接口路径**: `DELETE /api/attach-catalogue-template/{id}/{version}`
 -   **接口描述**: 删除指定的分类模板版本
 -   **请求方式**: DELETE
 
@@ -420,17 +649,17 @@ const updateTemplate = async (templateId, updateData) => {
 
 **路径参数**:
 
-| 参数名     | 类型 | 必填 | 描述    | 示例值                                 |
-| ---------- | ---- | ---- | ------- | -------------------------------------- |
-| templateId | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
-| version    | int  | 是   | 版本号  | 1                                      |
+| 参数名  | 类型 | 必填 | 描述    | 示例值                                 |
+| ------- | ---- | ---- | ------- | -------------------------------------- |
+| id      | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| version | int  | 是   | 版本号  | 1                                      |
 
 #### React Axios 调用示例
 
 ```javascript
-const deleteTemplate = async (templateId) => {
+const deleteTemplate = async (id, version) => {
     try {
-        await axios.delete(`/api/attach-catalogue-template/${templateId}`, {
+        await axios.delete(`/api/attach-catalogue-template/${id}/${version}`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -446,7 +675,7 @@ const deleteTemplate = async (templateId) => {
 
 ---
 
-### 6. 混合检索模板接口
+### 9. 混合检索模板接口
 
 #### 接口信息
 
@@ -489,7 +718,6 @@ const deleteTemplate = async (templateId) => {
     "items": [
         {
             "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-            "templateId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
             "name": "合同文档模板",
             "description": "用于存储各类合同文档的模板",
             "tags": ["合同", "法律", "重要"],
@@ -575,11 +803,11 @@ const searchTemplatesHybrid = async (searchParams) => {
 
 ---
 
-### 7. 获取模板历史接口
+### 10. 获取模板历史接口
 
 #### 接口信息
 
--   **接口路径**: `GET /api/attach-catalogue-template/{templateId}/history`
+-   **接口路径**: `GET /api/attach-catalogue-template/{id}/history`
 -   **接口描述**: 获取指定模板的所有历史版本
 -   **请求方式**: GET
 -   **Content-Type**: application/json
@@ -588,9 +816,9 @@ const searchTemplatesHybrid = async (searchParams) => {
 
 **路径参数**:
 
-| 参数名     | 类型 | 必填 | 描述    | 示例值                                 |
-| ---------- | ---- | ---- | ------- | -------------------------------------- |
-| templateId | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| 参数名 | 类型 | 必填 | 描述    | 示例值                                 |
+| ------ | ---- | ---- | ------- | -------------------------------------- |
+| id     | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
 
 #### 响应结果
 
@@ -601,7 +829,6 @@ const searchTemplatesHybrid = async (searchParams) => {
     "items": [
         {
             "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-            "templateId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
             "name": "合同文档模板",
             "description": "用于存储各类合同文档的模板",
             "tags": ["合同", "法律", "重要"],
@@ -613,6 +840,7 @@ const searchTemplatesHybrid = async (searchParams) => {
             "sequenceNumber": 1,
             "isStatic": false,
             "parentId": null,
+            "parentVersion": null,
             "templatePath": "00001",
             "children": [],
             "facetType": 0,
@@ -624,8 +852,8 @@ const searchTemplatesHybrid = async (searchParams) => {
                     "id": "4fa85f64-5717-4562-b3fc-2c963f66afa7",
                     "userId": "user123",
                     "userName": "张三",
-                    "action": 0,
-                    "effect": 0,
+                    "action": 1,
+                    "effect": 1,
                     "resource": "template"
                 }
             ],
@@ -662,6 +890,7 @@ const searchTemplatesHybrid = async (searchParams) => {
             "sequenceNumber": 1,
             "isStatic": false,
             "parentId": null,
+            "parentVersion": null,
             "templatePath": "00001",
             "children": [],
             "facetType": 0,
@@ -701,6 +930,7 @@ const searchTemplatesHybrid = async (searchParams) => {
 | sequenceNumber                | int                                    | 顺序号                  |
 | isStatic                      | boolean                                | 是否静态                |
 | parentId                      | Guid?                                  | 父模板 ID               |
+| parentVersion                 | int?                                   | 父模板版本号            |
 | templatePath                  | string                                 | 模板路径                |
 | children                      | AttachCatalogueTemplateDto[]           | 子模板集合              |
 | facetType                     | FacetType                              | 分面类型（见枚举说明）  |
@@ -730,10 +960,10 @@ const searchTemplatesHybrid = async (searchParams) => {
 #### React Axios 调用示例
 
 ```javascript
-const getTemplateHistory = async (templateId) => {
+const getTemplateHistory = async (id) => {
     try {
         const response = await axios.get(
-            `/api/attach-catalogue-template/${templateId}/history`,
+            `/api/attach-catalogue-template/${id}/history`,
             {
                 headers: {
                     'Content-Type': 'application/json',
@@ -754,9 +984,9 @@ const getTemplateHistory = async (templateId) => {
 };
 
 // 使用示例
-const templateId = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
-getTemplateHistory(templateId).then((history) => {
-    console.log(`模板 ${templateId} 共有 ${history.items.length} 个版本`);
+const id = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
+getTemplateHistory(id).then((history) => {
+    console.log(`模板 ${id} 共有 ${history.items.length} 个版本`);
     history.items.forEach((template) => {
         console.log(
             `版本 ${template.version}: ${template.name} (${
@@ -769,7 +999,7 @@ getTemplateHistory(templateId).then((history) => {
 
 ---
 
-### 8. 文本检索模板接口
+### 11. 文本检索模板接口
 
 #### 接口信息
 
@@ -821,7 +1051,7 @@ const searchTemplatesByText = async (keyword, filters = {}) => {
 
 ---
 
-### 8. 语义检索模板接口
+### 12. 语义检索模板接口
 
 #### 接口信息
 
@@ -873,7 +1103,7 @@ const searchTemplatesBySemantic = async (semanticQuery, filters = {}) => {
 
 ---
 
-### 9. 获取根节点模板接口
+### 13. 获取根节点模板接口
 
 #### 接口信息
 
@@ -917,6 +1147,7 @@ const searchTemplatesBySemantic = async (semanticQuery, filters = {}) => {
 | sequenceNumber                | number                                 | 是   | 顺序号                | 1                                        |
 | isStatic                      | boolean                                | 是   | 是否静态              | false                                    |
 | parentId                      | string                                 | 否   | 父模板 ID             | "3fa85f64-5717-4562-b3fc-2c963f66afa7"   |
+| parentVersion                 | number                                 | 否   | 父模板版本号          | 1                                        |
 | templatePath                  | string                                 | 否   | 模板路径              | "00001.00002"                            |
 | children                      | AttachCatalogueTemplateDto[]           | 否   | 子模板集合            | 递归结构，同父级结构                     |
 | facetType                     | FacetType                              | 是   | 分面类型              | 0                                        |
@@ -943,7 +1174,7 @@ const searchTemplatesBySemantic = async (semanticQuery, filters = {}) => {
 | permissionType      | string           | 是   | 权限类型            | "Role"                                 |
 | permissionTarget    | string           | 是   | 权限目标            | "Admin"                                |
 | action              | PermissionAction | 是   | 权限操作            | 1                                      |
-| effect              | PermissionEffect | 是   | 权限效果            | 0                                      |
+| effect              | PermissionEffect | 是   | 权限效果            | 1                                      |
 | attributeConditions | string           | 否   | 属性条件(JSON 格式) | "{\"department\":\"IT\"}"              |
 | isEnabled           | boolean          | 是   | 是否启用            | true                                   |
 | effectiveTime       | string           | 否   | 生效时间            | "2024-01-01T00:00:00Z"                 |
@@ -990,6 +1221,7 @@ const searchTemplatesBySemantic = async (semanticQuery, filters = {}) => {
       "sequenceNumber": 1,
       "isStatic": false,
       "parentId": null,
+      "parentVersion": null,
       "templatePath": "00001",
       "children": [
         {
@@ -1005,6 +1237,7 @@ const searchTemplatesBySemantic = async (semanticQuery, filters = {}) => {
           "sequenceNumber": 1,
           "isStatic": false,
           "parentId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+          "parentVersion": 1,
           "templatePath": "00001.00001",
           "children": [],
           "facetType": 0,
@@ -1054,7 +1287,7 @@ const searchTemplatesBySemantic = async (semanticQuery, filters = {}) => {
           "permissionType": "Role",
           "permissionTarget": "Admin",
           "action": 1,
-          "effect": 0,
+          "effect": 1,
           "attributeConditions": "{\"department\":\"IT\"}",
           "isEnabled": true,
           "effectiveTime": "2024-01-01T00:00:00Z",
@@ -1131,7 +1364,7 @@ const getRootTemplates = async (params = {}) => {
 
 ---
 
-### 10. 获取模板统计信息接口
+### 14. 获取模板统计信息接口
 
 #### 接口信息
 
@@ -1291,7 +1524,7 @@ const getTemplateStatistics = async () => {
 -   使用缓存减少重复请求
 -   合理设置 `includeChildren` 参数
 
-### 10. 获取模板结构接口
+### 15. 获取模板结构接口
 
 #### 接口信息
 
@@ -1368,6 +1601,7 @@ const getTemplateStatistics = async () => {
             "sequenceNumber": 1,
             "isStatic": false,
             "parentId": null,
+            "parentVersion": null,
             "templatePath": "00001",
             "children": [
                 {
@@ -1383,6 +1617,7 @@ const getTemplateStatistics = async () => {
                     "sequenceNumber": 1,
                     "isStatic": false,
                     "parentId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "parentVersion": 1,
                     "templatePath": "00001.00001",
                     "children": [],
                     "facetType": 0,
@@ -1431,6 +1666,7 @@ const getTemplateStatistics = async () => {
             "sequenceNumber": 1,
             "isStatic": false,
             "parentId": null,
+            "parentVersion": null,
             "templatePath": "00001",
             "children": [],
             "facetType": 0,
@@ -1499,10 +1735,10 @@ const getTemplateStatistics = async () => {
 #### React Axios 调用示例
 
 ```javascript
-const getTemplateStructure = async (templateId, includeHistory = false) => {
+const getTemplateStructure = async (id, includeHistory = false) => {
     try {
         const response = await axios.get(
-            `/api/attach-catalogue-template/structure/${templateId}`,
+            `/api/attach-catalogue-template/structure/${id}`,
             {
                 params: {
                     includeHistory: includeHistory,
@@ -1561,4 +1797,3 @@ const getTemplateStructure = async (templateId, includeHistory = false) => {
 -   **API 版本**: v1
 -   **最后更新**: 2024-12-19
 -   **维护人员**: 开发团队
-

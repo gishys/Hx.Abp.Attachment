@@ -1,10 +1,17 @@
 -- =====================================================
 -- AttachCatalogueTemplate 统一迁移脚本
 -- 合并了表创建、字段添加、权限字段、索引创建、约束添加等所有功能
+-- 支持复合主键 {ID, VERSION} 和完整的实体字段
 -- =====================================================
 
 -- 设置事务隔离级别
 SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+
+-- 设置锁超时（避免长时间等待）
+SET lock_timeout = '30s';
+
+-- 设置语句超时（避免长时间执行）
+SET statement_timeout = '300s';
 
 -- 开始事务
 BEGIN;
@@ -21,18 +28,21 @@ BEGIN
             "VERSION" integer NOT NULL DEFAULT 1,
             "IS_LATEST" boolean NOT NULL DEFAULT true,
             "ATTACH_RECEIVE_TYPE" integer NOT NULL,
-            "NAME_PATTERN" character varying(512),
-            "RULE_EXPRESSION" text,
-            "SEMANTIC_MODEL" character varying(128),
+            "DESCRIPTION" text,
+            "TAGS" jsonb DEFAULT '[]'::jsonb,
             "IS_REQUIRED" boolean NOT NULL DEFAULT false,
             "SEQUENCE_NUMBER" integer NOT NULL DEFAULT 0,
             "IS_STATIC" boolean NOT NULL DEFAULT false,
             "PARENT_ID" uuid,
-            "TEMPLATE_TYPE" integer NOT NULL DEFAULT 99,
+            "PARENT_VERSION" integer,
+            "TEMPLATE_PATH" character varying(200),
+            "WORKFLOW_CONFIG" text,
+            "FACET_TYPE" integer NOT NULL DEFAULT 0,
             "TEMPLATE_PURPOSE" integer NOT NULL DEFAULT 1,
             "TEXT_VECTOR" double precision[],
             "VECTOR_DIMENSION" integer NOT NULL DEFAULT 0,
             "PERMISSIONS" jsonb NOT NULL DEFAULT '[]'::jsonb,
+            "META_FIELDS" jsonb DEFAULT '[]'::jsonb,
             "EXTRA_PROPERTIES" text,
             "CONCURRENCY_STAMP" character varying(40),
             "CREATION_TIME" timestamp without time zone NOT NULL,
@@ -42,7 +52,7 @@ BEGIN
             "IS_DELETED" boolean NOT NULL DEFAULT false,
             "DELETER_ID" uuid,
             "DELETION_TIME" timestamp without time zone,
-            CONSTRAINT "PK_ATTACH_CATALOGUE_TEMPLATES" PRIMARY KEY ("ID")
+            CONSTRAINT "PK_ATTACH_CATALOGUE_TEMPLATES" PRIMARY KEY ("ID", "VERSION")
         );
         
         RAISE NOTICE '已创建表 APPATTACH_CATALOGUE_TEMPLATES';
@@ -56,11 +66,46 @@ END $$;
 -- =====================================================
 DO $$
 BEGIN
-    -- 添加 TEMPLATE_TYPE 字段
-    IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'APPATTACH_CATALOGUE_TEMPLATES' AND column_name = 'TEMPLATE_TYPE') THEN
+    -- 添加 DESCRIPTION 字段
+    IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'APPATTACH_CATALOGUE_TEMPLATES' AND column_name = 'DESCRIPTION') THEN
         ALTER TABLE "APPATTACH_CATALOGUE_TEMPLATES" 
-        ADD COLUMN "TEMPLATE_TYPE" integer NOT NULL DEFAULT 99;
-        RAISE NOTICE '已添加 TEMPLATE_TYPE 字段';
+        ADD COLUMN "DESCRIPTION" text;
+        RAISE NOTICE '已添加 DESCRIPTION 字段';
+    END IF;
+
+    -- 添加 TAGS 字段
+    IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'APPATTACH_CATALOGUE_TEMPLATES' AND column_name = 'TAGS') THEN
+        ALTER TABLE "APPATTACH_CATALOGUE_TEMPLATES" 
+        ADD COLUMN "TAGS" jsonb DEFAULT '[]'::jsonb;
+        RAISE NOTICE '已添加 TAGS 字段';
+    END IF;
+
+    -- 添加 PARENT_VERSION 字段
+    IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'APPATTACH_CATALOGUE_TEMPLATES' AND column_name = 'PARENT_VERSION') THEN
+        ALTER TABLE "APPATTACH_CATALOGUE_TEMPLATES" 
+        ADD COLUMN "PARENT_VERSION" integer;
+        RAISE NOTICE '已添加 PARENT_VERSION 字段';
+    END IF;
+
+    -- 添加 TEMPLATE_PATH 字段
+    IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'APPATTACH_CATALOGUE_TEMPLATES' AND column_name = 'TEMPLATE_PATH') THEN
+        ALTER TABLE "APPATTACH_CATALOGUE_TEMPLATES" 
+        ADD COLUMN "TEMPLATE_PATH" character varying(200);
+        RAISE NOTICE '已添加 TEMPLATE_PATH 字段';
+    END IF;
+
+    -- 添加 WORKFLOW_CONFIG 字段
+    IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'APPATTACH_CATALOGUE_TEMPLATES' AND column_name = 'WORKFLOW_CONFIG') THEN
+        ALTER TABLE "APPATTACH_CATALOGUE_TEMPLATES" 
+        ADD COLUMN "WORKFLOW_CONFIG" text;
+        RAISE NOTICE '已添加 WORKFLOW_CONFIG 字段';
+    END IF;
+
+    -- 添加 FACET_TYPE 字段（替换 TEMPLATE_TYPE）
+    IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'APPATTACH_CATALOGUE_TEMPLATES' AND column_name = 'FACET_TYPE') THEN
+        ALTER TABLE "APPATTACH_CATALOGUE_TEMPLATES" 
+        ADD COLUMN "FACET_TYPE" integer NOT NULL DEFAULT 0;
+        RAISE NOTICE '已添加 FACET_TYPE 字段';
     END IF;
 
     -- 添加 TEMPLATE_PURPOSE 字段
@@ -90,10 +135,43 @@ BEGIN
         ADD COLUMN "PERMISSIONS" jsonb NOT NULL DEFAULT '[]'::jsonb;
         RAISE NOTICE '已添加 PERMISSIONS 字段';
     END IF;
+
+    -- 添加 META_FIELDS 字段
+    IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'APPATTACH_CATALOGUE_TEMPLATES' AND column_name = 'META_FIELDS') THEN
+        ALTER TABLE "APPATTACH_CATALOGUE_TEMPLATES" 
+        ADD COLUMN "META_FIELDS" jsonb DEFAULT '[]'::jsonb;
+        RAISE NOTICE '已添加 META_FIELDS 字段';
+    END IF;
 END $$;
 
 -- =====================================================
--- 3. 数据清理和标准化（PERMISSIONS 字段）
+-- 3. 数据迁移和清理
+-- =====================================================
+DO $$
+BEGIN
+    -- 如果存在旧的 TEMPLATE_TYPE 字段，迁移到 FACET_TYPE
+    IF EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'APPATTACH_CATALOGUE_TEMPLATES' AND column_name = 'TEMPLATE_TYPE') THEN
+        -- 更新 FACET_TYPE 字段（如果为空）
+        UPDATE "APPATTACH_CATALOGUE_TEMPLATES" 
+        SET "FACET_TYPE" = "TEMPLATE_TYPE" 
+        WHERE "FACET_TYPE" IS NULL OR "FACET_TYPE" = 0;
+        
+        RAISE NOTICE '已迁移 TEMPLATE_TYPE 到 FACET_TYPE';
+    END IF;
+
+    -- 如果存在旧的 TEMPLATE_ID 字段，迁移到 ID
+    IF EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'APPATTACH_CATALOGUE_TEMPLATES' AND column_name = 'TEMPLATE_ID') THEN
+        -- 更新 ID 字段（如果为空）
+        UPDATE "APPATTACH_CATALOGUE_TEMPLATES" 
+        SET "ID" = "TEMPLATE_ID" 
+        WHERE "ID" IS NULL;
+        
+        RAISE NOTICE '已迁移 TEMPLATE_ID 到 ID';
+    END IF;
+END $$;
+
+-- =====================================================
+-- 4. 数据清理和标准化（JSONB 字段）
 -- =====================================================
 DO $$
 BEGIN
@@ -112,11 +190,21 @@ BEGIN
     SET "PERMISSIONS" = '[]'::jsonb 
     WHERE "PERMISSIONS" = 'null'::jsonb;
 
-    RAISE NOTICE '已完成 PERMISSIONS 字段数据清理';
+    -- 更新 NULL 的 META_FIELDS 字段为空数组
+    UPDATE "APPATTACH_CATALOGUE_TEMPLATES" 
+    SET "META_FIELDS" = '[]'::jsonb 
+    WHERE "META_FIELDS" IS NULL;
+
+    -- 更新 NULL 的 TAGS 字段为空数组
+    UPDATE "APPATTACH_CATALOGUE_TEMPLATES" 
+    SET "TAGS" = '[]'::jsonb 
+    WHERE "TAGS" IS NULL;
+
+    RAISE NOTICE '已完成 JSONB 字段数据清理';
 END $$;
 
 -- =====================================================
--- 4. 设置字段约束和默认值
+-- 5. 设置字段约束和默认值
 -- =====================================================
 DO $$
 BEGIN
@@ -132,7 +220,7 @@ BEGIN
 END $$;
 
 -- =====================================================
--- 5. 添加字段约束
+-- 6. 添加字段约束
 -- =====================================================
 DO $$
 BEGIN
@@ -144,12 +232,12 @@ BEGIN
         RAISE NOTICE '已添加向量维度约束';
     END IF;
 
-    -- 添加模板类型约束
-    IF NOT EXISTS (SELECT FROM information_schema.check_constraints WHERE constraint_name = 'CK_ATTACH_CATALOGUE_TEMPLATES_TEMPLATE_TYPE') THEN
+    -- 添加分面类型约束
+    IF NOT EXISTS (SELECT FROM information_schema.check_constraints WHERE constraint_name = 'CK_ATTACH_CATALOGUE_TEMPLATES_FACET_TYPE') THEN
         ALTER TABLE "APPATTACH_CATALOGUE_TEMPLATES" 
-        ADD CONSTRAINT "CK_ATTACH_CATALOGUE_TEMPLATES_TEMPLATE_TYPE" 
-        CHECK ("TEMPLATE_TYPE" IN (1, 2, 3, 4, 99));
-        RAISE NOTICE '已添加模板类型约束';
+        ADD CONSTRAINT "CK_ATTACH_CATALOGUE_TEMPLATES_FACET_TYPE" 
+        CHECK ("FACET_TYPE" IN (0, 1, 2, 3, 4, 5, 6, 99));
+        RAISE NOTICE '已添加分面类型约束';
     END IF;
 
     -- 添加模板用途约束
@@ -170,23 +258,23 @@ BEGIN
 END $$;
 
 -- =====================================================
--- 6. 创建索引
+-- 7. 创建索引
 -- =====================================================
 DO $$
 BEGIN
     -- 基础索引
-    IF NOT EXISTS (SELECT FROM pg_indexes WHERE indexname = 'UK_ATTACH_CATALOGUE_TEMPLATES_NAME_VERSION') THEN
-        CREATE UNIQUE INDEX "UK_ATTACH_CATALOGUE_TEMPLATES_NAME_VERSION" 
-        ON "APPATTACH_CATALOGUE_TEMPLATES" ("TEMPLATE_NAME", "VERSION") 
-        WHERE "IS_DELETED" = false;
-        RAISE NOTICE '已创建名称版本唯一索引';
-    END IF;
-
-    IF NOT EXISTS (SELECT FROM pg_indexes WHERE indexname = 'IDX_ATTACH_CATALOGUE_TEMPLATES_NAME_LATEST') THEN
-        CREATE INDEX "IDX_ATTACH_CATALOGUE_TEMPLATES_NAME_LATEST" 
+    IF NOT EXISTS (SELECT FROM pg_indexes WHERE indexname = 'UK_ATTACH_CATALOGUE_TEMPLATES_NAME_LATEST') THEN
+        CREATE UNIQUE INDEX "UK_ATTACH_CATALOGUE_TEMPLATES_NAME_LATEST" 
         ON "APPATTACH_CATALOGUE_TEMPLATES" ("TEMPLATE_NAME", "IS_LATEST") 
         WHERE "IS_DELETED" = false AND "IS_LATEST" = true;
-        RAISE NOTICE '已创建名称最新状态索引';
+        RAISE NOTICE '已创建名称最新状态唯一索引';
+    END IF;
+
+    IF NOT EXISTS (SELECT FROM pg_indexes WHERE indexname = 'IDX_ATTACH_CATALOGUE_TEMPLATES_ID_LATEST') THEN
+        CREATE INDEX "IDX_ATTACH_CATALOGUE_TEMPLATES_ID_LATEST" 
+        ON "APPATTACH_CATALOGUE_TEMPLATES" ("ID", "IS_LATEST") 
+        WHERE "IS_DELETED" = false AND "IS_LATEST" = true;
+        RAISE NOTICE '已创建ID最新状态索引';
     END IF;
 
     IF NOT EXISTS (SELECT FROM pg_indexes WHERE indexname = 'IDX_ATTACH_CATALOGUE_TEMPLATES_PARENT_ID') THEN
@@ -202,11 +290,11 @@ BEGIN
     END IF;
 
     -- 模板标识索引
-    IF NOT EXISTS (SELECT FROM pg_indexes WHERE indexname = 'IDX_ATTACH_CATALOGUE_TEMPLATES_TYPE') THEN
-        CREATE INDEX "IDX_ATTACH_CATALOGUE_TEMPLATES_TYPE" 
-        ON "APPATTACH_CATALOGUE_TEMPLATES" ("TEMPLATE_TYPE") 
+    IF NOT EXISTS (SELECT FROM pg_indexes WHERE indexname = 'IDX_ATTACH_CATALOGUE_TEMPLATES_FACET_TYPE') THEN
+        CREATE INDEX "IDX_ATTACH_CATALOGUE_TEMPLATES_FACET_TYPE" 
+        ON "APPATTACH_CATALOGUE_TEMPLATES" ("FACET_TYPE") 
         WHERE "IS_DELETED" = false;
-        RAISE NOTICE '已创建模板类型索引';
+        RAISE NOTICE '已创建分面类型索引';
     END IF;
 
     IF NOT EXISTS (SELECT FROM pg_indexes WHERE indexname = 'IDX_ATTACH_CATALOGUE_TEMPLATES_PURPOSE') THEN
@@ -219,7 +307,7 @@ BEGIN
     -- 复合索引
     IF NOT EXISTS (SELECT FROM pg_indexes WHERE indexname = 'IDX_ATTACH_CATALOGUE_TEMPLATES_IDENTIFIER_COMPOSITE') THEN
         CREATE INDEX "IDX_ATTACH_CATALOGUE_TEMPLATES_IDENTIFIER_COMPOSITE" 
-        ON "APPATTACH_CATALOGUE_TEMPLATES" ("TEMPLATE_TYPE", "TEMPLATE_PURPOSE") 
+        ON "APPATTACH_CATALOGUE_TEMPLATES" ("FACET_TYPE", "TEMPLATE_PURPOSE") 
         WHERE "IS_DELETED" = false;
         RAISE NOTICE '已创建模板标识复合索引';
     END IF;
@@ -238,20 +326,50 @@ BEGIN
         ON "APPATTACH_CATALOGUE_TEMPLATES" USING GIN ("PERMISSIONS" jsonb_path_ops);
         RAISE NOTICE '已创建权限集合GIN索引';
     END IF;
+
+    -- 元数据字段GIN索引
+    IF NOT EXISTS (SELECT FROM pg_indexes WHERE indexname = 'IX_ATTACH_CATALOGUE_TEMPLATES_META_FIELDS_GIN') THEN
+        CREATE INDEX "IX_ATTACH_CATALOGUE_TEMPLATES_META_FIELDS_GIN" 
+        ON "APPATTACH_CATALOGUE_TEMPLATES" USING GIN ("META_FIELDS" jsonb_path_ops);
+        RAISE NOTICE '已创建元数据字段GIN索引';
+    END IF;
+
+    -- 标签GIN索引
+    IF NOT EXISTS (SELECT FROM pg_indexes WHERE indexname = 'IX_ATTACH_CATALOGUE_TEMPLATES_TAGS_GIN') THEN
+        CREATE INDEX "IX_ATTACH_CATALOGUE_TEMPLATES_TAGS_GIN" 
+        ON "APPATTACH_CATALOGUE_TEMPLATES" USING GIN ("TAGS" jsonb_path_ops);
+        RAISE NOTICE '已创建标签GIN索引';
+    END IF;
+
+    -- 模板路径索引
+    IF NOT EXISTS (SELECT FROM pg_indexes WHERE indexname = 'IDX_ATTACH_CATALOGUE_TEMPLATES_TEMPLATE_PATH') THEN
+        CREATE INDEX "IDX_ATTACH_CATALOGUE_TEMPLATES_TEMPLATE_PATH" 
+        ON "APPATTACH_CATALOGUE_TEMPLATES" ("TEMPLATE_PATH") 
+        WHERE "IS_DELETED" = false AND "TEMPLATE_PATH" IS NOT NULL;
+        RAISE NOTICE '已创建模板路径索引';
+    END IF;
+
+    -- 模板路径和最新状态复合索引
+    IF NOT EXISTS (SELECT FROM pg_indexes WHERE indexname = 'IDX_ATTACH_CATALOGUE_TEMPLATES_PATH_LATEST') THEN
+        CREATE INDEX "IDX_ATTACH_CATALOGUE_TEMPLATES_PATH_LATEST" 
+        ON "APPATTACH_CATALOGUE_TEMPLATES" ("TEMPLATE_PATH", "IS_LATEST") 
+        WHERE "IS_DELETED" = false;
+        RAISE NOTICE '已创建模板路径最新状态复合索引';
+    END IF;
 END $$;
 
 -- =====================================================
--- 7. 创建全文搜索索引
+-- 8. 创建全文搜索索引
 -- =====================================================
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_indexes WHERE indexname = 'IDX_ATTACH_CATALOGUE_TEMPLATES_FULLTEXT') THEN
-        CREATE INDEX CONCURRENTLY "IDX_ATTACH_CATALOGUE_TEMPLATES_FULLTEXT" 
+        CREATE INDEX "IDX_ATTACH_CATALOGUE_TEMPLATES_FULLTEXT" 
         ON "APPATTACH_CATALOGUE_TEMPLATES" USING GIN (
             to_tsvector('chinese_fts', 
                 COALESCE("TEMPLATE_NAME", '') || ' ' || 
-                COALESCE("NAME_PATTERN", '') || ' ' ||
-                COALESCE("RULE_EXPRESSION", '')
+                COALESCE("DESCRIPTION", '') || ' ' ||
+                COALESCE("WORKFLOW_CONFIG", '')
             )
         );
         RAISE NOTICE '已创建全文搜索索引';
@@ -259,21 +377,21 @@ BEGIN
 END $$;
 
 -- =====================================================
--- 8. 创建外键约束
+-- 9. 创建外键约束
 -- =====================================================
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM information_schema.table_constraints WHERE constraint_name = 'FK_ATTACH_CATALOGUE_TEMPLATES_PARENT') THEN
         ALTER TABLE "APPATTACH_CATALOGUE_TEMPLATES" 
         ADD CONSTRAINT "FK_ATTACH_CATALOGUE_TEMPLATES_PARENT" 
-        FOREIGN KEY ("PARENT_ID") REFERENCES "APPATTACH_CATALOGUE_TEMPLATES" ("ID") 
+        FOREIGN KEY ("PARENT_ID", "PARENT_VERSION") REFERENCES "APPATTACH_CATALOGUE_TEMPLATES" ("ID", "VERSION") 
         ON DELETE CASCADE;
-        RAISE NOTICE '已创建父级外键约束';
+        RAISE NOTICE '已创建父级外键约束（复合键）';
     END IF;
 END $$;
 
 -- =====================================================
--- 9. 添加表和字段注释
+-- 10. 添加表和字段注释
 -- =====================================================
 DO $$
 BEGIN
@@ -281,24 +399,29 @@ BEGIN
     COMMENT ON TABLE "APPATTACH_CATALOGUE_TEMPLATES" IS '附件分类模板表';
     
     -- 字段注释
+    COMMENT ON COLUMN "APPATTACH_CATALOGUE_TEMPLATES"."ID" IS '模板ID（业务标识）';
     COMMENT ON COLUMN "APPATTACH_CATALOGUE_TEMPLATES"."TEMPLATE_NAME" IS '模板名称';
     COMMENT ON COLUMN "APPATTACH_CATALOGUE_TEMPLATES"."VERSION" IS '模板版本号';
     COMMENT ON COLUMN "APPATTACH_CATALOGUE_TEMPLATES"."IS_LATEST" IS '是否为最新版本';
     COMMENT ON COLUMN "APPATTACH_CATALOGUE_TEMPLATES"."ATTACH_RECEIVE_TYPE" IS '附件接收类型';
-    COMMENT ON COLUMN "APPATTACH_CATALOGUE_TEMPLATES"."NAME_PATTERN" IS '名称模式';
-    COMMENT ON COLUMN "APPATTACH_CATALOGUE_TEMPLATES"."RULE_EXPRESSION" IS '规则表达式';
-    COMMENT ON COLUMN "APPATTACH_CATALOGUE_TEMPLATES"."SEMANTIC_MODEL" IS '语义模型';
-    COMMENT ON COLUMN "APPATTACH_CATALOGUE_TEMPLATES"."TEMPLATE_TYPE" IS '模板类型';
+    COMMENT ON COLUMN "APPATTACH_CATALOGUE_TEMPLATES"."DESCRIPTION" IS '模板描述';
+    COMMENT ON COLUMN "APPATTACH_CATALOGUE_TEMPLATES"."TAGS" IS '模板标签（JSONB格式）';
+    COMMENT ON COLUMN "APPATTACH_CATALOGUE_TEMPLATES"."PARENT_ID" IS '父模板ID';
+    COMMENT ON COLUMN "APPATTACH_CATALOGUE_TEMPLATES"."PARENT_VERSION" IS '父模板版本号';
+    COMMENT ON COLUMN "APPATTACH_CATALOGUE_TEMPLATES"."TEMPLATE_PATH" IS '模板路径（层级标识）';
+    COMMENT ON COLUMN "APPATTACH_CATALOGUE_TEMPLATES"."WORKFLOW_CONFIG" IS '工作流配置（JSON格式）';
+    COMMENT ON COLUMN "APPATTACH_CATALOGUE_TEMPLATES"."FACET_TYPE" IS '分面类型';
     COMMENT ON COLUMN "APPATTACH_CATALOGUE_TEMPLATES"."TEMPLATE_PURPOSE" IS '模板用途';
     COMMENT ON COLUMN "APPATTACH_CATALOGUE_TEMPLATES"."TEXT_VECTOR" IS '文本向量';
     COMMENT ON COLUMN "APPATTACH_CATALOGUE_TEMPLATES"."VECTOR_DIMENSION" IS '向量维度';
     COMMENT ON COLUMN "APPATTACH_CATALOGUE_TEMPLATES"."PERMISSIONS" IS '权限集合（JSONB格式）';
+    COMMENT ON COLUMN "APPATTACH_CATALOGUE_TEMPLATES"."META_FIELDS" IS '元数据字段集合（JSONB格式）';
     
     RAISE NOTICE '已添加表和字段注释';
 END $$;
 
 -- =====================================================
--- 10. 验证结果
+-- 11. 验证结果
 -- =====================================================
 DO $$
 BEGIN
@@ -322,77 +445,12 @@ SELECT
     COUNT(*) as total_records,
     COUNT("PERMISSIONS") as non_null_permissions,
     COUNT(CASE WHEN "PERMISSIONS" = '[]'::jsonb THEN 1 END) as empty_array_permissions,
-    COUNT(CASE WHEN "PERMISSIONS" IS NULL THEN 1 END) as null_permissions
+    COUNT(CASE WHEN "PERMISSIONS" IS NULL THEN 1 END) as null_permissions,
+    COUNT("META_FIELDS") as non_null_meta_fields,
+    COUNT(CASE WHEN "META_FIELDS" = '[]'::jsonb THEN 1 END) as empty_array_meta_fields,
+    COUNT("TAGS") as non_null_tags,
+    COUNT(CASE WHEN "TAGS" = '[]'::jsonb THEN 1 END) as empty_array_tags
 FROM "APPATTACH_CATALOGUE_TEMPLATES";
-
--- =====================================================
--- 11. 插入示例数据（如果表为空）
--- =====================================================
-DO $$
-DECLARE
-    record_count integer;
-BEGIN
-    -- 检查表中是否有数据
-    SELECT COUNT(*) INTO record_count FROM "APPATTACH_CATALOGUE_TEMPLATES";
-    
-    -- 如果表为空，插入示例数据
-    IF record_count = 0 THEN
-        -- 插入通用模板
-        INSERT INTO "APPATTACH_CATALOGUE_TEMPLATES" (
-            "ID", "TEMPLATE_NAME", "VERSION", "IS_LATEST", "ATTACH_RECEIVE_TYPE",
-            "NAME_PATTERN", "RULE_EXPRESSION", "SEMANTIC_MODEL", "IS_REQUIRED",
-            "SEQUENCE_NUMBER", "IS_STATIC", "PARENT_ID", "TEMPLATE_TYPE",
-            "TEMPLATE_PURPOSE", "TEXT_VECTOR", "VECTOR_DIMENSION", "PERMISSIONS",
-            "EXTRA_PROPERTIES", "CONCURRENCY_STAMP", "CREATION_TIME", "CREATOR_ID",
-            "IS_DELETED"
-        ) VALUES (
-            gen_random_uuid(), '通用附件分类模板', 1, true, 1,
-            '通用分类', 'true', 'general_model', false,
-            1, true, null, 99,
-            1, null, 0, '[]'::jsonb,
-            '{}', gen_random_uuid()::text, CURRENT_TIMESTAMP, null,
-            false
-        );
-
-        -- 插入项目级模板
-        INSERT INTO "APPATTACH_CATALOGUE_TEMPLATES" (
-            "ID", "TEMPLATE_NAME", "VERSION", "IS_LATEST", "ATTACH_RECEIVE_TYPE",
-            "NAME_PATTERN", "RULE_EXPRESSION", "SEMANTIC_MODEL", "IS_REQUIRED",
-            "SEQUENCE_NUMBER", "IS_STATIC", "PARENT_ID", "TEMPLATE_TYPE",
-            "TEMPLATE_PURPOSE", "TEXT_VECTOR", "VECTOR_DIMENSION", "PERMISSIONS",
-            "EXTRA_PROPERTIES", "CONCURRENCY_STAMP", "CREATION_TIME", "CREATOR_ID",
-            "IS_DELETED"
-        ) VALUES (
-            gen_random_uuid(), '项目级附件分类模板', 1, true, 1,
-            '项目分类', 'referenceType == 1', 'project_model', true,
-            2, true, null, 1,
-            1, null, 0, '[]'::jsonb,
-            '{}', gen_random_uuid()::text, CURRENT_TIMESTAMP, null,
-            false
-        );
-
-        -- 插入阶段级模板
-        INSERT INTO "APPATTACH_CATALOGUE_TEMPLATES" (
-            "ID", "TEMPLATE_NAME", "VERSION", "IS_LATEST", "ATTACH_RECEIVE_TYPE",
-            "NAME_PATTERN", "RULE_EXPRESSION", "SEMANTIC_MODEL", "IS_REQUIRED",
-            "SEQUENCE_NUMBER", "IS_STATIC", "PARENT_ID", "TEMPLATE_TYPE",
-            "TEMPLATE_PURPOSE", "TEXT_VECTOR", "VECTOR_DIMENSION", "PERMISSIONS",
-            "EXTRA_PROPERTIES", "CONCURRENCY_STAMP", "CREATION_TIME", "CREATOR_ID",
-            "IS_DELETED"
-        ) VALUES (
-            gen_random_uuid(), '阶段级附件分类模板', 1, true, 1,
-            '阶段分类', 'referenceType == 2', 'phase_model', true,
-            3, true, null, 2,
-            1, null, 0, '[]'::jsonb,
-            '{}', gen_random_uuid()::text, CURRENT_TIMESTAMP, null,
-            false
-        );
-
-        RAISE NOTICE '已插入示例数据';
-    ELSE
-        RAISE NOTICE '表中已有数据，跳过示例数据插入';
-    END IF;
-END $$;
 
 -- 显示表结构
 SELECT 

@@ -5,12 +5,12 @@ using Volo.Abp.Domain.Entities.Auditing;
 
 namespace Hx.Abp.Attachment.Domain
 {
-    public class AttachCatalogueTemplate : FullAuditedAggregateRoot<Guid>
+    public class AttachCatalogueTemplate : FullAuditedAggregateRoot
     {
         /// <summary>
         /// 模板ID（业务标识，同一模板的所有版本共享相同的ID）
         /// </summary>
-        public new virtual Guid Id { get; private set; }
+        public virtual Guid Id { get; private set; }
 
         /// <summary>
         /// 版本号
@@ -74,6 +74,11 @@ namespace Hx.Abp.Attachment.Domain
         public virtual Guid? ParentId { get; protected set; }
 
         /// <summary>
+        /// 父模板版本号（用于复合主键场景下的父节点唯一标识）
+        /// </summary>
+        public virtual int? ParentVersion { get; protected set; }
+
+        /// <summary>
         /// 模板路径（用于快速查询层级）
         /// 格式：00001.00002.00003（5位数字，用点分隔）
         /// </summary>
@@ -130,6 +135,7 @@ namespace Hx.Abp.Attachment.Domain
             bool isRequired = false,
             bool isStatic = false,
             Guid? parentId = null,
+            int? parentVersion = null,
             [CanBeNull] string? workflowConfig = null,
             bool isLatest = true,
             FacetType facetType = FacetType.General,
@@ -148,6 +154,7 @@ namespace Hx.Abp.Attachment.Domain
             IsRequired = isRequired;
             IsStatic = isStatic;
             ParentId = parentId;
+            ParentVersion = parentVersion;
             WorkflowConfig = workflowConfig;
             IsLatest = isLatest;
             FacetType = facetType;
@@ -229,6 +236,7 @@ namespace Hx.Abp.Attachment.Domain
                 IsRequired,
                 IsStatic,
                 ParentId,
+                ParentVersion,
                 WorkflowConfig,
                 isLatest,
                 FacetType,
@@ -240,9 +248,10 @@ namespace Hx.Abp.Attachment.Domain
                 TemplatePath);
         }
 
-        public virtual void ChangeParent(Guid? parentId, [CanBeNull] string? parentTemplatePath = null)
+        public virtual void ChangeParent(Guid? parentId, int? parentVersion = null, [CanBeNull] string? parentTemplatePath = null)
         {
             ParentId = parentId;
+            ParentVersion = parentVersion;
             
             // 如果提供了父模板路径，自动计算新的模板路径
             if (parentTemplatePath != null)

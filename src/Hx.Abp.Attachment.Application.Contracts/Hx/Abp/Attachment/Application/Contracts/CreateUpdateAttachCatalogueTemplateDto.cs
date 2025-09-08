@@ -1,18 +1,16 @@
 using Hx.Abp.Attachment.Domain.Shared;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using Volo.Abp.Application.Dtos;
 
 namespace Hx.Abp.Attachment.Application.Contracts
 {
-    public class CreateUpdateAttachCatalogueTemplateDto : EntityDto<Guid>
+    public class CreateUpdateAttachCatalogueTemplateDto
     {
         /// <summary>
         /// 模板ID（业务标识，同一模板的所有版本共享相同的ID）
         /// 创建时可以为空，系统会自动生成
         /// </summary>
-        public Guid? TemplateId { get; set; }
+        public Guid? Id { get; set; }
 
         /// <summary>
         /// 模板名称
@@ -65,6 +63,11 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// 父模板Id
         /// </summary>
         public Guid? ParentId { get; set; }
+
+        /// <summary>
+        /// 父模板版本号（用于复合主键场景下的父节点唯一标识）
+        /// </summary>
+        public int? ParentVersion { get; set; }
 
         /// <summary>
         /// 模板路径（用于快速查询层级）

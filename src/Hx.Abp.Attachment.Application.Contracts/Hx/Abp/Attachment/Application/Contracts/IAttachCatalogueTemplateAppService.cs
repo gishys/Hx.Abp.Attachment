@@ -4,27 +4,29 @@ using Volo.Abp.Application.Services;
 
 namespace Hx.Abp.Attachment.Application.Contracts
 {
-    public interface IAttachCatalogueTemplateAppService :
-        ICrudAppService<
-            AttachCatalogueTemplateDto,
-            Guid,
-            GetAttachCatalogueTemplateListDto,
-            CreateUpdateAttachCatalogueTemplateDto>
+    public interface IAttachCatalogueTemplateAppService : IApplicationService
     {
+        // 基本 CRUD 方法
+        Task<AttachCatalogueTemplateDto> GetAsync(Guid id);
+        Task<PagedResultDto<AttachCatalogueTemplateDto>> GetListAsync(GetAttachCatalogueTemplateListDto input);
+        Task<AttachCatalogueTemplateDto> CreateAsync(CreateUpdateAttachCatalogueTemplateDto input);
+        Task<AttachCatalogueTemplateDto> UpdateAsync(Guid id, CreateUpdateAttachCatalogueTemplateDto input);
+        Task DeleteAsync(Guid id);
+
         Task<ListResultDto<AttachCatalogueTemplateDto>> FindMatchingTemplatesAsync(TemplateMatchInput input);
         Task<TemplateStructureDto> GetTemplateStructureAsync(Guid id, bool includeHistory = false);
         Task GenerateCatalogueFromTemplateAsync(GenerateCatalogueInput input);
 
         // 新增版本管理方法
-        Task<AttachCatalogueTemplateDto> CreateNewVersionAsync(Guid baseTemplateId, CreateUpdateAttachCatalogueTemplateDto input);
-        Task<AttachCatalogueTemplateDto> SetAsLatestVersionAsync(Guid templateId, int version);
-        Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplateHistoryAsync(Guid templateId);
-        Task<AttachCatalogueTemplateDto> RollbackToVersionAsync(Guid templateId, int version);
+        Task<AttachCatalogueTemplateDto> CreateNewVersionAsync(Guid baseId, CreateUpdateAttachCatalogueTemplateDto input);
+        Task<AttachCatalogueTemplateDto> SetAsLatestVersionAsync(Guid id, int version);
+        Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplateHistoryAsync(Guid id);
+        Task<AttachCatalogueTemplateDto> RollbackToVersionAsync(Guid id, int version);
         
         // 新增基于版本的操作方法
-        Task<AttachCatalogueTemplateDto> GetByVersionAsync(Guid templateId, int version);
-        Task<AttachCatalogueTemplateDto> UpdateVersionAsync(Guid templateId, int version, CreateUpdateAttachCatalogueTemplateDto input);
-        Task DeleteVersionAsync(Guid templateId, int version);
+        Task<AttachCatalogueTemplateDto> GetByVersionAsync(Guid id, int version);
+        Task<AttachCatalogueTemplateDto> UpdateVersionAsync(Guid id, int version, CreateUpdateAttachCatalogueTemplateDto input);
+        Task DeleteVersionAsync(Guid id, int version);
 
         // 新增模板标识查询方法
         Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplatesByIdentifierAsync(
@@ -73,37 +75,37 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 获取模板的元数据字段列表
         /// </summary>
-        Task<ListResultDto<MetaFieldDto>> GetTemplateMetaFieldsAsync(Guid templateId);
+        Task<ListResultDto<MetaFieldDto>> GetTemplateMetaFieldsAsync(Guid id);
 
         /// <summary>
         /// 添加元数据字段到模板
         /// </summary>
-        Task<MetaFieldDto> AddMetaFieldToTemplateAsync(Guid templateId, CreateUpdateMetaFieldDto input);
+        Task<MetaFieldDto> AddMetaFieldToTemplateAsync(Guid id, CreateUpdateMetaFieldDto input);
 
         /// <summary>
         /// 更新模板的元数据字段
         /// </summary>
-        Task<MetaFieldDto> UpdateTemplateMetaFieldAsync(Guid templateId, string fieldKey, CreateUpdateMetaFieldDto input);
+        Task<MetaFieldDto> UpdateTemplateMetaFieldAsync(Guid id, string fieldKey, CreateUpdateMetaFieldDto input);
 
         /// <summary>
         /// 从模板移除元数据字段
         /// </summary>
-        Task RemoveMetaFieldFromTemplateAsync(Guid templateId, string fieldKey);
+        Task RemoveMetaFieldFromTemplateAsync(Guid id, string fieldKey);
 
         /// <summary>
         /// 获取模板的元数据字段
         /// </summary>
-        Task<MetaFieldDto?> GetTemplateMetaFieldAsync(Guid templateId, string fieldKey);
+        Task<MetaFieldDto?> GetTemplateMetaFieldAsync(Guid id, string fieldKey);
 
         /// <summary>
         /// 根据条件查询元数据字段
         /// </summary>
-        Task<ListResultDto<MetaFieldDto>> QueryTemplateMetaFieldsAsync(Guid templateId, MetaFieldQueryDto input);
+        Task<ListResultDto<MetaFieldDto>> QueryTemplateMetaFieldsAsync(Guid id, MetaFieldQueryDto input);
 
         /// <summary>
         /// 批量更新元数据字段顺序
         /// </summary>
-        Task UpdateMetaFieldsOrderAsync(Guid templateId, List<string> fieldKeys);
+        Task UpdateMetaFieldsOrderAsync(Guid id, List<string> fieldKeys);
 
         #endregion
     }

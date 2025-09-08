@@ -14,12 +14,7 @@ namespace Hx.Abp.Attachment.Application
         IAttachCatalogueManager catalogueManager,
         IGuidGenerator guidGenerator,
         ILogger<AttachCatalogueTemplateAppService> logger) :
-        CrudAppService<
-            AttachCatalogueTemplate,
-            AttachCatalogueTemplateDto,
-            Guid,
-            GetAttachCatalogueTemplateListDto,
-            CreateUpdateAttachCatalogueTemplateDto>(repository),
+        ApplicationService,
         IAttachCatalogueTemplateAppService
     {
         private readonly IAttachCatalogueTemplateRepository _templateRepository = repository;
@@ -27,10 +22,63 @@ namespace Hx.Abp.Attachment.Application
         private readonly IGuidGenerator _guidGenerator = guidGenerator;
         private readonly ILogger<AttachCatalogueTemplateAppService> _logger = logger;
 
+        #region 基本 CRUD 方法
+
+        /// <summary>
+        /// 获取模板（最新版本）
+        /// </summary>
+        public async Task<AttachCatalogueTemplateDto> GetAsync(Guid id)
+        {
+            var template = await _templateRepository.GetLatestVersionAsync(id);
+            return template == null
+                ? throw new UserFriendlyException($"未找到模板 {id}")
+                : ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(template);
+        }
+
+        /// <summary>
+        /// 获取模板列表
+        /// </summary>
+        public async Task<PagedResultDto<AttachCatalogueTemplateDto>> GetListAsync(GetAttachCatalogueTemplateListDto input)
+        {
+            var query = await _templateRepository.GetQueryableAsync();
+            
+            // 应用过滤条件
+            if (input.FacetType.HasValue)
+            {
+                query = query.Where(t => t.FacetType == input.FacetType.Value);
+            }
+            
+            if (input.TemplatePurpose.HasValue)
+            {
+                query = query.Where(t => t.TemplatePurpose == input.TemplatePurpose.Value);
+            }
+            
+            if (input.IsLatest.HasValue && input.IsLatest.Value)
+            {
+                query = query.Where(t => t.IsLatest);
+            }
+            
+            if (!string.IsNullOrEmpty(input.Name))
+            {
+                query = query.Where(t => t.TemplateName.Contains(input.Name) || 
+                                       (t.Description != null && t.Description.Contains(input.Name)));
+            }
+
+            var totalCount = await AsyncExecuter.CountAsync(query);
+            var templates = await AsyncExecuter.ToListAsync(
+                query.OrderBy(t => t.TemplateName)
+                     .Skip(input.SkipCount)
+                     .Take(input.MaxResultCount));
+
+            var templateDtos = ObjectMapper.Map<List<AttachCatalogueTemplate>, List<AttachCatalogueTemplateDto>>(templates);
+            
+            return new PagedResultDto<AttachCatalogueTemplateDto>(totalCount, templateDtos);
+        }
+
         /// <summary>
         /// 创建模板（支持自动路径维护）
         /// </summary>
-        public override async Task<AttachCatalogueTemplateDto> CreateAsync(CreateUpdateAttachCatalogueTemplateDto input)
+        public async Task<AttachCatalogueTemplateDto> CreateAsync(CreateUpdateAttachCatalogueTemplateDto input)
         {
             try
             {
@@ -39,7 +87,17 @@ namespace Hx.Abp.Attachment.Application
                 if (input.ParentId.HasValue)
                 {
                     // 有父级：获取父级路径，然后查找同级最大路径
-                    var parentTemplate = await _templateRepository.GetLatestVersionAsync(input.ParentId.Value) ?? throw new UserFriendlyException($"未找到父模板 {input.ParentId.Value}");
+                    AttachCatalogueTemplate parentTemplate;
+                    if (input.ParentVersion.HasValue)
+                    {
+                        // 指定了父版本，获取特定版本
+                        parentTemplate = await _templateRepository.GetByVersionAsync(input.ParentId.Value, input.ParentVersion.Value) ?? throw new UserFriendlyException($"未找到父模板 {input.ParentId.Value} 版本 {input.ParentVersion.Value}");
+                    }
+                    else
+                    {
+                        // 未指定父版本，获取最新版本
+                        parentTemplate = await _templateRepository.GetLatestVersionAsync(input.ParentId.Value) ?? throw new UserFriendlyException($"未找到父模板 {input.ParentId.Value}");
+                    }
                     var maxPathAtSameLevel = await _templateRepository.GetMaxTemplatePathAtSameLevelAsync(parentTemplate.TemplatePath);
 
                     if (string.IsNullOrEmpty(maxPathAtSameLevel))
@@ -78,7 +136,7 @@ namespace Hx.Abp.Attachment.Application
                     }
                 }
                 // 创建实体
-                var templateId = input.TemplateId ?? _guidGenerator.Create();
+                var templateId = input.Id ?? _guidGenerator.Create();
                 var template = new AttachCatalogueTemplate(
                     templateId: templateId,
                     version: 1,
@@ -88,6 +146,7 @@ namespace Hx.Abp.Attachment.Application
                     isRequired: input.IsRequired,
                     isStatic: input.IsStatic,
                     parentId: input.ParentId,
+                    parentVersion: input.ParentVersion,
                     workflowConfig: input.WorkflowConfig,
                     isLatest: true,
                     facetType: input.FacetType,
@@ -123,7 +182,7 @@ namespace Hx.Abp.Attachment.Application
         /// <summary>
         /// 更新模板（支持路径维护）
         /// </summary>
-        public override async Task<AttachCatalogueTemplateDto> UpdateAsync(Guid id, CreateUpdateAttachCatalogueTemplateDto input)
+        public async Task<AttachCatalogueTemplateDto> UpdateAsync(Guid id, CreateUpdateAttachCatalogueTemplateDto input)
         {
             try
             {
@@ -136,7 +195,17 @@ namespace Hx.Abp.Attachment.Application
                     if (input.ParentId.HasValue)
                     {
                         // 有父级：获取父级路径，然后查找同级最大路径
-                        var parentTemplate = await _templateRepository.GetLatestVersionAsync(input.ParentId.Value) ?? throw new UserFriendlyException($"未找到父模板 {input.ParentId.Value}");
+                        AttachCatalogueTemplate parentTemplate;
+                        if (input.ParentVersion.HasValue)
+                        {
+                            // 指定了父版本，获取特定版本
+                            parentTemplate = await _templateRepository.GetByVersionAsync(input.ParentId.Value, input.ParentVersion.Value) ?? throw new UserFriendlyException($"未找到父模板 {input.ParentId.Value} 版本 {input.ParentVersion.Value}");
+                        }
+                        else
+                        {
+                            // 未指定父版本，获取最新版本
+                            parentTemplate = await _templateRepository.GetLatestVersionAsync(input.ParentId.Value) ?? throw new UserFriendlyException($"未找到父模板 {input.ParentId.Value}");
+                        }
                         var maxPathAtSameLevel = await _templateRepository.GetMaxTemplatePathAtSameLevelAsync(parentTemplate.TemplatePath);
                         
                         if (string.IsNullOrEmpty(maxPathAtSameLevel))
@@ -177,6 +246,10 @@ namespace Hx.Abp.Attachment.Application
                 {
                     throw new UserFriendlyException("模板路径格式不正确");
                 }
+                if(string.IsNullOrEmpty(newTemplatePath))
+                {
+                    newTemplatePath = template.TemplatePath;
+                }
 
                 // 更新实体
                 template.Update(
@@ -198,10 +271,10 @@ namespace Hx.Abp.Attachment.Application
                     newTemplatePath
                 );
 
-                // 如果父模板发生变化，更新父模板ID
-                if (template.ParentId != input.ParentId)
+                // 如果父模板发生变化，更新父模板ID和版本
+                if (template.ParentId != input.ParentId || template.ParentVersion != input.ParentVersion)
                 {
-                    template.ChangeParent(input.ParentId, newTemplatePath);
+                    template.ChangeParent(input.ParentId, input.ParentVersion, newTemplatePath);
                 }
 
                 // 验证配置
@@ -220,6 +293,29 @@ namespace Hx.Abp.Attachment.Application
                 throw new UserFriendlyException("更新模板失败，请稍后重试");
             }
         }
+
+        /// <summary>
+        /// 删除模板（软删除）
+        /// </summary>
+        public async Task DeleteAsync(Guid id)
+        {
+            try
+            {
+                var template = await _templateRepository.GetLatestVersionAsync(id) ?? throw new UserFriendlyException($"未找到模板 {id}");
+
+                // 使用仓储的软删除方法
+                await _templateRepository.DeleteAsync(template);
+
+                _logger.LogInformation("删除模板成功：{templateName}", template.TemplateName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "删除模板失败：{templateId}", id);
+                throw new UserFriendlyException("删除模板失败，请稍后重试");
+            }
+        }
+
+        #endregion
 
         public async Task<ListResultDto<AttachCatalogueTemplateDto>> FindMatchingTemplatesAsync(TemplateMatchInput input)
         {
@@ -407,15 +503,15 @@ namespace Hx.Abp.Attachment.Application
 
         // ============= 版本管理方法 =============
         public async Task<AttachCatalogueTemplateDto> CreateNewVersionAsync(
-            Guid baseTemplateId,
+            Guid baseId,
             CreateUpdateAttachCatalogueTemplateDto input)
         {
             // 获取基础模板的最新版本
-            var baseTemplate = await _templateRepository.GetLatestVersionAsync(baseTemplateId) 
+            var baseTemplate = await _templateRepository.GetLatestVersionAsync(baseId) 
                 ?? throw new UserFriendlyException("未找到基础模板");
 
             // 获取下一个版本号
-            var allVersions = await _templateRepository.GetTemplateHistoryAsync(baseTemplateId);
+            var allVersions = await _templateRepository.GetTemplateHistoryAsync(baseId);
             var nextVersion = allVersions.Max(t => t.Version) + 1;
 
             // 创建新版本实体
@@ -489,32 +585,32 @@ namespace Hx.Abp.Attachment.Application
             }
         }
 
-        public async Task<AttachCatalogueTemplateDto> SetAsLatestVersionAsync(Guid templateId, int version)
+        public async Task<AttachCatalogueTemplateDto> SetAsLatestVersionAsync(Guid id, int version)
         {
             // 获取指定版本
-            var targetVersion = await _templateRepository.GetByVersionAsync(templateId, version) ?? throw new UserFriendlyException($"未找到模板 {templateId} 的版本 {version}");
-            await _templateRepository.SetAsLatestVersionAsync(templateId, version);
+            var targetVersion = await _templateRepository.GetByVersionAsync(id, version) ?? throw new UserFriendlyException($"未找到模板 {id} 的版本 {version}");
+            await _templateRepository.SetAsLatestVersionAsync(id, version);
             return ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(targetVersion);
         }
 
-        public async Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplateHistoryAsync(Guid templateId)
+        public async Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplateHistoryAsync(Guid id)
         {
-            var history = await _templateRepository.GetTemplateHistoryAsync(templateId);
+            var history = await _templateRepository.GetTemplateHistoryAsync(id);
             return new ListResultDto<AttachCatalogueTemplateDto>(
                 ObjectMapper.Map<List<AttachCatalogueTemplate>, List<AttachCatalogueTemplateDto>>(history));
         }
 
-        public async Task<AttachCatalogueTemplateDto> GetByVersionAsync(Guid templateId, int version)
+        public async Task<AttachCatalogueTemplateDto> GetByVersionAsync(Guid id, int version)
         {
-            var template = await _templateRepository.GetByVersionAsync(templateId, version);
+            var template = await _templateRepository.GetByVersionAsync(id, version);
             return template == null
-                ? throw new UserFriendlyException($"未找到模板 {templateId} 的版本 {version}")
+                ? throw new UserFriendlyException($"未找到模板 {id} 的版本 {version}")
                 : ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(template);
         }
 
-        public async Task<AttachCatalogueTemplateDto> UpdateVersionAsync(Guid templateId, int version, CreateUpdateAttachCatalogueTemplateDto input)
+        public async Task<AttachCatalogueTemplateDto> UpdateVersionAsync(Guid id, int version, CreateUpdateAttachCatalogueTemplateDto input)
         {
-            var template = await _templateRepository.GetByVersionAsync(templateId, version) ?? throw new UserFriendlyException($"未找到模板 {templateId} 的版本 {version}");
+            var template = await _templateRepository.GetByVersionAsync(id, version) ?? throw new UserFriendlyException($"未找到模板 {id} 的版本 {version}");
 
             // 更新模板属性 - 直接通过AutoMapper映射
             ObjectMapper.Map(input, template);
@@ -523,16 +619,16 @@ namespace Hx.Abp.Attachment.Application
             return ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(template);
         }
 
-        public async Task DeleteVersionAsync(Guid templateId, int version)
+        public async Task DeleteVersionAsync(Guid id, int version)
         {
-            var template = await _templateRepository.GetByVersionAsync(templateId, version) ?? throw new UserFriendlyException($"未找到模板 {templateId} 的版本 {version}");
+            var template = await _templateRepository.GetByVersionAsync(id, version) ?? throw new UserFriendlyException($"未找到模板 {id} 的版本 {version}");
             await _templateRepository.DeleteAsync(template);
         }
 
-        public async Task<AttachCatalogueTemplateDto> RollbackToVersionAsync(Guid templateId, int version)
+        public async Task<AttachCatalogueTemplateDto> RollbackToVersionAsync(Guid id, int version)
         {
-            var versionToRollback = await _templateRepository.GetByVersionAsync(templateId, version) ?? throw new UserFriendlyException($"未找到模板 {templateId} 的版本 {version}");
-            var latestVersion = await _templateRepository.GetLatestVersionAsync(templateId) ?? throw new UserFriendlyException("未找到最新版本，无法回滚");
+            var versionToRollback = await _templateRepository.GetByVersionAsync(id, version) ?? throw new UserFriendlyException($"未找到模板 {id} 的版本 {version}");
+            var latestVersion = await _templateRepository.GetLatestVersionAsync(id) ?? throw new UserFriendlyException("未找到最新版本，无法回滚");
             if (latestVersion.Version == version)
             {
                 throw new UserFriendlyException("此版本已是最新版本");
@@ -874,30 +970,30 @@ namespace Hx.Abp.Attachment.Application
 
         #region 元数据字段管理
 
-        public async Task<ListResultDto<MetaFieldDto>> GetTemplateMetaFieldsAsync(Guid templateId)
+        public async Task<ListResultDto<MetaFieldDto>> GetTemplateMetaFieldsAsync(Guid id)
         {
             try
             {
-                var template = await _templateRepository.GetLatestVersionAsync(templateId) ?? throw new UserFriendlyException($"未找到模板 {templateId}");
+                var template = await _templateRepository.GetLatestVersionAsync(id) ?? throw new UserFriendlyException($"未找到模板 {id}");
                 var metaFields = template.GetEnabledMetaFields().ToList();
                 var metaFieldDtos = ObjectMapper.Map<List<MetaField>, List<MetaFieldDto>>(metaFields);
                 
-                _logger.LogInformation("获取模板 {templateId} 的元数据字段完成，数量：{count}", templateId, metaFieldDtos.Count);
+                _logger.LogInformation("获取模板 {id} 的元数据字段完成，数量：{count}", id, metaFieldDtos.Count);
                 
                 return new ListResultDto<MetaFieldDto>(metaFieldDtos);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "获取模板 {templateId} 的元数据字段失败", templateId);
+                _logger.LogError(ex, "获取模板 {id} 的元数据字段失败", id);
                 throw new UserFriendlyException("获取元数据字段失败，请稍后重试");
             }
         }
 
-        public async Task<MetaFieldDto> AddMetaFieldToTemplateAsync(Guid templateId, CreateUpdateMetaFieldDto input)
+        public async Task<MetaFieldDto> AddMetaFieldToTemplateAsync(Guid id, CreateUpdateMetaFieldDto input)
         {
             try
             {
-                var template = await _templateRepository.GetLatestVersionAsync(templateId) ?? throw new UserFriendlyException($"未找到模板 {templateId}");
+                var template = await _templateRepository.GetLatestVersionAsync(id) ?? throw new UserFriendlyException($"未找到模板 {id}");
                 var metaField = new MetaField(
                     input.EntityType,
                     input.FieldKey,
@@ -919,13 +1015,13 @@ namespace Hx.Abp.Attachment.Application
                 template.AddMetaField(metaField);
                 await _templateRepository.UpdateAsync(template);
                 
-                _logger.LogInformation("向模板 {templateId} 添加元数据字段成功：{fieldKey}", templateId, input.FieldKey);
+                _logger.LogInformation("向模板 {id} 添加元数据字段成功：{fieldKey}", id, input.FieldKey);
                 
                 return ObjectMapper.Map<MetaField, MetaFieldDto>(metaField);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "向模板 {templateId} 添加元数据字段失败", templateId);
+                _logger.LogError(ex, "向模板 {id} 添加元数据字段失败", id);
                 throw new UserFriendlyException("添加元数据字段失败，请稍后重试");
             }
         }
@@ -1003,11 +1099,11 @@ namespace Hx.Abp.Attachment.Application
             }
         }
 
-        public async Task<ListResultDto<MetaFieldDto>> QueryTemplateMetaFieldsAsync(Guid templateId, MetaFieldQueryDto input)
+        public async Task<ListResultDto<MetaFieldDto>> QueryTemplateMetaFieldsAsync(Guid id, MetaFieldQueryDto input)
         {
             try
             {
-                var template = await _templateRepository.GetLatestVersionAsync(templateId) ?? throw new UserFriendlyException($"未找到模板 {templateId}");
+                var template = await _templateRepository.GetLatestVersionAsync(id) ?? throw new UserFriendlyException($"未找到模板 {id}");
                 var metaFields = template.GetEnabledMetaFields().ToList();
                 
                 // 应用查询条件
@@ -1037,22 +1133,22 @@ namespace Hx.Abp.Attachment.Application
                 var result = filteredFields.OrderBy(f => f.Order).ToList();
                 var metaFieldDtos = ObjectMapper.Map<List<MetaField>, List<MetaFieldDto>>(result);
                 
-                _logger.LogInformation("查询模板 {templateId} 的元数据字段完成，数量：{count}", templateId, metaFieldDtos.Count);
+                _logger.LogInformation("查询模板 {id} 的元数据字段完成，数量：{count}", id, metaFieldDtos.Count);
                 
                 return new ListResultDto<MetaFieldDto>(metaFieldDtos);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "查询模板 {templateId} 的元数据字段失败", templateId);
+                _logger.LogError(ex, "查询模板 {id} 的元数据字段失败", id);
                 throw new UserFriendlyException("查询元数据字段失败，请稍后重试");
             }
         }
 
-        public async Task UpdateMetaFieldsOrderAsync(Guid templateId, List<string> fieldKeys)
+        public async Task UpdateMetaFieldsOrderAsync(Guid id, List<string> fieldKeys)
         {
             try
             {
-                var template = await _templateRepository.GetLatestVersionAsync(templateId) ?? throw new UserFriendlyException($"未找到模板 {templateId}");
+                var template = await _templateRepository.GetLatestVersionAsync(id) ?? throw new UserFriendlyException($"未找到模板 {id}");
                 for (int i = 0; i < fieldKeys.Count; i++)
                 {
                     var field = template.GetMetaField(fieldKeys[i]);
@@ -1061,11 +1157,11 @@ namespace Hx.Abp.Attachment.Application
                 
                 await _templateRepository.UpdateAsync(template);
                 
-                _logger.LogInformation("更新模板 {templateId} 的元数据字段顺序成功，字段数量：{count}", templateId, fieldKeys.Count);
+                _logger.LogInformation("更新模板 {id} 的元数据字段顺序成功，字段数量：{count}", id, fieldKeys.Count);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "更新模板 {templateId} 的元数据字段顺序失败", templateId);
+                _logger.LogError(ex, "更新模板 {id} 的元数据字段顺序失败", id);
                 throw new UserFriendlyException("更新字段顺序失败，请稍后重试");
             }
         }

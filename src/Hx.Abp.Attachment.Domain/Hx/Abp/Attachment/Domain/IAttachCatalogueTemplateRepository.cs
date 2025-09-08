@@ -3,10 +3,11 @@ using Volo.Abp.Domain.Repositories;
 
 namespace Hx.Abp.Attachment.Domain
 {
-    public interface IAttachCatalogueTemplateRepository : IRepository<AttachCatalogueTemplate, Guid>
+    public interface IAttachCatalogueTemplateRepository : IRepository<AttachCatalogueTemplate>
     {
         Task<List<AttachCatalogueTemplate>> FindByRuleMatchAsync(Dictionary<string, object> context, bool onlyLatest = true);
         Task<List<AttachCatalogueTemplate>> GetChildrenAsync(Guid parentId, bool onlyLatest = true);
+        Task<List<AttachCatalogueTemplate>> GetChildrenByParentAsync(Guid parentId, int parentVersion, bool onlyLatest = true);
 
         // 新增版本相关方法
         Task<AttachCatalogueTemplate?> GetLatestVersionAsync(Guid templateId);

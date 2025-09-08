@@ -68,7 +68,8 @@ namespace Hx.Abp.Attachment.Application.Contracts
             FacetType? facetType = null,
             TemplatePurpose? templatePurpose = null,
             bool includeChildren = true,
-            bool onlyLatest = true);
+            bool onlyLatest = true,
+            string? fulltextQuery = null);
 
         #region 元数据字段管理
 

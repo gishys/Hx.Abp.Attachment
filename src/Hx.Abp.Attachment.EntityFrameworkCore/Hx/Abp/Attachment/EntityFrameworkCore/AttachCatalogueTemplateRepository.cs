@@ -65,7 +65,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
     {
         private readonly IRulesEngine _rulesEngine = rulesEngine;
         private readonly IGuidGenerator _guidGenerator = guidGenerator;
-        
+
         public async Task<List<AttachCatalogueTemplate>> GetIntelligentRecommendationsAsync(
             string query, 
             double threshold = 0.3, 
@@ -74,10 +74,10 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             bool includeHistory = false)
         {
             try
-        {
-            var dbContext = await GetDbContextAsync();
-            var dbSet = await GetDbSetAsync();
-            
+            {
+                var dbContext = await GetDbContextAsync();
+                var dbSet = await GetDbSetAsync();
+                
                 // 首先检查数据库中是否有数据
                 var totalCount = await dbSet.CountAsync();
                 Logger.LogInformation("数据库中总共有 {totalCount} 个模板", totalCount);
@@ -87,9 +87,9 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     Logger.LogWarning("数据库中没有模板数据，返回空列表");
                     return [];
                 }
-                
+
                 // 混合检索架构：向量召回 + 全文检索加权过滤 + 分数融合
-            var sql = @"
+                var sql = @"
                     WITH vector_recall AS (
                         -- 第一阶段：向量召回 Top-N（语义检索）
                         SELECT 
@@ -105,8 +105,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                                 )
                                 ELSE 0
                             END as vector_score
-                    FROM ""APPATTACH_CATALOGUE_TEMPLATES"" t
-                    WHERE (@onlyLatest = false OR t.""IS_LATEST"" = true)
+                        FROM ""APPATTACH_CATALOGUE_TEMPLATES"" t
+                        WHERE (@onlyLatest = false OR t.""IS_LATEST"" = true)
                           AND t.""IS_DELETED"" = false
                           AND (
                               -- 向量过滤条件
@@ -126,19 +126,19 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                             COALESCE(
                                 GREATEST(
                                                                               -- 模板名称匹配（权重最高，要求更高的相似度）
-                                          CASE WHEN vr.""TEMPLATE_NAME"" ILIKE @queryPattern
+                                    CASE WHEN vr.""TEMPLATE_NAME"" ILIKE @queryPattern 
                                                THEN CASE 
                                                    WHEN COALESCE(similarity(vr.""TEMPLATE_NAME"", @query), 0) > 0.3 
-                                                   THEN COALESCE(similarity(vr.""TEMPLATE_NAME"", @query), 0) * 1.0
+                                         THEN COALESCE(similarity(vr.""TEMPLATE_NAME"", @query), 0) * 1.0
                                                    ELSE 0 
                                                END
-                                               ELSE 0 END,
+                                         ELSE 0 END,
                                     
                                     -- 描述字段匹配（权重较高）
                                     CASE WHEN vr.""DESCRIPTION"" IS NOT NULL AND vr.""DESCRIPTION"" ILIKE @queryPattern 
                                          THEN CASE 
                                              WHEN COALESCE(similarity(vr.""DESCRIPTION"", @query), 0) > 0.3 
-                                             THEN COALESCE(similarity(vr.""DESCRIPTION"", @query), 0) * 0.8
+                                         THEN COALESCE(similarity(vr.""DESCRIPTION"", @query), 0) * 0.8
                                              ELSE 0 
                                          END
                                          ELSE 0 END,
@@ -213,37 +213,37 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                         OR usage_count > 0
                     )
                     ORDER BY final_score DESC, ""SEQUENCE_NUMBER"" ASC
-                LIMIT @topN";
-            
+                    LIMIT @topN";
+
                 // 准备查询参数
-            var queryPattern = $"%{query}%";
+                var queryPattern = $"%{query}%";
                 var queryWords = query.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 var queryTagsJson = $"[{string.Join(",", queryWords.Select(w => $"\"{w}\""))}]";
                 var vectorTopN = Math.Max(topN * 3, 50); // 向量召回更多候选
                 var vectorThreshold = threshold * 0.5; // 向量阈值相对宽松
                 var fulltextThreshold = threshold; // 全文检索阈值
 
-            var parameters = new[]
-            {
-                new Npgsql.NpgsqlParameter("@query", query),
-                new Npgsql.NpgsqlParameter("@queryPattern", queryPattern),
+                var parameters = new[]
+                {
+                    new Npgsql.NpgsqlParameter("@query", query),
+                    new Npgsql.NpgsqlParameter("@queryPattern", queryPattern),
                     new Npgsql.NpgsqlParameter("@queryTagsJson", queryTagsJson),
                     new Npgsql.NpgsqlParameter("@vectorTopN", vectorTopN),
                     new Npgsql.NpgsqlParameter("@vectorThreshold", vectorThreshold),
                     new Npgsql.NpgsqlParameter("@fulltextThreshold", fulltextThreshold),
-                new Npgsql.NpgsqlParameter("@topN", topN),
-                new Npgsql.NpgsqlParameter("@onlyLatest", onlyLatest)
-            };
-            
+                    new Npgsql.NpgsqlParameter("@topN", topN),
+                    new Npgsql.NpgsqlParameter("@onlyLatest", onlyLatest)
+                };
+                
                 // 执行混合检索查询
-            var rawResults = await dbContext.Database
-                .SqlQueryRaw<dynamic>(sql, parameters)
-                .ToListAsync();
-                    
+                var rawResults = await dbContext.Database
+                    .SqlQueryRaw<dynamic>(sql, parameters)
+                    .ToListAsync();
+                        
                 Logger.LogInformation("混合检索查询返回 {rawCount} 个结果", rawResults?.Count ?? 0);
                 
-            var results = new List<AttachCatalogueTemplate>();
-                
+                var results = new List<AttachCatalogueTemplate>();
+                    
                 // 检查查询结果是否为空
                 if (rawResults == null || rawResults.Count == 0)
                 {
@@ -251,17 +251,17 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     return results;
                 }
                 
-            foreach (var rawResult in rawResults)
+                foreach (var rawResult in rawResults)
                 {
                     try
-            {
-                // 从原始结果中提取模板ID
-                var templateId = Guid.Parse(rawResult.Id.ToString());
-                
-                // 获取完整的模板实体
-                var template = await dbSet.FindAsync(templateId);
-                if (template != null)
-                {
+                    {
+                        // 从原始结果中提取模板ID
+                        var templateId = Guid.Parse(rawResult.Id.ToString());
+                        
+                        // 获取完整的模板实体
+                        var template = await dbSet.FindAsync(templateId);
+                        if (template != null)
+                        {
                             // 存储各种分数信息
                             if (rawResult.final_score != null)
                                 template.ExtraProperties["FinalScore"] = Convert.ToDouble(rawResult.final_score);
@@ -274,19 +274,19 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                             if (rawResult.last_used_time != null)
                                 template.ExtraProperties["LastUsedTime"] = rawResult.last_used_time;
                             
-                    results.Add(template);
+                            results.Add(template);
                         }
                     }
                     catch (Exception ex)
                     {
                         Logger.LogWarning(ex, "处理混合检索结果时出错，跳过此结果");
+                    }
                 }
-            }
-                
+                    
                 Logger.LogInformation("混合检索完成，查询：{query}，找到 {count} 个匹配模板", 
-                query, results.Count);
-                
-            return results;
+                    query, results.Count);
+                    
+                return results;
             }
             catch (Exception ex)
             {
@@ -1443,7 +1443,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     maxResults, 
                     true, 
                     false);
-
+                
                 Logger.LogInformation("查找相似模板完成，查询：{query}，阈值：{threshold}，结果数量：{count}", 
                     semanticQuery, similarityThreshold, similarTemplates.Count);
 
@@ -2323,7 +2323,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             FacetType? facetType = null,
             TemplatePurpose? templatePurpose = null,
             bool includeChildren = true,
-            bool onlyLatest = true)
+            bool onlyLatest = true,
+            string? fulltextQuery = null)
         {
             try
             {
@@ -2340,6 +2341,21 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 
                 if (templatePurpose.HasValue)
                     baseFilter = baseFilter.Where(t => t.TemplatePurpose == templatePurpose.Value);
+
+                // 全文检索过滤条件
+                if (!string.IsNullOrWhiteSpace(fulltextQuery))
+                {
+                    // 使用 EF.Functions.JsonContains 进行 JSONB 字段查询
+                    baseFilter = baseFilter.Where(t =>
+                        t.TemplateName.Contains(fulltextQuery) ||
+                        (t.Description != null && t.Description.Contains(fulltextQuery)) ||
+                        (t.Tags != null && EF.Functions.JsonContains(t.Tags, $"[{JsonConvert.SerializeObject(fulltextQuery)}]")) ||
+                        (t.MetaFields != null && (
+                            EF.Functions.JsonContains(t.MetaFields, $"[{{\"FieldName\":{JsonConvert.SerializeObject(fulltextQuery)}}}]") ||
+                            EF.Functions.JsonContains(t.MetaFields, $"[{{\"FieldValue\":{JsonConvert.SerializeObject(fulltextQuery)}}}]")
+                        ))
+                    );
+                }
 
                 if (includeChildren)
                 {
@@ -2361,8 +2377,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                         .OrderBy(t => t.SequenceNumber)
                         .ToListAsync();
 
-                    Logger.LogInformation("获取根节点模板完成，数量：{count}，包含子节点：{includeChildren}", 
-                        rootTemplates.Count, includeChildren);
+                    Logger.LogInformation("获取根节点模板完成，数量：{count}，包含子节点：{includeChildren}，全文检索：{fulltextQuery}", 
+                        rootTemplates.Count, includeChildren, fulltextQuery ?? "无");
 
                     return rootTemplates;
                 }

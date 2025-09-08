@@ -280,10 +280,11 @@ namespace Hx.Abp.Attachment.HttpApi
             [FromQuery] FacetType? facetType = null,
             [FromQuery] TemplatePurpose? templatePurpose = null,
             [FromQuery] bool includeChildren = true,
-            [FromQuery] bool onlyLatest = true)
+            [FromQuery] bool onlyLatest = true,
+            [FromQuery] string? fulltextQuery = null)
         {
             return AttachCatalogueTemplateAppService.GetRootTemplatesAsync(
-                facetType, templatePurpose, includeChildren, onlyLatest);
+                facetType, templatePurpose, includeChildren, onlyLatest, fulltextQuery);
         }
 
         // ============= 元数据字段管理接口 =============

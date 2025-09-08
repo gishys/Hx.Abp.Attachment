@@ -945,19 +945,20 @@ namespace Hx.Abp.Attachment.Application
             FacetType? facetType = null,
             TemplatePurpose? templatePurpose = null,
             bool includeChildren = true,
-            bool onlyLatest = true)
+            bool onlyLatest = true,
+            string? fulltextQuery = null)
         {
             try
             {
                 // 使用优化的基于路径的查询方法
                 var rootTemplates = await _templateRepository.GetRootTemplatesAsync(
-                    facetType, templatePurpose, includeChildren, onlyLatest);
+                    facetType, templatePurpose, includeChildren, onlyLatest, fulltextQuery);
 
                 var treeDtos = rootTemplates.Select(t => 
                     ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateTreeDto>(t)).ToList();
 
-                _logger.LogInformation("获取根节点模板完成，数量：{count}，包含子节点：{includeChildren}，使用路径优化：{optimized}", 
-                    treeDtos.Count, includeChildren, includeChildren);
+                _logger.LogInformation("获取根节点模板完成，数量：{count}，包含子节点：{includeChildren}，使用路径优化：{optimized}，全文检索：{fulltextQuery}", 
+                    treeDtos.Count, includeChildren, includeChildren, fulltextQuery ?? "无");
 
                 return new ListResultDto<AttachCatalogueTemplateTreeDto>(treeDtos);
             }

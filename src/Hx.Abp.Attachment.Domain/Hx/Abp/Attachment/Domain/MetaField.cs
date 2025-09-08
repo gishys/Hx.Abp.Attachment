@@ -61,6 +61,11 @@ namespace Hx.Abp.Attachment.Domain
         public string? DefaultValue { get; private set; }
 
         /// <summary>
+        /// 字段值
+        /// </summary>
+        public string? FieldValue { get; private set; }
+
+        /// <summary>
         /// 字段顺序
         /// </summary>
         public int Order { get; private set; }

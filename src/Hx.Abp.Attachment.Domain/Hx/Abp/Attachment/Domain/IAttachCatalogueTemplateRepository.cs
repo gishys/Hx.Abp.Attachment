@@ -191,7 +191,8 @@ namespace Hx.Abp.Attachment.Domain
             FacetType? facetType = null,
             TemplatePurpose? templatePurpose = null,
             bool includeChildren = true,
-            bool onlyLatest = true);
+            bool onlyLatest = true,
+            string? fulltextQuery = null);
 
         /// <summary>
         /// 递归获取模板的完整子树

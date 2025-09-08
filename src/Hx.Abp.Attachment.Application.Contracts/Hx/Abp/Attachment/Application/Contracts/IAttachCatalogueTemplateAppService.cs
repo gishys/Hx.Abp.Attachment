@@ -7,7 +7,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
     public interface IAttachCatalogueTemplateAppService : IApplicationService
     {
         // 基本 CRUD 方法
-        Task<AttachCatalogueTemplateDto> GetAsync(Guid id);
+        Task<AttachCatalogueTemplateDto> GetAsync(Guid id, bool includeTreeStructure = false);
         Task<PagedResultDto<AttachCatalogueTemplateDto>> GetListAsync(GetAttachCatalogueTemplateListDto input);
         Task<AttachCatalogueTemplateDto> CreateAsync(CreateUpdateAttachCatalogueTemplateDto input);
         Task<AttachCatalogueTemplateDto> UpdateAsync(Guid id, CreateUpdateAttachCatalogueTemplateDto input);
@@ -27,6 +27,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         Task<AttachCatalogueTemplateDto> GetByVersionAsync(Guid id, int version);
         Task<AttachCatalogueTemplateDto> UpdateVersionAsync(Guid id, int version, CreateUpdateAttachCatalogueTemplateDto input);
         Task DeleteVersionAsync(Guid id, int version);
+        
 
         // 新增模板标识查询方法
         Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplatesByIdentifierAsync(

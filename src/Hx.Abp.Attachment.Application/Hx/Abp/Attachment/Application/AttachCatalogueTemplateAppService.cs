@@ -25,15 +25,43 @@ namespace Hx.Abp.Attachment.Application
         #region 基本 CRUD 方法
 
         /// <summary>
-        /// 获取模板（最新版本）
+        /// 获取模板（最新版本，支持树形结构）
         /// </summary>
-        public async Task<AttachCatalogueTemplateDto> GetAsync(Guid id)
+        /// <param name="id">模板ID</param>
+        /// <param name="includeTreeStructure">是否包含树形结构（默认false，保持向后兼容）</param>
+        /// <returns>模板信息，如果包含树形结构则返回完整的树</returns>
+        public async Task<AttachCatalogueTemplateDto> GetAsync(Guid id, bool includeTreeStructure = false)
         {
-            var template = await _templateRepository.GetLatestVersionAsync(id);
-            return template == null
-                ? throw new UserFriendlyException($"未找到模板 {id}")
-                : ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(template);
+            try
+            {
+                _logger.LogInformation("获取模板：ID={id}, 包含树形结构={includeTreeStructure}", id, includeTreeStructure);
+                
+                var template = await _templateRepository.GetLatestVersionAsync(id, includeTreeStructure);
+                
+                if (template == null)
+                {
+                    _logger.LogWarning("未找到模板：ID={id}", id);
+                    throw new UserFriendlyException($"未找到模板 {id}");
+                }
+
+                var result = ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(template);
+                
+                _logger.LogInformation("获取模板成功：ID={id}, Version={version}, 包含树形结构={includeTreeStructure}", 
+                    id, template.Version, includeTreeStructure);
+                
+                return result;
+            }
+            catch (UserFriendlyException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "获取模板失败：ID={id}, 包含树形结构={includeTreeStructure}", id, includeTreeStructure);
+                throw new UserFriendlyException("获取模板失败，请稍后重试");
+            }
         }
+
 
         /// <summary>
         /// 获取模板列表

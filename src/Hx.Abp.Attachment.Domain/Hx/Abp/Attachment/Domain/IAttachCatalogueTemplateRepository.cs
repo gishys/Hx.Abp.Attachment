@@ -10,7 +10,7 @@ namespace Hx.Abp.Attachment.Domain
         Task<List<AttachCatalogueTemplate>> GetChildrenByParentAsync(Guid parentId, int parentVersion, bool onlyLatest = true);
 
         // 新增版本相关方法
-        Task<AttachCatalogueTemplate?> GetLatestVersionAsync(Guid templateId);
+        Task<AttachCatalogueTemplate?> GetLatestVersionAsync(Guid templateId, bool includeTreeStructure = false);
         Task<List<AttachCatalogueTemplate>> GetAllVersionsAsync(Guid templateId);
         Task<List<AttachCatalogueTemplate>> GetTemplateHistoryAsync(Guid templateId);
         Task<AttachCatalogueTemplate?> GetByVersionAsync(Guid templateId, int version);

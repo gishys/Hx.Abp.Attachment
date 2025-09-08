@@ -395,12 +395,12 @@ const getTemplateList = async (params = {}) => {
 
 ---
 
-### 3. 获取模板（最新版本）接口
+### 3. 获取模板（最新版本，支持树形结构）接口
 
 #### 接口信息
 
 -   **接口路径**: `GET /api/attach-catalogue-template/{id}`
--   **接口描述**: 获取指定模板的最新版本
+-   **接口描述**: 获取指定模板的最新版本，支持返回树形结构
 -   **请求方式**: GET
 
 #### 请求参数
@@ -411,9 +411,21 @@ const getTemplateList = async (params = {}) => {
 | ------ | ---- | ---- | ------- | -------------------------------------- |
 | id     | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
 
+**查询参数**:
+
+| 参数名               | 类型 | 必填 | 描述             | 默认值 | 示例值 |
+| -------------------- | ---- | ---- | ---------------- | ------ | ------ |
+| includeTreeStructure | bool | 否   | 是否包含树形结构 | false  | true   |
+
+#### 响应说明
+
+-   **includeTreeStructure=false**: 返回单个模板信息
+-   **includeTreeStructure=true**: 返回包含完整树形结构的模板信息（包含所有父节点和子节点）
+
 #### React Axios 调用示例
 
 ```javascript
+// 获取单个模板
 const getLatestTemplate = async (id) => {
     try {
         const response = await axios.get(
@@ -430,6 +442,29 @@ const getLatestTemplate = async (id) => {
     } catch (error) {
         console.error(
             '获取最新版本模板失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+
+// 获取模板及其树形结构
+const getLatestTemplateWithTree = async (id) => {
+    try {
+        const response = await axios.get(
+            `/api/attach-catalogue-template/${id}?includeTreeStructure=true`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('获取模板树形结构成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '获取模板树形结构失败:',
             error.response?.data || error.message
         );
         throw error;

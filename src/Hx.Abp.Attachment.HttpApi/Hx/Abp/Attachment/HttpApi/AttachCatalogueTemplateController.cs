@@ -15,13 +15,19 @@ namespace Hx.Abp.Attachment.HttpApi
         public IAttachCatalogueTemplateAppService AttachCatalogueTemplateAppService => _attachCatalogueTemplateAppService;
 
         /// <summary>
-        /// 获取模板（最新版本）
+        /// 获取模板（最新版本，支持树形结构）
         /// </summary>
+        /// <param name="id">模板ID</param>
+        /// <param name="includeTreeStructure">是否包含树形结构（默认false）</param>
+        /// <returns>模板信息，如果包含树形结构则返回完整的树</returns>
         [HttpGet("{id}")]
-        public virtual Task<AttachCatalogueTemplateDto> GetAsync(Guid id)
+        public virtual Task<AttachCatalogueTemplateDto> GetAsync(
+            Guid id, 
+            [FromQuery] bool includeTreeStructure = false)
         {
-            return AttachCatalogueTemplateAppService.GetAsync(id);
+            return AttachCatalogueTemplateAppService.GetAsync(id, includeTreeStructure);
         }
+
 
         /// <summary>
         /// 更新模板（最新版本）

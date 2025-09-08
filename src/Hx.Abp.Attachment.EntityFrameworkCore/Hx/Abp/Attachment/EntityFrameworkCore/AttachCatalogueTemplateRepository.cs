@@ -893,13 +893,94 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .ToListAsync();
         }
 
-        // 新增版本管理方法
-        public async Task<AttachCatalogueTemplate?> GetLatestVersionAsync(Guid templateId)
+        /// <summary>
+        /// 获取指定模板的最新版本
+        /// </summary>
+        /// <param name="templateId">模板ID</param>
+        /// <param name="includeTreeStructure">是否返回树形结构（包含所有相关节点）</param>
+        /// <returns>最新版本的模板，如果包含树形结构则返回完整的树</returns>
+        public async Task<AttachCatalogueTemplate?> GetLatestVersionAsync(Guid templateId, bool includeTreeStructure = false)
         {
-            return await (await GetDbSetAsync())
-                .Where(t => t.Id == templateId && t.IsLatest)
-                .OrderByDescending(t => t.Version)
-                .FirstOrDefaultAsync();
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                
+                // 获取最新版本的模板
+                var latestTemplate = await dbSet
+                    .Where(t => t.Id == templateId && t.IsLatest && !t.IsDeleted)
+                    .OrderByDescending(t => t.Version)
+                    .FirstOrDefaultAsync();
+
+                if (latestTemplate == null)
+                {
+                    Logger.LogWarning("未找到模板的最新版本：ID={templateId}", templateId);
+                    return null;
+                }
+
+                // 如果不包含树形结构，直接返回单个模板
+                if (!includeTreeStructure)
+                {
+                    Logger.LogDebug("获取模板最新版本成功：ID={templateId}, Version={version}", 
+                        templateId, latestTemplate.Version);
+                    return latestTemplate;
+                }
+
+                // 包含树形结构：获取所有相关节点
+                var allRelatedNodes = await GetAllNodesFromTemplateAsync(
+                    templateId, 
+                    latestTemplate.Version, 
+                    includeDescendants: true, 
+                    onlyLatest: true);
+
+                // 构建树形结构
+                var treeStructure = BuildTreeFromPath(allRelatedNodes, onlyLatest: true);
+                
+                // 找到并返回目标节点（保持树形结构）
+                var targetNode = FindNodeInTree(treeStructure, templateId, latestTemplate.Version);
+                
+                Logger.LogInformation("获取模板最新版本及树形结构成功：ID={templateId}, Version={version}, 相关节点数={nodeCount}", 
+                    templateId, latestTemplate.Version, allRelatedNodes.Count);
+
+                return targetNode;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取模板最新版本失败：ID={templateId}", templateId);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 在树形结构中查找指定节点
+        /// </summary>
+        /// <param name="treeNodes">树形节点集合</param>
+        /// <param name="templateId">模板ID</param>
+        /// <param name="templateVersion">模板版本</param>
+        /// <returns>找到的节点，如果未找到则返回null</returns>
+        private static AttachCatalogueTemplate? FindNodeInTree(
+            List<AttachCatalogueTemplate> treeNodes, 
+            Guid templateId, 
+            int templateVersion)
+        {
+            foreach (var node in treeNodes)
+            {
+                if (node.Id == templateId && node.Version == templateVersion)
+                {
+                    return node;
+                }
+
+                // 递归查找子节点
+                if (node.Children != null && node.Children.Count != 0)
+                {
+                    var foundInChildren = FindNodeInTree([.. node.Children], templateId, templateVersion);
+                    if (foundInChildren != null)
+                    {
+                        return foundInChildren;
+                    }
+                }
+            }
+
+            return null;
         }
 
         public async Task<List<AttachCatalogueTemplate>> GetAllVersionsAsync(Guid templateId)
@@ -2361,10 +2442,18 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 {
                     // 使用TemplatePath进行高效查询，避免递归Include
                     // 查询所有匹配条件的模板，然后通过路径构建树形结构
-                    var allTemplates = await baseFilter
+                    var matchedTemplates = await baseFilter
                         .OrderBy(t => t.TemplatePath)
                         .ThenBy(t => t.SequenceNumber)
                         .ToListAsync();
+
+                    // 如果有全文检索条件，需要获取所有相关的父节点和子节点
+                    var allTemplates = matchedTemplates;
+                    if (!string.IsNullOrWhiteSpace(fulltextQuery))
+                    {
+                        // 优化方案：使用单次查询获取所有相关节点
+                        allTemplates = await GetAllNodesFromPathsAsync(matchedTemplates, onlyLatest);
+                    }
 
                     // 通过路径构建树形结构
                     return BuildTreeFromPath(allTemplates, onlyLatest);
@@ -3054,6 +3143,207 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             {
                 Logger.LogError(ex, "获取同级最大路径失败，父路径：{parentPath}", parentPath);
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// 从给定的模板节点集合中获取所有相关的父节点和子节点
+        /// 使用高效的路径查询策略，避免多次数据库查询
+        /// </summary>
+        /// <param name="sourceTemplates">源模板节点集合</param>
+        /// <param name="onlyLatest">是否只获取最新版本</param>
+        /// <returns>包含所有相关节点的完整集合</returns>
+        private async Task<List<AttachCatalogueTemplate>> GetAllNodesFromPathsAsync(
+            List<AttachCatalogueTemplate> sourceTemplates, 
+            bool onlyLatest = true)
+        {
+            if (sourceTemplates == null || sourceTemplates.Count == 0)
+                return sourceTemplates ?? [];
+
+            var dbSet = await GetDbSetAsync();
+            
+            // 收集所有需要查询的路径
+            var allRequiredPaths = new HashSet<string>();
+            
+            foreach (var template in sourceTemplates)
+            {
+                if (!string.IsNullOrEmpty(template.TemplatePath))
+                {
+                    // 添加当前路径及其所有父级路径
+                    var parentPaths = GetAllParentPaths(template.TemplatePath);
+                    foreach (var path in parentPaths)
+                    {
+                        allRequiredPaths.Add(path);
+                    }
+                }
+                else
+                {
+                    // 根节点路径
+                    allRequiredPaths.Add(string.Empty);
+                }
+            }
+
+            // 单次查询获取所有相关节点
+            var allNodes = await dbSet
+                .Where(t => !t.IsDeleted && 
+                           (!onlyLatest || t.IsLatest) &&
+                           (t.TemplatePath == null || t.TemplatePath == string.Empty || allRequiredPaths.Contains(t.TemplatePath)))
+                .OrderBy(t => t.TemplatePath)
+                .ThenBy(t => t.SequenceNumber)
+                .ToListAsync();
+
+            // 合并源模板和查询到的节点，去重
+            var result = sourceTemplates.Union(allNodes, new AttachCatalogueTemplateEqualityComparer())
+                .OrderBy(t => t.TemplatePath)
+                .ThenBy(t => t.SequenceNumber)
+                .ToList();
+
+            Logger.LogDebug("从 {sourceCount} 个源节点获取到 {resultCount} 个完整节点", 
+                sourceTemplates.Count, result.Count);
+
+            return result;
+        }
+
+        /// <summary>
+        /// 获取指定路径的所有父级路径
+        /// 例如：输入 "00001.00002.00003"，返回 ["00001", "00001.00002", "00001.00002.00003"]
+        /// </summary>
+        /// <param name="templatePath">模板路径</param>
+        /// <returns>所有父级路径集合</returns>
+        private static List<string> GetAllParentPaths(string templatePath)
+        {
+            if (string.IsNullOrEmpty(templatePath))
+                return [string.Empty];
+
+            var pathSegments = templatePath.Split('.');
+            var parentPaths = new List<string>
+            {
+                // 添加根节点路径
+                string.Empty
+            };
+            
+            // 添加所有层级的路径
+            for (int i = 1; i <= pathSegments.Length; i++)
+            {
+                parentPaths.Add(string.Join(".", pathSegments.Take(i)));
+            }
+
+            return parentPaths;
+        }
+
+        /// <summary>
+        /// 从任意一个节点获取从这个节点出发的父节点包含的所有节点
+        /// 这是一个通用的路径查询方法，可以用于各种场景
+        /// </summary>
+        /// <param name="templateId">模板ID</param>
+        /// <param name="templateVersion">模板版本</param>
+        /// <param name="includeDescendants">是否包含后代节点</param>
+        /// <param name="onlyLatest">是否只获取最新版本</param>
+        /// <returns>从指定节点出发的所有相关节点</returns>
+        public async Task<List<AttachCatalogueTemplate>> GetAllNodesFromTemplateAsync(
+            Guid templateId, 
+            int templateVersion, 
+            bool includeDescendants = true, 
+            bool onlyLatest = true)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                
+                // 获取起始节点
+                var startTemplate = await dbSet.FindAsync(templateId, templateVersion);
+                if (startTemplate == null)
+                {
+                    Logger.LogWarning("未找到指定的模板节点：ID={templateId}, Version={templateVersion}", 
+                        templateId, templateVersion);
+                    return [];
+                }
+
+                var allPaths = new HashSet<string>();
+                
+                if (!string.IsNullOrEmpty(startTemplate.TemplatePath))
+                {
+                    // 获取所有父级路径
+                    var parentPaths = GetAllParentPaths(startTemplate.TemplatePath);
+                    foreach (var path in parentPaths)
+                    {
+                        allPaths.Add(path);
+                    }
+
+                    if (includeDescendants)
+                    {
+                        // 获取所有后代路径（以当前路径为前缀的所有路径）
+                        var descendantPaths = await dbSet
+                            .Where(t => !t.IsDeleted && 
+                                       t.TemplatePath != null &&
+                                       t.TemplatePath.StartsWith(startTemplate.TemplatePath + "."))
+                            .Select(t => t.TemplatePath!)
+                            .Distinct()
+                            .ToListAsync();
+                        
+                        foreach (var path in descendantPaths)
+                        {
+                            allPaths.Add(path);
+                        }
+                    }
+                }
+                else
+                {
+                    // 根节点：获取所有路径
+                    allPaths.Add(string.Empty);
+                    
+                    if (includeDescendants)
+                    {
+                        var allTemplatePaths = await dbSet
+                            .Where(t => !t.IsDeleted && t.TemplatePath != null)
+                            .Select(t => t.TemplatePath!)
+                            .Distinct()
+                            .ToListAsync();
+                        
+                        foreach (var path in allTemplatePaths)
+                        {
+                            allPaths.Add(path);
+                        }
+                    }
+                }
+
+                // 查询所有相关节点
+                var allNodes = await dbSet
+                    .Where(t => !t.IsDeleted && 
+                               (!onlyLatest || t.IsLatest) &&
+                               (t.TemplatePath == null || t.TemplatePath == string.Empty || allPaths.Contains(t.TemplatePath)))
+                    .OrderBy(t => t.TemplatePath)
+                    .ThenBy(t => t.SequenceNumber)
+                    .ToListAsync();
+
+                Logger.LogInformation("从模板节点 {templateId}:{templateVersion} 获取到 {count} 个相关节点", 
+                    templateId, templateVersion, allNodes.Count);
+
+                return allNodes;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取模板节点相关节点失败：ID={templateId}, Version={templateVersion}", 
+                    templateId, templateVersion);
+                return [];
+            }
+        }
+
+        /// <summary>
+        /// AttachCatalogueTemplate 相等性比较器，用于去重
+        /// </summary>
+        private class AttachCatalogueTemplateEqualityComparer : IEqualityComparer<AttachCatalogueTemplate>
+        {
+            public bool Equals(AttachCatalogueTemplate? x, AttachCatalogueTemplate? y)
+            {
+                if (x == null && y == null) return true;
+                if (x == null || y == null) return false;
+                return x.Id == y.Id && x.Version == y.Version;
+            }
+
+            public int GetHashCode(AttachCatalogueTemplate obj)
+            {
+                return HashCode.Combine(obj.Id, obj.Version);
             }
         }
 

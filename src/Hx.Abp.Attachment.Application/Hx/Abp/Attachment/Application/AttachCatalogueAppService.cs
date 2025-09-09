@@ -64,7 +64,12 @@ namespace Hx.Abp.Attachment.Application
                     input.CatalogueFacetType,
                     input.CataloguePurpose,
                     input.Tags,
-                    input.TextVector
+                    input.TextVector,
+                    input.MetaFields?.Select(mf => new MetaField(
+                        mf.EntityType, mf.FieldKey, mf.FieldName, mf.DataType, mf.IsRequired,
+                        mf.Unit, mf.RegexPattern, mf.Options, mf.Description, mf.DefaultValue,
+                        mf.Order, mf.IsEnabled, mf.Group, mf.ValidationRules, mf.Tags
+                    )).ToList()
                 );
 
                 // 验证配置
@@ -109,6 +114,16 @@ namespace Hx.Abp.Attachment.Application
             // 更新新增字段
             catalogue.SetCatalogueIdentifiers(input.CatalogueFacetType, input.CataloguePurpose);
             catalogue.SetTextVector(input.TextVector);
+            
+            // 更新元数据字段
+            if (input.MetaFields != null)
+            {
+                catalogue.SetMetaFields([.. input.MetaFields.Select(mf => new MetaField(
+                    mf.EntityType, mf.FieldKey, mf.FieldName, mf.DataType, mf.IsRequired,
+                    mf.Unit, mf.RegexPattern, mf.Options, mf.Description, mf.DefaultValue,
+                    mf.Order, mf.IsEnabled, mf.Group, mf.ValidationRules, mf.Tags
+                ))]);
+            }
 
             // 验证配置
             catalogue.ValidateConfiguration();
@@ -215,6 +230,120 @@ namespace Hx.Abp.Attachment.Application
         {
             var catalogue = await CatalogueRepository.GetAsync(id);
             return catalogue == null ? throw new UserFriendlyException($"分类不存在: {id}") : catalogue.GetCatalogueIdentifierDescription();
+        }
+
+        /// <summary>
+        /// 批量设置元数据字段（创建、更新、删除）
+        /// 基于行业最佳实践，使用批量操作提高性能和确保数据一致性
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <param name="metaFields">元数据字段列表</param>
+        /// <returns></returns>
+        public virtual async Task SetMetaFieldsAsync(Guid id, List<CreateUpdateMetaFieldDto> metaFields)
+        {
+            var catalogue = await CatalogueRepository.GetAsync(id) ?? throw new UserFriendlyException($"分类不存在: {id}");
+            
+            // 验证输入参数
+            if (metaFields == null)
+            {
+                throw new UserFriendlyException("元数据字段列表不能为空");
+            }
+
+            // 验证字段键名唯一性
+            var fieldKeys = metaFields.Select(m => m.FieldKey).ToList();
+            if (fieldKeys.Count != fieldKeys.Distinct().Count())
+            {
+                throw new UserFriendlyException("元数据字段键名必须唯一");
+            }
+
+            // 转换为领域对象
+            var domainMetaFields = metaFields.Select(dto => new MetaField(
+                dto.EntityType,
+                dto.FieldKey,
+                dto.FieldName,
+                dto.DataType,
+                dto.IsRequired,
+                dto.Unit,
+                dto.RegexPattern,
+                dto.Options,
+                dto.Description,
+                dto.DefaultValue,
+                dto.Order,
+                dto.IsEnabled,
+                dto.Group,
+                dto.ValidationRules,
+                dto.Tags
+            )).ToList();
+
+            // 使用领域对象的批量设置方法
+            catalogue.SetMetaFields(domainMetaFields);
+            
+            // 保存到数据库
+            await CatalogueRepository.UpdateAsync(catalogue);
+        }
+
+        /// <summary>
+        /// 获取元数据字段
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <param name="fieldKey">字段键名</param>
+        /// <returns></returns>
+        public virtual async Task<MetaFieldDto?> GetMetaFieldAsync(Guid id, string fieldKey)
+        {
+            var catalogue = await CatalogueRepository.GetAsync(id) ?? throw new UserFriendlyException($"分类不存在: {id}");
+            var metaField = catalogue.GetMetaField(fieldKey);
+            
+            if (metaField == null)
+                return null;
+                
+            return new MetaFieldDto
+            {
+                EntityType = metaField.EntityType,
+                FieldKey = metaField.FieldKey,
+                FieldName = metaField.FieldName,
+                DataType = metaField.DataType,
+                Unit = metaField.Unit,
+                IsRequired = metaField.IsRequired,
+                RegexPattern = metaField.RegexPattern,
+                Options = metaField.Options,
+                Description = metaField.Description,
+                DefaultValue = metaField.DefaultValue,
+                Order = metaField.Order,
+                IsEnabled = metaField.IsEnabled,
+                Group = metaField.Group,
+                ValidationRules = metaField.ValidationRules,
+                Tags = metaField.Tags
+            };
+        }
+
+        /// <summary>
+        /// 获取所有启用的元数据字段
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <returns></returns>
+        public virtual async Task<List<MetaFieldDto>> GetEnabledMetaFieldsAsync(Guid id)
+        {
+            var catalogue = await CatalogueRepository.GetAsync(id) ?? throw new UserFriendlyException($"分类不存在: {id}");
+            var metaFields = catalogue.GetEnabledMetaFields();
+            
+            return [.. metaFields.Select(mf => new MetaFieldDto
+            {
+                EntityType = mf.EntityType,
+                FieldKey = mf.FieldKey,
+                FieldName = mf.FieldName,
+                DataType = mf.DataType,
+                Unit = mf.Unit,
+                IsRequired = mf.IsRequired,
+                RegexPattern = mf.RegexPattern,
+                Options = mf.Options,
+                Description = mf.Description,
+                DefaultValue = mf.DefaultValue,
+                Order = mf.Order,
+                IsEnabled = mf.IsEnabled,
+                Group = mf.Group,
+                ValidationRules = mf.ValidationRules,
+                Tags = mf.Tags
+            })];
         }
 
         /// <summary>
@@ -397,7 +526,12 @@ namespace Hx.Abp.Attachment.Application
                     input.CatalogueFacetType,
                     input.CataloguePurpose,
                     input.Tags,
-                    input.TextVector);
+                    input.TextVector,
+                    input.MetaFields?.Select(mf => new MetaField(
+                        mf.EntityType, mf.FieldKey, mf.FieldName, mf.DataType, mf.IsRequired,
+                        mf.Unit, mf.RegexPattern, mf.Options, mf.Description, mf.DefaultValue,
+                        mf.Order, mf.IsEnabled, mf.Group, mf.ValidationRules, mf.Tags
+                    )).ToList());
                 if (input.Children?.Count > 0)
                 {
                     var children = await GetEntitys([.. input.Children], 0);
@@ -866,6 +1000,29 @@ namespace Hx.Abp.Attachment.Application
                     EffectiveTime = p.EffectiveTime,
                     ExpirationTime = p.ExpirationTime,
                     Description = p.Description
+                })];
+            }
+
+            // 映射元数据字段集合
+            if (catalogue.MetaFields != null && catalogue.MetaFields.Count != 0)
+            {
+                dto.MetaFields = [.. catalogue.MetaFields.Select(mf => new MetaFieldDto
+                {
+                    EntityType = mf.EntityType,
+                    FieldKey = mf.FieldKey,
+                    FieldName = mf.FieldName,
+                    DataType = mf.DataType,
+                    Unit = mf.Unit,
+                    IsRequired = mf.IsRequired,
+                    RegexPattern = mf.RegexPattern,
+                    Options = mf.Options,
+                    Description = mf.Description,
+                    DefaultValue = mf.DefaultValue,
+                    Order = mf.Order,
+                    IsEnabled = mf.IsEnabled,
+                    Group = mf.Group,
+                    ValidationRules = mf.ValidationRules,
+                    Tags = mf.Tags
                 })];
             }
 

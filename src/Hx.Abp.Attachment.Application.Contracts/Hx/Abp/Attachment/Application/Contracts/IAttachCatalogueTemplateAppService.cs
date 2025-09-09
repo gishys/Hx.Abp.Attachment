@@ -80,19 +80,12 @@ namespace Hx.Abp.Attachment.Application.Contracts
         Task<ListResultDto<MetaFieldDto>> GetTemplateMetaFieldsAsync(Guid id);
 
         /// <summary>
-        /// 添加元数据字段到模板
+        /// 批量设置元数据字段（创建、更新、删除）
         /// </summary>
-        Task<MetaFieldDto> AddMetaFieldToTemplateAsync(Guid id, CreateUpdateMetaFieldDto input);
-
-        /// <summary>
-        /// 更新模板的元数据字段
-        /// </summary>
-        Task<MetaFieldDto> UpdateTemplateMetaFieldAsync(Guid id, string fieldKey, CreateUpdateMetaFieldDto input);
-
-        /// <summary>
-        /// 从模板移除元数据字段
-        /// </summary>
-        Task RemoveMetaFieldFromTemplateAsync(Guid id, string fieldKey);
+        /// <param name="id">模板ID</param>
+        /// <param name="metaFields">元数据字段列表</param>
+        /// <returns></returns>
+        Task SetTemplateMetaFieldsAsync(Guid id, List<CreateUpdateMetaFieldDto> metaFields);
 
         /// <summary>
         /// 获取模板的元数据字段

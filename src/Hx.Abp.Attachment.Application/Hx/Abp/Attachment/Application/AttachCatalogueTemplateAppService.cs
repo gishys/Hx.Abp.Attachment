@@ -110,6 +110,20 @@ namespace Hx.Abp.Attachment.Application
         {
             try
             {
+                // 验证输入参数
+                if (string.IsNullOrWhiteSpace(input.Name))
+                {
+                    throw new UserFriendlyException("模板名称不能为空");
+                }
+
+                // 检查模板名称是否已存在（同级比较）
+                var nameExists = await _templateRepository.ExistsByNameAsync(input.Name, input.ParentId);
+                if (nameExists)
+                {
+                    var scope = input.ParentId.HasValue ? "同级" : "根节点";
+                    throw new UserFriendlyException($"在{scope}下已存在名称为 '{input.Name}' 的模板，请使用其他名称");
+                }
+
                 // 自动计算模板路径
                 string? templatePath = null;
                 if (input.ParentId.HasValue)
@@ -200,10 +214,22 @@ namespace Hx.Abp.Attachment.Application
 
                 return ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(template);
             }
+            catch (UserFriendlyException)
+            {
+                // 重新抛出用户友好的异常，保持原始错误信息
+                throw;
+            }
+            catch (ArgumentException argEx)
+            {
+                // 参数异常，返回具体的参数错误信息
+                _logger.LogError(argEx, "创建模板参数验证失败：{templateName}", input.Name);
+                throw new UserFriendlyException($"参数验证失败：{argEx.Message}");
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "创建模板失败：{templateName}", input.Name);
-                throw new UserFriendlyException("创建模板失败，请稍后重试");
+                // 其他异常，记录详细日志但返回通用错误信息
+                _logger.LogError(ex, "创建模板失败：{templateName}，错误详情：{errorMessage}", input.Name, ex.Message);
+                throw new UserFriendlyException($"创建模板失败：{ex.Message}");
             }
         }
 
@@ -214,7 +240,24 @@ namespace Hx.Abp.Attachment.Application
         {
             try
             {
+                // 验证输入参数
+                if (string.IsNullOrWhiteSpace(input.Name))
+                {
+                    throw new UserFriendlyException("模板名称不能为空");
+                }
+
                 var template = await _templateRepository.GetLatestVersionAsync(id) ?? throw new UserFriendlyException($"未找到模板 {id}");
+
+                // 检查模板名称是否已存在（同级比较，排除当前模板）
+                if (template.TemplateName != input.Name)
+                {
+                    var nameExists = await _templateRepository.ExistsByNameAsync(input.Name, input.ParentId, id);
+                    if (nameExists)
+                    {
+                        var scope = input.ParentId.HasValue ? "同级" : "根节点";
+                        throw new UserFriendlyException($"在{scope}下已存在名称为 '{input.Name}' 的模板，请使用其他名称");
+                    }
+                }
 
                 // 如果父模板发生变化，需要重新计算路径
                 string? newTemplatePath = input.TemplatePath;
@@ -315,10 +358,22 @@ namespace Hx.Abp.Attachment.Application
 
                 return ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(template);
             }
+            catch (UserFriendlyException)
+            {
+                // 重新抛出用户友好的异常，保持原始错误信息
+                throw;
+            }
+            catch (ArgumentException argEx)
+            {
+                // 参数异常，返回具体的参数错误信息
+                _logger.LogError(argEx, "更新模板参数验证失败：{templateName}", input.Name);
+                throw new UserFriendlyException($"参数验证失败：{argEx.Message}");
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "更新模板失败：{templateName}", input.Name);
-                throw new UserFriendlyException("更新模板失败，请稍后重试");
+                // 其他异常，记录详细日志但返回通用错误信息
+                _logger.LogError(ex, "更新模板失败：{templateName}，错误详情：{errorMessage}", input.Name, ex.Message);
+                throw new UserFriendlyException($"更新模板失败：{ex.Message}");
             }
         }
 
@@ -1018,96 +1073,66 @@ namespace Hx.Abp.Attachment.Application
             }
         }
 
-        public async Task<MetaFieldDto> AddMetaFieldToTemplateAsync(Guid id, CreateUpdateMetaFieldDto input)
+        /// <summary>
+        /// 批量设置元数据字段（创建、更新、删除）
+        /// 基于行业最佳实践，使用批量操作提高性能和确保数据一致性
+        /// </summary>
+        /// <param name="id">模板ID</param>
+        /// <param name="metaFields">元数据字段列表</param>
+        /// <returns></returns>
+        public virtual async Task SetTemplateMetaFieldsAsync(Guid id, List<CreateUpdateMetaFieldDto> metaFields)
         {
             try
             {
                 var template = await _templateRepository.GetLatestVersionAsync(id) ?? throw new UserFriendlyException($"未找到模板 {id}");
-                var metaField = new MetaField(
-                    input.EntityType,
-                    input.FieldKey,
-                    input.FieldName,
-                    input.DataType,
-                    input.IsRequired,
-                    input.Unit,
-                    input.RegexPattern,
-                    input.Options,
-                    input.Description,
-                    input.DefaultValue,
-                    input.Order,
-                    input.IsEnabled,
-                    input.Group,
-                    input.ValidationRules,
-                    input.Tags
-                );
                 
-                template.AddMetaField(metaField);
+                // 验证输入参数
+                if (metaFields == null)
+                {
+                    throw new UserFriendlyException("元数据字段列表不能为空");
+                }
+
+                // 验证字段键名唯一性
+                var fieldKeys = metaFields.Select(m => m.FieldKey).ToList();
+                if (fieldKeys.Count != fieldKeys.Distinct().Count())
+                {
+                    throw new UserFriendlyException("元数据字段键名必须唯一");
+                }
+
+                // 转换为领域对象
+                var domainMetaFields = metaFields.Select(dto => new MetaField(
+                    dto.EntityType,
+                    dto.FieldKey,
+                    dto.FieldName,
+                    dto.DataType,
+                    dto.IsRequired,
+                    dto.Unit,
+                    dto.RegexPattern,
+                    dto.Options,
+                    dto.Description,
+                    dto.DefaultValue,
+                    dto.Order,
+                    dto.IsEnabled,
+                    dto.Group,
+                    dto.ValidationRules,
+                    dto.Tags
+                )).ToList();
+
+                // 使用领域对象的批量设置方法
+                template.SetMetaFields(domainMetaFields);
+                
+                // 保存到数据库
                 await _templateRepository.UpdateAsync(template);
                 
-                _logger.LogInformation("向模板 {id} 添加元数据字段成功：{fieldKey}", id, input.FieldKey);
-                
-                return ObjectMapper.Map<MetaField, MetaFieldDto>(metaField);
+                _logger.LogInformation("批量设置模板 {id} 的元数据字段成功，字段数量：{count}", id, metaFields.Count);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "向模板 {id} 添加元数据字段失败", id);
-                throw new UserFriendlyException("添加元数据字段失败，请稍后重试");
+                _logger.LogError(ex, "批量设置模板 {id} 的元数据字段失败", id);
+                throw new UserFriendlyException("批量设置元数据字段失败，请稍后重试");
             }
         }
 
-        public async Task<MetaFieldDto> UpdateTemplateMetaFieldAsync(Guid templateId, string fieldKey, CreateUpdateMetaFieldDto input)
-        {
-            try
-            {
-                var template = await _templateRepository.GetLatestVersionAsync(templateId) ?? throw new UserFriendlyException($"未找到模板 {templateId}");
-                var updatedMetaField = new MetaField(
-                    input.EntityType,
-                    input.FieldKey,
-                    input.FieldName,
-                    input.DataType,
-                    input.IsRequired,
-                    input.Unit,
-                    input.RegexPattern,
-                    input.Options,
-                    input.Description,
-                    input.DefaultValue,
-                    input.Order,
-                    input.IsEnabled,
-                    input.Group,
-                    input.ValidationRules,
-                    input.Tags
-                );
-                
-                template.UpdateMetaField(fieldKey, updatedMetaField);
-                await _templateRepository.UpdateAsync(template);
-                
-                _logger.LogInformation("更新模板 {templateId} 的元数据字段成功：{fieldKey}", templateId, fieldKey);
-                
-                return ObjectMapper.Map<MetaField, MetaFieldDto>(updatedMetaField);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "更新模板 {templateId} 的元数据字段失败：{fieldKey}", templateId, fieldKey);
-                throw new UserFriendlyException("更新元数据字段失败，请稍后重试");
-            }
-        }
-
-        public async Task RemoveMetaFieldFromTemplateAsync(Guid templateId, string fieldKey)
-        {
-            try
-            {
-                var template = await _templateRepository.GetLatestVersionAsync(templateId) ?? throw new UserFriendlyException($"未找到模板 {templateId}");
-                template.RemoveMetaField(fieldKey);
-                await _templateRepository.UpdateAsync(template);
-                
-                _logger.LogInformation("从模板 {templateId} 移除元数据字段成功：{fieldKey}", templateId, fieldKey);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "从模板 {templateId} 移除元数据字段失败：{fieldKey}", templateId, fieldKey);
-                throw new UserFriendlyException("移除元数据字段失败，请稍后重试");
-            }
-        }
 
         public async Task<MetaFieldDto?> GetTemplateMetaFieldAsync(Guid templateId, string fieldKey)
         {

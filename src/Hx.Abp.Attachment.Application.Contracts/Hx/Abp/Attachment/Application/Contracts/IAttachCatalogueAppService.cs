@@ -88,5 +88,28 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <param name="maxDimension">最大维度</param>
         /// <returns></returns>
         Task<List<AttachCatalogueDto>> GetByVectorDimensionAsync(int? minDimension = null, int? maxDimension = null);
+
+        /// <summary>
+        /// 批量设置元数据字段（创建、更新、删除）
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <param name="metaFields">元数据字段列表</param>
+        /// <returns></returns>
+        Task SetMetaFieldsAsync(Guid id, List<CreateUpdateMetaFieldDto> metaFields);
+
+        /// <summary>
+        /// 获取元数据字段
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <param name="fieldKey">字段键名</param>
+        /// <returns></returns>
+        Task<MetaFieldDto?> GetMetaFieldAsync(Guid id, string fieldKey);
+
+        /// <summary>
+        /// 获取所有启用的元数据字段
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <returns></returns>
+        Task<List<MetaFieldDto>> GetEnabledMetaFieldsAsync(Guid id);
     }
 }

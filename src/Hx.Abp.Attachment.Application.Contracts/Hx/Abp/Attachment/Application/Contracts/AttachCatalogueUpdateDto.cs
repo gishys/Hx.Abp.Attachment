@@ -1,4 +1,4 @@
-﻿using Hx.Abp.Attachment.Domain.Shared;
+using Hx.Abp.Attachment.Domain.Shared;
 using System.ComponentModel.DataAnnotations;
 
 namespace Hx.Abp.Attachment.Application.Contracts
@@ -41,6 +41,37 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// 是否必收
         /// </summary>
         public bool IsRequired { get; set; }
+
+        /// <summary>
+        /// 静态标识
+        /// </summary>
+        public bool IsStatic { get; set; }
+
+        /// <summary>
+        /// 关联的模板ID
+        /// </summary>
+        public Guid? TemplateId { get; set; }
+
+        /// <summary>
+        /// 分类分面类型 - 标识分类的层级和用途
+        /// </summary>
+        public FacetType CatalogueFacetType { get; set; } = FacetType.General;
+
+        /// <summary>
+        /// 分类用途 - 标识分类的具体用途
+        /// </summary>
+        public TemplatePurpose CataloguePurpose { get; set; } = TemplatePurpose.Classification;
+
+        /// <summary>
+        /// 文本向量（可为空，如果提供则维度必须在64-2048之间）
+        /// </summary>
+        public List<double>? TextVector { get; set; }
+
+        /// <summary>
+        /// 元数据字段集合
+        /// </summary>
+        public List<CreateUpdateMetaFieldDto>? MetaFields { get; set; }
+
         /// <summary>
         /// 附件文件
         /// </summary>

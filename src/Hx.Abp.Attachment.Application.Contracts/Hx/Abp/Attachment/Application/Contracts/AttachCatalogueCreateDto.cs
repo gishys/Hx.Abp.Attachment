@@ -1,4 +1,4 @@
-﻿using Hx.Abp.Attachment.Domain.Shared;
+using Hx.Abp.Attachment.Domain.Shared;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
@@ -84,5 +84,10 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// 文本向量（可为空，如果提供则维度必须在64-2048之间）
         /// </summary>
         public List<double>? TextVector { get; set; }
+
+        /// <summary>
+        /// 元数据字段集合
+        /// </summary>
+        public List<CreateUpdateMetaFieldDto>? MetaFields { get; set; }
     }
 }

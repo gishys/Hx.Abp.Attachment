@@ -305,31 +305,14 @@ namespace Hx.Abp.Attachment.HttpApi
         }
 
         /// <summary>
-        /// 添加元数据字段到模板
+        /// 批量设置元数据字段（创建、更新、删除）
         /// </summary>
-        [HttpPost("{id}/meta-fields")]
-        public virtual Task<MetaFieldDto> AddMetaFieldToTemplateAsync(Guid id, [FromBody] CreateUpdateMetaFieldDto input)
+        [HttpPut("{id}/meta-fields/set")]
+        public virtual Task SetTemplateMetaFieldsAsync(Guid id, [FromBody] List<CreateUpdateMetaFieldDto> metaFields)
         {
-            return AttachCatalogueTemplateAppService.AddMetaFieldToTemplateAsync(id, input);
+            return AttachCatalogueTemplateAppService.SetTemplateMetaFieldsAsync(id, metaFields);
         }
 
-        /// <summary>
-        /// 更新模板的元数据字段
-        /// </summary>
-        [HttpPut("{id}/meta-fields/{fieldKey}")]
-        public virtual Task<MetaFieldDto> UpdateTemplateMetaFieldAsync(Guid id, string fieldKey, [FromBody] CreateUpdateMetaFieldDto input)
-        {
-            return AttachCatalogueTemplateAppService.UpdateTemplateMetaFieldAsync(id, fieldKey, input);
-        }
-
-        /// <summary>
-        /// 从模板移除元数据字段
-        /// </summary>
-        [HttpDelete("{id}/meta-fields/{fieldKey}")]
-        public virtual Task RemoveMetaFieldFromTemplateAsync(Guid id, string fieldKey)
-        {
-            return AttachCatalogueTemplateAppService.RemoveMetaFieldFromTemplateAsync(id, fieldKey);
-        }
 
         /// <summary>
         /// 获取模板的元数据字段

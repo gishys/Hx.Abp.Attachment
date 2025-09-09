@@ -10,7 +10,8 @@ namespace Hx.Abp.Attachment.Application
         {
             // AttachCatalogue 映射
             CreateMap<AttachCatalogue, AttachCatalogueDto>(MemberList.Destination)
-                .ForMember(dest => dest.Permissions, opt => opt.MapFrom(src => src.Permissions));
+                .ForMember(dest => dest.Permissions, opt => opt.MapFrom(src => src.Permissions))
+                .ForMember(dest => dest.MetaFields, opt => opt.MapFrom(src => src.MetaFields));
             CreateMap<AttachCatalogueCreateDto, AttachCatalogue>(MemberList.Source);
             CreateMap<AttachCatalogueUpdateDto, AttachCatalogue>(MemberList.Source);
             

@@ -173,5 +173,28 @@ namespace Hx.Abp.Attachment.HttpApi
         {
             return AttachCatalogueAppService.GetByVectorDimensionAsync(minDimension, maxDimension);
         }
+
+        // 元数据字段管理接口
+
+        [Route("metafields/set")]
+        [HttpPut]
+        public virtual Task SetMetaFieldsAsync(Guid id, [FromBody] List<CreateUpdateMetaFieldDto> metaFields)
+        {
+            return AttachCatalogueAppService.SetMetaFieldsAsync(id, metaFields);
+        }
+
+        [Route("metafields/get")]
+        [HttpGet]
+        public virtual Task<MetaFieldDto?> GetMetaFieldAsync(Guid id, string fieldKey)
+        {
+            return AttachCatalogueAppService.GetMetaFieldAsync(id, fieldKey);
+        }
+
+        [Route("metafields/enabled")]
+        [HttpGet]
+        public virtual Task<List<MetaFieldDto>> GetEnabledMetaFieldsAsync(Guid id)
+        {
+            return AttachCatalogueAppService.GetEnabledMetaFieldsAsync(id);
+        }
     }
 }

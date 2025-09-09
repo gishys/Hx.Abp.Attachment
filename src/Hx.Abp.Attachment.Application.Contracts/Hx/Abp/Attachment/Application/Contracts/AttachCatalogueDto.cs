@@ -114,6 +114,11 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public ICollection<AttachCatalogueTemplatePermissionDto>? Permissions { get; set; }
 
         /// <summary>
+        /// 元数据字段集合
+        /// </summary>
+        public ICollection<MetaFieldDto>? MetaFields { get; set; }
+
+        /// <summary>
         /// 分类标识描述
         /// </summary>
         public string CatalogueIdentifierDescription => $"{CatalogueFacetType} - {CataloguePurpose}";

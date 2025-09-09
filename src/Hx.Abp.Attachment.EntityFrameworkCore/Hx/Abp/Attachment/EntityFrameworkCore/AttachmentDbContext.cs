@@ -17,6 +17,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
             // 忽略值对象类型，避免EF Core将其作为实体处理
             builder.Ignore<AttachCatalogueTemplatePermission>();
+            builder.Ignore<MetaField>();
 
             // 配置Npgsql JSON处理
             builder.HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);

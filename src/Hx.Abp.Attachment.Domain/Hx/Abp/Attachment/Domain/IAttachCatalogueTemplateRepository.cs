@@ -38,6 +38,7 @@ namespace Hx.Abp.Attachment.Domain
             bool onlyLatest = true);
 
         // 新增向量相关查询方法
+        Task<bool> ExistsByNameAsync(string templateName, Guid? parentId = null, Guid? excludeId = null);
         Task<List<AttachCatalogueTemplate>> FindSimilarTemplatesAsync(
             string semanticQuery,
             double similarityThreshold = 0.7,

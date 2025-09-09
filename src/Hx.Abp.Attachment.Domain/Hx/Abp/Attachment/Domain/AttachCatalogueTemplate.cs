@@ -389,6 +389,15 @@ namespace Hx.Abp.Attachment.Domain
         }
 
         /// <summary>
+        /// 设置元数据字段集合
+        /// </summary>
+        /// <param name="metaFields">元数据字段列表</param>
+        public virtual void SetMetaFields([CanBeNull] List<MetaField>? metaFields)
+        {
+            MetaFields = metaFields ?? [];
+        }
+
+        /// <summary>
         /// 获取所有启用的元数据字段
         /// </summary>
         /// <returns>启用的元数据字段列表</returns>

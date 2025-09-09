@@ -2,7 +2,7 @@
 
 ## 概述
 
-本文档详细描述了附件目录相关的 API 接口，包括接口说明、参数详解、应用场景和调用示例。
+本文档详细描述了附件目录相关的 API 接口，包括接口说明、参数详解、应用场景和调用示例。附件目录系统支持元数据字段管理、权限控制、全文检索、混合检索等高级功能。
 
 ## 接口列表
 
@@ -44,6 +44,7 @@
 | catalogueFacetType | FacetType                  | 否   | 分类分面类型  | 0                                      |
 | cataloguePurpose   | TemplatePurpose            | 否   | 分类用途      | 1                                      |
 | textVector         | double[]                   | 否   | 文本向量      | null                                   |
+| metaFields         | MetaFieldDto[]             | 否   | 元数据字段    | []                                     |
 
 #### 枚举值说明
 
@@ -76,6 +77,87 @@
 -   4: 权限管理
 -   99: 其他用途
 
+**PermissionAction**:
+
+-   1: 查看
+-   2: 创建
+-   3: 编辑
+-   4: 删除
+-   5: 审批
+-   6: 发布
+-   7: 归档
+-   8: 导出
+-   9: 导入
+-   10: 管理权限
+-   11: 管理配置
+-   12: 查看审计日志
+-   99: 所有权限
+
+**PermissionEffect**:
+
+-   1: 允许
+-   2: 拒绝
+-   3: 继承
+
+#### 复杂类型说明
+
+**MetaFieldDto** (用于查询和返回):
+
+| 字段名               | 类型     | 必填 | 描述                | 示例值                                |
+| -------------------- | -------- | ---- | ------------------- | ------------------------------------- |
+| entityType           | string   | 是   | 实体类型            | "Project"                             |
+| fieldKey             | string   | 是   | 字段键名            | "project_name"                        |
+| fieldName            | string   | 是   | 字段显示名称        | "项目名称"                            |
+| dataType             | string   | 是   | 数据类型            | "string"                              |
+| unit                 | string   | 否   | 单位                | "万元"                                |
+| isRequired           | boolean  | 是   | 是否必填            | true                                  |
+| regexPattern         | string   | 否   | 正则表达式模式      | "^[A-Za-z0-9]+$"                      |
+| options              | string   | 否   | 枚举选项(JSON 格式) | "[\"选项 1\",\"选项 2\"]"             |
+| description          | string   | 否   | 字段描述            | "项目名称字段"                        |
+| defaultValue         | string   | 否   | 默认值              | ""                                    |
+| order                | int      | 是   | 字段顺序            | 1                                     |
+| isEnabled            | boolean  | 是   | 是否启用            | true                                  |
+| group                | string   | 否   | 字段分组            | "基本信息"                            |
+| validationRules      | string   | 否   | 验证规则(JSON 格式) | "{\"minLength\":1,\"maxLength\":100}" |
+| tags                 | string[] | 否   | 元数据标签          | ["重要", "必填"]                      |
+| creationTime         | DateTime | 是   | 创建时间            | "2024-01-01T00:00:00Z"                |
+| lastModificationTime | DateTime | 否   | 最后修改时间        | "2024-01-01T00:00:00Z"                |
+
+**CreateUpdateMetaFieldDto** (用于创建和更新):
+
+| 字段名          | 类型     | 必填 | 描述                | 示例值                                |
+| --------------- | -------- | ---- | ------------------- | ------------------------------------- |
+| entityType      | string   | 是   | 实体类型            | "Project"                             |
+| fieldKey        | string   | 是   | 字段键名            | "project_name"                        |
+| fieldName       | string   | 是   | 字段显示名称        | "项目名称"                            |
+| dataType        | string   | 是   | 数据类型            | "string"                              |
+| unit            | string   | 否   | 单位                | "万元"                                |
+| isRequired      | boolean  | 是   | 是否必填            | true                                  |
+| regexPattern    | string   | 否   | 正则表达式模式      | "^[A-Za-z0-9]+$"                      |
+| options         | string   | 否   | 枚举选项(JSON 格式) | "[\"选项 1\",\"选项 2\"]"             |
+| description     | string   | 否   | 字段描述            | "项目名称字段"                        |
+| defaultValue    | string   | 否   | 默认值              | ""                                    |
+| order           | int      | 是   | 字段顺序            | 1                                     |
+| isEnabled       | boolean  | 是   | 是否启用            | true                                  |
+| group           | string   | 否   | 字段分组            | "基本信息"                            |
+| validationRules | string   | 否   | 验证规则(JSON 格式) | "{\"minLength\":1,\"maxLength\":100}" |
+| tags            | string[] | 否   | 元数据标签          | ["重要", "必填"]                      |
+
+**AttachCatalogueTemplatePermissionDto**:
+
+| 字段名              | 类型             | 必填 | 描述                | 示例值                                 |
+| ------------------- | ---------------- | ---- | ------------------- | -------------------------------------- |
+| id                  | Guid?            | 否   | 权限 ID             | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| permissionType      | string           | 是   | 权限类型            | "Role"                                 |
+| permissionTarget    | string           | 是   | 权限目标            | "Admin"                                |
+| action              | PermissionAction | 是   | 权限动作            | 1                                      |
+| effect              | PermissionEffect | 是   | 权限效果            | 1                                      |
+| attributeConditions | string?          | 否   | 属性条件(JSON 格式) | "{\"department\":\"IT\"}"              |
+| isEnabled           | boolean          | 是   | 是否启用            | true                                   |
+| effectiveTime       | DateTime?        | 否   | 生效时间            | "2024-01-01T00:00:00Z"                 |
+| expirationTime      | DateTime?        | 否   | 失效时间            | "2024-12-31T23:59:59Z"                 |
+| description         | string?          | 否   | 权限描述            | "管理员权限"                           |
+
 #### 响应结果
 
 **成功响应** (200 OK):
@@ -99,6 +181,28 @@
     "templateId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
     "catalogueFacetType": 0,
     "cataloguePurpose": 1,
+    "textVector": null,
+    "metaFields": [
+        {
+            "entityType": "Project",
+            "fieldKey": "project_name",
+            "fieldName": "项目名称",
+            "dataType": "string",
+            "unit": null,
+            "isRequired": true,
+            "regexPattern": "^[A-Za-z0-9]+$",
+            "options": null,
+            "description": "项目名称字段",
+            "defaultValue": "",
+            "order": 1,
+            "isEnabled": true,
+            "group": "基本信息",
+            "validationRules": "{\"minLength\":1,\"maxLength\":100}",
+            "tags": ["重要", "必填"],
+            "creationTime": "2024-01-01T00:00:00Z",
+            "lastModificationTime": "2024-01-01T00:00:00Z"
+        }
+    ],
     "creationTime": "2024-12-19T10:00:00Z",
     "lastModificationTime": null,
     "isDeleted": false
@@ -132,6 +236,25 @@ const createAttachmentCatalogue = async (catalogueData, mode = 0) => {
                 catalogueFacetType: 0, // 通用分面
                 cataloguePurpose: 1, // 分类管理
                 textVector: null,
+                metaFields: [
+                    {
+                        entityType: 'Project',
+                        fieldKey: 'project_name',
+                        fieldName: '项目名称',
+                        dataType: 'string',
+                        unit: null,
+                        isRequired: true,
+                        regexPattern: '^[A-Za-z0-9]+$',
+                        options: null,
+                        description: '项目名称字段',
+                        defaultValue: '',
+                        order: 1,
+                        isEnabled: true,
+                        group: '基本信息',
+                        validationRules: '{"minLength":1,"maxLength":100}',
+                        tags: ['重要', '必填'],
+                    },
+                ],
             },
             {
                 params: {
@@ -1197,6 +1320,250 @@ const getByVectorDimension = async (
 
 ---
 
+### 22. 批量设置元数据字段接口
+
+#### 接口信息
+
+-   **接口路径**: `PUT /api/app/attachment/metafields/set`
+-   **接口描述**: 批量设置附件目录的元数据字段（创建、更新、删除），基于行业最佳实践实现
+-   **请求方式**: PUT
+-   **Content-Type**: application/json
+
+#### 请求参数
+
+**查询参数**:
+
+| 参数名 | 类型 | 必填 | 描述    | 示例值                                 |
+| ------ | ---- | ---- | ------- | -------------------------------------- |
+| id     | Guid | 是   | 目录 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+
+**请求体**: `CreateUpdateMetaFieldDto[]`
+
+#### 功能特点
+
+-   **批量操作**: 一次请求可以完成多个元数据字段的创建、更新和删除操作
+-   **数据一致性**: 确保所有元数据字段的变更在同一事务中完成
+-   **性能优化**: 减少网络请求次数，提高系统性能
+-   **字段验证**: 自动验证字段键名唯一性和数据格式
+-   **原子性**: 要么全部成功，要么全部失败，保证数据完整性
+
+#### 操作说明
+
+1. **创建新字段**: 在请求体中包含新的元数据字段
+2. **更新现有字段**: 在请求体中包含需要更新的字段（保持相同的 fieldKey）
+3. **删除字段**: 从请求体中移除不需要的字段
+4. **字段键名唯一性**: 系统会自动验证字段键名的唯一性
+
+#### React Axios 调用示例
+
+```javascript
+const setMetaFields = async (catalogueId, metaFields) => {
+    try {
+        const response = await axios.put(
+            '/api/app/attachment/metafields/set',
+            [
+                {
+                    entityType: 'Project',
+                    fieldKey: 'project_name',
+                    fieldName: '项目名称',
+                    dataType: 'string',
+                    unit: null,
+                    isRequired: true,
+                    regexPattern: '^[A-Za-z0-9\\s]+$',
+                    options: null,
+                    description: '项目名称字段',
+                    defaultValue: '',
+                    order: 1,
+                    isEnabled: true,
+                    group: '基本信息',
+                    validationRules: '{"minLength":2,"maxLength":200}',
+                    tags: ['重要', '必填'],
+                },
+                {
+                    entityType: 'Project',
+                    fieldKey: 'project_budget',
+                    fieldName: '项目预算',
+                    dataType: 'number',
+                    unit: '万元',
+                    isRequired: false,
+                    regexPattern: null,
+                    options: null,
+                    description: '项目预算字段',
+                    defaultValue: '0',
+                    order: 2,
+                    isEnabled: true,
+                    group: '财务信息',
+                    validationRules: '{"min":0,"max":10000}',
+                    tags: ['财务', '预算'],
+                },
+                {
+                    entityType: 'Project',
+                    fieldKey: 'project_status',
+                    fieldName: '项目状态',
+                    dataType: 'string',
+                    unit: null,
+                    isRequired: true,
+                    regexPattern: null,
+                    options: '["进行中","已完成","已暂停","已取消"]',
+                    description: '项目当前状态',
+                    defaultValue: '进行中',
+                    order: 3,
+                    isEnabled: true,
+                    group: '状态信息',
+                    validationRules: null,
+                    tags: ['状态', '必填'],
+                },
+            ],
+            {
+                params: {
+                    id: catalogueId,
+                },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('批量设置元数据字段成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '批量设置元数据字段失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+
+// 使用示例
+const catalogueId = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
+const metaFields = [
+    // 项目基本信息字段
+    {
+        entityType: 'Project',
+        fieldKey: 'project_name',
+        fieldName: '项目名称',
+        dataType: 'string',
+        isRequired: true,
+        order: 1,
+        isEnabled: true,
+        group: '基本信息',
+        tags: ['重要', '必填'],
+    },
+    // 项目财务字段
+    {
+        entityType: 'Project',
+        fieldKey: 'project_budget',
+        fieldName: '项目预算',
+        dataType: 'number',
+        unit: '万元',
+        isRequired: false,
+        order: 2,
+        isEnabled: true,
+        group: '财务信息',
+        tags: ['财务'],
+    },
+];
+
+setMetaFields(catalogueId, metaFields);
+```
+
+---
+
+### 23. 获取元数据字段接口
+
+#### 接口信息
+
+-   **接口路径**: `GET /api/app/attachment/metafields/get`
+-   **接口描述**: 获取指定附件目录的特定元数据字段
+-   **请求方式**: GET
+
+#### 请求参数
+
+**查询参数**:
+
+| 参数名   | 类型   | 必填 | 描述     | 示例值                                 |
+| -------- | ------ | ---- | -------- | -------------------------------------- |
+| id       | Guid   | 是   | 目录 ID  | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| fieldKey | string | 是   | 字段键名 | "project_name"                         |
+
+#### React Axios 调用示例
+
+```javascript
+const getMetaField = async (catalogueId, fieldKey) => {
+    try {
+        const response = await axios.get('/api/app/attachment/metafields/get', {
+            params: {
+                id: catalogueId,
+                fieldKey: fieldKey,
+            },
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        console.log('获取元数据字段成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '获取元数据字段失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
+### 24. 获取启用的元数据字段接口
+
+#### 接口信息
+
+-   **接口路径**: `GET /api/app/attachment/metafields/enabled`
+-   **接口描述**: 获取指定附件目录的所有启用元数据字段
+-   **请求方式**: GET
+
+#### 请求参数
+
+**查询参数**:
+
+| 参数名 | 类型 | 必填 | 描述    | 示例值                                 |
+| ------ | ---- | ---- | ------- | -------------------------------------- |
+| id     | Guid | 是   | 目录 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+
+#### React Axios 调用示例
+
+```javascript
+const getEnabledMetaFields = async (catalogueId) => {
+    try {
+        const response = await axios.get(
+            '/api/app/attachment/metafields/enabled',
+            {
+                params: {
+                    id: catalogueId,
+                },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('获取启用的元数据字段成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '获取启用的元数据字段失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
 ## 错误处理
 
 ### 常见错误码
@@ -1250,6 +1617,16 @@ const getByVectorDimension = async (
 -   合理设置目录权限
 -   定期检查和更新权限配置
 -   使用权限检查接口验证用户权限
+
+### 5. 元数据字段管理
+
+-   **批量操作优先**: 使用批量设置接口进行元数据字段的增删改操作，提高性能和确保数据一致性
+-   **字段设计**: 合理设计元数据字段结构，确保字段键名唯一且有意义
+-   **验证规则**: 根据业务需求设置字段验证规则和正则表达式
+-   **字段分组**: 使用字段分组功能组织相关字段，提高可维护性
+-   **状态管理**: 合理设置字段的启用/禁用状态，支持动态字段管理
+-   **原子性操作**: 利用批量操作的原子性特性，确保数据完整性
+-   **性能优化**: 避免频繁的单个字段操作，优先使用批量接口
 
 ## 版本信息
 

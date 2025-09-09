@@ -1559,7 +1559,410 @@ const getTemplateStatistics = async () => {
 -   使用缓存减少重复请求
 -   合理设置 `includeChildren` 参数
 
-### 15. 获取模板结构接口
+### 4. 元数据字段管理
+
+-   **优先使用批量操作**: 对于元数据字段的增删改操作，优先使用 `SetTemplateMetaFieldsAsync` 批量接口，避免多次单独调用
+-   **字段键名唯一性**: 确保在同一模板中字段键名唯一，避免冲突
+-   **合理设置字段顺序**: 通过 `order` 字段控制元数据字段的显示顺序，提升用户体验
+-   **字段分组管理**: 使用 `group` 字段对相关元数据字段进行分组，便于管理和展示
+-   **验证规则设置**: 合理设置 `validationRules` 和 `regexPattern`，确保数据质量
+
+### 15. 元数据字段管理接口
+
+#### 15.1 获取模板元数据字段列表接口
+
+##### 接口信息
+
+-   **接口路径**: `GET /api/attach-catalogue-template/{id}/meta-fields`
+-   **接口描述**: 获取指定模板的元数据字段列表
+-   **请求方式**: GET
+
+##### 请求参数
+
+| 参数名 | 类型 | 必填 | 描述    | 示例值                                 |
+| ------ | ---- | ---- | ------- | -------------------------------------- |
+| id     | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+
+##### 响应结果
+
+**成功响应** (200 OK):
+
+```json
+{
+    "items": [
+        {
+            "entityType": "Project",
+            "fieldKey": "project_name",
+            "fieldName": "项目名称",
+            "dataType": "string",
+            "unit": null,
+            "isRequired": true,
+            "regexPattern": null,
+            "options": null,
+            "description": "项目名称字段",
+            "defaultValue": null,
+            "order": 1,
+            "isEnabled": true,
+            "group": "基本信息",
+            "validationRules": null,
+            "tags": ["重要", "必填"],
+            "creationTime": "2024-01-01T00:00:00Z",
+            "lastModificationTime": "2024-01-01T00:00:00Z"
+        }
+    ],
+    "totalCount": 1
+}
+```
+
+##### React Axios 调用示例
+
+```javascript
+// 获取模板元数据字段列表
+const getTemplateMetaFields = async (templateId) => {
+    try {
+        const response = await axios.get(
+            `/api/attach-catalogue-template/${templateId}/meta-fields`
+        );
+        return response.data;
+    } catch (error) {
+        console.error('获取模板元数据字段失败:', error);
+        throw error;
+    }
+};
+```
+
+#### 15.2 批量设置元数据字段接口
+
+##### 接口信息
+
+-   **接口路径**: `PUT /api/attach-catalogue-template/{id}/meta-fields/set`
+-   **接口描述**: 批量设置模板的元数据字段（创建、更新、删除）
+-   **请求方式**: PUT
+-   **Content-Type**: application/json
+
+##### 请求参数
+
+| 参数名 | 类型 | 必填 | 描述    | 示例值                                 |
+| ------ | ---- | ---- | ------- | -------------------------------------- |
+| id     | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+
+**请求体**: `CreateUpdateMetaFieldDto[]`
+
+##### 功能特点
+
+-   **批量操作**: 一次请求可以完成多个元数据字段的创建、更新和删除操作
+-   **数据一致性**: 确保所有元数据字段的变更在同一事务中完成
+-   **原子性**: 要么全部成功，要么全部失败，保证数据完整性
+-   **性能优化**: 减少网络请求次数，提高操作效率
+
+##### 操作说明
+
+1.  **创建新字段**: 在请求体中包含新的元数据字段
+2.  **更新现有字段**: 在请求体中包含需要更新的字段（通过 fieldKey 识别）
+3.  **删除字段**: 不在请求体中包含需要删除的字段
+4.  **字段键名唯一性**: 请求体中的字段键名必须唯一
+5.  **字段顺序**: 可以通过 order 字段控制字段的显示顺序
+
+##### 请求示例
+
+```json
+[
+    {
+        "entityType": "Project",
+        "fieldKey": "project_name",
+        "fieldName": "项目名称",
+        "dataType": "string",
+        "unit": null,
+        "isRequired": true,
+        "regexPattern": null,
+        "options": null,
+        "description": "项目名称字段",
+        "defaultValue": null,
+        "order": 1,
+        "isEnabled": true,
+        "group": "基本信息",
+        "validationRules": null,
+        "tags": ["重要", "必填"]
+    },
+    {
+        "entityType": "Project",
+        "fieldKey": "project_budget",
+        "fieldName": "项目预算",
+        "dataType": "decimal",
+        "unit": "万元",
+        "isRequired": false,
+        "regexPattern": null,
+        "options": null,
+        "description": "项目预算字段",
+        "defaultValue": "0",
+        "order": 2,
+        "isEnabled": true,
+        "group": "财务信息",
+        "validationRules": "{\"minValue\":0,\"maxValue\":10000}",
+        "tags": ["财务"]
+    }
+]
+```
+
+##### 响应结果
+
+**成功响应** (200 OK): 无响应体
+
+**错误响应** (400 Bad Request):
+
+```json
+{
+    "error": {
+        "code": "INVALID_INPUT",
+        "message": "元数据字段键名必须唯一",
+        "details": "字段键名 'project_name' 重复"
+    }
+}
+```
+
+##### React Axios 调用示例
+
+```javascript
+// 批量设置模板元数据字段
+const setTemplateMetaFields = async (templateId, metaFields) => {
+    try {
+        await axios.put(
+            `/api/attach-catalogue-template/${templateId}/meta-fields/set`,
+            metaFields
+        );
+        console.log('批量设置元数据字段成功');
+    } catch (error) {
+        console.error('批量设置元数据字段失败:', error);
+        throw error;
+    }
+};
+
+// 使用示例
+const metaFields = [
+    {
+        entityType: 'Project',
+        fieldKey: 'project_name',
+        fieldName: '项目名称',
+        dataType: 'string',
+        isRequired: true,
+        order: 1,
+        isEnabled: true,
+        group: '基本信息',
+        tags: ['重要', '必填'],
+    },
+    {
+        entityType: 'Project',
+        fieldKey: 'project_budget',
+        fieldName: '项目预算',
+        dataType: 'decimal',
+        unit: '万元',
+        isRequired: false,
+        order: 2,
+        isEnabled: true,
+        group: '财务信息',
+        tags: ['财务'],
+    },
+];
+
+setTemplateMetaFields('3fa85f64-5717-4562-b3fc-2c963f66afa6', metaFields);
+```
+
+#### 15.3 获取模板元数据字段接口
+
+##### 接口信息
+
+-   **接口路径**: `GET /api/attach-catalogue-template/{id}/meta-fields/{fieldKey}`
+-   **接口描述**: 获取指定模板的特定元数据字段
+-   **请求方式**: GET
+
+##### 请求参数
+
+| 参数名   | 类型   | 必填 | 描述     | 示例值                                 |
+| -------- | ------ | ---- | -------- | -------------------------------------- |
+| id       | Guid   | 是   | 模板 ID  | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| fieldKey | string | 是   | 字段键名 | "project_name"                         |
+
+##### 响应结果
+
+**成功响应** (200 OK):
+
+```json
+{
+    "entityType": "Project",
+    "fieldKey": "project_name",
+    "fieldName": "项目名称",
+    "dataType": "string",
+    "unit": null,
+    "isRequired": true,
+    "regexPattern": null,
+    "options": null,
+    "description": "项目名称字段",
+    "defaultValue": null,
+    "order": 1,
+    "isEnabled": true,
+    "group": "基本信息",
+    "validationRules": null,
+    "tags": ["重要", "必填"],
+    "creationTime": "2024-01-01T00:00:00Z",
+    "lastModificationTime": "2024-01-01T00:00:00Z"
+}
+```
+
+**字段不存在响应** (200 OK): `null`
+
+##### React Axios 调用示例
+
+```javascript
+// 获取模板特定元数据字段
+const getTemplateMetaField = async (templateId, fieldKey) => {
+    try {
+        const response = await axios.get(
+            `/api/attach-catalogue-template/${templateId}/meta-fields/${fieldKey}`
+        );
+        return response.data;
+    } catch (error) {
+        console.error('获取模板元数据字段失败:', error);
+        throw error;
+    }
+};
+```
+
+#### 15.4 查询模板元数据字段接口
+
+##### 接口信息
+
+-   **接口路径**: `GET /api/attach-catalogue-template/{id}/meta-fields/query`
+-   **接口描述**: 根据条件查询模板的元数据字段
+-   **请求方式**: GET
+
+##### 请求参数
+
+| 参数名     | 类型     | 必填 | 描述       | 示例值                                 |
+| ---------- | -------- | ---- | ---------- | -------------------------------------- |
+| id         | Guid     | 是   | 模板 ID    | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| entityType | string   | 否   | 实体类型   | "Project"                              |
+| dataType   | string   | 否   | 数据类型   | "string"                               |
+| isRequired | boolean  | 否   | 是否必填   | true                                   |
+| isEnabled  | boolean  | 否   | 是否启用   | true                                   |
+| group      | string   | 否   | 字段分组   | "基本信息"                             |
+| searchTerm | string   | 否   | 搜索关键词 | "项目"                                 |
+| tags       | string[] | 否   | 标签数组   | ["重要", "必填"]                       |
+
+##### 响应结果
+
+**成功响应** (200 OK):
+
+```json
+{
+    "items": [
+        {
+            "entityType": "Project",
+            "fieldKey": "project_name",
+            "fieldName": "项目名称",
+            "dataType": "string",
+            "unit": null,
+            "isRequired": true,
+            "regexPattern": null,
+            "options": null,
+            "description": "项目名称字段",
+            "defaultValue": null,
+            "order": 1,
+            "isEnabled": true,
+            "group": "基本信息",
+            "validationRules": null,
+            "tags": ["重要", "必填"],
+            "creationTime": "2024-01-01T00:00:00Z",
+            "lastModificationTime": "2024-01-01T00:00:00Z"
+        }
+    ],
+    "totalCount": 1
+}
+```
+
+##### React Axios 调用示例
+
+```javascript
+// 查询模板元数据字段
+const queryTemplateMetaFields = async (templateId, queryParams) => {
+    try {
+        const response = await axios.get(
+            `/api/attach-catalogue-template/${templateId}/meta-fields/query`,
+            {
+                params: queryParams,
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('查询模板元数据字段失败:', error);
+        throw error;
+    }
+};
+
+// 使用示例
+const queryParams = {
+    entityType: 'Project',
+    isRequired: true,
+    group: '基本信息',
+};
+
+queryTemplateMetaFields('3fa85f64-5717-4562-b3fc-2c963f66afa6', queryParams);
+```
+
+#### 15.5 批量更新元数据字段顺序接口
+
+##### 接口信息
+
+-   **接口路径**: `PUT /api/attach-catalogue-template/{id}/meta-fields/order`
+-   **接口描述**: 批量更新模板元数据字段的显示顺序
+-   **请求方式**: PUT
+-   **Content-Type**: application/json
+
+##### 请求参数
+
+| 参数名 | 类型 | 必填 | 描述    | 示例值                                 |
+| ------ | ---- | ---- | ------- | -------------------------------------- |
+| id     | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+
+**请求体**: `string[]` (字段键名数组，按期望的顺序排列)
+
+##### 请求示例
+
+```json
+["project_name", "project_budget", "project_start_date", "project_end_date"]
+```
+
+##### 响应结果
+
+**成功响应** (200 OK): 无响应体
+
+##### React Axios 调用示例
+
+```javascript
+// 批量更新元数据字段顺序
+const updateMetaFieldsOrder = async (templateId, fieldKeys) => {
+    try {
+        await axios.put(
+            `/api/attach-catalogue-template/${templateId}/meta-fields/order`,
+            fieldKeys
+        );
+        console.log('更新元数据字段顺序成功');
+    } catch (error) {
+        console.error('更新元数据字段顺序失败:', error);
+        throw error;
+    }
+};
+
+// 使用示例
+const fieldKeys = [
+    'project_name',
+    'project_budget',
+    'project_start_date',
+    'project_end_date',
+];
+updateMetaFieldsOrder('3fa85f64-5717-4562-b3fc-2c963f66afa6', fieldKeys);
+```
+
+### 16. 获取模板结构接口
 
 #### 接口信息
 

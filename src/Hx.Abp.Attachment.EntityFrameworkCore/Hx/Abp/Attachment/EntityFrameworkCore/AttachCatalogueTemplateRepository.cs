@@ -2831,6 +2831,51 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         }
 
         /// <summary>
+        /// 检查模板名称是否存在（同级比较）
+        /// 如果不存在父节点，则比对根节点是否存在相同名称的模板
+        /// 如果存在父节点，则检查相同父节点下是否存在相同名称的模板
+        /// </summary>
+        public async Task<bool> ExistsByNameAsync(string templateName, Guid? parentId = null, Guid? excludeId = null)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+                var query = dbSet.Where(t => !t.IsDeleted && t.IsLatest && t.TemplateName == templateName);
+                
+                // 根据父节点ID进行同级比较
+                if (parentId.HasValue)
+                {
+                    // 有父节点：检查同一父节点下的同级模板
+                    query = query.Where(t => t.ParentId == parentId.Value);
+                }
+                else
+                {
+                    // 无父节点：检查根节点模板
+                    query = query.Where(t => t.ParentId == null);
+                }
+                
+                // 排除指定ID（用于更新场景）
+                if (excludeId.HasValue)
+                {
+                    query = query.Where(t => t.Id != excludeId.Value);
+                }
+                
+                var exists = await query.AnyAsync();
+                
+                Logger.LogInformation("检查模板名称是否存在完成，名称：{templateName}，父节点ID：{parentId}，排除ID：{excludeId}，存在：{exists}", 
+                    templateName, parentId, excludeId, exists);
+                
+                return exists;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "检查模板名称是否存在失败，名称：{templateName}，父节点ID：{parentId}，排除ID：{excludeId}", 
+                    templateName, parentId, excludeId);
+                return false;
+            }
+        }
+
+        /// <summary>
         /// 获取路径统计信息
         /// </summary>
         public async Task<Dictionary<int, int>> GetPathDepthStatisticsAsync(bool onlyLatest = true)

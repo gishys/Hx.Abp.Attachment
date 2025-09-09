@@ -86,6 +86,13 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public List<double>? TextVector { get; set; }
 
         /// <summary>
+        /// 分类路径（用于快速查询层级）
+        /// 格式：00001.00002.00003（5位数字，用点分隔）
+        /// 如果为空，系统将自动生成
+        /// </summary>
+        public string? Path { get; set; }
+
+        /// <summary>
         /// 元数据字段集合
         /// </summary>
         public List<CreateUpdateMetaFieldDto>? MetaFields { get; set; }

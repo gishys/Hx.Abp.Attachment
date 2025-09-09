@@ -122,6 +122,12 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public int VectorDimension { get; set; }
 
         /// <summary>
+        /// 分类路径（用于快速查询层级）
+        /// 格式：00001.00002.00003（5位数字，用点分隔）
+        /// </summary>
+        public string? Path { get; set; }
+
+        /// <summary>
         /// 权限集合
         /// </summary>
         public List<AttachCatalogueTemplatePermissionDto> Permissions { get; set; } = [];
@@ -151,8 +157,9 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// </summary>
         public int GetDepth()
         {
-            if (IsRoot) return 0;
-            return 1; // 简化实现，实际应该递归计算
+            if (string.IsNullOrEmpty(Path))
+                return 0;
+            return Path.Split('.').Length;
         }
 
         /// <summary>
@@ -160,7 +167,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// </summary>
         public string GetPath()
         {
-            return CatalogueName; // 简化实现，实际应该构建完整路径
+            return Path ?? CatalogueName; // 优先使用路径，否则使用分类名称
         }
     }
 }

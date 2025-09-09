@@ -109,6 +109,12 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public int VectorDimension { get; set; } = 0;
 
         /// <summary>
+        /// 分类路径（用于快速查询层级）
+        /// 格式：00001.00002.00003（5位数字，用点分隔）
+        /// </summary>
+        public string? Path { get; set; }
+
+        /// <summary>
         /// 权限集合
         /// </summary>
         public ICollection<AttachCatalogueTemplatePermissionDto>? Permissions { get; set; }

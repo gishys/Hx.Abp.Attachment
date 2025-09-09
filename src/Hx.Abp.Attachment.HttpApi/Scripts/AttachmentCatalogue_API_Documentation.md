@@ -44,6 +44,7 @@
 | catalogueFacetType | FacetType                  | 否   | 分类分面类型  | 0                                      |
 | cataloguePurpose   | TemplatePurpose            | 否   | 分类用途      | 1                                      |
 | textVector         | double[]                   | 否   | 文本向量      | null                                   |
+| path               | string                     | 否   | 分类路径      | "00001.00002.00003"                    |
 | metaFields         | MetaFieldDto[]             | 否   | 元数据字段    | []                                     |
 
 #### 枚举值说明
@@ -182,6 +183,7 @@
     "catalogueFacetType": 0,
     "cataloguePurpose": 1,
     "textVector": null,
+    "path": "00001.00002.00003",
     "metaFields": [
         {
             "entityType": "Project",
@@ -236,6 +238,7 @@ const createAttachmentCatalogue = async (catalogueData, mode = 0) => {
                 catalogueFacetType: 0, // 通用分面
                 cataloguePurpose: 1, // 分类管理
                 textVector: null,
+                path: '00001.00002.00003', // 分类路径
                 metaFields: [
                     {
                         entityType: 'Project',
@@ -1627,6 +1630,16 @@ const getEnabledMetaFields = async (catalogueId) => {
 -   **状态管理**: 合理设置字段的启用/禁用状态，支持动态字段管理
 -   **原子性操作**: 利用批量操作的原子性特性，确保数据完整性
 -   **性能优化**: 避免频繁的单个字段操作，优先使用批量接口
+
+### 6. 分类路径管理
+
+-   **路径格式**: 分类路径采用 "00001.00002.00003" 格式（5位数字，用点分隔）
+-   **自动生成**: 系统会自动为新建分类生成路径，无需手动指定
+-   **层级查询**: 利用路径字段可以快速进行层级查询和树形结构构建
+-   **性能优化**: 路径字段已建立索引，支持高效的层级查询操作
+-   **路径验证**: 系统会自动验证路径格式的正确性
+-   **父子关系**: 通过路径可以快速判断分类间的父子关系
+-   **深度计算**: 使用路径可以快速计算分类的层级深度
 
 ## 版本信息
 

@@ -845,5 +845,216 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 throw new UserFriendlyException(message: $"增强版混合检索执行失败: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// 根据路径查找分类
+        /// </summary>
+        public virtual async Task<AttachCatalogue?> FindByPathAsync(
+            string path,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return null;
+
+            return await (await GetQueryableAsync())
+                .Where(c => c.Path == path && !c.IsDeleted)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// 根据路径前缀查找子分类
+        /// </summary>
+        public virtual async Task<List<AttachCatalogue>> FindByPathPrefixAsync(
+            string pathPrefix,
+            string? reference = null,
+            int? referenceType = null,
+            CancellationToken cancellationToken = default)
+        {
+            var query = (await GetQueryableAsync())
+                .Where(c => !c.IsDeleted);
+
+            if (!string.IsNullOrWhiteSpace(pathPrefix))
+            {
+                query = query.Where(c => c.Path != null && c.Path.StartsWith(pathPrefix + "."));
+            }
+
+            if (!string.IsNullOrWhiteSpace(reference))
+            {
+                query = query.Where(c => c.Reference == reference);
+            }
+
+            if (referenceType.HasValue)
+            {
+                query = query.Where(c => c.ReferenceType == referenceType.Value);
+            }
+
+            return await query
+                .OrderBy(c => c.Path)
+                .ToListAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// 根据路径深度查找分类
+        /// </summary>
+        public virtual async Task<List<AttachCatalogue>> FindByPathDepthAsync(
+            int depth,
+            string? reference = null,
+            int? referenceType = null,
+            CancellationToken cancellationToken = default)
+        {
+            var query = (await GetQueryableAsync())
+                .Where(c => !c.IsDeleted);
+
+            // 使用原生SQL查询路径深度
+            if (depth == 0)
+            {
+                // 根节点：路径为空或深度为1
+                query = query.Where(c => c.Path == null || c.Path == "" || 
+                    !c.Path.Contains("."));
+            }
+            else
+            {
+                // 使用原生SQL计算路径深度
+                var sql = @"
+                    SELECT c.* FROM ""APPATTACH_CATALOGUES"" c
+                    WHERE c.""IS_DELETED"" = false
+                        AND array_length(string_to_array(c.""PATH"", '.'), 1) = {0}";
+
+                if (!string.IsNullOrWhiteSpace(reference))
+                {
+                    sql += " AND c.\"REFERENCE\" = {1}";
+                }
+
+                if (referenceType.HasValue)
+                {
+                    sql += " AND c.\"REFERENCE_TYPE\" = {2}";
+                }
+
+                sql += " ORDER BY c.\"PATH\"";
+
+                var parameters = new List<object> { depth };
+                if (!string.IsNullOrWhiteSpace(reference))
+                {
+                    parameters.Add(reference);
+                }
+                if (referenceType.HasValue)
+                {
+                    parameters.Add(referenceType.Value);
+                }
+
+                return await (await GetDbContextAsync())
+                    .Set<AttachCatalogue>()
+                    .FromSqlRaw(sql, parameters.ToArray())
+                    .ToListAsync(cancellationToken);
+            }
+
+            if (!string.IsNullOrWhiteSpace(reference))
+            {
+                query = query.Where(c => c.Reference == reference);
+            }
+
+            if (referenceType.HasValue)
+            {
+                query = query.Where(c => c.ReferenceType == referenceType.Value);
+            }
+
+            return await query
+                .OrderBy(c => c.Path)
+                .ToListAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// 查找根分类
+        /// </summary>
+        public virtual async Task<List<AttachCatalogue>> FindRootCataloguesAsync(
+            string? reference = null,
+            int? referenceType = null,
+            CancellationToken cancellationToken = default)
+        {
+            var query = (await GetQueryableAsync())
+                .Where(c => !c.IsDeleted)
+                .Where(c => c.Path == null || c.Path == "" || !c.Path.Contains("."));
+
+            if (!string.IsNullOrWhiteSpace(reference))
+            {
+                query = query.Where(c => c.Reference == reference);
+            }
+
+            if (referenceType.HasValue)
+            {
+                query = query.Where(c => c.ReferenceType == referenceType.Value);
+            }
+
+            return await query
+                .OrderBy(c => c.Path)
+                .ToListAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// 查找叶子分类
+        /// </summary>
+        public virtual async Task<List<AttachCatalogue>> FindLeafCataloguesAsync(
+            string? reference = null,
+            int? referenceType = null,
+            CancellationToken cancellationToken = default)
+        {
+            var query = (await GetQueryableAsync())
+                .Where(c => !c.IsDeleted)
+                .Where(c => !c.Children.Any(child => !child.IsDeleted));
+
+            if (!string.IsNullOrWhiteSpace(reference))
+            {
+                query = query.Where(c => c.Reference == reference);
+            }
+
+            if (referenceType.HasValue)
+            {
+                query = query.Where(c => c.ReferenceType == referenceType.Value);
+            }
+
+            return await query
+                .OrderBy(c => c.Path)
+                .ToListAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// 根据父路径查找直接子分类
+        /// </summary>
+        public virtual async Task<List<AttachCatalogue>> FindDirectChildrenByPathAsync(
+            string parentPath,
+            string? reference = null,
+            int? referenceType = null,
+            CancellationToken cancellationToken = default)
+        {
+            var query = (await GetQueryableAsync())
+                .Where(c => !c.IsDeleted);
+
+            if (string.IsNullOrWhiteSpace(parentPath))
+            {
+                // 查找根节点的直接子节点
+                query = query.Where(c => c.Path != null && !c.Path.Contains("."));
+            }
+            else
+            {
+                // 查找指定父路径的直接子节点
+                var childPathPattern = parentPath + ".";
+                query = query.Where(c => c.Path != null && c.Path.StartsWith(childPathPattern) && 
+                    !c.Path.Substring(childPathPattern.Length).Contains("."));
+            }
+
+            if (!string.IsNullOrWhiteSpace(reference))
+            {
+                query = query.Where(c => c.Reference == reference);
+            }
+
+            if (referenceType.HasValue)
+            {
+                query = query.Where(c => c.ReferenceType == referenceType.Value);
+            }
+
+            return await query
+                .OrderBy(c => c.Path)
+                .ToListAsync(cancellationToken);
+        }
     }
 }

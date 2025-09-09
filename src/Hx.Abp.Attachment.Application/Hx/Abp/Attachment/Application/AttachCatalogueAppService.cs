@@ -45,6 +45,23 @@ namespace Hx.Abp.Attachment.Application
                     throw new UserFriendlyException($"已存在相同的分类名称: {input.CatalogueName}");
                 }
                 int maxNumber = await CatalogueRepository.GetMaxSequenceNumberByReferenceAsync(input.ParentId, input.Reference, input.ReferenceType);
+                // 计算路径
+                string? path = input.Path;
+                if (string.IsNullOrEmpty(path) && input.ParentId.HasValue)
+                {
+                    // 如果有父级，需要获取父级路径并计算新路径
+                    var parentCatalogue = await CatalogueRepository.GetAsync(input.ParentId.Value);
+                    if (parentCatalogue != null)
+                    {
+                        path = AttachCatalogue.CalculateNextPath(parentCatalogue.Path);
+                    }
+                }
+                else if (string.IsNullOrEmpty(path))
+                {
+                    // 根节点，生成第一个路径
+                    path = AttachCatalogue.CreatePathCode(1);
+                }
+
                 // 创建新的分类实体
                 var catalogue = new AttachCatalogue(
                     GuidGenerator.Create(),
@@ -69,7 +86,8 @@ namespace Hx.Abp.Attachment.Application
                         mf.EntityType, mf.FieldKey, mf.FieldName, mf.DataType, mf.IsRequired,
                         mf.Unit, mf.RegexPattern, mf.Options, mf.Description, mf.DefaultValue,
                         mf.Order, mf.IsEnabled, mf.Group, mf.ValidationRules, mf.Tags
-                    )).ToList()
+                    )).ToList(),
+                    path
                 );
 
                 // 验证配置
@@ -114,6 +132,12 @@ namespace Hx.Abp.Attachment.Application
             // 更新新增字段
             catalogue.SetCatalogueIdentifiers(input.CatalogueFacetType, input.CataloguePurpose);
             catalogue.SetTextVector(input.TextVector);
+            
+            // 更新路径
+            if (!string.IsNullOrEmpty(input.Path))
+            {
+                catalogue.SetPath(input.Path);
+            }
             
             // 更新元数据字段
             if (input.MetaFields != null)
@@ -508,6 +532,23 @@ namespace Hx.Abp.Attachment.Application
             List<AttachCatalogue> attachCatalogues = [];
             foreach (var input in inputs)
             {
+                // 计算路径
+                string? path = input.Path;
+                if (string.IsNullOrEmpty(path) && input.ParentId.HasValue)
+                {
+                    // 如果有父级，需要获取父级路径并计算新路径
+                    var parentCatalogue = await CatalogueRepository.GetAsync(input.ParentId.Value);
+                    if (parentCatalogue != null)
+                    {
+                        path = AttachCatalogue.CalculateNextPath(parentCatalogue.Path);
+                    }
+                }
+                else if (string.IsNullOrEmpty(path))
+                {
+                    // 根节点，生成第一个路径
+                    path = AttachCatalogue.CreatePathCode(1);
+                }
+
                 var attachCatalogue = new AttachCatalogue(
                     GuidGenerator.Create(),
                     input.AttachReceiveType,
@@ -531,7 +572,8 @@ namespace Hx.Abp.Attachment.Application
                         mf.EntityType, mf.FieldKey, mf.FieldName, mf.DataType, mf.IsRequired,
                         mf.Unit, mf.RegexPattern, mf.Options, mf.Description, mf.DefaultValue,
                         mf.Order, mf.IsEnabled, mf.Group, mf.ValidationRules, mf.Tags
-                    )).ToList());
+                    )).ToList(),
+                    path);
                 if (input.Children?.Count > 0)
                 {
                     var children = await GetEntitys([.. input.Children], 0);
@@ -977,6 +1019,7 @@ namespace Hx.Abp.Attachment.Application
                 CataloguePurpose = catalogue.CataloguePurpose,
                 TextVector = catalogue.TextVector,
                 VectorDimension = catalogue.VectorDimension,
+                Path = catalogue.Path,
                 CreationTime = catalogue.CreationTime,
                 CreatorId = catalogue.CreatorId,
                 LastModificationTime = catalogue.LastModificationTime,

@@ -104,6 +104,13 @@ namespace Hx.Abp.Attachment.Domain
         public virtual int VectorDimension { get; private set; } = 0;
 
         /// <summary>
+        /// 分类路径（用于快速查询层级）
+        /// 格式：00001.00002.00003（5位数字，用点分隔）
+        /// </summary>
+        [CanBeNull]
+        public virtual string? Path { get; private set; }
+
+        /// <summary>
         /// 权限集合（JSONB格式，存储权限值对象数组）
         /// </summary>
         public virtual ICollection<AttachCatalogueTemplatePermission> Permissions { get; private set; } = [];
@@ -150,7 +157,8 @@ namespace Hx.Abp.Attachment.Domain
             TemplatePurpose cataloguePurpose = TemplatePurpose.Classification,
             [CanBeNull] List<string>? tags = null,
             [CanBeNull] List<double>? textVector = null,
-            [CanBeNull] List<MetaField>? metaFields = null)
+            [CanBeNull] List<MetaField>? metaFields = null,
+            [CanBeNull] string? path = null)
         {
             Id = id;
             AttachReceiveType = attachReceiveType;
@@ -171,6 +179,7 @@ namespace Hx.Abp.Attachment.Domain
             Tags = tags ?? [];
             SetTextVector(textVector);
             MetaFields = metaFields ?? [];
+            SetPath(path);
             AttachFiles = [];
             Children = [];
             Permissions = [];
@@ -332,6 +341,12 @@ namespace Hx.Abp.Attachment.Domain
                 throw new ArgumentException("向量维度必须在64到2048之间", nameof(TextVector));
             }
 
+            // 验证路径格式
+            if (!IsValidPath(Path))
+            {
+                throw new ArgumentException("分类路径格式不正确", nameof(Path));
+            }
+
             // 验证元数据字段配置
             ValidateMetaFields();
         }
@@ -339,7 +354,7 @@ namespace Hx.Abp.Attachment.Domain
         /// <summary>
         /// 检查是否为根分类
         /// </summary>
-        public virtual bool IsRoot => ParentId == null;
+        public virtual bool IsRoot => ParentId == null && IsRootPath(Path);
 
         /// <summary>
         /// 检查是否为叶子分类
@@ -351,8 +366,7 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual int GetDepth()
         {
-            if (IsRoot) return 0;
-            return 1; // 简化实现，实际应该递归计算
+            return GetPathDepth(Path);
         }
 
         /// <summary>
@@ -360,7 +374,7 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual string GetPath()
         {
-            return CatalogueName; // 简化实现，实际应该构建完整路径
+            return Path ?? CatalogueName; // 优先使用路径，否则使用分类名称
         }
 
         /// <summary>
@@ -732,6 +746,190 @@ namespace Hx.Abp.Attachment.Domain
         public virtual void SetMetaFields([CanBeNull] List<MetaField>? metaFields)
         {
             MetaFields = metaFields ?? [];
+        }
+
+        /// <summary>
+        /// 设置分类路径
+        /// </summary>
+        /// <param name="path">分类路径</param>
+        public virtual void SetPath([CanBeNull] string? path)
+        {
+            Path = path;
+        }
+
+        /// <summary>
+        /// 计算下一个分类路径
+        /// </summary>
+        /// <param name="currentPath">当前路径</param>
+        /// <returns>下一个路径代码</returns>
+        public static string CalculateNextPath(string? currentPath)
+        {
+            if (string.IsNullOrEmpty(currentPath))
+            {
+                return CreatePathCode(1);
+            }
+
+            var parentPath = GetParentPath(currentPath);
+            var lastUnitCode = GetLastUnitPathCode(currentPath);
+            return AppendPathCode(parentPath, CreatePathCode(Convert.ToInt32(lastUnitCode) + 1));
+        }
+
+        /// <summary>
+        /// 获取路径中的最后一个单元代码
+        /// </summary>
+        /// <param name="path">分类路径</param>
+        /// <returns>最后一个单元代码</returns>
+        public static string GetLastUnitPathCode(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                throw new ArgumentException("路径不能为空", nameof(path));
+            }
+
+            var parts = path.Split('.');
+            return parts[^1];
+        }
+
+        /// <summary>
+        /// 获取父级路径
+        /// </summary>
+        /// <param name="path">分类路径</param>
+        /// <returns>父级路径，如果是根节点则返回null</returns>
+        public static string? GetParentPath(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                return null;
+            }
+
+            var parts = path.Split('.');
+            if (parts.Length <= 1)
+            {
+                return null; // 根节点
+            }
+
+            return string.Join(".", parts[..^1]);
+        }
+
+        /// <summary>
+        /// 创建路径代码
+        /// </summary>
+        /// <param name="numbers">数字数组</param>
+        /// <returns>格式化的路径代码</returns>
+        public static string CreatePathCode(params int[] numbers)
+        {
+            if (numbers == null || numbers.Length == 0)
+            {
+                throw new ArgumentException("至少需要一个数字", nameof(numbers));
+            }
+
+            return string.Join(".", numbers.Select(n => n.ToString("D5")));
+        }
+
+        /// <summary>
+        /// 追加路径代码
+        /// </summary>
+        /// <param name="parentPath">父路径，如果是根节点可以为null或空</param>
+        /// <param name="childPath">子路径代码</param>
+        /// <returns>完整的路径代码</returns>
+        public static string AppendPathCode(string? parentPath, string childPath)
+        {
+            if (string.IsNullOrEmpty(childPath))
+            {
+                throw new ArgumentException("子路径不能为空", nameof(childPath));
+            }
+
+            if (string.IsNullOrEmpty(parentPath))
+            {
+                return childPath;
+            }
+
+            return $"{parentPath}.{childPath}";
+        }
+
+        /// <summary>
+        /// 验证路径格式
+        /// </summary>
+        /// <param name="path">分类路径</param>
+        /// <returns>是否为有效格式</returns>
+        public static bool IsValidPath(string? path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return true; // 空路径是有效的（根节点）
+
+            var parts = path.Split('.');
+            return parts.All(part => part.Length == 5 && int.TryParse(part, out _));
+        }
+
+        /// <summary>
+        /// 获取路径深度
+        /// </summary>
+        /// <param name="path">分类路径</param>
+        /// <returns>层级深度（0表示根节点）</returns>
+        public static int GetPathDepth(string? path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return 0;
+
+            return path.Split('.').Length;
+        }
+
+        /// <summary>
+        /// 检查是否为根路径
+        /// </summary>
+        /// <param name="path">分类路径</param>
+        /// <returns>是否为根路径</returns>
+        public static bool IsRootPath(string? path)
+        {
+            return string.IsNullOrEmpty(path);
+        }
+
+        /// <summary>
+        /// 检查是否为父子关系
+        /// </summary>
+        /// <param name="parentPath">父路径</param>
+        /// <param name="childPath">子路径</param>
+        /// <returns>是否为父子关系</returns>
+        public static bool IsParentChildPath(string? parentPath, string childPath)
+        {
+            if (string.IsNullOrEmpty(childPath))
+                return false;
+
+            if (string.IsNullOrEmpty(parentPath))
+                return GetPathDepth(childPath) == 1;
+
+            return childPath.StartsWith(parentPath + ".", StringComparison.Ordinal) &&
+                   GetPathDepth(childPath) == GetPathDepth(parentPath) + 1;
+        }
+
+        /// <summary>
+        /// 获取分类路径的显示名称（用于UI展示）
+        /// </summary>
+        /// <returns>格式化的路径显示名称</returns>
+        public virtual string GetPathDisplayName()
+        {
+            if (string.IsNullOrEmpty(Path))
+                return "根节点";
+
+            var parts = Path.Split('.');
+            return string.Join(" → ", parts.Select(part => int.Parse(part).ToString()));
+        }
+
+        /// <summary>
+        /// 更改父级分类
+        /// </summary>
+        /// <param name="parentId">父级ID</param>
+        /// <param name="parentPath">父级路径</param>
+        public virtual void ChangeParent(Guid? parentId, [CanBeNull] string? parentPath = null)
+        {
+            ParentId = parentId;
+            
+            // 如果提供了父路径，自动计算新的路径
+            if (parentPath != null)
+            {
+                var newPath = CalculateNextPath(parentPath);
+                SetPath(newPath);
+            }
         }
     }
 }

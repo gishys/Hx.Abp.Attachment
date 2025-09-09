@@ -83,5 +83,81 @@ namespace Hx.Abp.Attachment.Domain
             string? queryTextVector = null,
             float similarityThreshold = 0.7f,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 根据路径查找分类
+        /// </summary>
+        /// <param name="path">分类路径</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>匹配的分类</returns>
+        Task<AttachCatalogue?> FindByPathAsync(
+            string path,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 根据路径前缀查找子分类
+        /// </summary>
+        /// <param name="pathPrefix">路径前缀</param>
+        /// <param name="reference">业务引用</param>
+        /// <param name="referenceType">业务类型</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>匹配的分类列表</returns>
+        Task<List<AttachCatalogue>> FindByPathPrefixAsync(
+            string pathPrefix,
+            string? reference = null,
+            int? referenceType = null,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 根据路径深度查找分类
+        /// </summary>
+        /// <param name="depth">路径深度</param>
+        /// <param name="reference">业务引用</param>
+        /// <param name="referenceType">业务类型</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>匹配的分类列表</returns>
+        Task<List<AttachCatalogue>> FindByPathDepthAsync(
+            int depth,
+            string? reference = null,
+            int? referenceType = null,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 查找根分类
+        /// </summary>
+        /// <param name="reference">业务引用</param>
+        /// <param name="referenceType">业务类型</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>根分类列表</returns>
+        Task<List<AttachCatalogue>> FindRootCataloguesAsync(
+            string? reference = null,
+            int? referenceType = null,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 查找叶子分类
+        /// </summary>
+        /// <param name="reference">业务引用</param>
+        /// <param name="referenceType">业务类型</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>叶子分类列表</returns>
+        Task<List<AttachCatalogue>> FindLeafCataloguesAsync(
+            string? reference = null,
+            int? referenceType = null,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 根据父路径查找直接子分类
+        /// </summary>
+        /// <param name="parentPath">父路径</param>
+        /// <param name="reference">业务引用</param>
+        /// <param name="referenceType">业务类型</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>直接子分类列表</returns>
+        Task<List<AttachCatalogue>> FindDirectChildrenByPathAsync(
+            string parentPath,
+            string? reference = null,
+            int? referenceType = null,
+            CancellationToken cancellationToken = default);
     }
 }

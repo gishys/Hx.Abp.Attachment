@@ -98,6 +98,11 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.Property(d => d.VectorDimension).HasColumnName("VECTOR_DIMENSION")
                 .HasDefaultValue(0);
 
+            // 分类路径字段配置
+            builder.Property(d => d.Path).HasColumnName("PATH")
+                .HasMaxLength(500)
+                .IsRequired(false);
+
             // 权限集合字段配置（JSONB格式）
             builder.Property(d => d.Permissions)
                 .HasColumnName("PERMISSIONS")
@@ -159,6 +164,13 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
             builder.HasIndex(e => new { e.ParentId, e.CatalogueFacetType })
                 .HasDatabaseName("IDX_ATTACH_CATALOGUES_PARENT_TYPE");
+
+            // 路径相关索引
+            builder.HasIndex(e => e.Path)
+                .HasDatabaseName("IDX_ATTACH_CATALOGUES_PATH");
+
+            builder.HasIndex(e => new { e.Reference, e.ReferenceType, e.Path })
+                .HasDatabaseName("IDX_ATTACH_CATALOGUES_REF_TYPE_PATH");
 
             // 关系配置
             builder.HasMany(d => d.AttachFiles)

@@ -335,6 +335,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                             COALESCE(ft.""CATALOGUE_PURPOSE"", fz.""CATALOGUE_PURPOSE"") as ""CATALOGUE_PURPOSE"",
                             COALESCE(ft.""TAGS"", fz.""TAGS"") as ""TAGS"",
                             COALESCE(ft.""PERMISSIONS"", fz.""PERMISSIONS"") as ""PERMISSIONS"",
+                            COALESCE(ft.""META_FIELDS"", fz.""META_FIELDS"") as ""META_FIELDS"",
                             COALESCE(ft.""EXTRA_PROPERTIES"", fz.""EXTRA_PROPERTIES"") as ""EXTRA_PROPERTIES"",
                             COALESCE(ft.""CONCURRENCY_STAMP"", fz.""CONCURRENCY_STAMP"") as ""CONCURRENCY_STAMP"",
                             COALESCE(ft.""DELETER_ID"", fz.""DELETER_ID"") as ""DELETER_ID"",
@@ -554,7 +555,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                         ""FULL_TEXT_CONTENT"", ""FULL_TEXT_CONTENT_UPDATED_TIME"", ""ATTACH_COUNT"",
                         ""ATTACH_RECEIVE_TYPE"", ""PAGE_COUNT"", ""IS_VERIFICATION"", ""VERIFICATION_PASSED"",
                         ""IS_REQUIRED"", ""IS_STATIC"", ""TEMPLATE_ID"", ""CATALOGUE_FACET_TYPE"", ""CATALOGUE_PURPOSE"",
-                        ""TAGS"", ""PERMISSIONS"", ""EXTRA_PROPERTIES"", ""CONCURRENCY_STAMP"", ""DELETER_ID"", ""DELETION_TIME"",
+                        ""TAGS"", ""PERMISSIONS"", ""META_FIELDS"", ""EXTRA_PROPERTIES"", ""CONCURRENCY_STAMP"", ""DELETER_ID"", ""DELETION_TIME"",
                         final_score, vector_score, fulltext_score, usage_score, time_score
                     FROM final_scoring
                     ORDER BY final_score DESC
@@ -792,7 +793,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                         ""FULL_TEXT_CONTENT"", ""FULL_TEXT_CONTENT_UPDATED_TIME"", ""ATTACH_COUNT"",
                         ""ATTACH_RECEIVE_TYPE"", ""PAGE_COUNT"", ""IS_VERIFICATION"", ""VERIFICATION_PASSED"",
                         ""IS_REQUIRED"", ""IS_STATIC"", ""TEMPLATE_ID"", ""CATALOGUE_FACET_TYPE"", ""CATALOGUE_PURPOSE"",
-                        ""TAGS"", ""PERMISSIONS"", ""EXTRA_PROPERTIES"", ""CONCURRENCY_STAMP"", ""DELETER_ID"", ""DELETION_TIME"",
+                        ""TAGS"", ""PERMISSIONS"", ""META_FIELDS"", ""EXTRA_PROPERTIES"", ""CONCURRENCY_STAMP"", ""DELETER_ID"", ""DELETION_TIME"",
                         final_score, vector_score, fulltext_score, usage_score, time_score
                     FROM final_scoring
                     ORDER BY final_score DESC

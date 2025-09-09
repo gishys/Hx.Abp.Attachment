@@ -32,7 +32,7 @@
 | isStatic          | boolean                                | 是   | 是否静态模板          | false                                                |
 | parentId          | Guid?                                  | 否   | 父模板 ID             | "3fa85f64-5717-4562-b3fc-2c963f66afa6"               |
 | parentVersion     | int?                                   | 否   | 父模板版本号          | 1                                                    |
-| templatePath      | string                                 | 否   | 模板路径              | "00001.00002"                                        |
+| templatePath      | string                                 | 否   | 模板路径              | "0000001.0000002"                                    |
 | facetType         | FacetType                              | 是   | 分面类型              | 0                                                    |
 | templatePurpose   | TemplatePurpose                        | 是   | 模板用途              | 1                                                    |
 | textVector        | double[]                               | 否   | 文本向量              | null                                                 |
@@ -144,7 +144,7 @@
     "isStatic": false,
     "parentId": null,
     "parentVersion": null,
-    "templatePath": "00001",
+    "templatePath": "0000001",
     "facetType": 0,
     "templatePurpose": 1,
     "textVector": null,
@@ -876,7 +876,7 @@ const searchTemplatesHybrid = async (searchParams) => {
             "isStatic": false,
             "parentId": null,
             "parentVersion": null,
-            "templatePath": "00001",
+            "templatePath": "0000001",
             "children": [],
             "facetType": 0,
             "templatePurpose": 1,
@@ -906,7 +906,7 @@ const searchTemplatesHybrid = async (searchParams) => {
             "isRoot": true,
             "isLeaf": true,
             "depth": 0,
-            "path": "00001",
+            "path": "0000001",
             "creationTime": "2024-01-15T10:30:00Z",
             "lastModificationTime": "2024-01-20T14:45:00Z",
             "creatorId": "user123",
@@ -926,7 +926,7 @@ const searchTemplatesHybrid = async (searchParams) => {
             "isStatic": false,
             "parentId": null,
             "parentVersion": null,
-            "templatePath": "00001",
+            "templatePath": "0000001",
             "children": [],
             "facetType": 0,
             "templatePurpose": 1,
@@ -938,7 +938,7 @@ const searchTemplatesHybrid = async (searchParams) => {
             "isRoot": true,
             "isLeaf": true,
             "depth": 0,
-            "path": "00001",
+            "path": "0000001",
             "creationTime": "2024-01-10T09:15:00Z",
             "lastModificationTime": "2024-01-12T16:20:00Z",
             "creatorId": "user123",
@@ -1183,7 +1183,7 @@ const searchTemplatesBySemantic = async (semanticQuery, filters = {}) => {
 | isStatic                      | boolean                                | 是   | 是否静态              | false                                    |
 | parentId                      | string                                 | 否   | 父模板 ID             | "3fa85f64-5717-4562-b3fc-2c963f66afa7"   |
 | parentVersion                 | number                                 | 否   | 父模板版本号          | 1                                        |
-| templatePath                  | string                                 | 否   | 模板路径              | "00001.00002"                            |
+| templatePath                  | string                                 | 否   | 模板路径              | "0000001.0000002"                        |
 | children                      | AttachCatalogueTemplateDto[]           | 否   | 子模板集合            | 递归结构，同父级结构                     |
 | facetType                     | FacetType                              | 是   | 分面类型              | 0                                        |
 | templatePurpose               | TemplatePurpose                        | 是   | 模板用途              | 1                                        |
@@ -1195,7 +1195,7 @@ const searchTemplatesBySemantic = async (semanticQuery, filters = {}) => {
 | isRoot                        | boolean                                | 是   | 是否为根模板          | true                                     |
 | isLeaf                        | boolean                                | 是   | 是否为叶子模板        | false                                    |
 | depth                         | number                                 | 是   | 模板层级深度          | 0                                        |
-| path                          | string                                 | 否   | 模板路径              | "00001.00002"                            |
+| path                          | string                                 | 否   | 模板路径              | "0000001.0000002"                        |
 | creationTime                  | string                                 | 是   | 创建时间              | "2024-01-01T00:00:00Z"                   |
 | lastModificationTime          | string                                 | 否   | 最后修改时间          | "2024-01-01T00:00:00Z"                   |
 | creatorId                     | string                                 | 否   | 创建者 ID             | "3fa85f64-5717-4562-b3fc-2c963f66afa8"   |
@@ -1257,7 +1257,7 @@ const searchTemplatesBySemantic = async (semanticQuery, filters = {}) => {
       "isStatic": false,
       "parentId": null,
       "parentVersion": null,
-      "templatePath": "00001",
+      "templatePath": "0000001",
       "children": [
         {
           "id": "3fa85f64-5717-4562-b3fc-2c963f66afa7",
@@ -1273,7 +1273,7 @@ const searchTemplatesBySemantic = async (semanticQuery, filters = {}) => {
           "isStatic": false,
           "parentId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
           "parentVersion": 1,
-          "templatePath": "00001.00001",
+          "templatePath": "0000001.0000001",
           "children": [],
           "facetType": 0,
           "templatePurpose": 1,
@@ -1305,7 +1305,7 @@ const searchTemplatesBySemantic = async (semanticQuery, filters = {}) => {
           "isRoot": false,
           "isLeaf": true,
           "depth": 1,
-          "path": "00001.00001",
+          "path": "0000001.0000001",
           "creationTime": "2024-01-01T00:00:00Z",
           "lastModificationTime": "2024-01-01T00:00:00Z",
           "creatorId": "3fa85f64-5717-4562-b3fc-2c963f66afa8",
@@ -1355,7 +1355,7 @@ const searchTemplatesBySemantic = async (semanticQuery, filters = {}) => {
       "isRoot": true,
       "isLeaf": false,
       "depth": 0,
-      "path": "00001",
+      "path": "0000001",
       "creationTime": "2024-01-01T00:00:00Z",
       "lastModificationTime": "2024-01-01T00:00:00Z",
       "creatorId": "3fa85f64-5717-4562-b3fc-2c963f66afa8",
@@ -2040,7 +2040,7 @@ updateMetaFieldsOrder('3fa85f64-5717-4562-b3fc-2c963f66afa6', fieldKeys);
             "isStatic": false,
             "parentId": null,
             "parentVersion": null,
-            "templatePath": "00001",
+            "templatePath": "0000001",
             "children": [
                 {
                     "id": "3fa85f64-5717-4562-b3fc-2c963f66afa7",
@@ -2056,7 +2056,7 @@ updateMetaFieldsOrder('3fa85f64-5717-4562-b3fc-2c963f66afa6', fieldKeys);
                     "isStatic": false,
                     "parentId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
                     "parentVersion": 1,
-                    "templatePath": "00001.00001",
+                    "templatePath": "0000001.0000001",
                     "children": [],
                     "facetType": 0,
                     "templatePurpose": 1,
@@ -2068,7 +2068,7 @@ updateMetaFieldsOrder('3fa85f64-5717-4562-b3fc-2c963f66afa6', fieldKeys);
                     "isRoot": false,
                     "isLeaf": true,
                     "depth": 1,
-                    "path": "00001.00001",
+                    "path": "0000001.0000001",
                     "creationTime": "2024-01-01T00:00:00Z",
                     "lastModificationTime": "2024-01-15T10:30:00Z",
                     "creatorId": "3fa85f64-5717-4562-b3fc-2c963f66afa8",
@@ -2085,7 +2085,7 @@ updateMetaFieldsOrder('3fa85f64-5717-4562-b3fc-2c963f66afa6', fieldKeys);
             "isRoot": true,
             "isLeaf": false,
             "depth": 0,
-            "path": "00001",
+            "path": "0000001",
             "creationTime": "2024-01-01T00:00:00Z",
             "lastModificationTime": "2024-01-15T10:30:00Z",
             "creatorId": "3fa85f64-5717-4562-b3fc-2c963f66afa8",
@@ -2105,7 +2105,7 @@ updateMetaFieldsOrder('3fa85f64-5717-4562-b3fc-2c963f66afa6', fieldKeys);
             "isStatic": false,
             "parentId": null,
             "parentVersion": null,
-            "templatePath": "00001",
+            "templatePath": "0000001",
             "children": [],
             "facetType": 0,
             "templatePurpose": 1,
@@ -2117,7 +2117,7 @@ updateMetaFieldsOrder('3fa85f64-5717-4562-b3fc-2c963f66afa6', fieldKeys);
             "isRoot": true,
             "isLeaf": true,
             "depth": 0,
-            "path": "00001",
+            "path": "0000001",
             "creationTime": "2024-01-01T00:00:00Z",
             "lastModificationTime": "2024-01-10T15:20:00Z",
             "creatorId": "3fa85f64-5717-4562-b3fc-2c963f66afa8",

@@ -49,17 +49,45 @@ namespace Hx.Abp.Attachment.Application
                 string? path = input.Path;
                 if (string.IsNullOrEmpty(path) && input.ParentId.HasValue)
                 {
-                    // 如果有父级，需要获取父级路径并计算新路径
+                    // 有父级：获取父级路径，然后查找同级最大路径
                     var parentCatalogue = await CatalogueRepository.GetAsync(input.ParentId.Value);
                     if (parentCatalogue != null)
                     {
-                        path = AttachCatalogue.CalculateNextPath(parentCatalogue.Path);
+                        var maxPathAtSameLevel = await CatalogueRepository.GetMaxPathAtSameLevelAsync(
+                            parentCatalogue.Path, input.Reference, input.ReferenceType);
+
+                        if (string.IsNullOrEmpty(maxPathAtSameLevel))
+                        {
+                            // 没有同级，创建第一个子路径
+                            path = AttachCatalogue.AppendPathCode(parentCatalogue.Path, "0000001");
+                        }
+                        else
+                        {
+                            // 有同级，获取最大路径的最后一个单元代码并+1
+                            var lastUnitCode = AttachCatalogue.GetLastUnitPathCode(maxPathAtSameLevel);
+                            var nextNumber = Convert.ToInt32(lastUnitCode) + 1;
+                            var nextUnitCode = nextNumber.ToString($"D{AttachmentConstants.PATH_CODE_DIGITS}");
+                            path = AttachCatalogue.AppendPathCode(parentCatalogue.Path, nextUnitCode);
+                        }
                     }
                 }
                 else if (string.IsNullOrEmpty(path))
                 {
-                    // 根节点，生成第一个路径
-                    path = AttachCatalogue.CreatePathCode(1);
+                    // 没有父级：查找根级别最大路径
+                    var maxPathAtRootLevel = await CatalogueRepository.GetMaxPathAtSameLevelAsync(
+                        null, input.Reference, input.ReferenceType);
+                    
+                    if (string.IsNullOrEmpty(maxPathAtRootLevel))
+                    {
+                        // 没有根级别分类，创建第一个
+                        path = AttachCatalogue.CreatePathCode(1);
+                    }
+                    else
+                    {
+                        // 有根级别分类，获取最大路径并+1
+                        var nextNumber = Convert.ToInt32(maxPathAtRootLevel) + 1;
+                        path = AttachCatalogue.CreatePathCode(nextNumber);
+                    }
                 }
 
                 // 创建新的分类实体
@@ -536,17 +564,45 @@ namespace Hx.Abp.Attachment.Application
                 string? path = input.Path;
                 if (string.IsNullOrEmpty(path) && input.ParentId.HasValue)
                 {
-                    // 如果有父级，需要获取父级路径并计算新路径
+                    // 有父级：获取父级路径，然后查找同级最大路径
                     var parentCatalogue = await CatalogueRepository.GetAsync(input.ParentId.Value);
                     if (parentCatalogue != null)
                     {
-                        path = AttachCatalogue.CalculateNextPath(parentCatalogue.Path);
+                        var maxPathAtSameLevel = await CatalogueRepository.GetMaxPathAtSameLevelAsync(
+                            parentCatalogue.Path, input.Reference, input.ReferenceType);
+
+                        if (string.IsNullOrEmpty(maxPathAtSameLevel))
+                        {
+                            // 没有同级，创建第一个子路径
+                            path = AttachCatalogue.AppendPathCode(parentCatalogue.Path, "0000001");
+                        }
+                        else
+                        {
+                            // 有同级，获取最大路径的最后一个单元代码并+1
+                            var lastUnitCode = AttachCatalogue.GetLastUnitPathCode(maxPathAtSameLevel);
+                            var nextNumber = Convert.ToInt32(lastUnitCode) + 1;
+                            var nextUnitCode = nextNumber.ToString($"D{AttachmentConstants.PATH_CODE_DIGITS}");
+                            path = AttachCatalogue.AppendPathCode(parentCatalogue.Path, nextUnitCode);
+                        }
                     }
                 }
                 else if (string.IsNullOrEmpty(path))
                 {
-                    // 根节点，生成第一个路径
-                    path = AttachCatalogue.CreatePathCode(1);
+                    // 没有父级：查找根级别最大路径
+                    var maxPathAtRootLevel = await CatalogueRepository.GetMaxPathAtSameLevelAsync(
+                        null, input.Reference, input.ReferenceType);
+                    
+                    if (string.IsNullOrEmpty(maxPathAtRootLevel))
+                    {
+                        // 没有根级别分类，创建第一个
+                        path = AttachCatalogue.CreatePathCode(1);
+                    }
+                    else
+                    {
+                        // 有根级别分类，获取最大路径并+1
+                        var nextNumber = Convert.ToInt32(maxPathAtRootLevel) + 1;
+                        path = AttachCatalogue.CreatePathCode(nextNumber);
+                    }
                 }
 
                 var attachCatalogue = new AttachCatalogue(

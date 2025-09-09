@@ -159,5 +159,19 @@ namespace Hx.Abp.Attachment.Domain
             string? reference = null,
             int? referenceType = null,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 获取同级最大路径
+        /// </summary>
+        /// <param name="parentPath">父路径，null表示根级别</param>
+        /// <param name="reference">业务引用</param>
+        /// <param name="referenceType">业务类型</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>同级最大路径，如果没有则返回null</returns>
+        Task<string?> GetMaxPathAtSameLevelAsync(
+            string? parentPath = null,
+            string? reference = null,
+            int? referenceType = null,
+            CancellationToken cancellationToken = default);
     }
 }

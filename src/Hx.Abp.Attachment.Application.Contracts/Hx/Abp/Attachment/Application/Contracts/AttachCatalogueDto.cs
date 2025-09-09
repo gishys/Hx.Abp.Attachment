@@ -110,7 +110,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
 
         /// <summary>
         /// 分类路径（用于快速查询层级）
-        /// 格式：00001.00002.00003（5位数字，用点分隔）
+        /// 格式：0000001.0000002.0000003（7位数字，用点分隔）
         /// </summary>
         public string? Path { get; set; }
 

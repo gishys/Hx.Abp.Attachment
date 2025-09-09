@@ -105,7 +105,7 @@ namespace Hx.Abp.Attachment.Domain
 
         /// <summary>
         /// 分类路径（用于快速查询层级）
-        /// 格式：00001.00002.00003（5位数字，用点分隔）
+        /// 格式：0000001.0000002.0000003（7位数字，用点分隔）
         /// </summary>
         [CanBeNull]
         public virtual string? Path { get; private set; }
@@ -823,7 +823,7 @@ namespace Hx.Abp.Attachment.Domain
                 throw new ArgumentException("至少需要一个数字", nameof(numbers));
             }
 
-            return string.Join(".", numbers.Select(n => n.ToString("D5")));
+            return string.Join(".", numbers.Select(n => n.ToString($"D{AttachmentConstants.PATH_CODE_DIGITS}")));
         }
 
         /// <summary>
@@ -858,7 +858,7 @@ namespace Hx.Abp.Attachment.Domain
                 return true; // 空路径是有效的（根节点）
 
             var parts = path.Split('.');
-            return parts.All(part => part.Length == 5 && int.TryParse(part, out _));
+            return parts.All(part => part.Length == AttachmentConstants.PATH_CODE_DIGITS && int.TryParse(part, out _));
         }
 
         /// <summary>

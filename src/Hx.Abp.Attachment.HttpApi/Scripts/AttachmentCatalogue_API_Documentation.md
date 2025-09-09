@@ -44,7 +44,7 @@
 | catalogueFacetType | FacetType                  | 否   | 分类分面类型  | 0                                      |
 | cataloguePurpose   | TemplatePurpose            | 否   | 分类用途      | 1                                      |
 | textVector         | double[]                   | 否   | 文本向量      | null                                   |
-| path               | string                     | 否   | 分类路径      | "00001.00002.00003"                    |
+| path               | string                     | 否   | 分类路径      | "0000001.0000002.0000003"              |
 | metaFields         | MetaFieldDto[]             | 否   | 元数据字段    | []                                     |
 
 #### 枚举值说明
@@ -183,7 +183,7 @@
     "catalogueFacetType": 0,
     "cataloguePurpose": 1,
     "textVector": null,
-    "path": "00001.00002.00003",
+    "path": "0000001.0000002.0000003",
     "metaFields": [
         {
             "entityType": "Project",
@@ -238,7 +238,7 @@ const createAttachmentCatalogue = async (catalogueData, mode = 0) => {
                 catalogueFacetType: 0, // 通用分面
                 cataloguePurpose: 1, // 分类管理
                 textVector: null,
-                path: '00001.00002.00003', // 分类路径
+                path: '0000001.0000002.0000003', // 分类路径
                 metaFields: [
                     {
                         entityType: 'Project',
@@ -1633,7 +1633,7 @@ const getEnabledMetaFields = async (catalogueId) => {
 
 ### 6. 分类路径管理
 
--   **路径格式**: 分类路径采用 "00001.00002.00003" 格式（5位数字，用点分隔）
+-   **路径格式**: 分类路径采用 "0000001.0000002.0000003" 格式（7 位数字，用点分隔）
 -   **自动生成**: 系统会自动为新建分类生成路径，无需手动指定
 -   **层级查询**: 利用路径字段可以快速进行层级查询和树形结构构建
 -   **性能优化**: 路径字段已建立索引，支持高效的层级查询操作

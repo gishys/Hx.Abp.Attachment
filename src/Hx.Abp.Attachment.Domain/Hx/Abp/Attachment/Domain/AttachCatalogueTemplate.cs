@@ -928,7 +928,7 @@ namespace Hx.Abp.Attachment.Domain
                 throw new ArgumentNullException(nameof(numbers), "数字数组不能为空");
             }
 
-            return string.Join(".", numbers.Select(number => number.ToString("D5")));
+            return string.Join(".", numbers.Select(number => number.ToString($"D{AttachmentConstants.TEMPLATE_PATH_CODE_DIGITS}")));
         }
 
         /// <summary>

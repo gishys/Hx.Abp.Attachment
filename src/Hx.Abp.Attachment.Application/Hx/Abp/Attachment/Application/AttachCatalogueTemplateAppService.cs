@@ -152,7 +152,7 @@ namespace Hx.Abp.Attachment.Application
                         // 有同级，获取最大路径的最后一个单元代码并+1
                         var lastUnitCode = AttachCatalogueTemplate.GetLastUnitTemplatePathCode(maxPathAtSameLevel);
                         var nextNumber = Convert.ToInt32(lastUnitCode) + 1;
-                        var nextUnitCode = nextNumber.ToString("D5");
+                        var nextUnitCode = nextNumber.ToString($"D{AttachmentConstants.TEMPLATE_PATH_CODE_DIGITS}");
                         templatePath = AttachCatalogueTemplate.AppendTemplatePathCode(parentTemplate.TemplatePath, nextUnitCode);
                     }
                 }
@@ -289,7 +289,7 @@ namespace Hx.Abp.Attachment.Application
                             // 有同级，获取最大路径的最后一个单元代码并+1
                             var lastUnitCode = AttachCatalogueTemplate.GetLastUnitTemplatePathCode(maxPathAtSameLevel);
                             var nextNumber = Convert.ToInt32(lastUnitCode) + 1;
-                            var nextUnitCode = nextNumber.ToString("D5");
+                            var nextUnitCode = nextNumber.ToString($"D{AttachmentConstants.TEMPLATE_PATH_CODE_DIGITS}");
                             newTemplatePath = AttachCatalogueTemplate.AppendTemplatePathCode(parentTemplate.TemplatePath, nextUnitCode);
                         }
                     }

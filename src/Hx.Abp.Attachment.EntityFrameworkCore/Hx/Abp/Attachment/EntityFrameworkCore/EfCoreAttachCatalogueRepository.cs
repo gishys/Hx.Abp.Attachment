@@ -910,7 +910,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             {
                 // 根节点：路径为空或深度为1
                 query = query.Where(c => c.Path == null || c.Path == "" || 
-                    !c.Path.Contains("."));
+                    !c.Path.Contains('.'));
             }
             else
             {
@@ -944,7 +944,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
                 return await (await GetDbContextAsync())
                     .Set<AttachCatalogue>()
-                    .FromSqlRaw(sql, parameters.ToArray())
+                    .FromSqlRaw(sql, [.. parameters])
                     .ToListAsync(cancellationToken);
             }
 
@@ -973,7 +973,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         {
             var query = (await GetQueryableAsync())
                 .Where(c => !c.IsDeleted)
-                .Where(c => c.Path == null || c.Path == "" || !c.Path.Contains("."));
+                .Where(c => c.Path == null || c.Path == "" || !c.Path.Contains('.'));
 
             if (!string.IsNullOrWhiteSpace(reference))
             {
@@ -1032,14 +1032,14 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             if (string.IsNullOrWhiteSpace(parentPath))
             {
                 // 查找根节点的直接子节点
-                query = query.Where(c => c.Path != null && !c.Path.Contains("."));
+                query = query.Where(c => c.Path != null && !c.Path.Contains('.'));
             }
             else
             {
                 // 查找指定父路径的直接子节点
                 var childPathPattern = parentPath + ".";
                 query = query.Where(c => c.Path != null && c.Path.StartsWith(childPathPattern) && 
-                    !c.Path.Substring(childPathPattern.Length).Contains("."));
+                    !c.Path.Substring(childPathPattern.Length).Contains('.'));
             }
 
             if (!string.IsNullOrWhiteSpace(reference))
@@ -1055,6 +1055,51 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             return await query
                 .OrderBy(c => c.Path)
                 .ToListAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// 获取同级最大路径
+        /// </summary>
+        public virtual async Task<string?> GetMaxPathAtSameLevelAsync(
+            string? parentPath = null,
+            string? reference = null,
+            int? referenceType = null,
+            CancellationToken cancellationToken = default)
+        {
+            var query = (await GetQueryableAsync())
+                .Where(c => !c.IsDeleted);
+
+            if (string.IsNullOrEmpty(parentPath))
+            {
+                // 根级别：查找所有根节点
+                query = query.Where(c => c.Path != null && !c.Path.Contains('.'));
+            }
+            else
+            {
+                // 子级别：查找指定父路径下的直接子节点
+                var childPathPattern = parentPath + ".";
+                query = query.Where(c => c.Path != null && c.Path.StartsWith(childPathPattern) && 
+                    !c.Path.Substring(childPathPattern.Length).Contains('.'));
+            }
+
+            if (!string.IsNullOrWhiteSpace(reference))
+            {
+                query = query.Where(c => c.Reference == reference);
+            }
+
+            if (referenceType.HasValue)
+            {
+                query = query.Where(c => c.ReferenceType == referenceType.Value);
+            }
+
+            // 获取最大路径
+            var maxPath = await query
+                .Where(c => c.Path != null)
+                .Select(c => c.Path)
+                .OrderByDescending(path => path)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            return maxPath;
         }
     }
 }

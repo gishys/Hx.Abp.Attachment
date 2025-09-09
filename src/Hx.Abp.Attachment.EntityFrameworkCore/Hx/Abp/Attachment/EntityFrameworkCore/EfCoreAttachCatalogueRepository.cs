@@ -308,7 +308,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     combined_results AS (
                         -- 合并全文搜索和模糊搜索结果
                         SELECT 
-                            COALESCE(ft.""Id"", fz.""Id"") as ""ID"",
+                            COALESCE(ft.""Id"", fz.""Id"") as ""Id"",
                             COALESCE(ft.""CATALOGUE_NAME"", fz.""CATALOGUE_NAME"") as ""CATALOGUE_NAME"",
                             COALESCE(ft.""REFERENCE"", fz.""REFERENCE"") as ""REFERENCE"",
                             COALESCE(ft.""REFERENCE_TYPE"", fz.""REFERENCE_TYPE"") as ""REFERENCE_TYPE"",

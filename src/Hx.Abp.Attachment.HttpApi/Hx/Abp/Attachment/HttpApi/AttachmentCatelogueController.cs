@@ -196,5 +196,56 @@ namespace Hx.Abp.Attachment.HttpApi
         {
             return AttachCatalogueAppService.GetEnabledMetaFieldsAsync(id);
         }
+
+        // 模板相关查询接口
+
+        [Route("search/by-template")]
+        [HttpGet]
+        public virtual Task<List<AttachCatalogueDto>> FindByTemplateAsync(Guid templateId, int? templateVersion = null)
+        {
+            return AttachCatalogueAppService.FindByTemplateAsync(templateId, templateVersion);
+        }
+
+        [Route("search/by-template-id")]
+        [HttpGet]
+        public virtual Task<List<AttachCatalogueDto>> FindByTemplateIdAsync(Guid templateId)
+        {
+            return AttachCatalogueAppService.FindByTemplateIdAsync(templateId);
+        }
+
+        // ============= 树形结构查询接口 =============
+
+        /// <summary>
+        /// 获取分类树形结构（用于树状展示）
+        /// 基于行业最佳实践，支持多种查询条件和性能优化
+        /// 参考 AttachCatalogueTemplateRepository 的最佳实践，使用路径优化
+        /// </summary>
+        /// <param name="reference">业务引用，null表示查询所有业务</param>
+        /// <param name="referenceType">业务类型，null表示查询所有类型</param>
+        /// <param name="catalogueFacetType">分类分面类型，null表示查询所有类型</param>
+        /// <param name="cataloguePurpose">分类用途，null表示查询所有用途</param>
+        /// <param name="includeChildren">是否包含子节点，默认true</param>
+        /// <param name="includeFiles">是否包含附件文件，默认false</param>
+        /// <param name="fulltextQuery">全文搜索查询，支持中文分词</param>
+        /// <param name="templateId">模板ID过滤，null表示查询所有模板</param>
+        /// <param name="templateVersion">模板版本过滤，null表示查询所有版本</param>
+        /// <returns>分类树形结构列表</returns>
+        [Route("tree")]
+        [HttpGet]
+        public virtual Task<List<AttachCatalogueTreeDto>> GetCataloguesTreeAsync(
+            [FromQuery] string? reference = null,
+            [FromQuery] int? referenceType = null,
+            [FromQuery] FacetType? catalogueFacetType = null,
+            [FromQuery] TemplatePurpose? cataloguePurpose = null,
+            [FromQuery] bool includeChildren = true,
+            [FromQuery] bool includeFiles = false,
+            [FromQuery] string? fulltextQuery = null,
+            [FromQuery] Guid? templateId = null,
+            [FromQuery] int? templateVersion = null)
+        {
+            return AttachCatalogueAppService.GetCataloguesTreeAsync(
+                reference, referenceType, catalogueFacetType, cataloguePurpose,
+                includeChildren, includeFiles, fulltextQuery, templateId, templateVersion);
+        }
     }
 }

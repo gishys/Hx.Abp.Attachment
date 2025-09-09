@@ -79,6 +79,11 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public Guid? TemplateId { get; set; }
 
         /// <summary>
+        /// 关联的模板版本号
+        /// </summary>
+        public int? TemplateVersion { get; set; }
+
+        /// <summary>
         /// 全文内容
         /// </summary>
         public string? FullTextContent { get; set; }

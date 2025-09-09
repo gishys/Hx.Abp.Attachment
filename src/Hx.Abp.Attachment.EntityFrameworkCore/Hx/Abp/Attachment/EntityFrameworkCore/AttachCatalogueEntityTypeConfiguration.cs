@@ -80,6 +80,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.Property(d => d.ParentId).HasColumnName("PARENT_ID");
             builder.Property(d => d.IsStatic).HasColumnName("IS_STATIC").HasDefaultValue(false);
             builder.Property(d => d.TemplateId).HasColumnName("TEMPLATE_ID").IsRequired(false);
+            builder.Property(d => d.TemplateVersion).HasColumnName("TEMPLATE_VERSION").IsRequired(false);
 
             // 全文内容字段配置
             builder.Property(d => d.FullTextContent).HasColumnName("FULL_TEXT_CONTENT").HasColumnType("text");
@@ -171,6 +172,13 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
             builder.HasIndex(e => new { e.Reference, e.ReferenceType, e.Path })
                 .HasDatabaseName("IDX_ATTACH_CATALOGUES_REF_TYPE_PATH");
+
+            // 模板相关索引
+            builder.HasIndex(e => e.TemplateId)
+                .HasDatabaseName("IDX_ATTACH_CATALOGUES_TEMPLATE_ID");
+
+            builder.HasIndex(e => new { e.TemplateId, e.TemplateVersion })
+                .HasDatabaseName("IDX_ATTACH_CATALOGUES_TEMPLATE_ID_VERSION");
 
             // 关系配置
             builder.HasMany(d => d.AttachFiles)

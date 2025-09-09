@@ -3,6 +3,7 @@ using Hx.Abp.Attachment.Domain;
 using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System.Collections.ObjectModel;
 using Volo.Abp;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.DependencyInjection;
@@ -106,6 +107,7 @@ namespace Hx.Abp.Attachment.Application
                     0,
                     0,
                     input.TemplateId,
+                    input.TemplateVersion,
                     input.CatalogueFacetType,
                     input.CataloguePurpose,
                     input.Tags,
@@ -154,7 +156,7 @@ namespace Hx.Abp.Attachment.Application
             catalogue.SetIsVerification(input.IsVerification);
             catalogue.SetIsRequired(input.IsRequired);
             catalogue.SetIsStatic(input.IsStatic);
-            catalogue.SetTemplateId(input.TemplateId);
+            catalogue.SetTemplate(input.TemplateId, input.TemplateVersion);
             catalogue.SetTags(input.Tags);
 
             // 更新新增字段
@@ -620,6 +622,7 @@ namespace Hx.Abp.Attachment.Application
                     0,
                     0,
                     input.TemplateId,
+                    input.TemplateVersion,
                     input.CatalogueFacetType,
                     input.CataloguePurpose,
                     input.Tags,
@@ -1069,6 +1072,7 @@ namespace Hx.Abp.Attachment.Application
                 IsVerification = catalogue.IsVerification,
                 VerificationPassed = catalogue.VerificationPassed,
                 TemplateId = catalogue.TemplateId,
+                TemplateVersion = catalogue.TemplateVersion,
                 FullTextContent = catalogue.FullTextContent,
                 FullTextContentUpdatedTime = catalogue.FullTextContentUpdatedTime,
                 CatalogueFacetType = catalogue.CatalogueFacetType,
@@ -1147,6 +1151,106 @@ namespace Hx.Abp.Attachment.Application
             }
 
             return dto;
+        }
+
+        /// <summary>
+        /// 根据模板ID和版本查找分类
+        /// </summary>
+        /// <param name="templateId">模板ID</param>
+        /// <param name="templateVersion">模板版本号，null表示查找所有版本</param>
+        /// <returns>匹配的分类列表</returns>
+        public virtual async Task<List<AttachCatalogueDto>> FindByTemplateAsync(Guid templateId, int? templateVersion = null)
+        {
+            var catalogues = await CatalogueRepository.FindByTemplateAsync(templateId, templateVersion);
+            return ObjectMapper.Map<List<AttachCatalogue>, List<AttachCatalogueDto>>(catalogues);
+        }
+
+        /// <summary>
+        /// 根据模板ID查找所有版本的分类
+        /// </summary>
+        /// <param name="templateId">模板ID</param>
+        /// <returns>匹配的分类列表</returns>
+        public virtual async Task<List<AttachCatalogueDto>> FindByTemplateIdAsync(Guid templateId)
+        {
+            var catalogues = await CatalogueRepository.FindByTemplateIdAsync(templateId);
+            return ObjectMapper.Map<List<AttachCatalogue>, List<AttachCatalogueDto>>(catalogues);
+        }
+
+        /// <summary>
+        /// 获取分类树形结构（用于树状展示）
+        /// 基于行业最佳实践，支持多种查询条件和性能优化
+        /// 参考 AttachCatalogueTemplateRepository 的最佳实践，使用路径优化
+        /// </summary>
+        public virtual async Task<List<AttachCatalogueTreeDto>> GetCataloguesTreeAsync(
+            string? reference = null,
+            int? referenceType = null,
+            FacetType? catalogueFacetType = null,
+            TemplatePurpose? cataloguePurpose = null,
+            bool includeChildren = true,
+            bool includeFiles = false,
+            string? fulltextQuery = null,
+            Guid? templateId = null,
+            int? templateVersion = null)
+        {
+            try
+            {
+                // 调用仓储方法获取分类树形结构
+                var catalogues = await CatalogueRepository.GetCataloguesTreeAsync(
+                    reference, referenceType, catalogueFacetType, cataloguePurpose,
+                    includeChildren, includeFiles, fulltextQuery, templateId, templateVersion);
+
+                // 转换为树形DTO
+                var treeDtos = new List<AttachCatalogueTreeDto>();
+                foreach (var catalogue in catalogues)
+                {
+                    var treeDto = await ConvertToTreeDtoAsync(catalogue, includeFiles);
+                    treeDtos.Add(treeDto);
+                }
+
+                return treeDtos;
+            }
+            catch (UserFriendlyException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new UserFriendlyException($"获取分类树形结构失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 将分类实体转换为树形DTO
+        /// 基于行业最佳实践，递归转换并保持树形结构
+        /// </summary>
+        private async Task<AttachCatalogueTreeDto> ConvertToTreeDtoAsync(AttachCatalogue catalogue, bool includeFiles)
+        {
+            var treeDto = ObjectMapper.Map<AttachCatalogue, AttachCatalogueTreeDto>(catalogue);
+
+            // 转换子节点
+            if (catalogue.Children != null && catalogue.Children.Count > 0)
+            {
+                treeDto.Children = [];
+                foreach (var child in catalogue.Children)
+                {
+                    var childDto = await ConvertToTreeDtoAsync(child, includeFiles);
+                    treeDto.Children.Add(childDto);
+                }
+            }
+
+            // 转换附件文件（如果需要）
+            if (includeFiles && catalogue.AttachFiles != null && catalogue.AttachFiles.Count > 0)
+            {
+                treeDto.AttachFiles = [];
+                foreach (var file in catalogue.AttachFiles)
+                {
+                    var fileDto = ObjectMapper.Map<AttachFile, AttachFileDto>(file);
+                    fileDto.FilePath = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{file.FilePath}";
+                    treeDto.AttachFiles.Add(fileDto);
+                }
+            }
+
+            return treeDto;
         }
     }
 }

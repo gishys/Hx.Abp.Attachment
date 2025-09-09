@@ -71,6 +71,11 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public Guid? TemplateId { get; set; }
 
         /// <summary>
+        /// 关联的模板版本号
+        /// </summary>
+        public int? TemplateVersion { get; set; }
+
+        /// <summary>
         /// 分类分面类型 - 标识分类的层级和用途
         /// </summary>
         public FacetType CatalogueFacetType { get; set; } = FacetType.General;

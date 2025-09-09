@@ -1101,5 +1101,260 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
             return maxPath;
         }
+
+        /// <summary>
+        /// 根据模板ID和版本查找分类
+        /// </summary>
+        public async Task<List<AttachCatalogue>> FindByTemplateAsync(
+            Guid templateId,
+            int? templateVersion = null,
+            CancellationToken cancellationToken = default)
+        {
+            var query = (await GetDbSetAsync())
+                .Where(c => c.TemplateId == templateId);
+
+            if (templateVersion.HasValue)
+            {
+                query = query.Where(c => c.TemplateVersion == templateVersion.Value);
+            }
+
+            return await query
+                .OrderBy(c => c.CreationTime)
+                .ToListAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// 根据模板ID查找所有版本的分类
+        /// </summary>
+        public async Task<List<AttachCatalogue>> FindByTemplateIdAsync(
+            Guid templateId,
+            CancellationToken cancellationToken = default)
+        {
+            return await (await GetDbSetAsync())
+                .Where(c => c.TemplateId == templateId)
+                .OrderBy(c => c.TemplateVersion)
+                .ThenBy(c => c.CreationTime)
+                .ToListAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// 获取分类树形结构（用于树状展示）
+        /// 基于路径优化，提供高性能的树形查询
+        /// 参考 AttachCatalogueTemplateRepository 的最佳实践
+        /// </summary>
+        public async Task<List<AttachCatalogue>> GetCataloguesTreeAsync(
+            string? reference = null,
+            int? referenceType = null,
+            FacetType? catalogueFacetType = null,
+            TemplatePurpose? cataloguePurpose = null,
+            bool includeChildren = true,
+            bool includeFiles = false,
+            string? fulltextQuery = null,
+            Guid? templateId = null,
+            int? templateVersion = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var dbSet = (await GetDbSetAsync()).IncludeDetails(includeFiles);
+                
+                // 基础过滤条件
+                var baseFilter = dbSet.Where(c => !c.IsDeleted);
+                
+                // 业务引用过滤
+                if (!string.IsNullOrEmpty(reference))
+                    baseFilter = baseFilter.Where(c => c.Reference == reference);
+                
+                // 业务类型过滤
+                if (referenceType.HasValue)
+                    baseFilter = baseFilter.Where(c => c.ReferenceType == referenceType.Value);
+                
+                // 分类分面类型过滤
+                if (catalogueFacetType.HasValue)
+                    baseFilter = baseFilter.Where(c => c.CatalogueFacetType == catalogueFacetType.Value);
+                
+                // 分类用途过滤
+                if (cataloguePurpose.HasValue)
+                    baseFilter = baseFilter.Where(c => c.CataloguePurpose == cataloguePurpose.Value);
+
+                // 模板ID过滤
+                if (templateId.HasValue)
+                    baseFilter = baseFilter.Where(c => c.TemplateId == templateId.Value);
+
+                // 模板版本过滤
+                if (templateVersion.HasValue)
+                    baseFilter = baseFilter.Where(c => c.TemplateVersion == templateVersion.Value);
+
+                // 全文检索过滤条件
+                if (!string.IsNullOrWhiteSpace(fulltextQuery))
+                {
+                    baseFilter = baseFilter.Where(c => 
+                        c.CatalogueName.Contains(fulltextQuery) ||
+                        (c.FullTextContent != null && c.FullTextContent.Contains(fulltextQuery)) ||
+                        (c.Tags != null && c.Tags.Any(tag => tag.Contains(fulltextQuery)))
+                    );
+                }
+
+                if (includeChildren)
+                {
+                    // 使用Path进行高效查询，避免递归Include
+                    // 查询所有匹配条件的分类，然后通过路径构建树形结构
+                    var matchedCatalogues = await baseFilter
+                        .OrderBy(c => c.Path)
+                        .ThenBy(c => c.SequenceNumber)
+                        .ThenBy(c => c.CreationTime)
+                        .ToListAsync(cancellationToken);
+
+                    // 如果有全文检索条件，需要获取所有相关的父节点和子节点
+                    var allCatalogues = matchedCatalogues;
+                    if (!string.IsNullOrWhiteSpace(fulltextQuery))
+                    {
+                        // 优化方案：使用单次查询获取所有相关节点
+                        allCatalogues = await GetAllNodesFromPathsAsync(matchedCatalogues, cancellationToken);
+                    }
+
+                    // 通过路径构建树形结构
+                    return BuildTreeFromPath(allCatalogues);
+                }
+                else
+                {
+                    // 只查询根节点（Path为空或null，或者ParentId为null）
+                    var rootCatalogues = await baseFilter
+                        .Where(c => c.ParentId == null || c.Path == null || c.Path == "")
+                        .OrderBy(c => c.SequenceNumber)
+                        .ThenBy(c => c.CreationTime)
+                        .ToListAsync(cancellationToken);
+
+                    return rootCatalogues;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new UserFriendlyException($"获取分类树形结构失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 通过路径构建分类树形结构
+        /// 参考 AttachCatalogueTemplateRepository 的最佳实践
+        /// </summary>
+        private List<AttachCatalogue> BuildTreeFromPath(List<AttachCatalogue> allCatalogues)
+        {
+            if (allCatalogues.Count == 0)
+                return [];
+
+            // 创建分类字典，便于快速查找
+            var catalogueDict = allCatalogues.ToDictionary(c => c.Id, c => c);
+            
+            // 分离根节点和子节点
+            var rootCatalogues = allCatalogues
+                .Where(c => c.ParentId == null || string.IsNullOrEmpty(c.Path))
+                .OrderBy(c => c.SequenceNumber)
+                .ThenBy(c => c.CreationTime)
+                .ToList();
+
+            // 为每个分类构建子节点集合
+            foreach (var catalogue in allCatalogues)
+            {
+                catalogue.Children?.Clear();
+            }
+
+            // 构建父子关系
+            foreach (var catalogue in allCatalogues)
+            {
+                if (catalogue.ParentId.HasValue && catalogueDict.TryGetValue(catalogue.ParentId.Value, out var parent))
+                {
+                    // 如果父节点的Children为null，跳过添加（这种情况应该很少见）
+                    parent.Children?.Add(catalogue);
+                }
+            }
+
+            // 对每个节点的子节点进行排序
+            foreach (var catalogue in allCatalogues)
+            {
+                if (catalogue.Children?.Count > 0)
+                {
+                    var sortedChildren = catalogue.Children.OrderBy(c => c.SequenceNumber).ThenBy(c => c.CreationTime).ToList();
+                    catalogue.Children.Clear();
+                    foreach (var child in sortedChildren)
+                    {
+                        catalogue.Children.Add(child);
+                    }
+                }
+            }
+
+            return rootCatalogues;
+        }
+
+        /// <summary>
+        /// 从路径获取所有相关节点
+        /// 当有全文检索条件时，需要获取所有相关的父节点和子节点
+        /// </summary>
+        private async Task<List<AttachCatalogue>> GetAllNodesFromPathsAsync(
+            List<AttachCatalogue> matchedCatalogues, 
+            CancellationToken cancellationToken)
+        {
+            if (matchedCatalogues.Count == 0)
+                return [];
+
+            var dbSet = await GetDbSetAsync();
+            var allNodeIds = new HashSet<Guid>();
+
+            // 收集所有匹配节点的ID
+            foreach (var catalogue in matchedCatalogues)
+            {
+                allNodeIds.Add(catalogue.Id);
+            }
+
+            // 为每个匹配的节点，获取其所有父节点和子节点
+            foreach (var catalogue in matchedCatalogues)
+            {
+                if (!string.IsNullOrEmpty(catalogue.Path))
+                {
+                    // 解析路径，获取所有父节点ID
+                    var pathParts = catalogue.Path.Split('.');
+                    for (int i = 1; i <= pathParts.Length; i++)
+                    {
+                        var parentPath = string.Join(".", pathParts.Take(i));
+                        // 这里需要根据实际的路径格式来解析父节点ID
+                        // 假设路径格式为 "0000001.0000002.0000003"
+                        if (int.TryParse(pathParts[i - 1], out var sequenceNumber))
+                        {
+                            // 根据序列号查找父节点（这里需要根据实际业务逻辑调整）
+                            var parentCatalogues = await dbSet
+                                .Where(c => c.SequenceNumber == sequenceNumber && !c.IsDeleted)
+                                .Select(c => c.Id)
+                                .ToListAsync(cancellationToken);
+                            
+                            foreach (var parentId in parentCatalogues)
+                            {
+                                allNodeIds.Add(parentId);
+                            }
+                        }
+                    }
+                }
+
+                // 获取所有子节点
+                var childCatalogues = await dbSet
+                    .Where(c => c.Path != null && c.Path.StartsWith(catalogue.Path + ".") && !c.IsDeleted)
+                    .Select(c => c.Id)
+                    .ToListAsync(cancellationToken);
+                
+                foreach (var childId in childCatalogues)
+                {
+                    allNodeIds.Add(childId);
+                }
+            }
+
+            // 获取所有相关节点
+            var allRelatedCatalogues = await dbSet
+                .Where(c => allNodeIds.Contains(c.Id) && !c.IsDeleted)
+                .OrderBy(c => c.Path)
+                .ThenBy(c => c.SequenceNumber)
+                .ThenBy(c => c.CreationTime)
+                .ToListAsync(cancellationToken);
+
+            return allRelatedCatalogues;
+        }
     }
 }

@@ -72,6 +72,11 @@ namespace Hx.Abp.Attachment.Domain
         public virtual Guid? TemplateId { get; private set; }
 
         /// <summary>
+        /// 关联的模板版本号
+        /// </summary>
+        public virtual int? TemplateVersion { get; private set; }
+
+        /// <summary>
         /// 全文内容 - 存储分类下所有文件的OCR提取内容
         /// </summary>
         public virtual string? FullTextContent { get; private set; }
@@ -153,6 +158,7 @@ namespace Hx.Abp.Attachment.Domain
             int attachCount = 0,
             int pageCount = 0,
             Guid? templateId = null,
+            int? templateVersion = null,
             FacetType catalogueFacetType = FacetType.General,
             TemplatePurpose cataloguePurpose = TemplatePurpose.Classification,
             [CanBeNull] List<string>? tags = null,
@@ -174,6 +180,7 @@ namespace Hx.Abp.Attachment.Domain
             PageCount = pageCount;
             IsStatic = isStatic;
             TemplateId = templateId;
+            TemplateVersion = templateVersion;
             CatalogueFacetType = catalogueFacetType;
             CataloguePurpose = cataloguePurpose;
             Tags = tags ?? [];
@@ -241,6 +248,23 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         /// <param name="templateId">模板ID</param>
         public virtual void SetTemplateId(Guid? templateId) => TemplateId = templateId;
+
+        /// <summary>
+        /// 设置关联的模板版本号
+        /// </summary>
+        /// <param name="templateVersion">模板版本号</param>
+        public virtual void SetTemplateVersion(int? templateVersion) => TemplateVersion = templateVersion;
+
+        /// <summary>
+        /// 设置关联的模板ID和版本号
+        /// </summary>
+        /// <param name="templateId">模板ID</param>
+        /// <param name="templateVersion">模板版本号</param>
+        public virtual void SetTemplate(Guid? templateId, int? templateVersion)
+        {
+            TemplateId = templateId;
+            TemplateVersion = templateVersion;
+        }
 
 
         /// <summary>

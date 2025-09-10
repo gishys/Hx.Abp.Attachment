@@ -1567,6 +1567,172 @@ const getEnabledMetaFields = async (catalogueId) => {
 
 ---
 
+### 25. 根据模板查询目录接口
+
+#### 接口信息
+
+-   **接口路径**: `GET /api/app/attachment/search/by-template`
+-   **接口描述**: 根据模板 ID 和版本查询附件目录
+-   **请求方式**: GET
+
+#### 请求参数
+
+**查询参数**:
+
+| 参数名          | 类型 | 必填 | 描述     | 示例值                                 |
+| --------------- | ---- | ---- | -------- | -------------------------------------- |
+| templateId      | Guid | 是   | 模板 ID  | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| templateVersion | int  | 否   | 模板版本 | 1                                      |
+
+#### React Axios 调用示例
+
+```javascript
+const findByTemplate = async (templateId, templateVersion = null) => {
+    try {
+        const response = await axios.get(
+            '/api/app/attachment/search/by-template',
+            {
+                params: {
+                    templateId: templateId,
+                    templateVersion: templateVersion,
+                },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('根据模板查询成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '根据模板查询失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
+### 26. 根据模板 ID 查询目录接口
+
+#### 接口信息
+
+-   **接口路径**: `GET /api/app/attachment/search/by-template-id`
+-   **接口描述**: 根据模板 ID 查询附件目录（不限制版本）
+-   **请求方式**: GET
+
+#### 请求参数
+
+**查询参数**:
+
+| 参数名     | 类型 | 必填 | 描述    | 示例值                                 |
+| ---------- | ---- | ---- | ------- | -------------------------------------- |
+| templateId | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+
+#### React Axios 调用示例
+
+```javascript
+const findByTemplateId = async (templateId) => {
+    try {
+        const response = await axios.get(
+            '/api/app/attachment/search/by-template-id',
+            {
+                params: {
+                    templateId: templateId,
+                },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('根据模板ID查询成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '根据模板ID查询失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
+### 27. 获取分类树形结构接口
+
+#### 接口信息
+
+-   **接口路径**: `GET /api/app/attachment/tree`
+-   **接口描述**: 获取分类树形结构（用于树状展示），基于行业最佳实践，支持多种查询条件和性能优化
+-   **请求方式**: GET
+
+#### 请求参数
+
+**查询参数**:
+
+| 参数名             | 类型            | 必填 | 描述             | 示例值                                 |
+| ------------------ | --------------- | ---- | ---------------- | -------------------------------------- |
+| reference          | string          | 否   | 业务引用         | "CONTRACT_001"                         |
+| referenceType      | int             | 否   | 业务类型         | 1                                      |
+| catalogueFacetType | FacetType       | 否   | 分类分面类型     | 0                                      |
+| cataloguePurpose   | TemplatePurpose | 否   | 分类用途         | 1                                      |
+| includeChildren    | boolean         | 否   | 是否包含子节点   | true                                   |
+| includeFiles       | boolean         | 否   | 是否包含附件文件 | false                                  |
+| fulltextQuery      | string          | 否   | 全文搜索查询     | "合同"                                 |
+| templateId         | Guid            | 否   | 模板 ID 过滤     | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| templateVersion    | int             | 否   | 模板版本过滤     | 1                                      |
+
+#### React Axios 调用示例
+
+```javascript
+const getCataloguesTree = async (
+    reference = null,
+    referenceType = null,
+    catalogueFacetType = null,
+    cataloguePurpose = null,
+    includeChildren = true,
+    includeFiles = false,
+    fulltextQuery = null,
+    templateId = null,
+    templateVersion = null
+) => {
+    try {
+        const response = await axios.get('/api/app/attachment/tree', {
+            params: {
+                reference,
+                referenceType,
+                catalogueFacetType,
+                cataloguePurpose,
+                includeChildren,
+                includeFiles,
+                fulltextQuery,
+                templateId,
+                templateVersion,
+            },
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        console.log('获取分类树形结构成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '获取分类树形结构失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
 ## 错误处理
 
 ### 常见错误码
@@ -1643,7 +1809,9 @@ const getEnabledMetaFields = async (catalogueId) => {
 
 ## 版本信息
 
--   **文档版本**: 1.0
--   **API 版本**: v1
--   **最后更新**: 2024-12-19
+-   **文档版本**: 1.5.12
+-   **API 版本**: v1.5.12
+-   **最后更新**: 2025-09-10
 -   **维护人员**: 开发团队
+-   **更新内容**: 新增 3 个接口（根据模板查询、根据模板 ID 查询、获取分类树形结构）
+

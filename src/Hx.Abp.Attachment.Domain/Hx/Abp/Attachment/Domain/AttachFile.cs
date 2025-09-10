@@ -219,6 +219,43 @@ namespace Hx.Abp.Attachment.Domain
             OcrTextBlocks.Clear();
         }
 
+        /// <summary>
+        /// 检查是否支持OCR处理
+        /// </summary>
+        /// <returns>是否支持OCR</returns>
+        public virtual bool IsSupportedForOcr()
+        {
+            if (string.IsNullOrWhiteSpace(FileType))
+                return false;
+
+            var lowerFileType = FileType.ToLowerInvariant();
+            var supportedTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ".jpg", ".jpeg", ".png", ".tiff", ".tif", ".bmp", ".gif", ".pdf"
+            };
+            
+            return supportedTypes.Contains(lowerFileType);
+        }
+
+        /// <summary>
+        /// 检查是否已完成OCR处理
+        /// </summary>
+        /// <returns>是否已完成OCR处理</returns>
+        public virtual bool IsOcrCompleted()
+        {
+            return !string.IsNullOrWhiteSpace(OcrContent) && 
+                   OcrProcessStatus == OcrProcessStatus.Completed;
+        }
+
+        /// <summary>
+        /// 检查是否正在处理OCR
+        /// </summary>
+        /// <returns>是否正在处理OCR</returns>
+        public virtual bool IsOcrProcessing()
+        {
+            return OcrProcessStatus == OcrProcessStatus.Processing;
+        }
+
         public virtual void Download()
         {
             DownloadTimes++;

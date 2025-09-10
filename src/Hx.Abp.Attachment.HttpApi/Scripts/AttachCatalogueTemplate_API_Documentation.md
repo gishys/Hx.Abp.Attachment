@@ -1511,6 +1511,808 @@ const getTemplateStatistics = async () => {
 
 ---
 
+### 17. 创建新版本接口
+
+#### 接口信息
+
+-   **接口路径**: `POST /api/attach-catalogue-template/{id}/new-version`
+-   **接口描述**: 为指定模板创建新版本
+-   **请求方式**: POST
+-   **Content-Type**: application/json
+
+#### 请求参数
+
+**路径参数**:
+
+| 参数名 | 类型 | 必填 | 描述    | 示例值                                 |
+| ------ | ---- | ---- | ------- | -------------------------------------- |
+| id     | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+
+**请求体**: `CreateUpdateAttachCatalogueTemplateDto` (同创建接口)
+
+#### React Axios 调用示例
+
+```javascript
+const createNewVersion = async (templateId, templateData) => {
+    try {
+        const response = await axios.post(
+            `/api/attach-catalogue-template/${templateId}/new-version`,
+            {
+                name: '合同文档模板 v2',
+                description: '更新后的合同文档模板',
+                tags: ['合同', '法律', '重要', 'v2'],
+                attachReceiveType: 2,
+                isRequired: true,
+                sequenceNumber: 100,
+                isStatic: false,
+                facetType: 0,
+                templatePurpose: 1,
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('创建新版本成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('创建新版本失败:', error.response?.data || error.message);
+        throw error;
+    }
+};
+```
+
+---
+
+### 18. 设为最新版本接口
+
+#### 接口信息
+
+-   **接口路径**: `PUT /api/attach-catalogue-template/{id}/{version}/set-latest`
+-   **接口描述**: 将指定版本设为最新版本
+-   **请求方式**: PUT
+
+#### 请求参数
+
+**路径参数**:
+
+| 参数名  | 类型 | 必填 | 描述    | 示例值                                 |
+| ------- | ---- | ---- | ------- | -------------------------------------- |
+| id      | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| version | int  | 是   | 版本号  | 2                                      |
+
+#### React Axios 调用示例
+
+```javascript
+const setAsLatestVersion = async (templateId, version) => {
+    try {
+        const response = await axios.put(
+            `/api/attach-catalogue-template/${templateId}/${version}/set-latest`,
+            {},
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('设为最新版本成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '设为最新版本失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
+### 19. 回滚到指定版本接口
+
+#### 接口信息
+
+-   **接口路径**: `POST /api/attach-catalogue-template/{id}/{version}/rollback`
+-   **接口描述**: 回滚到指定版本
+-   **请求方式**: POST
+
+#### 请求参数
+
+**路径参数**:
+
+| 参数名  | 类型 | 必填 | 描述    | 示例值                                 |
+| ------- | ---- | ---- | ------- | -------------------------------------- |
+| id      | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| version | int  | 是   | 版本号  | 1                                      |
+
+#### React Axios 调用示例
+
+```javascript
+const rollbackToVersion = async (templateId, version) => {
+    try {
+        const response = await axios.post(
+            `/api/attach-catalogue-template/${templateId}/${version}/rollback`,
+            {},
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('回滚到指定版本成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '回滚到指定版本失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
+### 20. 查找匹配的模板接口
+
+#### 接口信息
+
+-   **接口路径**: `POST /api/attach-catalogue-template/find-matching`
+-   **接口描述**: 查找匹配的模板
+-   **请求方式**: POST
+-   **Content-Type**: application/json
+
+#### 请求参数
+
+**请求体**: `TemplateMatchInput`
+
+| 参数名 | 类型   | 必填   | 描述   | 示例值 |
+| ------ | ------ | ------ | ------ | ------ |
+| 待定义 | 待定义 | 待定义 | 待定义 | 待定义 |
+
+#### React Axios 调用示例
+
+```javascript
+const findMatchingTemplates = async (matchInput) => {
+    try {
+        const response = await axios.post(
+            '/api/attach-catalogue-template/find-matching',
+            matchInput,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('查找匹配模板成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '查找匹配模板失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
+### 21. 从模板生成分类接口
+
+#### 接口信息
+
+-   **接口路径**: `POST /api/attach-catalogue-template/generate-catalogue`
+-   **接口描述**: 从模板生成分类
+-   **请求方式**: POST
+-   **Content-Type**: application/json
+
+#### 请求参数
+
+**请求体**: `GenerateCatalogueInput`
+
+| 参数名 | 类型   | 必填   | 描述   | 示例值 |
+| ------ | ------ | ------ | ------ | ------ |
+| 待定义 | 待定义 | 待定义 | 待定义 | 待定义 |
+
+#### React Axios 调用示例
+
+```javascript
+const generateCatalogueFromTemplate = async (generateInput) => {
+    try {
+        await axios.post(
+            '/api/attach-catalogue-template/generate-catalogue',
+            generateInput,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('从模板生成分类成功');
+    } catch (error) {
+        console.error(
+            '从模板生成分类失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
+### 22. 按模板标识查询接口
+
+#### 接口信息
+
+-   **接口路径**: `GET /api/attach-catalogue-template/by-identifier`
+-   **接口描述**: 按模板标识查询模板
+-   **请求方式**: GET
+
+#### 请求参数
+
+**查询参数**:
+
+| 参数名          | 类型            | 必填 | 描述               | 示例值 |
+| --------------- | --------------- | ---- | ------------------ | ------ |
+| facetType       | FacetType       | 否   | 分面类型           | 0      |
+| templatePurpose | TemplatePurpose | 否   | 模板用途           | 1      |
+| onlyLatest      | boolean         | 否   | 是否只返回最新版本 | true   |
+
+#### React Axios 调用示例
+
+```javascript
+const getTemplatesByIdentifier = async (
+    facetType = null,
+    templatePurpose = null,
+    onlyLatest = true
+) => {
+    try {
+        const response = await axios.get(
+            '/api/attach-catalogue-template/by-identifier',
+            {
+                params: {
+                    facetType,
+                    templatePurpose,
+                    onlyLatest,
+                },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('按标识查询模板成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '按标识查询模板失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
+### 23. 查找相似模板接口
+
+#### 接口信息
+
+-   **接口路径**: `POST /api/attach-catalogue-template/find-similar`
+-   **接口描述**: 查找相似模板（基于语义向量）
+-   **请求方式**: POST
+
+#### 请求参数
+
+**查询参数**:
+
+| 参数名              | 类型   | 必填 | 描述       | 示例值     |
+| ------------------- | ------ | ---- | ---------- | ---------- |
+| semanticQuery       | string | 是   | 语义查询   | "合同文档" |
+| similarityThreshold | double | 否   | 相似度阈值 | 0.7        |
+| maxResults          | int    | 否   | 最大结果数 | 10         |
+
+#### React Axios 调用示例
+
+```javascript
+const findSimilarTemplates = async (
+    semanticQuery,
+    similarityThreshold = 0.7,
+    maxResults = 10
+) => {
+    try {
+        const response = await axios.post(
+            '/api/attach-catalogue-template/find-similar',
+            {},
+            {
+                params: {
+                    semanticQuery,
+                    similarityThreshold,
+                    maxResults,
+                },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('查找相似模板成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '查找相似模板失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
+### 24. 按向量维度查询接口
+
+#### 接口信息
+
+-   **接口路径**: `GET /api/attach-catalogue-template/by-vector-dimension`
+-   **接口描述**: 按向量维度查询模板
+-   **请求方式**: GET
+
+#### 请求参数
+
+**查询参数**:
+
+| 参数名       | 类型    | 必填 | 描述               | 示例值 |
+| ------------ | ------- | ---- | ------------------ | ------ |
+| minDimension | int     | 是   | 最小维度           | 64     |
+| maxDimension | int     | 是   | 最大维度           | 2048   |
+| onlyLatest   | boolean | 否   | 是否只返回最新版本 | true   |
+
+#### React Axios 调用示例
+
+```javascript
+const getTemplatesByVectorDimension = async (
+    minDimension,
+    maxDimension,
+    onlyLatest = true
+) => {
+    try {
+        const response = await axios.get(
+            '/api/attach-catalogue-template/by-vector-dimension',
+            {
+                params: {
+                    minDimension,
+                    maxDimension,
+                    onlyLatest,
+                },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('按向量维度查询模板成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '按向量维度查询模板失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
+### 25. 标签检索模板接口
+
+#### 接口信息
+
+-   **接口路径**: `GET /api/attach-catalogue-template/search/tags`
+-   **接口描述**: 标签检索模板
+-   **请求方式**: GET
+
+#### 请求参数
+
+**查询参数**:
+
+| 参数名          | 类型            | 必填 | 描述           | 示例值   |
+| --------------- | --------------- | ---- | -------------- | -------- |
+| tags            | string[]        | 是   | 标签数组       | ["合同"] |
+| facetType       | FacetType       | 否   | 分面类型过滤   | 0        |
+| templatePurpose | TemplatePurpose | 否   | 模板用途过滤   | 1        |
+| maxResults      | int             | 否   | 最大返回结果数 | 20       |
+
+#### React Axios 调用示例
+
+```javascript
+const searchTemplatesByTags = async (
+    tags,
+    facetType = null,
+    templatePurpose = null,
+    maxResults = 20
+) => {
+    try {
+        const response = await axios.get(
+            '/api/attach-catalogue-template/search/tags',
+            {
+                params: {
+                    tags,
+                    facetType,
+                    templatePurpose,
+                    maxResults,
+                },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('标签检索模板成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '标签检索模板失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
+### 26. 获取热门标签接口
+
+#### 接口信息
+
+-   **接口路径**: `GET /api/attach-catalogue-template/tags/popular`
+-   **接口描述**: 获取热门标签
+-   **请求方式**: GET
+
+#### 请求参数
+
+**查询参数**:
+
+| 参数名 | 类型 | 必填 | 描述            | 示例值 |
+| ------ | ---- | ---- | --------------- | ------ |
+| topN   | int  | 否   | 返回前 N 个标签 | 20     |
+
+#### React Axios 调用示例
+
+```javascript
+const getPopularTags = async (topN = 20) => {
+    try {
+        const response = await axios.get(
+            '/api/attach-catalogue-template/tags/popular',
+            {
+                params: {
+                    topN,
+                },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('获取热门标签成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '获取热门标签失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
+### 27. 获取标签统计接口
+
+#### 接口信息
+
+-   **接口路径**: `GET /api/attach-catalogue-template/tags/statistics`
+-   **接口描述**: 获取标签统计
+-   **请求方式**: GET
+
+#### 请求参数
+
+**无请求参数**
+
+#### React Axios 调用示例
+
+```javascript
+const getTagStatistics = async () => {
+    try {
+        const response = await axios.get(
+            '/api/attach-catalogue-template/tags/statistics',
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('获取标签统计成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '获取标签统计失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
+### 28. 根据路径获取模板接口
+
+#### 接口信息
+
+-   **接口路径**: `GET /api/attach-catalogue-template/by-path`
+-   **接口描述**: 根据路径获取模板
+-   **请求方式**: GET
+
+#### 请求参数
+
+**查询参数**:
+
+| 参数名          | 类型    | 必填 | 描述           | 示例值    |
+| --------------- | ------- | ---- | -------------- | --------- |
+| templatePath    | string  | 否   | 模板路径       | "0000001" |
+| includeChildren | boolean | 否   | 是否包含子节点 | false     |
+
+#### React Axios 调用示例
+
+```javascript
+const getTemplatesByPath = async (
+    templatePath = null,
+    includeChildren = false
+) => {
+    try {
+        const response = await axios.get(
+            '/api/attach-catalogue-template/by-path',
+            {
+                params: {
+                    templatePath,
+                    includeChildren,
+                },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('根据路径获取模板成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '根据路径获取模板失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
+### 29. 根据路径深度获取模板接口
+
+#### 接口信息
+
+-   **接口路径**: `GET /api/attach-catalogue-template/by-path-depth`
+-   **接口描述**: 根据路径深度获取模板
+-   **请求方式**: GET
+
+#### 请求参数
+
+**查询参数**:
+
+| 参数名     | 类型    | 必填 | 描述               | 示例值 |
+| ---------- | ------- | ---- | ------------------ | ------ |
+| depth      | int     | 是   | 路径深度           | 2      |
+| onlyLatest | boolean | 否   | 是否只返回最新版本 | true   |
+
+#### React Axios 调用示例
+
+```javascript
+const getTemplatesByPathDepth = async (depth, onlyLatest = true) => {
+    try {
+        const response = await axios.get(
+            '/api/attach-catalogue-template/by-path-depth',
+            {
+                params: {
+                    depth,
+                    onlyLatest,
+                },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('根据路径深度获取模板成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '根据路径深度获取模板失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
+### 30. 计算下一个模板路径接口
+
+#### 接口信息
+
+-   **接口路径**: `GET /api/attach-catalogue-template/calculate-next-path`
+-   **接口描述**: 计算下一个模板路径
+-   **请求方式**: GET
+
+#### 请求参数
+
+**查询参数**:
+
+| 参数名     | 类型   | 必填 | 描述   | 示例值    |
+| ---------- | ------ | ---- | ------ | --------- |
+| parentPath | string | 否   | 父路径 | "0000001" |
+
+#### React Axios 调用示例
+
+```javascript
+const calculateNextTemplatePath = async (parentPath = null) => {
+    try {
+        const response = await axios.get(
+            '/api/attach-catalogue-template/calculate-next-path',
+            {
+                params: {
+                    parentPath,
+                },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('计算下一个模板路径成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '计算下一个模板路径失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
+### 31. 验证模板路径格式接口
+
+#### 接口信息
+
+-   **接口路径**: `GET /api/attach-catalogue-template/validate-path`
+-   **接口描述**: 验证模板路径格式
+-   **请求方式**: GET
+
+#### 请求参数
+
+**查询参数**:
+
+| 参数名       | 类型   | 必填 | 描述     | 示例值            |
+| ------------ | ------ | ---- | -------- | ----------------- |
+| templatePath | string | 否   | 模板路径 | "0000001.0000002" |
+
+#### React Axios 调用示例
+
+```javascript
+const validateTemplatePath = async (templatePath = null) => {
+    try {
+        const response = await axios.get(
+            '/api/attach-catalogue-template/validate-path',
+            {
+                params: {
+                    templatePath,
+                },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('验证模板路径格式成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '验证模板路径格式失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
+### 32. 根据路径范围获取模板接口
+
+#### 接口信息
+
+-   **接口路径**: `GET /api/attach-catalogue-template/by-path-range`
+-   **接口描述**: 根据路径范围获取模板
+-   **请求方式**: GET
+
+#### 请求参数
+
+**查询参数**:
+
+| 参数名     | 类型    | 必填 | 描述               | 示例值    |
+| ---------- | ------- | ---- | ------------------ | --------- |
+| startPath  | string  | 否   | 起始路径           | "0000001" |
+| endPath    | string  | 否   | 结束路径           | "0000005" |
+| onlyLatest | boolean | 否   | 是否只返回最新版本 | true      |
+
+#### React Axios 调用示例
+
+```javascript
+const getTemplatesByPathRange = async (
+    startPath = null,
+    endPath = null,
+    onlyLatest = true
+) => {
+    try {
+        const response = await axios.get(
+            '/api/attach-catalogue-template/by-path-range',
+            {
+                params: {
+                    startPath,
+                    endPath,
+                    onlyLatest,
+                },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('根据路径范围获取模板成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '根据路径范围获取模板失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+---
+
 ## 错误处理
 
 ### 常见错误码
@@ -2231,7 +3033,9 @@ const getTemplateStructure = async (id, includeHistory = false) => {
 
 ## 版本信息
 
--   **文档版本**: 1.0
--   **API 版本**: v1
--   **最后更新**: 2024-12-19
+-   **文档版本**: 1.5.12
+-   **API 版本**: v1.5.12
+-   **最后更新**: 2025-09-10
 -   **维护人员**: 开发团队
+-   **更新内容**: 新增 16 个接口（版本管理、模板标识查询、搜索增强、路径管理等）
+

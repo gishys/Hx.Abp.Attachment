@@ -3,7 +3,6 @@ using Hx.Abp.Attachment.Application.ArchAI.Contracts;
 using Hx.Abp.Attachment.Application.Contracts;
 using Hx.Abp.Attachment.Application.Utils;
 using Hx.Abp.Attachment.Domain;
-using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using OcrTextComposer;
@@ -20,6 +19,7 @@ namespace Hx.Abp.Attachment.Application
         IRepository<AttachCatalogue, Guid> catalogueRepository,
         IRepository<AttachFile, Guid> fileRepository,
         IOcrTextBlockRepository textBlockRepository,
+        IAttachFileManager attachFileManager,
         ILogger<OcrService> logger,
         IConfiguration configuration,
         CrossPlatformPdfToImageConverter pdfConverter) : DomainService, IOcrService
@@ -27,31 +27,21 @@ namespace Hx.Abp.Attachment.Application
         private readonly IRepository<AttachCatalogue, Guid> _catalogueRepository = catalogueRepository;
         private readonly IRepository<AttachFile, Guid> _fileRepository = fileRepository;
         private readonly IOcrTextBlockRepository _textBlockRepository = textBlockRepository;
+        private readonly IAttachFileManager _attachFileManager = attachFileManager;
         private readonly ILogger<OcrService> _logger = logger;
         private readonly IConfiguration _configuration = configuration;
         private readonly CrossPlatformPdfToImageConverter _pdfConverter = pdfConverter;
 
-        // 支持OCR的文件类型
-        private static readonly HashSet<string> SupportedImageTypes = new(StringComparer.OrdinalIgnoreCase)
-        {
-            ".jpg", ".jpeg", ".png", ".tiff", ".tif", ".bmp", ".gif"
-        };
-
-        private static readonly HashSet<string> SupportedPdfTypes = new(StringComparer.OrdinalIgnoreCase)
-        {
-            ".pdf"
-        };
+        // 支持OCR的文件类型（从AttachFileManager获取）
+        private static readonly HashSet<string> SupportedImageTypes = AttachFileManager.GetSupportedImageTypes();
+        private static readonly HashSet<string> SupportedPdfTypes = AttachFileManager.GetSupportedPdfTypes();
 
         /// <summary>
         /// 检查文件是否支持OCR
         /// </summary>
         public bool IsSupportedFileType(string fileType)
         {
-            if (string.IsNullOrWhiteSpace(fileType))
-                return false;
-
-            var lowerFileType = fileType.ToLowerInvariant();
-            return SupportedImageTypes.Contains(lowerFileType) || SupportedPdfTypes.Contains(lowerFileType);
+            return _attachFileManager.IsSupportedFileType(fileType);
         }
 
         /// <summary>
@@ -73,30 +63,27 @@ namespace Hx.Abp.Attachment.Application
                 }
 
                 // 检查文件是否已经有提取的文本，如果有则直接返回
-                if (!string.IsNullOrWhiteSpace(attachFile.OcrContent) && 
-                    attachFile.OcrProcessStatus == OcrProcessStatus.Completed)
+                if (_attachFileManager.IsOcrProcessed(attachFile))
                 {
                     result.IsSuccess = true;
                     result.ExtractedText = attachFile.OcrContent;
                     result.ProcessingTime = DateTime.UtcNow - startTime;
-                    
                     _logger.LogInformation("文件 {FileName} 已有OCR提取文本，直接返回，文本长度: {TextLength}", 
-                        attachFile.FileName, attachFile.OcrContent.Length);
-                    
+                        attachFile.FileName, attachFile.OcrContent?.Length);
                     return result;
                 }
 
-                if (!IsSupportedFileType(attachFile.FileType))
+                if (!_attachFileManager.IsSupportedFileType(attachFile.FileType))
                 {
                     result.IsSuccess = false;
                     result.ErrorMessage = $"不支持的文件类型: {attachFile.FileType}";
-                    attachFile.SetOcrProcessStatus(OcrProcessStatus.Skipped);
+                    _attachFileManager.SkipOcrProcessing(attachFile, $"不支持的文件类型: {attachFile.FileType}");
                     await _fileRepository.UpdateAsync(attachFile);
                     return result;
                 }
 
-                // 设置处理中状态
-                attachFile.SetOcrProcessStatus(OcrProcessStatus.Processing);
+                // 开始OCR处理
+                _attachFileManager.StartOcrProcessing(attachFile);
                 await _fileRepository.UpdateAsync(attachFile);
 
                 string? extractedText;
@@ -119,25 +106,16 @@ namespace Hx.Abp.Attachment.Application
 
                 if (!string.IsNullOrWhiteSpace(extractedText))
                 {
-                    attachFile.SetOcrContent(extractedText);
+                    // 使用文件管理服务完成OCR处理
+                    _attachFileManager.CompleteOcrProcessing(attachFile, extractedText, textBlocks);
                     
-                    // 存储文本块
+                    // 保存文本块到数据库
                     if (textBlocks.Count > 0)
                     {
-                        // 清除旧的文本块
-                        attachFile.ClearOcrTextBlocks();
-                        
-                        // 添加新的文本块
-                        attachFile.AddOcrTextBlocks(textBlocks);
-                        
-                        // 保存文本块到数据库
                         foreach (var textBlock in textBlocks)
                         {
                             await _textBlockRepository.InsertAsync(textBlock);
                         }
-                        
-                        _logger.LogInformation("文件 {FileName} OCR处理成功，提取文本长度: {TextLength}，文本块数量: {BlockCount}", 
-                            attachFile.FileName, extractedText.Length, textBlocks.Count);
                     }
                     
                     result.IsSuccess = true;
@@ -145,7 +123,7 @@ namespace Hx.Abp.Attachment.Application
                 }
                 else
                 {
-                    attachFile.SetOcrProcessStatus(OcrProcessStatus.Failed);
+                    _attachFileManager.MarkOcrProcessingFailed(attachFile, "OCR处理未提取到文本内容");
                     result.IsSuccess = false;
                     result.ErrorMessage = "OCR处理未提取到文本内容";
                 }
@@ -157,6 +135,21 @@ namespace Hx.Abp.Attachment.Application
                 result.IsSuccess = false;
                 result.ErrorMessage = ex.Message;
                 _logger.LogError(ex, "文件 {FileId} OCR处理失败", fileId);
+                
+                // 标记OCR处理失败
+                try
+                {
+                    var attachFile = await _fileRepository.GetAsync(fileId);
+                    if (attachFile != null)
+                    {
+                        _attachFileManager.MarkOcrProcessingFailed(attachFile, ex.Message);
+                        await _fileRepository.UpdateAsync(attachFile);
+                    }
+                }
+                catch (Exception updateEx)
+                {
+                    _logger.LogError(updateEx, "更新文件 {FileId} OCR处理状态失败", fileId);
+                }
             }
 
             result.ProcessingTime = DateTime.UtcNow - startTime;
@@ -528,7 +521,7 @@ namespace Hx.Abp.Attachment.Application
                 FileId = attachFile.Id,
                 FileName = attachFile.FileName,
                 FileType = attachFile.FileType,
-                IsSupported = IsSupportedFileType(attachFile.FileType),
+                IsSupported = _attachFileManager.IsSupportedFileType(attachFile.FileType),
                 OcrProcessStatus = attachFile.OcrProcessStatus,
                 OcrProcessedTime = attachFile.OcrProcessedTime
             };

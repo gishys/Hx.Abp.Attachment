@@ -1,3 +1,4 @@
+using Hx.Abp.Attachment.Domain.Shared;
 using Newtonsoft.Json;
 using RulesEngine.Interfaces;
 using RulesEngine.Models;
@@ -5,7 +6,6 @@ using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
 using Volo.Abp.Guids;
-using static Hx.Abp.Attachment.Domain.Shared.AttachmentPermissions;
 
 namespace Hx.Abp.Attachment.Domain
 {
@@ -20,16 +20,26 @@ namespace Hx.Abp.Attachment.Domain
         private readonly IRulesEngine _rulesEngine = rulesEngine;
         private readonly IGuidGenerator _guidGenerator = guidGenerator;
 
+        // 用于在事务中跟踪已创建的分类，避免重复查询数据库
+        private readonly Dictionary<string, int> _sequenceNumberCache = [];
+        private readonly Dictionary<string, string> _pathCache = [];
+        private readonly Dictionary<Guid, AttachCatalogue> _createdCataloguesCache = [];
+
         public async Task<AttachCatalogue> GenerateFromTemplateAsync(
             AttachCatalogueTemplate template,
             string reference,
             int referenceType,
             Dictionary<string, object>? contextData = null)
         {
+            // 清空缓存，开始新的模板生成过程
+            _sequenceNumberCache.Clear();
+            _pathCache.Clear();
+            _createdCataloguesCache.Clear();
+
             // 检查是否为最新版本
             if (!template.IsLatest)
             {
-                var latest = await _templateRepository.GetLatestVersionAsync(template.Id);
+                var latest = await _templateRepository.GetLatestVersionAsync(template.Id, true);
                 if (latest != null && latest.Id != template.Id)
                 {
                     throw new BusinessException("Template:NotLatestVersion")
@@ -89,11 +99,17 @@ namespace Hx.Abp.Attachment.Domain
             int referenceType,
             Dictionary<string, object>? contextData)
         {
+            // 1. 计算正确的 sequenceNumber：基于相同父模板的最大序号+1
+            int sequenceNumber = await CalculateNextSequenceNumberAsync(template.Id, template.Version, parentId);
+
+            // 2. 计算 path：参考 GetEntitys 中的逻辑
+            string? path = await CalculatePathAsync(parentId);
+
             var catalogue = new AttachCatalogue(
                 id: GuidGenerator.Create(),
                 attachReceiveType: template.AttachReceiveType,
                 catologueName: await ResolveCatalogueName(template, contextData),
-                sequenceNumber: template.SequenceNumber,
+                sequenceNumber: sequenceNumber,
                 reference: reference,
                 referenceType: referenceType,
                 parentId: parentId,
@@ -104,11 +120,159 @@ namespace Hx.Abp.Attachment.Domain
                 catalogueFacetType: template.FacetType,
                 cataloguePurpose: template.TemplatePurpose,
                 tags: template.Tags,
-                textVector: template.TextVector
+                textVector: template.TextVector,
+                metaFields: template.MetaFields?.ToList(),
+                path: path
             );
 
+            // 复制权限集合
+            if (template.Permissions != null && template.Permissions.Count != 0)
+            {
+                foreach (var permission in template.Permissions)
+                {
+                    catalogue.AddPermission(permission);
+                }
+            }
+
             await _catalogueRepository.InsertAsync(catalogue);
+            
+            // 将创建的分类添加到缓存中，供后续子分类查询使用
+            _createdCataloguesCache[catalogue.Id] = catalogue;
+            
             return catalogue;
+        }
+
+        /// <summary>
+        /// 计算下一个序号：基于相同父模板的最大序号+1
+        /// </summary>
+        private async Task<int> CalculateNextSequenceNumberAsync(Guid templateId, int templateVersion, Guid? parentId)
+        {
+            // 创建缓存键
+            var cacheKey = $"{parentId}";
+
+            // 如果缓存中已有该键，直接返回下一个序号
+            if (_sequenceNumberCache.TryGetValue(cacheKey, out int value))
+            {
+                _sequenceNumberCache[cacheKey] = ++value;
+                return value;
+            }
+
+            // 查询数据库中相同父模板下已存在的最大序号
+            var existingCatalogues = await _catalogueRepository.GetQueryableAsync();
+            var maxSequenceNumber = existingCatalogues
+                .Where(c => c.TemplateId == templateId && 
+                           c.TemplateVersion == templateVersion && 
+                           c.ParentId == parentId)
+                .Max(c => (int?)c.SequenceNumber);
+
+            // 计算下一个序号并缓存
+            var nextSequenceNumber = (maxSequenceNumber ?? 0) + 1;
+            _sequenceNumberCache[cacheKey] = nextSequenceNumber;
+
+            return nextSequenceNumber;
+        }
+
+        /// <summary>
+        /// 计算路径：参考 GetEntitys 中的逻辑
+        /// </summary>
+        private async Task<string?> CalculatePathAsync(Guid? parentId)
+        {
+            // 创建缓存键
+            var cacheKey = parentId?.ToString() ?? "ROOT";
+
+            if (parentId.HasValue)
+            {
+                // 有父级：优先从缓存中获取父级分类，如果缓存中没有则从数据库查询
+                AttachCatalogue? parentCatalogue = null;
+                
+                if (_createdCataloguesCache.TryGetValue(parentId.Value, out AttachCatalogue? value))
+                {
+                    parentCatalogue = value;
+                }
+                else
+                {
+                    parentCatalogue = await _catalogueRepository.GetAsync(parentId.Value);
+                }
+                
+                if (parentCatalogue != null)
+                {
+                    // 检查缓存中是否已有该父级下的路径
+                    if (_pathCache.TryGetValue(cacheKey, out string? lastPath))
+                    {
+                        var lastUnitCode = AttachCatalogue.GetLastUnitPathCode(lastPath);
+                        var nextNumber = Convert.ToInt32(lastUnitCode) + 1;
+                        var nextUnitCode = nextNumber.ToString($"D{AttachmentConstants.PATH_CODE_DIGITS}");
+                        var nextChildPath = AttachCatalogue.AppendPathCode(parentCatalogue.Path, nextUnitCode);
+                        _pathCache[cacheKey] = nextChildPath;
+                        return nextChildPath;
+                    }
+
+                    // 查询数据库中同级最大路径
+                    var existingCatalogues = await _catalogueRepository.GetQueryableAsync();
+                    var maxPathAtSameLevel = existingCatalogues
+                        .Where(c => c.ParentId == parentId && !string.IsNullOrEmpty(c.Path))
+                        .Select(c => c.Path)
+                        .OrderByDescending(path => path)
+                        .FirstOrDefault();
+
+                    string nextPath;
+                    if (string.IsNullOrEmpty(maxPathAtSameLevel))
+                    {
+                        // 没有同级，创建第一个子路径
+                        nextPath = AttachCatalogue.AppendPathCode(parentCatalogue.Path, "0000001");
+                    }
+                    else
+                    {
+                        // 有同级，获取最大路径的最后一个单元代码并+1
+                        var lastUnitCode = AttachCatalogue.GetLastUnitPathCode(maxPathAtSameLevel);
+                        var nextNumber = Convert.ToInt32(lastUnitCode) + 1;
+                        var nextUnitCode = nextNumber.ToString($"D{AttachmentConstants.PATH_CODE_DIGITS}");
+                        nextPath = AttachCatalogue.AppendPathCode(parentCatalogue.Path, nextUnitCode);
+                    }
+
+                    // 缓存路径
+                    _pathCache[cacheKey] = nextPath;
+                    return nextPath;
+                }
+            }
+            else
+            {
+                // 检查缓存中是否已有根级别的路径
+                if (_pathCache.TryGetValue(cacheKey, out string? lastPath))
+                {
+                    var nextNumber = Convert.ToInt32(lastPath) + 1;
+                    var newRootPath = AttachCatalogue.CreatePathCode(nextNumber);
+                    _pathCache[cacheKey] = newRootPath;
+                    return newRootPath;
+                }
+
+                // 没有父级：查找根级别最大路径
+                var existingCatalogues = await _catalogueRepository.GetQueryableAsync();
+                var maxPathAtRootLevel = existingCatalogues
+                    .Where(c => c.ParentId == null && !string.IsNullOrEmpty(c.Path))
+                    .Select(c => c.Path)
+                    .OrderByDescending(path => path)
+                    .FirstOrDefault();
+
+                string nextRootPath;
+                if (string.IsNullOrEmpty(maxPathAtRootLevel))
+                {
+                    // 没有根级别分类，创建第一个
+                    nextRootPath = AttachCatalogue.CreatePathCode(1);
+                }
+                else
+                {
+                    // 有根级别分类，获取最大路径并+1
+                    var nextNumber = Convert.ToInt32(maxPathAtRootLevel) + 1;
+                    nextRootPath = AttachCatalogue.CreatePathCode(nextNumber);
+                }
+
+                // 缓存路径
+                _pathCache[cacheKey] = nextRootPath;
+                return nextRootPath;
+            }
+
+            return null;
         }
 
         private async Task<string> ResolveCatalogueName(

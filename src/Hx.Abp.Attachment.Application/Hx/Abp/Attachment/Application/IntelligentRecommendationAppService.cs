@@ -404,12 +404,6 @@ namespace Hx.Abp.Attachment.Application
             }
         }
 
-
-
-
-
-
-
         #region 私有方法
 
         /// <summary>

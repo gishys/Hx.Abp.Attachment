@@ -590,7 +590,7 @@ namespace Hx.Abp.Attachment.Application
             CreateUpdateAttachCatalogueTemplateDto input)
         {
             // 获取基础模板的最新版本
-            var baseTemplate = await _templateRepository.GetLatestVersionAsync(baseId) 
+            var baseTemplate = await _templateRepository.GetLatestVersionAsync(baseId, true)
                 ?? throw new UserFriendlyException("未找到基础模板");
 
             // 获取下一个版本号

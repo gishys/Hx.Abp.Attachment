@@ -72,6 +72,20 @@ namespace Hx.Abp.Attachment.Application
                     return result;
                 }
 
+                // 检查文件是否已经有提取的文本，如果有则直接返回
+                if (!string.IsNullOrWhiteSpace(attachFile.OcrContent) && 
+                    attachFile.OcrProcessStatus == OcrProcessStatus.Completed)
+                {
+                    result.IsSuccess = true;
+                    result.ExtractedText = attachFile.OcrContent;
+                    result.ProcessingTime = DateTime.UtcNow - startTime;
+                    
+                    _logger.LogInformation("文件 {FileName} 已有OCR提取文本，直接返回，文本长度: {TextLength}", 
+                        attachFile.FileName, attachFile.OcrContent.Length);
+                    
+                    return result;
+                }
+
                 if (!IsSupportedFileType(attachFile.FileType))
                 {
                     result.IsSuccess = false;

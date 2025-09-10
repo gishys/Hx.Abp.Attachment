@@ -3,7 +3,6 @@ using Hx.Abp.Attachment.Domain;
 using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System.Collections.ObjectModel;
 using Volo.Abp;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.DependencyInjection;
@@ -54,8 +53,7 @@ namespace Hx.Abp.Attachment.Application
                     var parentCatalogue = await CatalogueRepository.GetAsync(input.ParentId.Value);
                     if (parentCatalogue != null)
                     {
-                        var maxPathAtSameLevel = await CatalogueRepository.GetMaxPathAtSameLevelAsync(
-                            parentCatalogue.Path, input.Reference, input.ReferenceType);
+                        var maxPathAtSameLevel = await CatalogueRepository.GetMaxPathAtSameLevelAsync(parentPath: parentCatalogue.Path);
 
                         if (string.IsNullOrEmpty(maxPathAtSameLevel))
                         {
@@ -75,9 +73,8 @@ namespace Hx.Abp.Attachment.Application
                 else if (string.IsNullOrEmpty(path))
                 {
                     // 没有父级：查找根级别最大路径
-                    var maxPathAtRootLevel = await CatalogueRepository.GetMaxPathAtSameLevelAsync(
-                        null, input.Reference, input.ReferenceType);
-                    
+                    var maxPathAtRootLevel = await CatalogueRepository.GetMaxPathAtSameLevelAsync();
+
                     if (string.IsNullOrEmpty(maxPathAtRootLevel))
                     {
                         // 没有根级别分类，创建第一个
@@ -570,8 +567,7 @@ namespace Hx.Abp.Attachment.Application
                     var parentCatalogue = await CatalogueRepository.GetAsync(input.ParentId.Value);
                     if (parentCatalogue != null)
                     {
-                        var maxPathAtSameLevel = await CatalogueRepository.GetMaxPathAtSameLevelAsync(
-                            parentCatalogue.Path, input.Reference, input.ReferenceType);
+                        var maxPathAtSameLevel = await CatalogueRepository.GetMaxPathAtSameLevelAsync(parentPath: parentCatalogue.Path);
 
                         if (string.IsNullOrEmpty(maxPathAtSameLevel))
                         {
@@ -591,9 +587,8 @@ namespace Hx.Abp.Attachment.Application
                 else if (string.IsNullOrEmpty(path))
                 {
                     // 没有父级：查找根级别最大路径
-                    var maxPathAtRootLevel = await CatalogueRepository.GetMaxPathAtSameLevelAsync(
-                        null, input.Reference, input.ReferenceType);
-                    
+                    var maxPathAtRootLevel = await CatalogueRepository.GetMaxPathAtSameLevelAsync();
+
                     if (string.IsNullOrEmpty(maxPathAtRootLevel))
                     {
                         // 没有根级别分类，创建第一个

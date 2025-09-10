@@ -12,8 +12,9 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// 获取模板使用次数
         /// </summary>
         /// <param name="templateId">模板ID</param>
+        /// <param name="templateVersion">模板版本号，null表示查询所有版本</param>
         /// <returns>使用次数</returns>
-        Task<int> GetTemplateUsageCountAsync(Guid templateId);
+        Task<int> GetTemplateUsageCountAsync(Guid templateId, int? templateVersion = null);
 
         /// <summary>
         /// 获取模板使用统计
@@ -27,8 +28,9 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// </summary>
         /// <param name="templateId">模板ID</param>
         /// <param name="daysBack">查询天数</param>
+        /// <param name="templateVersion">模板版本号，null表示查询所有版本</param>
         /// <returns>使用趋势</returns>
-        Task<List<TemplateUsageTrendDto>> GetTemplateUsageTrendAsync(Guid templateId, int daysBack = 30);
+        Task<List<TemplateUsageTrendDto>> GetTemplateUsageTrendAsync(Guid templateId, int daysBack = 30, int? templateVersion = null);
 
         /// <summary>
         /// 批量获取模板使用统计

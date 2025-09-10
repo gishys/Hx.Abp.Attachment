@@ -24,18 +24,20 @@ namespace Hx.Abp.Attachment.Application
         /// <summary>
         /// 获取模板使用次数
         /// </summary>
-        public async Task<int> GetTemplateUsageCountAsync(Guid templateId)
+        /// <param name="templateId">模板ID</param>
+        /// <param name="templateVersion">模板版本号，null表示查询所有版本</param>
+        public async Task<int> GetTemplateUsageCountAsync(Guid templateId, int? templateVersion = null)
         {
             try
             {
-                _logger.LogInformation("开始获取模板使用次数，模板ID：{templateId}", templateId);
-                var usageCount = await _templateRepository.GetTemplateUsageCountAsync(templateId);
-                _logger.LogInformation("获取模板使用次数完成，模板ID：{templateId}，使用次数：{usageCount}", templateId, usageCount);
+                _logger.LogInformation("开始获取模板使用次数，模板ID：{templateId}，版本：{templateVersion}", templateId, templateVersion);
+                var usageCount = await _templateRepository.GetTemplateUsageCountAsync(templateId, templateVersion);
+                _logger.LogInformation("获取模板使用次数完成，模板ID：{templateId}，版本：{templateVersion}，使用次数：{usageCount}", templateId, templateVersion, usageCount);
                 return usageCount;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "获取模板使用次数失败，模板ID：{templateId}", templateId);
+                _logger.LogError(ex, "获取模板使用次数失败，模板ID：{templateId}，版本：{templateVersion}", templateId, templateVersion);
                 return 0;
             }
         }
@@ -76,12 +78,15 @@ namespace Hx.Abp.Attachment.Application
         /// <summary>
         /// 获取模板使用趋势
         /// </summary>
-        public async Task<List<TemplateUsageTrendDto>> GetTemplateUsageTrendAsync(Guid templateId, int daysBack = 30)
+        /// <param name="templateId">模板ID</param>
+        /// <param name="daysBack">查询天数</param>
+        /// <param name="templateVersion">模板版本号，null表示查询所有版本</param>
+        public async Task<List<TemplateUsageTrendDto>> GetTemplateUsageTrendAsync(Guid templateId, int daysBack = 30, int? templateVersion = null)
         {
             try
             {
-                _logger.LogInformation("开始获取模板使用趋势，模板ID：{templateId}，天数：{daysBack}", templateId, daysBack);
-                var domainTrends = await _templateRepository.GetTemplateUsageTrendAsync(templateId, daysBack);
+                _logger.LogInformation("开始获取模板使用趋势，模板ID：{templateId}，版本：{templateVersion}，天数：{daysBack}", templateId, templateVersion, daysBack);
+                var domainTrends = await _templateRepository.GetTemplateUsageTrendAsync(templateId, daysBack, templateVersion);
                 
                 // 映射Domain值对象到DTO
                 var dtoTrends = domainTrends.Select(trend => new TemplateUsageTrendDto

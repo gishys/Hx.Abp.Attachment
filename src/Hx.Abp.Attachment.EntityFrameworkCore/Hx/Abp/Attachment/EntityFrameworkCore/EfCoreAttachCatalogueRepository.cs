@@ -1,6 +1,7 @@
 using Hx.Abp.Attachment.Domain;
 using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using Npgsql;
 using System.Linq.Dynamic.Core;
 using System.Text;
@@ -905,47 +906,25 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             var query = (await GetQueryableAsync())
                 .Where(c => !c.IsDeleted);
 
-            // 使用原生SQL查询路径深度
             if (depth == 0)
             {
-                // 根节点：路径为空或深度为1
-                query = query.Where(c => c.Path == null || c.Path == "" || 
-                    !c.Path.Contains('.'));
+                // 根节点：路径为空或深度为1（使用EF.Functions.Like来避免Contains翻译问题）
+                query = query.Where(c => c.Path == null || c.Path == "" || !EF.Functions.Like(c.Path, "%.%"));
             }
             else
             {
-                // 使用原生SQL计算路径深度
-                var sql = @"
-                    SELECT c.* FROM ""APPATTACH_CATALOGUES"" c
-                    WHERE c.""IS_DELETED"" = false
-                        AND array_length(string_to_array(c.""PATH"", '.'), 1) = {0}";
-
-                if (!string.IsNullOrWhiteSpace(reference))
-                {
-                    sql += " AND c.\"REFERENCE\" = {1}";
-                }
-
-                if (referenceType.HasValue)
-                {
-                    sql += " AND c.\"REFERENCE_TYPE\" = {2}";
-                }
-
-                sql += " ORDER BY c.\"PATH\"";
-
-                var parameters = new List<object> { depth };
-                if (!string.IsNullOrWhiteSpace(reference))
-                {
-                    parameters.Add(reference);
-                }
-                if (referenceType.HasValue)
-                {
-                    parameters.Add(referenceType.Value);
-                }
-
-                return await (await GetDbContextAsync())
-                    .Set<AttachCatalogue>()
-                    .FromSqlRaw(sql, [.. parameters])
+                // 对于深度大于0的情况，我们需要使用客户端评估来计算路径深度
+                // 先获取所有可能的记录，然后在客户端过滤
+                var allRecords = await query
+                    .Where(c => c.Path != null && c.Path != "")
                     .ToListAsync(cancellationToken);
+
+                // 在客户端计算路径深度并过滤
+                var filteredRecords = allRecords
+                    .Where(c => c.Path != null && c.Path.Split('.').Length == depth)
+                    .AsQueryable();
+
+                query = filteredRecords.AsQueryable();
             }
 
             if (!string.IsNullOrWhiteSpace(reference))
@@ -973,7 +952,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         {
             var query = (await GetQueryableAsync())
                 .Where(c => !c.IsDeleted)
-                .Where(c => c.Path == null || c.Path == "" || !c.Path.Contains('.'));
+                .Where(c => c.Path == null || c.Path == "" || !EF.Functions.Like(c.Path, "%.%"));
 
             if (!string.IsNullOrWhiteSpace(reference))
             {
@@ -1027,19 +1006,19 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             CancellationToken cancellationToken = default)
         {
             var query = (await GetQueryableAsync())
-                .Where(c => !c.IsDeleted);
+                .Where(c => !c.IsDeleted && c.Path != null && c.Path != "");
 
             if (string.IsNullOrWhiteSpace(parentPath))
             {
-                // 查找根节点的直接子节点
-                query = query.Where(c => c.Path != null && !c.Path.Contains('.'));
+                // 查找根节点的直接子节点（使用EF.Functions.Like来避免Contains翻译问题）
+                query = query.Where(c => !EF.Functions.Like(c.Path, "%.%"));
             }
             else
             {
                 // 查找指定父路径的直接子节点
                 var childPathPattern = parentPath + ".";
-                query = query.Where(c => c.Path != null && c.Path.StartsWith(childPathPattern) && 
-                    !c.Path.Substring(childPathPattern.Length).Contains('.'));
+                query = query.Where(c => EF.Functions.Like(c.Path, childPathPattern + "%") && 
+                    !EF.Functions.Like(c.Path, childPathPattern + "%.%"));
             }
 
             if (!string.IsNullOrWhiteSpace(reference))
@@ -1067,19 +1046,19 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             CancellationToken cancellationToken = default)
         {
             var query = (await GetQueryableAsync())
-                .Where(c => !c.IsDeleted);
+                .Where(c => !c.IsDeleted && c.Path != null && c.Path != "");
 
             if (string.IsNullOrEmpty(parentPath))
             {
-                // 根级别：查找所有根节点
-                query = query.Where(c => c.Path != null && !c.Path.Contains('.'));
+                // 根级别：查找所有根节点（使用EF.Functions.Like来避免Contains翻译问题）
+                query = query.Where(c => !EF.Functions.Like(c.Path, "%.%"));
             }
             else
             {
                 // 子级别：查找指定父路径下的直接子节点
                 var childPathPattern = parentPath + ".";
-                query = query.Where(c => c.Path != null && c.Path.StartsWith(childPathPattern) && 
-                    !c.Path.Substring(childPathPattern.Length).Contains('.'));
+                query = query.Where(c => EF.Functions.Like(c.Path, childPathPattern + "%") && 
+                    !EF.Functions.Like(c.Path, childPathPattern + "%.%"));
             }
 
             if (!string.IsNullOrWhiteSpace(reference))
@@ -1094,7 +1073,6 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
             // 获取最大路径
             var maxPath = await query
-                .Where(c => c.Path != null)
                 .Select(c => c.Path)
                 .OrderByDescending(path => path)
                 .FirstOrDefaultAsync(cancellationToken);
@@ -1188,10 +1166,15 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 // 全文检索过滤条件
                 if (!string.IsNullOrWhiteSpace(fulltextQuery))
                 {
+                    // 使用 EF.Functions.JsonContains 进行 JSONB 字段查询
                     baseFilter = baseFilter.Where(c => 
                         c.CatalogueName.Contains(fulltextQuery) ||
                         (c.FullTextContent != null && c.FullTextContent.Contains(fulltextQuery)) ||
-                        (c.Tags != null && c.Tags.Any(tag => tag.Contains(fulltextQuery)))
+                        (c.Tags != null && EF.Functions.JsonContains(c.Tags, $"[{JsonConvert.SerializeObject(fulltextQuery)}]")) ||
+                        (c.MetaFields != null && (
+                            EF.Functions.JsonContains(c.MetaFields, $"[{{\"FieldName\":{JsonConvert.SerializeObject(fulltextQuery)}}}]") ||
+                            EF.Functions.JsonContains(c.MetaFields, $"[{{\"FieldValue\":{JsonConvert.SerializeObject(fulltextQuery)}}}]")
+                        ))
                     );
                 }
 
@@ -1238,7 +1221,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         /// 通过路径构建分类树形结构
         /// 参考 AttachCatalogueTemplateRepository 的最佳实践
         /// </summary>
-        private List<AttachCatalogue> BuildTreeFromPath(List<AttachCatalogue> allCatalogues)
+        private static List<AttachCatalogue> BuildTreeFromPath(List<AttachCatalogue> allCatalogues)
         {
             if (allCatalogues.Count == 0)
                 return [];

@@ -100,6 +100,7 @@ namespace Hx.Abp.Attachment.Domain
                 isRequired: template.IsRequired,
                 isStatic: template.IsStatic,
                 templateId: template.Id,
+                templateVersion: template.Version,
                 catalogueFacetType: template.FacetType,
                 cataloguePurpose: template.TemplatePurpose,
                 tags: template.Tags,

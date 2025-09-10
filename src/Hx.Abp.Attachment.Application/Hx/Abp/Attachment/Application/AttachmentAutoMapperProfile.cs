@@ -14,7 +14,8 @@ namespace Hx.Abp.Attachment.Application
                 .ForMember(dest => dest.MetaFields, opt => opt.MapFrom(src => src.MetaFields));
             CreateMap<AttachCatalogueCreateDto, AttachCatalogue>(MemberList.Source);
             CreateMap<AttachCatalogueUpdateDto, AttachCatalogue>(MemberList.Source);
-            
+            CreateMap<AttachCatalogue, AttachCatalogueTreeDto>(MemberList.Destination);
+
             // AttachFile 映射
             CreateMap<AttachFile, AttachFileDto>(MemberList.Destination);
             CreateMap<AttachFileCreateDto, AttachFile>(MemberList.Source);

@@ -1171,25 +1171,32 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         /// <summary>
         /// 获取模板使用次数
         /// </summary>
-        public async Task<int> GetTemplateUsageCountAsync(Guid templateId)
+        /// <param name="templateId">模板ID</param>
+        /// <param name="templateVersion">模板版本号，null表示查询所有版本</param>
+        public async Task<int> GetTemplateUsageCountAsync(Guid templateId, int? templateVersion = null)
         {
             try
-        {
-            var dbContext = await GetDbContextAsync();
+            {
+                var dbContext = await GetDbContextAsync();
+                
+                var query = dbContext.Set<AttachCatalogue>()
+                    .Where(ac => ac.TemplateId == templateId && !ac.IsDeleted);
+
+                if (templateVersion.HasValue)
+                {
+                    query = query.Where(ac => ac.TemplateVersion == templateVersion.Value);
+                }
+
+                var usageCount = await query.CountAsync();
             
-                // 使用 EF Core 查询替代 SQL
-                var usageCount = await dbContext.Set<AttachCatalogue>()
-                    .Where(ac => ac.TemplateId == templateId && !ac.IsDeleted)
-                    .CountAsync();
+                Logger.LogInformation("获取模板使用次数完成，模板ID：{templateId}，版本：{templateVersion}，使用次数：{usageCount}", 
+                    templateId, templateVersion, usageCount);
             
-            Logger.LogInformation("获取模板使用次数完成，模板ID：{templateId}，使用次数：{usageCount}", 
-                templateId, usageCount);
-            
-            return usageCount;
+                return usageCount;
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "获取模板使用次数失败，模板ID：{templateId}", templateId);
+                Logger.LogError(ex, "获取模板使用次数失败，模板ID：{templateId}，版本：{templateVersion}", templateId, templateVersion);
                 return 0; // 返回0而不是抛出异常，避免影响主流程
             }
         }
@@ -1197,7 +1204,9 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         /// <summary>
         /// 获取模板使用统计
         /// </summary>
-        public async Task<TemplateUsageStats> GetTemplateUsageStatsAsync(Guid templateId)
+        /// <param name="templateId">模板ID</param>
+        /// <param name="templateVersion">模板版本号，null表示查询所有版本</param>
+        public async Task<TemplateUsageStats> GetTemplateUsageStatsAsync(Guid templateId, int? templateVersion = null)
         {
             try
             {
@@ -1214,6 +1223,11 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 // 获取使用统计
                 var usageQuery = dbContext.Set<AttachCatalogue>()
                     .Where(ac => ac.TemplateId == templateId && !ac.IsDeleted);
+
+                if (templateVersion.HasValue)
+                {
+                    usageQuery = usageQuery.Where(ac => ac.TemplateVersion == templateVersion.Value);
+                }
 
                 var usageCount = await usageQuery.CountAsync();
                 var uniqueReferences = await usageQuery.Select(ac => ac.Reference).Distinct().CountAsync();
@@ -1241,8 +1255,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     AverageUsagePerDay = Math.Round(averageUsagePerDay, 2)
                 };
 
-                Logger.LogInformation("获取模板使用统计完成，模板ID：{templateId}，使用次数：{usageCount}", 
-                    templateId, usageCount);
+                Logger.LogInformation("获取模板使用统计完成，模板ID：{templateId}，版本：{templateVersion}，使用次数：{usageCount}", 
+                    templateId, templateVersion, usageCount);
 
                 return stats;
             }
@@ -1256,7 +1270,10 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         /// <summary>
         /// 获取模板使用趋势
         /// </summary>
-        public async Task<List<TemplateUsageTrend>> GetTemplateUsageTrendAsync(Guid templateId, int daysBack = 30)
+        /// <param name="templateId">模板ID</param>
+        /// <param name="daysBack">查询天数</param>
+        /// <param name="templateVersion">模板版本号，null表示查询所有版本</param>
+        public async Task<List<TemplateUsageTrend>> GetTemplateUsageTrendAsync(Guid templateId, int daysBack = 30, int? templateVersion = null)
         {
             try
             {
@@ -1264,8 +1281,15 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 var startDate = DateTime.UtcNow.AddDays(-daysBack);
 
                 // 获取指定时间范围内的使用数据
-                var usageData = await dbContext.Set<AttachCatalogue>()
-                    .Where(ac => ac.TemplateId == templateId && !ac.IsDeleted && ac.CreationTime >= startDate)
+                var query = dbContext.Set<AttachCatalogue>()
+                    .Where(ac => ac.TemplateId == templateId && !ac.IsDeleted && ac.CreationTime >= startDate);
+
+                if (templateVersion.HasValue)
+                {
+                    query = query.Where(ac => ac.TemplateVersion == templateVersion.Value);
+                }
+
+                var usageData = await query
                     .GroupBy(ac => ac.CreationTime.Date)
                     .Select(g => new { Date = g.Key, Count = g.Count() })
                     .OrderBy(x => x.Date)
@@ -1287,14 +1311,14 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     });
                 }
 
-                Logger.LogInformation("获取模板使用趋势完成，模板ID：{templateId}，天数：{daysBack}", 
-                    templateId, daysBack);
+                Logger.LogInformation("获取模板使用趋势完成，模板ID：{templateId}，版本：{templateVersion}，天数：{daysBack}", 
+                    templateId, templateVersion, daysBack);
 
                 return trends;
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "获取模板使用趋势失败，模板ID：{templateId}", templateId);
+                Logger.LogError(ex, "获取模板使用趋势失败，模板ID：{templateId}，版本：{templateVersion}", templateId, templateVersion);
                 return [];
             }
         }
@@ -2204,10 +2228,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 // 标签过滤
                 if (tags != null && tags.Count > 0)
                 {
-                    foreach (var tag in tags)
-                    {
-                        queryable = queryable.Where(t => t.Tags != null && t.Tags.Contains(tag));
-                    }
+                    queryable = queryable.Where(t => t.Tags != null && EF.Functions.JsonContains(t.Tags, $"[{JsonConvert.SerializeObject(keyword)}]"));
                 }
 
                 // 文本搜索
@@ -2215,13 +2236,19 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 queryable = queryable.Where(t => 
                     t.TemplateName.Contains(keyword) || 
                     (t.Description != null && t.Description.Contains(keyword)) ||
-                    (t.Tags != null && t.Tags.Any(tag => tag.Contains(keyword))));
+                    (t.Tags != null && EF.Functions.JsonContains(t.Tags, $"[{JsonConvert.SerializeObject(keyword)}]")) ||
+                    (t.MetaFields != null && (
+                        EF.Functions.JsonContains(t.MetaFields, $"[{{\"FieldName\":{JsonConvert.SerializeObject(keyword)}}}]") ||
+                        EF.Functions.JsonContains(t.MetaFields, $"[{{\"FieldValue\":{JsonConvert.SerializeObject(keyword)}}}]")
+                    )));
 
                 var results = await queryable
-                    .OrderByDescending(t => t.TemplateName.Contains(keyword) ? 1 : 0)
-                    .ThenBy(t => t.TemplateName)
+                    .OrderBy(t => t.TemplateName)
                     .Take(maxResults)
                     .ToListAsync();
+                
+                // 在客户端进行排序，将包含关键词的模板排在前面
+                results = [.. results.OrderByDescending(t => t.TemplateName.Contains(keyword, StringComparison.OrdinalIgnoreCase) ? 1 : 0).ThenBy(t => t.TemplateName)];
 
                 Logger.LogInformation("文本检索完成，关键词：{keyword}，结果数量：{count}", keyword, results.Count);
 
@@ -2264,13 +2291,15 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     // 必须包含所有标签
                     foreach (var tag in tags)
                     {
-                        queryable = queryable.Where(t => t.Tags != null && t.Tags.Contains(tag));
+                        queryable = queryable.Where(t => t.Tags != null && EF.Functions.JsonContains(t.Tags, $"[{JsonConvert.SerializeObject(tag)}]"));
                     }
                 }
                 else
                 {
-                    // 包含任意标签
-                    queryable = queryable.Where(t => t.Tags != null && t.Tags.Any(tag => tags.Contains(tag)));
+                    // 包含任意标签 - 使用客户端评估
+                    var allTemplates = await queryable.ToListAsync();
+                    var filteredTemplates = allTemplates.Where(t => t.Tags != null && t.Tags.Any(tag => tags.Contains(tag))).AsQueryable();
+                    queryable = filteredTemplates;
                 }
 
                 var results = await queryable
@@ -2702,7 +2731,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     if (dotCount == 0)
                     {
                         // 第一层：路径格式为 "00001"
-                        queryable = queryable.Where(t => t.TemplatePath != null && !t.TemplatePath.Contains('.'));
+                        queryable = queryable.Where(t => t.TemplatePath != null && !EF.Functions.Like(t.TemplatePath, "%.%"));
                     }
                     else
                     {
@@ -2933,14 +2962,14 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 if (string.IsNullOrEmpty(parentPath))
                 {
                     // 获取根节点的直接子节点（路径格式为 "00001"）
-                    queryable = queryable.Where(t => t.TemplatePath != null && !t.TemplatePath.Contains('.'));
+                    queryable = queryable.Where(t => t.TemplatePath != null && !EF.Functions.Like(t.TemplatePath, "%.%"));
                 }
                 else
                 {
                     // 获取指定路径的直接子节点（路径格式为 "parentPath.00001"）
                     var directChildPrefix = parentPath + ".";
                     queryable = queryable.Where(t => t.TemplatePath != null && t.TemplatePath.StartsWith(directChildPrefix) &&
-                                                   !t.TemplatePath.Substring(directChildPrefix.Length).Contains('.'));
+                                                   !EF.Functions.Like(t.TemplatePath, directChildPrefix + "%.%"));
                 }
 
                 var templates = await queryable.OrderBy(t => t.TemplatePath).ThenBy(t => t.SequenceNumber).ToListAsync();

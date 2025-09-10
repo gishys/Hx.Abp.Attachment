@@ -76,17 +76,24 @@ namespace Hx.Abp.Attachment.Domain
         /// <summary>
         /// 获取模板使用次数
         /// </summary>
-        Task<int> GetTemplateUsageCountAsync(Guid templateId);
+        /// <param name="templateId">模板ID</param>
+        /// <param name="templateVersion">模板版本号，null表示查询所有版本</param>
+        Task<int> GetTemplateUsageCountAsync(Guid templateId, int? templateVersion = null);
 
         /// <summary>
         /// 获取模板使用统计
         /// </summary>
-        Task<TemplateUsageStats> GetTemplateUsageStatsAsync(Guid templateId);
+        /// <param name="templateId">模板ID</param>
+        /// <param name="templateVersion">模板版本号，null表示查询所有版本</param>
+        Task<TemplateUsageStats> GetTemplateUsageStatsAsync(Guid templateId, int? templateVersion = null);
 
         /// <summary>
         /// 获取模板使用趋势
         /// </summary>
-        Task<List<TemplateUsageTrend>> GetTemplateUsageTrendAsync(Guid templateId, int daysBack = 30);
+        /// <param name="templateId">模板ID</param>
+        /// <param name="daysBack">查询天数</param>
+        /// <param name="templateVersion">模板版本号，null表示查询所有版本</param>
+        Task<List<TemplateUsageTrend>> GetTemplateUsageTrendAsync(Guid templateId, int daysBack = 30, int? templateVersion = null);
 
         /// <summary>
         /// 批量获取模板使用统计

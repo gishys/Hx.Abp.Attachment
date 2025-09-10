@@ -17,11 +17,12 @@ namespace Hx.Abp.Attachment.HttpApi
         /// 获取模板使用次数
         /// </summary>
         /// <param name="templateId">模板ID</param>
+        /// <param name="templateVersion">模板版本号，null表示查询所有版本</param>
         /// <returns>使用次数</returns>
         [HttpGet("usage-count/{templateId}")]
-        public async Task<int> GetTemplateUsageCountAsync(Guid templateId)
+        public async Task<int> GetTemplateUsageCountAsync(Guid templateId, [FromQuery] int? templateVersion = null)
         {
-            return await _templateUsageStatsAppService.GetTemplateUsageCountAsync(templateId);
+            return await _templateUsageStatsAppService.GetTemplateUsageCountAsync(templateId, templateVersion);
         }
 
         /// <summary>
@@ -40,11 +41,12 @@ namespace Hx.Abp.Attachment.HttpApi
         /// </summary>
         /// <param name="templateId">模板ID</param>
         /// <param name="daysBack">查询天数</param>
+        /// <param name="templateVersion">模板版本号，null表示查询所有版本</param>
         /// <returns>使用趋势</returns>
         [HttpGet("trend/{templateId}")]
-        public async Task<List<TemplateUsageTrendDto>> GetTemplateUsageTrendAsync(Guid templateId, [FromQuery] int daysBack = 30)
+        public async Task<List<TemplateUsageTrendDto>> GetTemplateUsageTrendAsync(Guid templateId, [FromQuery] int daysBack = 30, [FromQuery] int? templateVersion = null)
         {
-            return await _templateUsageStatsAppService.GetTemplateUsageTrendAsync(templateId, daysBack);
+            return await _templateUsageStatsAppService.GetTemplateUsageTrendAsync(templateId, daysBack, templateVersion);
         }
 
         /// <summary>

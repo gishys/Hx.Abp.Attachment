@@ -27,6 +27,9 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
                     tableBuilder.HasCheckConstraint("CK_ATTACH_CATALOGUE_TEMPLATES_TEMPLATE_PURPOSE",
                         "\"TEMPLATE_PURPOSE\" IN (1, 2, 3, 4, 99)");
+
+                    tableBuilder.HasCheckConstraint("CK_ATTACH_CATALOGUE_TEMPLATES_TEMPLATE_ROLE",
+                        "\"TEMPLATE_ROLE\" IN (1, 2, 3)");
                 });
             
             // 复合主键配置
@@ -60,6 +63,11 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
             builder.Property(d => d.TemplatePurpose).HasColumnName("TEMPLATE_PURPOSE")
                 .HasConversion<int>();
+
+            // 新增模板角色字段配置
+        builder.Property(d => d.TemplateRole).HasColumnName("TEMPLATE_ROLE")
+            .HasConversion<int>()
+            .HasDefaultValue(TemplateRole.Normal);
 
             builder.Property(d => d.TextVector).HasColumnName("TEXT_VECTOR")
                 .HasColumnType("double precision[]");
@@ -167,6 +175,10 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
             builder.HasIndex(e => e.TemplatePurpose)
                 .HasDatabaseName("IDX_ATTACH_CATALOGUE_TEMPLATES_PURPOSE")
+                .HasFilter("\"IS_DELETED\" = false");
+
+            builder.HasIndex(e => e.TemplateRole)
+                .HasDatabaseName("IDX_ATTACH_CATALOGUE_TEMPLATES_TEMPLATE_ROLE")
                 .HasFilter("\"IS_DELETED\" = false");
 
             builder.HasIndex(e => new { e.FacetType, e.TemplatePurpose })

@@ -73,6 +73,7 @@ namespace Hx.Abp.Attachment.Domain
                 isLatest: false,
                 facetType: baseTemplate.FacetType,
                 templatePurpose: baseTemplate.TemplatePurpose,
+                templateRole: baseTemplate.TemplateRole,
                 textVector: baseTemplate.TextVector
             );
 

@@ -101,6 +101,12 @@ namespace Hx.Abp.Attachment.Domain
         public virtual TemplatePurpose TemplatePurpose { get; private set; } = TemplatePurpose.Classification;
 
         /// <summary>
+        /// 模板角色 - 标识模板在层级结构中的角色
+        /// 主要用于前端树状展示和动态分类树创建判断
+        /// </summary>
+        public virtual TemplateRole TemplateRole { get; private set; } = TemplateRole.Normal;
+
+        /// <summary>
         /// 文本向量（64-2048维）
         /// </summary>
         [CanBeNull]
@@ -140,6 +146,7 @@ namespace Hx.Abp.Attachment.Domain
             bool isLatest = true,
             FacetType facetType = FacetType.General,
             TemplatePurpose templatePurpose = TemplatePurpose.Classification,
+            TemplateRole templateRole = TemplateRole.Normal,
             [CanBeNull] List<double>? textVector = null,
             [CanBeNull] string? description = null,
             [CanBeNull] List<string>? tags = null,
@@ -159,6 +166,7 @@ namespace Hx.Abp.Attachment.Domain
             IsLatest = isLatest;
             FacetType = facetType;
             TemplatePurpose = templatePurpose;
+            TemplateRole = templateRole;
             SetTextVector(textVector);
             Description = description;
             Tags = tags ?? [];
@@ -179,6 +187,7 @@ namespace Hx.Abp.Attachment.Domain
             [CanBeNull] string? workflowConfig,
             FacetType facetType,
             TemplatePurpose templatePurpose,
+            TemplateRole templateRole,
             [CanBeNull] string? description = null,
             [CanBeNull] List<string>? tags = null,
             [CanBeNull] List<MetaField>? metaFields = null,
@@ -192,6 +201,7 @@ namespace Hx.Abp.Attachment.Domain
             WorkflowConfig = workflowConfig;
             FacetType = facetType;
             TemplatePurpose = templatePurpose;
+            TemplateRole = templateRole;
             
             if (description != null)
             {
@@ -241,6 +251,7 @@ namespace Hx.Abp.Attachment.Domain
                 isLatest,
                 FacetType,
                 TemplatePurpose,
+                TemplateRole,
                 TextVector,
                 Description,
                 Tags,
@@ -1067,6 +1078,63 @@ namespace Hx.Abp.Attachment.Domain
         public override string ToString()
         {
             return $"{Id}_{Version}";
+        }
+
+        #endregion
+
+        #region 模板角色相关方法
+
+        /// <summary>
+        /// 获取模板完整分类描述
+        /// </summary>
+        /// <returns>完整的分类描述</returns>
+        public virtual string GetFullClassificationDescription()
+        {
+            return $"{TemplateRole} - {FacetType} - {TemplatePurpose}";
+        }
+
+        /// <summary>
+        /// 检查是否为根模板（可以作为根节点创建动态分类树）
+        /// </summary>
+        public virtual bool IsRootTemplate => TemplateRole == TemplateRole.Root;
+
+        /// <summary>
+        /// 检查是否为导航模板（仅用于导航，不参与动态分类树创建）
+        /// </summary>
+        public virtual bool IsNavigationTemplate => TemplateRole == TemplateRole.Navigation;
+
+        /// <summary>
+        /// 检查是否为普通模板（既不是根模板也不是导航模板）
+        /// </summary>
+        public virtual bool IsNormalTemplate => TemplateRole == TemplateRole.Normal;
+
+        /// <summary>
+        /// 检查是否可以参与动态分类树创建
+        /// </summary>
+        /// <returns>是否可以参与动态分类树创建</returns>
+        public virtual bool CanParticipateInDynamicTree()
+        {
+            return TemplateRole == TemplateRole.Root;
+        }
+
+        /// <summary>
+        /// 检查是否可以包含子模板
+        /// 根模板和普通模板都可以包含子模板，子模板的层级关系由父子关系决定
+        /// </summary>
+        /// <returns>是否可以包含子模板</returns>
+        public virtual bool CanContainChildTemplates()
+        {
+            return TemplateRole == TemplateRole.Root || TemplateRole == TemplateRole.Normal;
+        }
+
+        /// <summary>
+        /// 检查是否支持文件存储
+        /// 根据模板用途判断是否支持文件存储
+        /// </summary>
+        /// <returns>是否支持文件存储</returns>
+        public virtual bool SupportsFileStorage()
+        {
+            return TemplatePurpose == TemplatePurpose.Document;
         }
 
         #endregion

@@ -91,6 +91,11 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public TemplatePurpose TemplatePurpose { get; set; }
 
         /// <summary>
+        /// 模板角色 - 标识模板在层级结构中的角色
+        /// </summary>
+        public TemplateRole TemplateRole { get; set; }
+
+        /// <summary>
         /// 文本向量
         /// </summary>
         public List<double>? TextVector { get; set; }

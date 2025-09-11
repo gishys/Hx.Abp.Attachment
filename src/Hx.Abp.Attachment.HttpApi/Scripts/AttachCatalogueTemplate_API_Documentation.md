@@ -35,6 +35,7 @@
 | templatePath      | string                                 | 否   | 模板路径              | "0000001.0000002"                                    |
 | facetType         | FacetType                              | 是   | 分面类型              | 0                                                    |
 | templatePurpose   | TemplatePurpose                        | 是   | 模板用途              | 1                                                    |
+| templateRole      | TemplateRole                           | 是   | 模板角色              | 3                                                    |
 | textVector        | double[]                               | 否   | 文本向量              | null                                                 |
 | permissions       | AttachCatalogueTemplatePermissionDto[] | 否   | 权限配置              | []                                                   |
 | metaFields        | CreateUpdateMetaFieldDto[]             | 否   | 元数据字段            | []                                                   |
@@ -105,6 +106,12 @@
 -   4: 权限管理
 -   99: 其他用途
 
+**TemplateRole**:
+
+-   1: 根模板 - 可以作为根节点创建动态分类树
+-   2: 导航模板 - 仅用于导航，不参与动态分类树创建
+-   3: 普通模板 - 既不是根模板也不是导航模板的普通模板
+
 **PermissionAction**:
 
 -   1: 查看
@@ -147,6 +154,7 @@
     "templatePath": "0000001",
     "facetType": 0,
     "templatePurpose": 1,
+    "templateRole": 3,
     "textVector": null,
     "permissions": [
         {
@@ -246,7 +254,9 @@ const createTemplate = async (templateData) => {
                 sequenceNumber: 100,
                 isStatic: false,
                 facetType: 0, // 通用分面
-                templatePurpose: 1, // 分类管理
+                templatePurpose: 1,
+                templateRole: 3, // 分类管理
+                templateRole: 3, // 普通模板
                 permissions: [
                     {
                         id: null,
@@ -350,6 +360,7 @@ createTemplate();
 | attachReceiveType  | AttachReceiveType | 否   | 附件类型过滤         | 2                                      |
 | facetType          | FacetType         | 否   | 分面类型过滤         | 0                                      |
 | templatePurpose    | TemplatePurpose   | 否   | 模板用途过滤         | 1                                      |
+| templateRole       | TemplateRole      | 否   | 模板角色过滤         | 3                                      |
 | isRequired         | boolean           | 否   | 是否必收过滤         | true                                   |
 | isStatic           | boolean           | 否   | 是否静态过滤         | false                                  |
 | isLatest           | boolean           | 否   | 是否最新版本过滤     | true                                   |
@@ -371,6 +382,8 @@ const getTemplateList = async (params = {}) => {
                 name: '合同',
                 facetType: 0,
                 templatePurpose: 1,
+                templateRole: 3,
+                templateRole: 3,
                 isLatest: true,
                 skipCount: 0,
                 maxResultCount: 20,
@@ -555,6 +568,7 @@ const updateLatestTemplate = async (id, updateData) => {
                 isStatic: false,
                 facetType: 0,
                 templatePurpose: 1,
+                templateRole: 3,
             },
             {
                 headers: {
@@ -615,6 +629,7 @@ const updateTemplate = async (id, version, updateData) => {
                 isStatic: false,
                 facetType: 0,
                 templatePurpose: 1,
+                templateRole: 3,
             },
             {
                 headers: {
@@ -729,6 +744,7 @@ const deleteTemplate = async (id, version) => {
 | semanticQuery       | string              | 否   | 语义查询（向量检索）      | "合同文档"       |
 | facetType           | FacetType           | 否   | 分面类型过滤              | 0                |
 | templatePurpose     | TemplatePurpose     | 否   | 模板用途过滤              | 1                |
+| templateRole        | TemplateRole        | 否   | 模板角色过滤              | 3                |
 | tags                | string[]            | 否   | 标签过滤（精确匹配）      | ["合同", "法律"] |
 | onlyLatest          | boolean             | 否   | 是否只搜索最新版本        | true             |
 | maxResults          | int                 | 否   | 最大返回结果数（1-100）   | 20               |
@@ -757,6 +773,13 @@ const deleteTemplate = async (id, version) => {
             "description": "用于存储各类合同文档的模板",
             "tags": ["合同", "法律", "重要"],
             "facetType": 0,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
             "templatePurpose": 1,
             "totalScore": 0.95,
             "textScore": 0.8,
@@ -808,6 +831,7 @@ const searchTemplatesHybrid = async (searchParams) => {
                 semanticQuery: '合同文档',
                 facetType: 0,
                 templatePurpose: 1,
+                templateRole: 3,
                 tags: ['合同', '法律'],
                 onlyLatest: true,
                 maxResults: 20,
@@ -879,6 +903,13 @@ const searchTemplatesHybrid = async (searchParams) => {
             "templatePath": "0000001",
             "children": [],
             "facetType": 0,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
             "templatePurpose": 1,
             "textVector": [0.1, 0.2, 0.3],
             "vectorDimension": 3,
@@ -929,6 +960,13 @@ const searchTemplatesHybrid = async (searchParams) => {
             "templatePath": "0000001",
             "children": [],
             "facetType": 0,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
             "templatePurpose": 1,
             "textVector": null,
             "vectorDimension": 0,
@@ -1051,6 +1089,7 @@ getTemplateHistory(id).then((history) => {
 | keyword         | string          | 是   | 搜索关键词     | "合同"   |
 | facetType       | FacetType       | 否   | 分面类型过滤   | 0        |
 | templatePurpose | TemplatePurpose | 否   | 模板用途过滤   | 1        |
+| templateRole    | TemplateRole    | 否   | 模板角色过滤   | 3        |
 | tags            | string[]        | 否   | 标签过滤       | ["合同"] |
 | maxResults      | int             | 否   | 最大返回结果数 | 20       |
 
@@ -1103,6 +1142,7 @@ const searchTemplatesByText = async (keyword, filters = {}) => {
 | semanticQuery       | string          | 是   | 语义查询       | "合同文档" |
 | facetType           | FacetType       | 否   | 分面类型过滤   | 0          |
 | templatePurpose     | TemplatePurpose | 否   | 模板用途过滤   | 1          |
+| templateRole        | TemplateRole    | 否   | 模板角色过滤   | 3          |
 | similarityThreshold | double          | 否   | 相似度阈值     | 0.7        |
 | maxResults          | int             | 否   | 最大返回结果数 | 20         |
 
@@ -1154,6 +1194,7 @@ const searchTemplatesBySemantic = async (semanticQuery, filters = {}) => {
 | --------------- | --------------- | ---- | ------------------ | ------ |
 | facetType       | FacetType       | 否   | 分面类型过滤       | 0      |
 | templatePurpose | TemplatePurpose | 否   | 模板用途过滤       | 1      |
+| templateRole    | TemplateRole    | 否   | 模板角色过滤       | 3      |
 | includeChildren | boolean         | 否   | 是否包含子节点     | true   |
 | onlyLatest      | boolean         | 否   | 是否只返回最新版本 | true   |
 
@@ -1187,6 +1228,7 @@ const searchTemplatesBySemantic = async (semanticQuery, filters = {}) => {
 | children                      | AttachCatalogueTemplateDto[]           | 否   | 子模板集合            | 递归结构，同父级结构                     |
 | facetType                     | FacetType                              | 是   | 分面类型              | 0                                        |
 | templatePurpose               | TemplatePurpose                        | 是   | 模板用途              | 1                                        |
+| templateRole                  | TemplateRole                           | 是   | 模板角色              | 3                                        |
 | textVector                    | number[]                               | 否   | 文本向量              | [0.1, 0.2, 0.3, ...]                     |
 | vectorDimension               | number                                 | 是   | 向量维度              | 768                                      |
 | permissions                   | AttachCatalogueTemplatePermissionDto[] | 否   | 权限集合              | 见下方权限字段说明                       |
@@ -1276,6 +1318,9 @@ const searchTemplatesBySemantic = async (semanticQuery, filters = {}) => {
           "templatePath": "0000001.0000001",
           "children": [],
           "facetType": 0,
+      "templateRole": 3,
+        "templateRole": 3,
+          "templateRole": 3,
           "templatePurpose": 1,
           "textVector": [0.1, 0.2, 0.3],
           "vectorDimension": 768,
@@ -1313,6 +1358,7 @@ const searchTemplatesBySemantic = async (semanticQuery, filters = {}) => {
         }
       ],
       "facetType": 0,
+      "templateRole": 3,
       "templatePurpose": 1,
       "textVector": [0.1, 0.2, 0.3],
       "vectorDimension": 768,
@@ -1547,6 +1593,7 @@ const createNewVersion = async (templateId, templateData) => {
                 isStatic: false,
                 facetType: 0,
                 templatePurpose: 1,
+                templateRole: 3,
             },
             {
                 headers: {
@@ -1768,6 +1815,7 @@ const generateCatalogueFromTemplate = async (generateInput) => {
 | --------------- | --------------- | ---- | ------------------ | ------ |
 | facetType       | FacetType       | 否   | 分面类型           | 0      |
 | templatePurpose | TemplatePurpose | 否   | 模板用途           | 1      |
+| templateRole    | TemplateRole    | 否   | 模板角色           | 3      |
 | onlyLatest      | boolean         | 否   | 是否只返回最新版本 | true   |
 
 #### React Axios 调用示例
@@ -1935,6 +1983,7 @@ const getTemplatesByVectorDimension = async (
 | tags            | string[]        | 是   | 标签数组       | ["合同"] |
 | facetType       | FacetType       | 否   | 分面类型过滤   | 0        |
 | templatePurpose | TemplatePurpose | 否   | 模板用途过滤   | 1        |
+| templateRole    | TemplateRole    | 否   | 模板角色过滤   | 3        |
 | maxResults      | int             | 否   | 最大返回结果数 | 20       |
 
 #### React Axios 调用示例
@@ -2809,6 +2858,7 @@ updateMetaFieldsOrder('3fa85f64-5717-4562-b3fc-2c963f66afa6', fieldKeys);
 | isLatest             | boolean         | 是   | 是否为最新版本 | true                                   |
 | facetType            | FacetType       | 是   | 分面类型       | 0                                      |
 | templatePurpose      | TemplatePurpose | 是   | 模板用途       | 1                                      |
+| templateRole         | TemplateRole    | 是   | 模板角色       | 3                                      |
 | creationTime         | string          | 是   | 创建时间       | "2024-01-01T00:00:00Z"                 |
 | lastModificationTime | string          | 否   | 最后修改时间   | "2024-01-01T00:00:00Z"                 |
 
@@ -2861,6 +2911,14 @@ updateMetaFieldsOrder('3fa85f64-5717-4562-b3fc-2c963f66afa6', fieldKeys);
                     "templatePath": "0000001.0000001",
                     "children": [],
                     "facetType": 0,
+                    "templateRole": 3,
+                    "templateRole": 3,
+                    "templateRole": 3,
+                    "templateRole": 3,
+                    "templateRole": 3,
+                    "templateRole": 3,
+                    "templateRole": 3,
+                    "templateRole": 3,
                     "templatePurpose": 1,
                     "textVector": [0.1, 0.2, 0.3],
                     "vectorDimension": 768,
@@ -2878,6 +2936,13 @@ updateMetaFieldsOrder('3fa85f64-5717-4562-b3fc-2c963f66afa6', fieldKeys);
                 }
             ],
             "facetType": 0,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
             "templatePurpose": 1,
             "textVector": [0.1, 0.2, 0.3],
             "vectorDimension": 768,
@@ -2910,6 +2975,13 @@ updateMetaFieldsOrder('3fa85f64-5717-4562-b3fc-2c963f66afa6', fieldKeys);
             "templatePath": "0000001",
             "children": [],
             "facetType": 0,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
             "templatePurpose": 1,
             "textVector": [0.1, 0.2, 0.3],
             "vectorDimension": 768,
@@ -2933,6 +3005,8 @@ updateMetaFieldsOrder('3fa85f64-5717-4562-b3fc-2c963f66afa6', fieldKeys);
         "version": 2,
         "isLatest": true,
         "facetType": 0,
+        "templateRole": 3,
+        "templateRole": 3,
         "templatePurpose": 1,
         "creationTime": "2024-01-01T00:00:00Z",
         "lastModificationTime": "2024-01-15T10:30:00Z"
@@ -2945,6 +3019,13 @@ updateMetaFieldsOrder('3fa85f64-5717-4562-b3fc-2c963f66afa6', fieldKeys);
             "version": 1,
             "isLatest": false,
             "facetType": 0,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
+            "templateRole": 3,
             "templatePurpose": 1,
             "creationTime": "2024-01-01T00:00:00Z",
             "lastModificationTime": "2024-01-10T15:20:00Z"
@@ -2957,6 +3038,8 @@ updateMetaFieldsOrder('3fa85f64-5717-4562-b3fc-2c963f66afa6', fieldKeys);
         "version": 2,
         "isLatest": true,
         "facetType": 0,
+        "templateRole": 3,
+        "templateRole": 3,
         "templatePurpose": 1,
         "creationTime": "2024-01-01T00:00:00Z",
         "lastModificationTime": "2024-01-15T10:30:00Z"
@@ -3038,4 +3121,3 @@ const getTemplateStructure = async (id, includeHistory = false) => {
 -   **最后更新**: 2025-09-10
 -   **维护人员**: 开发团队
 -   **更新内容**: 新增 16 个接口（版本管理、模板标识查询、搜索增强、路径管理等）
-

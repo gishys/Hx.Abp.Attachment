@@ -87,6 +87,12 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public TemplatePurpose TemplatePurpose { get; set; } = TemplatePurpose.Classification;
 
         /// <summary>
+        /// 模板角色 - 标识模板在层级结构中的角色
+        /// 主要用于前端树状展示和动态分类树创建判断
+        /// </summary>
+        public TemplateRole TemplateRole { get; set; } = TemplateRole.Normal;
+
+        /// <summary>
         /// 文本向量
         /// </summary>
         public List<double>? TextVector { get; set; }

@@ -1,7 +1,6 @@
 using Hx.Abp.Attachment.Application.Contracts;
 using Hx.Abp.Attachment.Domain;
 using Microsoft.Extensions.Logging;
-using System.Linq;
 using Volo.Abp;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Guids;
@@ -103,6 +102,7 @@ namespace Hx.Abp.Attachment.Application
                     true, // isLatest
                     baseTemplate.FacetType,
                     baseTemplate.TemplatePurpose,
+                    baseTemplate.TemplateRole,
                     baseTemplate.TextVector,
                     baseTemplate.Description,
                     baseTemplate.Tags,

@@ -116,8 +116,18 @@ namespace Hx.Abp.Attachment.Application
                     throw new UserFriendlyException("模板名称不能为空");
                 }
 
+                // 验证父级ID和版本的一致性
+                if (input.ParentId.HasValue && !input.ParentVersion.HasValue)
+                {
+                    throw new UserFriendlyException("指定了父模板ID时必须同时指定父模板版本");
+                }
+                if (!input.ParentId.HasValue && input.ParentVersion.HasValue)
+                {
+                    throw new UserFriendlyException("指定了父模板版本时必须同时指定父模板ID");
+                }
+
                 // 检查模板名称是否已存在（同级比较）
-                var nameExists = await _templateRepository.ExistsByNameAsync(input.Name, input.ParentId);
+                var nameExists = await _templateRepository.ExistsByNameAsync(input.Name, input.ParentId, input.ParentVersion);
                 if (nameExists)
                 {
                     var scope = input.ParentId.HasValue ? "同级" : "根节点";
@@ -251,7 +261,7 @@ namespace Hx.Abp.Attachment.Application
                 // 检查模板名称是否已存在（同级比较，排除当前模板）
                 if (template.TemplateName != input.Name)
                 {
-                    var nameExists = await _templateRepository.ExistsByNameAsync(input.Name, input.ParentId, id);
+                    var nameExists = await _templateRepository.ExistsByNameAsync(input.Name, input.ParentId, input.ParentVersion, id);
                     if (nameExists)
                     {
                         var scope = input.ParentId.HasValue ? "同级" : "根节点";
@@ -550,7 +560,7 @@ namespace Hx.Abp.Attachment.Application
         private async Task BuildTemplateTreeWithChildren(AttachCatalogueTemplateDto templateDto, AttachCatalogueTemplate template)
         {
             // 获取子模板
-            var children = await _templateRepository.GetChildrenAsync(template.Id);
+            var children = await _templateRepository.GetChildrenAsync(template.Id, template.Version);
             
             if (children.Count != 0)
             {
@@ -636,7 +646,7 @@ namespace Hx.Abp.Attachment.Application
 
         private async Task CopyChildrenStructureAsync(AttachCatalogueTemplate source, AttachCatalogueTemplate target)
         {
-            var children = await _templateRepository.GetChildrenAsync(source.Id, false);
+            var children = await _templateRepository.GetChildrenAsync(source.Id, source.Version, false);
             foreach (var child in children)
             {
                 var newChild = new AttachCatalogueTemplate(

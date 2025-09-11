@@ -85,7 +85,7 @@ namespace Hx.Abp.Attachment.Domain
 
         private async Task CopyTemplateChildrenAsync(AttachCatalogueTemplate source, AttachCatalogueTemplate target)
         {
-            var children = await _templateRepository.GetChildrenAsync(source.Id, false);
+            var children = await _templateRepository.GetChildrenAsync(source.Id, source.Version, false);
             foreach (var child in children)
             {
                 await CreateTemplateVersionAsync(child, target.Id);
@@ -135,10 +135,10 @@ namespace Hx.Abp.Attachment.Domain
             }
 
             await _catalogueRepository.InsertAsync(catalogue);
-            
+
             // 将创建的分类添加到缓存中，供后续子分类查询使用
             _createdCataloguesCache[catalogue.Id] = catalogue;
-            
+
             return catalogue;
         }
 
@@ -160,8 +160,8 @@ namespace Hx.Abp.Attachment.Domain
             // 查询数据库中相同父模板下已存在的最大序号
             var existingCatalogues = await _catalogueRepository.GetQueryableAsync();
             var maxSequenceNumber = existingCatalogues
-                .Where(c => c.TemplateId == templateId && 
-                           c.TemplateVersion == templateVersion && 
+                .Where(c => c.TemplateId == templateId &&
+                           c.TemplateVersion == templateVersion &&
                            c.ParentId == parentId)
                 .Max(c => (int?)c.SequenceNumber);
 
@@ -184,7 +184,7 @@ namespace Hx.Abp.Attachment.Domain
             {
                 // 有父级：优先从缓存中获取父级分类，如果缓存中没有则从数据库查询
                 AttachCatalogue? parentCatalogue = null;
-                
+
                 if (_createdCataloguesCache.TryGetValue(parentId.Value, out AttachCatalogue? value))
                 {
                     parentCatalogue = value;
@@ -193,7 +193,7 @@ namespace Hx.Abp.Attachment.Domain
                 {
                     parentCatalogue = await _catalogueRepository.GetAsync(parentId.Value);
                 }
-                
+
                 if (parentCatalogue != null)
                 {
                     // 检查缓存中是否已有该父级下的路径
@@ -311,7 +311,7 @@ namespace Hx.Abp.Attachment.Domain
             int referenceType,
             Dictionary<string, object>? contextData)
         {
-            var children = await _templateRepository.GetChildrenAsync(parentTemplate.Id);
+            var children = await _templateRepository.GetChildrenAsync(parentTemplate.Id, parentTemplate.Version);
 
             foreach (var childTemplate in children)
             {

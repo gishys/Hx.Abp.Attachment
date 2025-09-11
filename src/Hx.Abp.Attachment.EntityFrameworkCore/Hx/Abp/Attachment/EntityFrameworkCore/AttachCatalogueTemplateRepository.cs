@@ -863,10 +863,13 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             return matchedTemplates;
         }
 
-        public async Task<List<AttachCatalogueTemplate>> GetChildrenAsync(Guid parentId, bool onlyLatest = true)
+        public async Task<List<AttachCatalogueTemplate>> GetChildrenAsync(Guid parentId, int parentVersion, bool onlyLatest = true)
         {
             var queryable = (await GetDbSetAsync())
                 .Where(t => t.ParentId == parentId);
+
+            // 如果指定了父版本，则必须匹配父版本
+            queryable = queryable.Where(t => t.ParentVersion == parentVersion);
 
             if (onlyLatest)
             {
@@ -2609,8 +2612,12 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             {
                 if (template.ParentId.HasValue && templateDict.TryGetValue(template.ParentId.Value, out var parent))
                 {
-                    // 如果父节点的Children为null，跳过添加（这种情况应该很少见）
-                    parent.Children?.Add(template);
+                    // 额外保险：确保子模板的ParentId和ParentVersion都与父模板匹配
+                    if (template.ParentId == parent.Id && template.ParentVersion == parent.Version)
+                    {
+                        // 如果父节点的Children为null，跳过添加（这种情况应该很少见）
+                        parent.Children?.Add(template);
+                    }
                 }
             }
 
@@ -2864,7 +2871,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         /// 如果不存在父节点，则比对根节点是否存在相同名称的模板
         /// 如果存在父节点，则检查相同父节点下是否存在相同名称的模板
         /// </summary>
-        public async Task<bool> ExistsByNameAsync(string templateName, Guid? parentId = null, Guid? excludeId = null)
+        public async Task<bool> ExistsByNameAsync(string templateName, Guid? parentId = null, int? parentVersion = null, Guid? excludeId = null)
         {
             try
             {
@@ -2876,6 +2883,12 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 {
                     // 有父节点：检查同一父节点下的同级模板
                     query = query.Where(t => t.ParentId == parentId.Value);
+                    
+                    // 如果指定了父版本，则必须匹配父版本
+                    if (parentVersion.HasValue)
+                    {
+                        query = query.Where(t => t.ParentVersion == parentVersion.Value);
+                    }
                 }
                 else
                 {

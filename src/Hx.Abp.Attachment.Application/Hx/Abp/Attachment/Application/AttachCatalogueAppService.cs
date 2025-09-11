@@ -1,12 +1,15 @@
 using Hx.Abp.Attachment.Application.Contracts;
+using Hx.Abp.Attachment.Application.Utils;
 using Hx.Abp.Attachment.Domain;
 using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Volo.Abp;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.DistributedLocking;
+using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Uow;
 
 namespace Hx.Abp.Attachment.Application
@@ -17,13 +20,18 @@ namespace Hx.Abp.Attachment.Application
         IConfiguration configuration,
         IBlobContainerFactory blobContainerFactory,
         IEfCoreAttachFileRepository efCoreAttachFileRepository,
-        IAbpDistributedLock distributedLock) : AttachmentService, IAttachCatalogueAppService
+        IAbpDistributedLock distributedLock,
+        OcrService ocrService,
+        IAttachCatalogueTemplateRepository templateRepository
+        ) : AttachmentService, IAttachCatalogueAppService
     {
         private readonly IEfCoreAttachCatalogueRepository CatalogueRepository = catalogueRepository;
         private readonly IBlobContainer BlobContainer = blobContainerFactory.Create("attachment");
         private readonly IConfiguration Configuration = configuration;
         private readonly IEfCoreAttachFileRepository EfCoreAttachFileRepository = efCoreAttachFileRepository;
         private readonly IAbpDistributedLock DistributedLock = distributedLock;
+        private readonly OcrService OcrService = ocrService;
+        private readonly IAttachCatalogueTemplateRepository TemplateRepository = templateRepository;
         /// <summary>
         /// 创建文件夹
         /// </summary>
@@ -708,35 +716,57 @@ namespace Hx.Abp.Attachment.Application
         /// <summary>
         /// 创建文件(区分pdf计算页数完)，文件存储要有结构
         /// </summary>
-        /// <param name="id"></param>
-        /// <param name="input"></param>
-        /// <returns></returns>
+        /// <param name="id">分类ID</param>
+        /// <param name="inputs">文件创建输入</param>
+        /// <param name="prefix">文件前缀路径</param>
+        /// <returns>创建的文件信息列表</returns>
         /// <exception cref="BusinessException"></exception>
         public virtual async Task<List<AttachFileDto>> CreateFilesAsync(Guid? id, List<AttachFileCreateDto> inputs, string? prefix = null)
         {
             using var uow = UnitOfWorkManager.Begin();
-            CreateAttachFileCatalogueInfo? catalogue = null;
+            AttachCatalogue? catalogue = null;
+            AttachCatalogueTemplate? template = null;
+            WorkflowConfig? workflowConfig = null;
+
             if (id.HasValue)
             {
-                catalogue = await CatalogueRepository.ByIdMaxSequenceAsync(id.Value);
+                catalogue = await CatalogueRepository.GetAsync(id.Value);
+                
+                // 获取分类关联的模板信息
+                if (catalogue != null && catalogue.TemplateId.HasValue)
+                {
+                    template = await TemplateRepository.GetByVersionAsync(catalogue.TemplateId.Value, catalogue.TemplateVersion ?? 1);
+                    
+                    // 解析工作流配置
+                    if (template != null && !string.IsNullOrEmpty(template.WorkflowConfig))
+                    {
+                        workflowConfig = WorkflowConfig.ParseFromJson(template.WorkflowConfig, WorkflowConfig.GetOptions());
+                    }
+                }
             }
+
             var result = new List<AttachFileDto>();
             var entitys = new List<AttachFile>();
+            
             if (inputs.Count > 0)
             {
                 foreach (var input in inputs)
                 {
                     var attachId = GuidGenerator.Create();
                     string fileExtension = Path.GetExtension(input.FileAlias).ToLowerInvariant();
+                    
+                    // 处理TIFF文件转换
                     if (fileExtension == ".tif" || fileExtension == ".tiff")
                     {
                         input.DocumentContent = await ImageHelper.ConvertTiffToImage(input.DocumentContent);
                         fileExtension = ".jpeg";
                         input.FileAlias = $"{Path.GetFileNameWithoutExtension(input.FileAlias)}{fileExtension}";
                     }
+                    
                     var tempSequenceNumber = catalogue == null ? 0 : catalogue.SequenceNumber;
                     var fileName = $"{attachId}{fileExtension}";
                     var fileUrl = "";
+                    
                     if (catalogue != null)
                     {
                         fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{catalogue.Reference}/{fileName}";
@@ -745,6 +775,7 @@ namespace Hx.Abp.Attachment.Application
                     {
                         fileUrl = $"{prefix ?? "uploads"}/{fileName}";
                     }
+                    
                     var tempFile = new AttachFile(
                         attachId,
                         input.FileAlias,
@@ -755,8 +786,12 @@ namespace Hx.Abp.Attachment.Application
                         input.DocumentContent.Length,
                         0,
                         catalogue?.Id);
+                    
+                    // 保存文件到存储
                     await BlobContainer.SaveAsync(fileUrl, input.DocumentContent, overrideExisting: true);
+                    
                     entitys.Add(tempFile);
+                    
                     var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{fileUrl}";
                     var retFile = new AttachFileDto()
                     {
@@ -772,7 +807,67 @@ namespace Hx.Abp.Attachment.Application
                     };
                     result.Add(retFile);
                 }
+                
+                // 批量插入文件实体
                 await EfCoreAttachFileRepository.InsertManyAsync(entitys);
+                
+                // 文件入库后，检查是否需要OCR识别
+                if (workflowConfig != null && workflowConfig.IsOcrEnabled())
+                {
+                    var ocrConfig = workflowConfig.GetOcrConfigOrDefault();
+                    
+                    foreach (var file in entitys)
+                    {
+                        // 检查文件是否支持OCR
+                        if (ocrConfig.IsFileSupportedForOcr(file.FileType, file.FileSize))
+                        {
+                            try
+                            {
+                                // 执行OCR识别
+                                var ocrResult = await OcrService.ProcessFileAsync(file.Id);
+                                
+                                // 更新文件的OCR状态和内容
+                                if (ocrResult.IsSuccess && !string.IsNullOrEmpty(ocrResult.ExtractedText))
+                                {
+                                    file.SetOcrContent(ocrResult.ExtractedText);
+                                    file.SetOcrProcessStatus(OcrProcessStatus.Completed);
+                                    
+                                    // 更新文件实体到数据库
+                                    await EfCoreAttachFileRepository.UpdateAsync(file);
+                                }
+                                else
+                                {
+                                    file.SetOcrProcessStatus(OcrProcessStatus.Failed);
+                                    await EfCoreAttachFileRepository.UpdateAsync(file);
+                                    Logger.LogWarning("文件 {FileName} OCR识别失败: {ErrorMessage}", 
+                                        file.FileName, ocrResult.ErrorMessage);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                file.SetOcrProcessStatus(OcrProcessStatus.Failed);
+                                await EfCoreAttachFileRepository.UpdateAsync(file);
+                                Logger.LogError(ex, "文件 {FileName} OCR识别异常", file.FileName);
+                            }
+                        }
+                        else
+                        {
+                            // 不需要OCR识别，设置为跳过状态
+                            file.SetOcrProcessStatus(OcrProcessStatus.Skipped);
+                            await EfCoreAttachFileRepository.UpdateAsync(file);
+                        }
+                    }
+                }
+                else
+                {
+                    // 没有OCR配置，将所有文件设置为跳过状态
+                    foreach (var file in entitys)
+                    {
+                        file.SetOcrProcessStatus(OcrProcessStatus.Skipped);
+                        await EfCoreAttachFileRepository.UpdateAsync(file);
+                    }
+                }
+                
                 await uow.CompleteAsync();
                 return result;
             }
@@ -781,6 +876,7 @@ namespace Hx.Abp.Attachment.Application
                 throw new BusinessException(message: "没有查询到分类！");
             }
         }
+
         private async Task<List<AttachFile>> CreateFiles(AttachCatalogue catalogue, List<AttachFileCreateDto> inputs)
         {
             var entitys = new List<AttachFile>();

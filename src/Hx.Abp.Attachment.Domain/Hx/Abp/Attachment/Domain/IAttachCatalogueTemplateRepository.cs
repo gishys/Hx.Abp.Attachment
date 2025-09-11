@@ -6,7 +6,7 @@ namespace Hx.Abp.Attachment.Domain
     public interface IAttachCatalogueTemplateRepository : IRepository<AttachCatalogueTemplate>
     {
         Task<List<AttachCatalogueTemplate>> FindByRuleMatchAsync(Dictionary<string, object> context, bool onlyLatest = true);
-        Task<List<AttachCatalogueTemplate>> GetChildrenAsync(Guid parentId, bool onlyLatest = true);
+        Task<List<AttachCatalogueTemplate>> GetChildrenAsync(Guid parentId, int parentVersion, bool onlyLatest = true);
         Task<List<AttachCatalogueTemplate>> GetChildrenByParentAsync(Guid parentId, int parentVersion, bool onlyLatest = true);
 
         // 新增版本相关方法
@@ -38,7 +38,7 @@ namespace Hx.Abp.Attachment.Domain
             bool onlyLatest = true);
 
         // 新增向量相关查询方法
-        Task<bool> ExistsByNameAsync(string templateName, Guid? parentId = null, Guid? excludeId = null);
+        Task<bool> ExistsByNameAsync(string templateName, Guid? parentId = null, int? parentVersion = null, Guid? excludeId = null);
         Task<List<AttachCatalogueTemplate>> FindSimilarTemplatesAsync(
             string semanticQuery,
             double similarityThreshold = 0.7,

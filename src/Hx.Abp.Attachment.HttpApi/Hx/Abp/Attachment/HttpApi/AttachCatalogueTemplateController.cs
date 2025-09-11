@@ -22,10 +22,11 @@ namespace Hx.Abp.Attachment.HttpApi
         /// <returns>模板信息，如果包含树形结构则返回完整的树</returns>
         [HttpGet("{id}")]
         public virtual Task<AttachCatalogueTemplateDto> GetAsync(
-            Guid id, 
-            [FromQuery] bool includeTreeStructure = false)
+            Guid id,
+            [FromQuery] bool includeTreeStructure = false,
+            [FromQuery] bool returnRoot = false)
         {
-            return AttachCatalogueTemplateAppService.GetAsync(id, includeTreeStructure);
+            return AttachCatalogueTemplateAppService.GetAsync(id, includeTreeStructure, returnRoot);
         }
 
 

@@ -895,19 +895,18 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .OrderBy(t => t.SequenceNumber)
                 .ToListAsync();
         }
-
         /// <summary>
         /// 获取指定模板的最新版本
         /// </summary>
         /// <param name="templateId">模板ID</param>
         /// <param name="includeTreeStructure">是否返回树形结构（包含所有相关节点）</param>
         /// <returns>最新版本的模板，如果包含树形结构则返回完整的树</returns>
-        public async Task<AttachCatalogueTemplate?> GetLatestVersionAsync(Guid templateId, bool includeTreeStructure = false)
+        public async Task<AttachCatalogueTemplate?> GetAsync(Guid templateId, bool includeTreeStructure = false, bool returnRoot = false)
         {
             try
             {
                 var dbSet = await GetDbSetAsync();
-                
+
                 // 获取最新版本的模板
                 var latestTemplate = await dbSet
                     .Where(t => t.Id == templateId && t.IsLatest && !t.IsDeleted)
@@ -923,25 +922,87 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 // 如果不包含树形结构，直接返回单个模板
                 if (!includeTreeStructure)
                 {
-                    Logger.LogDebug("获取模板最新版本成功：ID={templateId}, Version={version}", 
+                    Logger.LogDebug("获取模板最新版本成功：ID={templateId}, Version={version}",
                         templateId, latestTemplate.Version);
                     return latestTemplate;
                 }
 
                 // 包含树形结构：获取所有相关节点
-                var allRelatedNodes = await GetAllNodesFromTemplateAsync(
-                    templateId, 
-                    latestTemplate.Version, 
-                    includeDescendants: true, 
-                    onlyLatest: true);
-
+                var allRelatedNodes = await GetAllNodesFromTemplateAsync(latestTemplate, onlyLatest: true);
+                if (allRelatedNodes == null || allRelatedNodes.Count == 0)
+                {
+                    Logger.LogWarning("未找到模板的相关节点：ID={templateId}, Version={version}",
+                        templateId, latestTemplate.Version);
+                    return latestTemplate; // 返回最新模板本身
+                }
                 // 构建树形结构
                 var treeStructure = BuildTreeFromPath(allRelatedNodes, onlyLatest: true);
-                
+                if (returnRoot)
+                {
+                    return treeStructure.FirstOrDefault(t => t.ParentId == null);
+                }
                 // 找到并返回目标节点（保持树形结构）
                 var targetNode = FindNodeInTree(treeStructure, templateId, latestTemplate.Version);
-                
-                Logger.LogInformation("获取模板最新版本及树形结构成功：ID={templateId}, Version={version}, 相关节点数={nodeCount}", 
+
+                Logger.LogInformation("获取模板最新版本及树形结构成功：ID={templateId}, Version={version}, 相关节点数={nodeCount}",
+                    templateId, latestTemplate.Version, allRelatedNodes.Count);
+
+                return targetNode;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取模板最新版本失败：ID={templateId}", templateId);
+                return null;
+            }
+        }
+        /// <summary>
+        /// 获取指定模板的最新版本
+        /// </summary>
+        /// <param name="templateId">模板ID</param>
+        /// <param name="includeTreeStructure">是否返回树形结构（包含所有相关节点）</param>
+        /// <returns>最新版本的模板，如果包含树形结构则返回完整的树</returns>
+        public async Task<AttachCatalogueTemplate?> GetLatestVersionAsync(Guid templateId, bool includeTreeStructure = false)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+
+                // 获取最新版本的模板
+                var latestTemplate = await dbSet
+                    .Where(t => t.Id == templateId && t.IsLatest && !t.IsDeleted)
+                    .OrderByDescending(t => t.Version)
+                    .FirstOrDefaultAsync();
+
+                if (latestTemplate == null)
+                {
+                    Logger.LogWarning("未找到模板的最新版本：ID={templateId}", templateId);
+                    return null;
+                }
+
+                // 如果不包含树形结构，直接返回单个模板
+                if (!includeTreeStructure)
+                {
+                    Logger.LogDebug("获取模板最新版本成功：ID={templateId}, Version={version}",
+                        templateId, latestTemplate.Version);
+                    return latestTemplate;
+                }
+
+                // 包含树形结构：获取所有相关节点
+                var allRelatedNodes = await GetAllNodesFromTemplateAsync(latestTemplate, onlyLatest: true);
+
+                if (allRelatedNodes == null || allRelatedNodes.Count == 0)
+                {
+                    Logger.LogWarning("未找到模板的相关节点：ID={templateId}, Version={version}",
+                        templateId, latestTemplate.Version);
+                    return latestTemplate; // 返回最新模板本身
+                }
+                // 构建树形结构
+                var treeStructure = BuildTreeFromPath(allRelatedNodes, onlyLatest: true);
+
+                // 找到并返回目标节点（保持树形结构）
+                var targetNode = FindNodeInTree(treeStructure, templateId, latestTemplate.Version);
+
+                Logger.LogInformation("获取模板最新版本及树形结构成功：ID={templateId}, Version={version}, 相关节点数={nodeCount}",
                     templateId, latestTemplate.Version, allRelatedNodes.Count);
 
                 return targetNode;
@@ -3303,11 +3364,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 return [string.Empty];
 
             var pathSegments = templatePath.Split('.');
-            var parentPaths = new List<string>
-            {
-                // 添加根节点路径
-                string.Empty
-            };
+            var parentPaths = new List<string>();
             
             // 添加所有层级的路径
             for (int i = 1; i <= pathSegments.Length; i++)
@@ -3327,91 +3384,36 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         /// <param name="includeDescendants">是否包含后代节点</param>
         /// <param name="onlyLatest">是否只获取最新版本</param>
         /// <returns>从指定节点出发的所有相关节点</returns>
-        public async Task<List<AttachCatalogueTemplate>> GetAllNodesFromTemplateAsync(
-            Guid templateId, 
-            int templateVersion, 
-            bool includeDescendants = true, 
+        public async Task<List<AttachCatalogueTemplate>?> GetAllNodesFromTemplateAsync(
+            AttachCatalogueTemplate startTemplate,
             bool onlyLatest = true)
         {
             try
             {
                 var dbSet = await GetDbSetAsync();
-                
-                // 获取起始节点
-                var startTemplate = await dbSet.FindAsync(templateId, templateVersion);
-                if (startTemplate == null)
+                string? rootPath = startTemplate.TemplatePath?.Split('.').FirstOrDefault() ?? string.Empty;
+                if (string.IsNullOrEmpty(rootPath))
                 {
-                    Logger.LogWarning("未找到指定的模板节点：ID={templateId}, Version={templateVersion}", 
-                        templateId, templateVersion);
-                    return [];
+                    return null;
                 }
-
-                var allPaths = new HashSet<string>();
-                
-                if (!string.IsNullOrEmpty(startTemplate.TemplatePath))
-                {
-                    // 获取所有父级路径
-                    var parentPaths = GetAllParentPaths(startTemplate.TemplatePath);
-                    foreach (var path in parentPaths)
-                    {
-                        allPaths.Add(path);
-                    }
-
-                    if (includeDescendants)
-                    {
-                        // 获取所有后代路径（以当前路径为前缀的所有路径）
-                        var descendantPaths = await dbSet
-                            .Where(t => !t.IsDeleted && 
-                                       t.TemplatePath != null &&
-                                       t.TemplatePath.StartsWith(startTemplate.TemplatePath + "."))
-                            .Select(t => t.TemplatePath!)
-                            .Distinct()
-                            .ToListAsync();
-                        
-                        foreach (var path in descendantPaths)
-                        {
-                            allPaths.Add(path);
-                        }
-                    }
-                }
-                else
-                {
-                    // 根节点：获取所有路径
-                    allPaths.Add(string.Empty);
-                    
-                    if (includeDescendants)
-                    {
-                        var allTemplatePaths = await dbSet
-                            .Where(t => !t.IsDeleted && t.TemplatePath != null)
-                            .Select(t => t.TemplatePath!)
-                            .Distinct()
-                            .ToListAsync();
-                        
-                        foreach (var path in allTemplatePaths)
-                        {
-                            allPaths.Add(path);
-                        }
-                    }
-                }
-
                 // 查询所有相关节点
                 var allNodes = await dbSet
-                    .Where(t => !t.IsDeleted && 
+                    .Where(t => !t.IsDeleted &&
                                (!onlyLatest || t.IsLatest) &&
-                               (t.TemplatePath == null || t.TemplatePath == string.Empty || allPaths.Contains(t.TemplatePath)))
+                               (t.TemplatePath != null && (t.TemplatePath == rootPath || t.TemplatePath.StartsWith(rootPath + "."))))
                     .OrderBy(t => t.TemplatePath)
                     .ThenBy(t => t.SequenceNumber)
                     .ToListAsync();
 
-                Logger.LogInformation("从模板节点 {templateId}:{templateVersion} 获取到 {count} 个相关节点", 
-                    templateId, templateVersion, allNodes.Count);
+                Logger.LogInformation("从模板节点 {templateId}:{templateVersion} 获取到 {count} 个相关节点",
+                    startTemplate.Id, startTemplate.Version, allNodes.Count);
 
                 return allNodes;
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "获取模板节点相关节点失败：ID={templateId}, Version={templateVersion}", 
-                    templateId, templateVersion);
+                Logger.LogError(ex, "获取模板节点相关节点失败：ID={templateId}, Version={templateVersion}",
+                    startTemplate.Id, startTemplate.Version);
                 return [];
             }
         }

@@ -51,6 +51,7 @@ namespace Hx.Abp.Attachment.Domain
 
         // 新增统计方法
         Task<TemplateStatistics> GetTemplateStatisticsAsync();
+        Task<AttachCatalogueTemplate?> GetAsync(Guid templateId, bool includeTreeStructure = false, bool returnRoot = false);
 
         #region 配置维护方法
 

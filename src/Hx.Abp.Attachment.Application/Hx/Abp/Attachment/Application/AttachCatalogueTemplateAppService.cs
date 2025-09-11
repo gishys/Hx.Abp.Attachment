@@ -30,14 +30,14 @@ namespace Hx.Abp.Attachment.Application
         /// <param name="id">模板ID</param>
         /// <param name="includeTreeStructure">是否包含树形结构（默认false，保持向后兼容）</param>
         /// <returns>模板信息，如果包含树形结构则返回完整的树</returns>
-        public async Task<AttachCatalogueTemplateDto> GetAsync(Guid id, bool includeTreeStructure = false)
+        public async Task<AttachCatalogueTemplateDto> GetAsync(Guid id, bool includeTreeStructure = false, bool returnRoot = false)
         {
             try
             {
                 _logger.LogInformation("获取模板：ID={id}, 包含树形结构={includeTreeStructure}", id, includeTreeStructure);
-                
-                var template = await _templateRepository.GetLatestVersionAsync(id, includeTreeStructure);
-                
+
+                var template = await _templateRepository.GetAsync(id, includeTreeStructure, returnRoot);
+
                 if (template == null)
                 {
                     _logger.LogWarning("未找到模板：ID={id}", id);
@@ -45,10 +45,10 @@ namespace Hx.Abp.Attachment.Application
                 }
 
                 var result = ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(template);
-                
-                _logger.LogInformation("获取模板成功：ID={id}, Version={version}, 包含树形结构={includeTreeStructure}", 
+
+                _logger.LogInformation("获取模板成功：ID={id}, Version={version}, 包含树形结构={includeTreeStructure}",
                     id, template.Version, includeTreeStructure);
-                
+
                 return result;
             }
             catch (UserFriendlyException)

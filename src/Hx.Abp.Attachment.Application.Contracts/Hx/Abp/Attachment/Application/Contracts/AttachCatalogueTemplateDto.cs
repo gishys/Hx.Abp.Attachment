@@ -77,7 +77,6 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 子模板集合
         /// </summary>
-        [JsonIgnore]
         public List<AttachCatalogueTemplateDto> Children { get; set; } = [];
 
         /// <summary>

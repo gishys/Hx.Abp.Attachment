@@ -29,7 +29,9 @@ namespace Hx.Abp.Attachment.Domain
             AttachCatalogueTemplate template,
             string reference,
             int referenceType,
-            Dictionary<string, object>? contextData = null)
+            Dictionary<string, object>? contextData = null,
+            string? customTemplateName = null,
+            List<MetaField>? customMetaFields = null)
         {
             // 清空缓存，开始新的模板生成过程
             _sequenceNumberCache.Clear();
@@ -48,7 +50,7 @@ namespace Hx.Abp.Attachment.Domain
                 }
             }
 
-            var rootCatalogue = await CreateCatalogueFromTemplate(template, null, reference, referenceType, contextData);
+            var rootCatalogue = await CreateCatalogueFromTemplate(template, null, reference, referenceType, contextData, customTemplateName, customMetaFields);
             await CreateChildCatalogues(template, rootCatalogue, reference, referenceType, contextData);
             return rootCatalogue;
         }
@@ -98,7 +100,9 @@ namespace Hx.Abp.Attachment.Domain
             Guid? parentId,
             string reference,
             int referenceType,
-            Dictionary<string, object>? contextData)
+            Dictionary<string, object>? contextData,
+            string? customTemplateName = null,
+            List<MetaField>? customMetaFields = null)
         {
             // 1. 计算正确的 sequenceNumber：基于相同父模板的最大序号+1
             int sequenceNumber = await CalculateNextSequenceNumberAsync(template.Id, template.Version, parentId);
@@ -106,10 +110,18 @@ namespace Hx.Abp.Attachment.Domain
             // 2. 计算 path：参考 GetEntitys 中的逻辑
             string? path = await CalculatePathAsync(parentId);
 
+            // 使用自定义名称或模板名称
+            var catalogueName = !string.IsNullOrWhiteSpace(customTemplateName) 
+                ? customTemplateName 
+                : await ResolveCatalogueName(template, contextData);
+
+            // 使用自定义元数据或模板元数据
+            var metaFields = customMetaFields ?? template.MetaFields?.ToList();
+
             var catalogue = new AttachCatalogue(
                 id: GuidGenerator.Create(),
                 attachReceiveType: template.AttachReceiveType,
-                catologueName: await ResolveCatalogueName(template, contextData),
+                catologueName: catalogueName,
                 sequenceNumber: sequenceNumber,
                 reference: reference,
                 referenceType: referenceType,
@@ -122,7 +134,7 @@ namespace Hx.Abp.Attachment.Domain
                 cataloguePurpose: template.TemplatePurpose,
                 tags: template.Tags,
                 textVector: template.TextVector,
-                metaFields: template.MetaFields?.ToList(),
+                metaFields: metaFields,
                 path: path
             );
 

@@ -1367,46 +1367,46 @@ const searchTemplatesBySemantic = async (semanticQuery, filters = {}) => {
 
 **成功响应** (200 OK):
 
-| 字段名     | 类型                         | 必填 | 描述           | 示例值         |
-| ---------- | ---------------------------- | ---- | -------------- | -------------- |
-| items      | AttachCatalogueTemplateDto[] | 是   | 根节点模板列表 | 见下方详细说明 |
-| totalCount | number                       | 是   | 总数量         | 10             |
+| 字段名     | 类型                             | 必填 | 描述           | 示例值         |
+| ---------- | -------------------------------- | ---- | -------------- | -------------- |
+| items      | AttachCatalogueTemplateTreeDto[] | 是   | 根节点模板列表 | 见下方详细说明 |
+| totalCount | number                           | 是   | 总数量         | 10             |
 
-**AttachCatalogueTemplateDto 详细字段说明**:
+**AttachCatalogueTemplateTreeDto 详细字段说明**:
 
-| 字段名                        | 类型                                   | 必填 | 描述                  | 示例值                                   |
-| ----------------------------- | -------------------------------------- | ---- | --------------------- | ---------------------------------------- |
-| id                            | string                                 | 是   | 模板 ID               | "3fa85f64-5717-4562-b3fc-2c963f66afa6"   |
-| name                          | string                                 | 是   | 模板名称              | "项目文档模板"                           |
-| description                   | string                                 | 否   | 模板描述              | "用于管理项目相关文档的模板"             |
-| tags                          | string[]                               | 否   | 模板标签              | ["项目", "文档", "管理"]                 |
-| version                       | number                                 | 是   | 模板版本号            | 1                                        |
-| isLatest                      | boolean                                | 是   | 是否为最新版本        | true                                     |
-| attachReceiveType             | AttachReceiveType                      | 是   | 附件类型              | 1                                        |
-| workflowConfig                | string                                 | 否   | 工作流配置(JSON 格式) | "{\"workflowKey\":\"project_approval\"}" |
-| isRequired                    | boolean                                | 是   | 是否必收              | true                                     |
-| sequenceNumber                | number                                 | 是   | 顺序号                | 1                                        |
-| isStatic                      | boolean                                | 是   | 是否静态              | false                                    |
-| parentId                      | string                                 | 否   | 父模板 ID             | "3fa85f64-5717-4562-b3fc-2c963f66afa7"   |
-| parentVersion                 | number                                 | 否   | 父模板版本号          | 1                                        |
-| templatePath                  | string                                 | 否   | 模板路径              | "0000001.0000002"                        |
-| children                      | AttachCatalogueTemplateDto[]           | 否   | 子模板集合            | 递归结构，同父级结构                     |
-| facetType                     | FacetType                              | 是   | 分面类型              | 0                                        |
-| templatePurpose               | TemplatePurpose                        | 是   | 模板用途              | 1                                        |
-| templateRole                  | TemplateRole                           | 是   | 模板角色              | 3                                        |
-| textVector                    | number[]                               | 否   | 文本向量              | [0.1, 0.2, 0.3, ...]                     |
-| vectorDimension               | number                                 | 是   | 向量维度              | 768                                      |
-| permissions                   | AttachCatalogueTemplatePermissionDto[] | 否   | 权限集合              | 见下方权限字段说明                       |
-| metaFields                    | MetaFieldDto[]                         | 否   | 元数据字段集合        | 见下方元数据字段说明                     |
-| templateIdentifierDescription | string                                 | 是   | 模板标识描述          | "通用分面 - 分类管理"                    |
-| isRoot                        | boolean                                | 是   | 是否为根模板          | true                                     |
-| isLeaf                        | boolean                                | 是   | 是否为叶子模板        | false                                    |
-| depth                         | number                                 | 是   | 模板层级深度          | 0                                        |
-| path                          | string                                 | 否   | 模板路径              | "0000001.0000002"                        |
-| creationTime                  | string                                 | 是   | 创建时间              | "2024-01-01T00:00:00Z"                   |
-| lastModificationTime          | string                                 | 否   | 最后修改时间          | "2024-01-01T00:00:00Z"                   |
-| creatorId                     | string                                 | 否   | 创建者 ID             | "3fa85f64-5717-4562-b3fc-2c963f66afa8"   |
-| lastModifierId                | string                                 | 否   | 最后修改者 ID         | "3fa85f64-5717-4562-b3fc-2c963f66afa9"   |
+| 字段名                     | 类型                                   | 必填 | 描述             | 示例值                                 |
+| -------------------------- | -------------------------------------- | ---- | ---------------- | -------------------------------------- |
+| id                         | string                                 | 是   | 模板 ID          | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| reference                  | string                                 | 是   | 业务类型 ID      | "PROJECT_001"                          |
+| attachReceiveType          | AttachReceiveType                      | 是   | 附件类型         | 1                                      |
+| referenceType              | number                                 | 是   | 业务类型标识     | 1                                      |
+| catalogueName              | string                                 | 是   | 分类名称         | "项目文档模板"                         |
+| tags                       | string[]                               | 否   | 分类标签         | ["项目", "文档", "管理"]               |
+| sequenceNumber             | number                                 | 是   | 顺序号           | 1                                      |
+| parentId                   | string                                 | 否   | 父模板 ID        | "3fa85f64-5717-4562-b3fc-2c963f66afa7" |
+| isRequired                 | boolean                                | 是   | 是否必收         | true                                   |
+| attachCount                | number                                 | 是   | 附件数量         | 5                                      |
+| pageCount                  | number                                 | 是   | 页数             | 10                                     |
+| isStatic                   | boolean                                | 是   | 是否静态         | false                                  |
+| isVerification             | boolean                                | 是   | 是否核验         | false                                  |
+| verificationPassed         | boolean                                | 是   | 核验通过         | true                                   |
+| children                   | AttachCatalogueTemplateTreeDto[]       | 否   | 子模板集合       | 递归结构，同父级结构                   |
+| attachFiles                | AttachFileDto[]                        | 否   | 附件文件集合     | 见下方附件文件字段说明                 |
+| templateId                 | string                                 | 否   | 关联的模板 ID    | "3fa85f64-5717-4562-b3fc-2c963f66afa8" |
+| fullTextContent            | string                                 | 否   | 全文内容         | "项目文档模板相关内容..."              |
+| fullTextContentUpdatedTime | string                                 | 否   | 全文内容更新时间 | "2024-01-01T00:00:00Z"                 |
+| catalogueFacetType         | FacetType                              | 是   | 分类分面类型     | 0                                      |
+| cataloguePurpose           | TemplatePurpose                        | 是   | 分类用途         | 1                                      |
+| templateRole               | TemplateRole                           | 是   | 模板角色         | 1                                      |
+| textVector                 | number[]                               | 否   | 文本向量         | [0.1, 0.2, 0.3, ...]                   |
+| vectorDimension            | number                                 | 是   | 向量维度         | 768                                    |
+| path                       | string                                 | 否   | 分类路径         | "0000001.0000002"                      |
+| permissions                | AttachCatalogueTemplatePermissionDto[] | 否   | 权限集合         | 见下方权限字段说明                     |
+| metaFields                 | MetaFieldDto[]                         | 否   | 元数据字段集合   | 见下方元数据字段说明                   |
+| creationTime               | string                                 | 是   | 创建时间         | "2024-01-01T00:00:00Z"                 |
+| lastModificationTime       | string                                 | 否   | 最后修改时间     | "2024-01-01T00:00:00Z"                 |
+| creatorId                  | string                                 | 否   | 创建者 ID        | "3fa85f64-5717-4562-b3fc-2c963f66afa8" |
+| lastModifierId             | string                                 | 否   | 最后修改者 ID    | "3fa85f64-5717-4562-b3fc-2c963f66afa9" |
 
 **AttachCatalogueTemplatePermissionDto 权限字段说明**:
 
@@ -1931,15 +1931,35 @@ const findMatchingTemplates = async (matchInput) => {
 
 **请求体**: `GenerateCatalogueInput`
 
-| 参数名 | 类型   | 必填   | 描述   | 示例值 |
-| ------ | ------ | ------ | ------ | ------ |
-| 待定义 | 待定义 | 待定义 | 待定义 | 待定义 |
+| 参数名        | 类型                       | 必填 | 描述                                               | 示例值                                 |
+| ------------- | -------------------------- | ---- | -------------------------------------------------- | -------------------------------------- |
+| templateId    | Guid                       | 是   | 模板 ID                                            | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| reference     | string                     | 是   | 业务引用                                           | "PROJECT_001"                          |
+| referenceType | int                        | 是   | 业务类型                                           | 1                                      |
+| contextData   | Dictionary<string, object> | 否   | 上下文数据                                         | {"key": "value"}                       |
+| templateName  | string                     | 否   | 根节点分类名称（用于修改生成的根节点分类名称）     | "项目文档分类"                         |
+| metaFields    | CreateUpdateMetaFieldDto[] | 否   | 元数据字段集合（用于修改生成的根节点分类的元数据） | 见下方元数据字段说明                   |
 
 #### React Axios 调用示例
 
 ```javascript
-const generateCatalogueFromTemplate = async (generateInput) => {
+// 基本用法 - 使用模板默认设置
+const generateCatalogueFromTemplate = async (
+    templateId,
+    reference,
+    referenceType
+) => {
     try {
+        const generateInput = {
+            templateId: templateId,
+            reference: reference,
+            referenceType: referenceType,
+            contextData: {
+                projectName: '示例项目',
+                department: '技术部',
+            },
+        };
+
         await axios.post(
             '/api/attach-catalogue-template/generate-catalogue',
             generateInput,
@@ -1960,7 +1980,79 @@ const generateCatalogueFromTemplate = async (generateInput) => {
         throw error;
     }
 };
+
+// 高级用法 - 自定义根节点名称和元数据
+const generateCatalogueWithCustomSettings = async (
+    templateId,
+    reference,
+    referenceType
+) => {
+    try {
+        const generateInput = {
+            templateId: templateId,
+            reference: reference,
+            referenceType: referenceType,
+            templateName: '自定义项目文档分类', // 自定义根节点名称
+            metaFields: [
+                // 自定义元数据字段
+                {
+                    entityType: 'Project',
+                    fieldKey: 'project_name',
+                    fieldName: '项目名称',
+                    dataType: 'string',
+                    isRequired: true,
+                    order: 1,
+                    isEnabled: true,
+                    group: '基本信息',
+                    description: '项目名称字段',
+                },
+                {
+                    entityType: 'Project',
+                    fieldKey: 'project_budget',
+                    fieldName: '项目预算',
+                    dataType: 'number',
+                    isRequired: false,
+                    unit: '万元',
+                    order: 2,
+                    isEnabled: true,
+                    group: '财务信息',
+                    description: '项目预算字段',
+                },
+            ],
+            contextData: {
+                projectName: '示例项目',
+                department: '技术部',
+            },
+        };
+
+        await axios.post(
+            '/api/attach-catalogue-template/generate-catalogue',
+            generateInput,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('从模板生成分类成功（自定义设置）');
+    } catch (error) {
+        console.error(
+            '从模板生成分类失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
 ```
+
+#### 功能说明
+
+1. **基本功能**: 使用模板的默认设置生成分类结构
+2. **自定义根节点名称**: 通过 `templateName` 参数修改生成的根节点分类名称
+3. **自定义元数据**: 通过 `metaFields` 参数为根节点分类添加或修改元数据字段
+4. **上下文数据**: 通过 `contextData` 参数传递业务上下文信息，用于模板中的动态内容解析
 
 ---
 
@@ -3278,6 +3370,22 @@ const getTemplateStructure = async (id, includeHistory = false) => {
 -   使用 `basicInfo` 获取模板基本信息
 -   使用 `versionStats` 获取版本统计信息
 -   通过 `currentVersion.children` 访问子模板树形结构
+
+## 枚举说明
+
+### TemplateRole 模板角色枚举
+
+| 值  | 名称       | 描述                                                                      |
+| --- | ---------- | ------------------------------------------------------------------------- |
+| 1   | Root       | 根模板 - 可以作为根节点创建动态分类树，特点：顶级模板，没有父模板         |
+| 2   | Navigation | 导航模板 - 仅用于导航，不参与动态分类树创建，特点：纯导航作用             |
+| 3   | Normal     | 普通模板 - 既不是根模板也不是导航模板的普通模板，特点：可以作为子模板使用 |
+
+**应用场景**:
+
+-   **Root**: 知识库根目录、档案管理根分类、项目根节点等
+-   **Navigation**: 侧边栏导航、面包屑导航、菜单项等
+-   **Normal**: 子分类模板、中间层模板等
 
 ## 版本信息
 

@@ -664,11 +664,24 @@ namespace Hx.Abp.Attachment.Application
                 throw new UserFriendlyException("只能使用最新版本的模板生成分类");
             }
 
+            // 转换MetaFields DTO为Domain对象
+            List<MetaField>? customMetaFields = null;
+            if (input.MetaFields != null && input.MetaFields.Count > 0)
+            {
+                customMetaFields = [.. input.MetaFields.Select(mf => new MetaField(
+                    mf.EntityType, mf.FieldKey, mf.FieldName, mf.DataType, mf.IsRequired,
+                    mf.Unit, mf.RegexPattern, mf.Options, mf.Description, mf.DefaultValue,
+                    mf.Order, mf.IsEnabled, mf.Group, mf.ValidationRules, mf.Tags
+                ))];
+            }
+
             await _catalogueManager.GenerateFromTemplateAsync(
                 template,
                 input.Reference,
                 input.ReferenceType,
-                input.ContextData);
+                input.ContextData,
+                input.TemplateName,
+                customMetaFields);
         }
 
         // ============= 版本管理方法 =============

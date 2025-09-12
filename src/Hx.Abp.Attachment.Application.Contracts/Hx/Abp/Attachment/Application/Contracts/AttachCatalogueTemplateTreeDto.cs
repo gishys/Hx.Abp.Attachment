@@ -86,6 +86,11 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public int VectorDimension { get; set; }
 
         /// <summary>
+        /// 模板角色 - 标识模板在层级结构中的角色
+        /// </summary>
+        public TemplateRole TemplateRole { get; set; } = TemplateRole.Normal;
+
+        /// <summary>
         /// 权限集合
         /// </summary>
         public List<AttachCatalogueTemplatePermissionDto> Permissions { get; set; } = [];

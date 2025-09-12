@@ -8,7 +8,9 @@ namespace Hx.Abp.Attachment.Domain
             AttachCatalogueTemplate template,
             string reference,
             int referenceType,
-            Dictionary<string, object>? contextData = null);
+            Dictionary<string, object>? contextData,
+            string? customTemplateName = null,
+            List<MetaField>? customMetaFields = null);
 
         Task<AttachCatalogueTemplate> CreateTemplateVersionAsync(
             AttachCatalogueTemplate baseTemplate,

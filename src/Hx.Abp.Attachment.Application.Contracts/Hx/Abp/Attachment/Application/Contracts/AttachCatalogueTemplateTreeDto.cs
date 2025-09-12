@@ -1,6 +1,4 @@
 using Hx.Abp.Attachment.Domain.Shared;
-using System;
-using System.Collections.Generic;
 using Volo.Abp.Application.Dtos;
 
 namespace Hx.Abp.Attachment.Application.Contracts
@@ -99,6 +97,12 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// 子模板集合（用于树形结构）
         /// </summary>
         public List<AttachCatalogueTemplateTreeDto> Children { get; set; } = [];
+
+        /// <summary>
+        /// 元数据字段集合（JSONB格式，存储元数据字段信息）
+        /// 用于命名实体识别(NER)、前端展示和业务场景配置
+        /// </summary>
+        public ICollection<MetaFieldDto> MetaFields { get; set; } = [];
 
         /// <summary>
         /// 模板标识描述

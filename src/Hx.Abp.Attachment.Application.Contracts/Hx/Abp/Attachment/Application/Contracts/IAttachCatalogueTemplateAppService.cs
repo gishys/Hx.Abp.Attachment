@@ -8,6 +8,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
     {
         // 基本 CRUD 方法
         Task<AttachCatalogueTemplateDto> GetAsync(Guid id, bool includeTreeStructure = false, bool returnRoot = false);
+        Task<ListResultDto<AttachCatalogueTemplateDto>> GetBatchAsync(GetAttachCatalogueTemplatesBatchInput input);
         Task<PagedResultDto<AttachCatalogueTemplateDto>> GetListAsync(GetAttachCatalogueTemplateListDto input);
         Task<AttachCatalogueTemplateDto> CreateAsync(CreateUpdateAttachCatalogueTemplateDto input);
         Task<AttachCatalogueTemplateDto> UpdateAsync(Guid id, CreateUpdateAttachCatalogueTemplateDto input);

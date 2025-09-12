@@ -429,11 +429,13 @@ const getTemplateList = async (params = {}) => {
 | 参数名               | 类型 | 必填 | 描述             | 默认值 | 示例值 |
 | -------------------- | ---- | ---- | ---------------- | ------ | ------ |
 | includeTreeStructure | bool | 否   | 是否包含树形结构 | false  | true   |
+| returnRoot           | bool | 否   | 是否返回根节点   | false  | true   |
 
 #### 响应说明
 
 -   **includeTreeStructure=false**: 返回单个模板信息
 -   **includeTreeStructure=true**: 返回包含完整树形结构的模板信息（包含所有父节点和子节点）
+-   **returnRoot=true**: 返回根节点模板信息
 
 #### React Axios 调用示例
 
@@ -483,11 +485,174 @@ const getLatestTemplateWithTree = async (id) => {
         throw error;
     }
 };
+
+// 获取根节点模板
+const getRootTemplate = async (id) => {
+    try {
+        const response = await axios.get(
+            `/api/attach-catalogue-template/${id}?returnRoot=true`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('获取根节点模板成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '获取根节点模板失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
 ```
 
 ---
 
-### 4. 根据 ID 获取分类模板接口
+### 4. 批量获取模板（最新版本，支持树形结构）接口
+
+#### 接口信息
+
+-   **接口路径**: `POST /api/attach-catalogue-template/batch`
+-   **接口描述**: 批量获取多个模板的最新版本，支持返回树形结构，自动去重
+-   **请求方式**: POST
+-   **Content-Type**: application/json
+
+#### 请求参数
+
+**请求体**: `GetAttachCatalogueTemplatesBatchInput`
+
+| 参数名               | 类型   | 必填 | 描述                        | 默认值 | 示例值                                                                           |
+| -------------------- | ------ | ---- | --------------------------- | ------ | -------------------------------------------------------------------------------- |
+| ids                  | Guid[] | 是   | 模板 ID 列表（最多 100 个） | -      | ["3fa85f64-5717-4562-b3fc-2c963f66afa6", "3fa85f64-5717-4562-b3fc-2c963f66afa7"] |
+| includeTreeStructure | bool   | 否   | 是否包含树形结构            | false  | true                                                                             |
+| returnRoot           | bool   | 否   | 是否返回根节点              | false  | true                                                                             |
+
+#### 参数验证规则
+
+-   **ids**: 必填，不能为空，至少包含 1 个 ID，最多 100 个 ID
+-   **includeTreeStructure**: 可选，默认为 false
+-   **returnRoot**: 可选，默认为 false
+
+#### 响应说明
+
+-   **成功响应**: 返回模板信息列表，自动去重
+-   **容错处理**: 不存在的模板 ID 会被忽略，不影响其他模板的获取
+-   **去重机制**: 重复的模板 ID 只会返回一次
+
+#### React Axios 调用示例
+
+```javascript
+// 批量获取模板
+const getTemplatesBatch = async (ids) => {
+    try {
+        const response = await axios.post(
+            '/api/attach-catalogue-template/batch',
+            {
+                ids: ids,
+                includeTreeStructure: false,
+                returnRoot: false,
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            }
+        );
+
+        console.log('批量获取模板成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '批量获取模板失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+
+// 批量获取模板（包含树形结构）
+const getTemplatesBatchWithTree = async (ids) => {
+    try {
+        const response = await axios.post(
+            '/api/attach-catalogue-template/batch',
+            {
+                ids: ids,
+                includeTreeStructure: true,
+                returnRoot: false,
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            }
+        );
+
+        console.log('批量获取模板树形结构成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '批量获取模板树形结构失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+
+// 批量获取根节点模板
+const getRootTemplatesBatch = async (ids) => {
+    try {
+        const response = await axios.post(
+            '/api/attach-catalogue-template/batch',
+            {
+                ids: ids,
+                includeTreeStructure: true,
+                returnRoot: true,
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            }
+        );
+
+        console.log('批量获取根节点模板成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error(
+            '批量获取根节点模板失败:',
+            error.response?.data || error.message
+        );
+        throw error;
+    }
+};
+```
+
+#### 业务特性
+
+1. **容错性**: 如果某个模板 ID 不存在，不会影响其他模板的获取
+2. **性能优化**: 批量获取减少网络请求次数
+3. **参数一致性**: 与单个获取接口保持相同的参数和行为
+4. **限制保护**: 单次最多支持 100 个模板 ID，防止性能问题
+5. **自动去重**: 重复的模板 ID 只会查询一次，避免重复数据
+
+#### 注意事项
+
+1. 如果某个模板 ID 不存在，该 ID 会被忽略，不会在响应中返回
+2. 如果所有模板 ID 都不存在，会返回空的 items 数组
+3. 建议在生产环境中合理控制批量请求的大小，避免对数据库造成过大压力
+4. 树形结构参数会影响返回的数据结构，请根据实际需求设置
+5. 重复的模板 ID 会被自动去重，只返回一次
+
+---
+
+### 5. 根据 ID 获取分类模板接口
 
 #### 接口信息
 
@@ -532,7 +697,7 @@ const getTemplateById = async (id, version = 1) => {
 
 ---
 
-### 5. 更新模板（最新版本）接口
+### 6. 更新模板（最新版本）接口
 
 #### 接口信息
 
@@ -592,7 +757,7 @@ const updateLatestTemplate = async (id, updateData) => {
 
 ---
 
-### 6. 更新分类模板接口
+### 7. 更新分类模板接口
 
 #### 接口信息
 
@@ -650,7 +815,7 @@ const updateTemplate = async (id, version, updateData) => {
 
 ---
 
-### 7. 删除模板（所有版本）接口
+### 8. 删除模板（所有版本）接口
 
 #### 接口信息
 
@@ -687,7 +852,7 @@ const deleteAllTemplateVersions = async (id) => {
 
 ---
 
-### 8. 删除分类模板接口
+### 9. 删除分类模板接口
 
 #### 接口信息
 
@@ -725,7 +890,7 @@ const deleteTemplate = async (id, version) => {
 
 ---
 
-### 9. 混合检索模板接口
+### 10. 混合检索模板接口
 
 #### 接口信息
 
@@ -862,7 +1027,7 @@ const searchTemplatesHybrid = async (searchParams) => {
 
 ---
 
-### 10. 获取模板历史接口
+### 11. 获取模板历史接口
 
 #### 接口信息
 
@@ -1072,7 +1237,7 @@ getTemplateHistory(id).then((history) => {
 
 ---
 
-### 11. 文本检索模板接口
+### 12. 文本检索模板接口
 
 #### 接口信息
 
@@ -1125,7 +1290,7 @@ const searchTemplatesByText = async (keyword, filters = {}) => {
 
 ---
 
-### 12. 语义检索模板接口
+### 13. 语义检索模板接口
 
 #### 接口信息
 
@@ -1178,7 +1343,7 @@ const searchTemplatesBySemantic = async (semanticQuery, filters = {}) => {
 
 ---
 
-### 13. 获取根节点模板接口
+### 14. 获取根节点模板接口
 
 #### 接口信息
 
@@ -1445,7 +1610,7 @@ const getRootTemplates = async (params = {}) => {
 
 ---
 
-### 14. 获取模板统计信息接口
+### 15. 获取模板统计信息接口
 
 #### 接口信息
 
@@ -1557,7 +1722,7 @@ const getTemplateStatistics = async () => {
 
 ---
 
-### 17. 创建新版本接口
+### 18. 创建新版本接口
 
 #### 接口信息
 
@@ -1614,7 +1779,7 @@ const createNewVersion = async (templateId, templateData) => {
 
 ---
 
-### 18. 设为最新版本接口
+### 19. 设为最新版本接口
 
 #### 接口信息
 
@@ -1660,7 +1825,7 @@ const setAsLatestVersion = async (templateId, version) => {
 
 ---
 
-### 19. 回滚到指定版本接口
+### 20. 回滚到指定版本接口
 
 #### 接口信息
 
@@ -1706,7 +1871,7 @@ const rollbackToVersion = async (templateId, version) => {
 
 ---
 
-### 20. 查找匹配的模板接口
+### 21. 查找匹配的模板接口
 
 #### 接口信息
 
@@ -1753,7 +1918,7 @@ const findMatchingTemplates = async (matchInput) => {
 
 ---
 
-### 21. 从模板生成分类接口
+### 22. 从模板生成分类接口
 
 #### 接口信息
 
@@ -1799,7 +1964,7 @@ const generateCatalogueFromTemplate = async (generateInput) => {
 
 ---
 
-### 22. 按模板标识查询接口
+### 23. 按模板标识查询接口
 
 #### 接口信息
 
@@ -1855,7 +2020,7 @@ const getTemplatesByIdentifier = async (
 
 ---
 
-### 23. 查找相似模板接口
+### 24. 查找相似模板接口
 
 #### 接口信息
 
@@ -1911,7 +2076,7 @@ const findSimilarTemplates = async (
 
 ---
 
-### 24. 按向量维度查询接口
+### 25. 按向量维度查询接口
 
 #### 接口信息
 
@@ -1966,7 +2131,7 @@ const getTemplatesByVectorDimension = async (
 
 ---
 
-### 25. 标签检索模板接口
+### 26. 标签检索模板接口
 
 #### 接口信息
 
@@ -2025,7 +2190,7 @@ const searchTemplatesByTags = async (
 
 ---
 
-### 26. 获取热门标签接口
+### 27. 获取热门标签接口
 
 #### 接口信息
 
@@ -2072,7 +2237,7 @@ const getPopularTags = async (topN = 20) => {
 
 ---
 
-### 27. 获取标签统计接口
+### 28. 获取标签统计接口
 
 #### 接口信息
 
@@ -2112,7 +2277,7 @@ const getTagStatistics = async () => {
 
 ---
 
-### 28. 根据路径获取模板接口
+### 29. 根据路径获取模板接口
 
 #### 接口信息
 
@@ -2164,7 +2329,7 @@ const getTemplatesByPath = async (
 
 ---
 
-### 29. 根据路径深度获取模板接口
+### 30. 根据路径深度获取模板接口
 
 #### 接口信息
 
@@ -2213,7 +2378,7 @@ const getTemplatesByPathDepth = async (depth, onlyLatest = true) => {
 
 ---
 
-### 30. 计算下一个模板路径接口
+### 31. 计算下一个模板路径接口
 
 #### 接口信息
 
@@ -2260,7 +2425,7 @@ const calculateNextTemplatePath = async (parentPath = null) => {
 
 ---
 
-### 31. 验证模板路径格式接口
+### 32. 验证模板路径格式接口
 
 #### 接口信息
 
@@ -2307,7 +2472,7 @@ const validateTemplatePath = async (templatePath = null) => {
 
 ---
 
-### 32. 根据路径范围获取模板接口
+### 33. 根据路径范围获取模板接口
 
 #### 接口信息
 
@@ -2418,7 +2583,7 @@ const getTemplatesByPathRange = async (
 -   **字段分组管理**: 使用 `group` 字段对相关元数据字段进行分组，便于管理和展示
 -   **验证规则设置**: 合理设置 `validationRules` 和 `regexPattern`，确保数据质量
 
-### 15. 元数据字段管理接口
+### 16. 元数据字段管理接口
 
 #### 15.1 获取模板元数据字段列表接口
 
@@ -2813,7 +2978,7 @@ const fieldKeys = [
 updateMetaFieldsOrder('3fa85f64-5717-4562-b3fc-2c963f66afa6', fieldKeys);
 ```
 
-### 16. 获取模板结构接口
+### 17. 获取模板结构接口
 
 #### 接口信息
 

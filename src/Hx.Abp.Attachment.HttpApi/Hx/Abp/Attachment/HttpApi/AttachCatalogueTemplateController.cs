@@ -29,6 +29,17 @@ namespace Hx.Abp.Attachment.HttpApi
             return AttachCatalogueTemplateAppService.GetAsync(id, includeTreeStructure, returnRoot);
         }
 
+        /// <summary>
+        /// 批量获取模板（最新版本，支持树形结构）
+        /// </summary>
+        /// <param name="input">批量获取输入参数</param>
+        /// <returns>模板信息列表，如果包含树形结构则返回完整的树</returns>
+        [HttpPost("batch")]
+        public virtual Task<ListResultDto<AttachCatalogueTemplateDto>> GetBatchAsync([FromBody] GetAttachCatalogueTemplatesBatchInput input)
+        {
+            return AttachCatalogueTemplateAppService.GetBatchAsync(input);
+        }
+
 
         /// <summary>
         /// 更新模板（最新版本）

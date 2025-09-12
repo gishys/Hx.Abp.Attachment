@@ -2,6 +2,7 @@ using Hx.Abp.Attachment.Application.Contracts;
 using Hx.Abp.Attachment.Domain;
 using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.Extensions.Logging;
+using System.Linq;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
@@ -62,6 +63,80 @@ namespace Hx.Abp.Attachment.Application
             }
         }
 
+        /// <summary>
+        /// 批量获取模板（最新版本，支持树形结构）
+        /// </summary>
+        /// <param name="input">批量获取输入参数</param>
+        /// <returns>模板信息列表，如果包含树形结构则返回完整的树</returns>
+        public async Task<ListResultDto<AttachCatalogueTemplateDto>> GetBatchAsync(GetAttachCatalogueTemplatesBatchInput input)
+        {
+            try
+            {
+                _logger.LogInformation("批量获取模板：输入ID数量={inputCount}, 去重后ID数量={uniqueCount}, 包含树形结构={includeTreeStructure}",
+                    input.Ids.Count, input.Ids.Distinct().Count(), input.IncludeTreeStructure);
+
+                if (input.Ids == null || input.Ids.Count == 0)
+                {
+                    _logger.LogWarning("批量获取模板失败：ID列表为空");
+                    throw new UserFriendlyException("模板ID列表不能为空");
+                }
+
+                var templates = new List<AttachCatalogueTemplateDto>();
+                var notFoundIds = new List<Guid>();
+                var processedIds = new HashSet<Guid>(); // 用于去重
+
+                foreach (var id in input.Ids)
+                {
+                    try
+                    {
+                        var template = await _templateRepository.GetAsync(id, input.IncludeTreeStructure, input.ReturnRoot);
+                        if (template != null)
+                        {
+                            // 跳过已处理的ID，避免重复
+                            if (processedIds.Contains(template.Id))
+                            {
+                                continue;
+                            }
+                            var dto = ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(template);
+                            templates.Add(dto);
+                            processedIds.Add(template.Id);
+                        }
+                        else
+                        {
+                            notFoundIds.Add(id);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "获取模板失败：ID={id}", id);
+                        notFoundIds.Add(id);
+                    }
+                }
+
+                if (notFoundIds.Count != 0)
+                {
+                    _logger.LogWarning("部分模板未找到：IDs={ids}", string.Join(",", notFoundIds));
+                }
+
+                _logger.LogInformation("批量获取模板完成：成功={successCount}, 失败={failCount}, 去重处理={duplicateCount}",
+                    templates.Count, notFoundIds.Count, input.Ids.Count - input.Ids.Distinct().Count());
+
+                return new ListResultDto<AttachCatalogueTemplateDto>
+                {
+                    Items = templates
+                };
+            }
+            catch (UserFriendlyException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "批量获取模板失败：ID数量={count}, 包含树形结构={includeTreeStructure}",
+                    input.Ids.Count, input.IncludeTreeStructure);
+                throw new UserFriendlyException("批量获取模板失败，请稍后重试");
+            }
+        }
 
         /// <summary>
         /// 获取模板列表

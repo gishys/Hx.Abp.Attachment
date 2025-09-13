@@ -132,9 +132,21 @@ ALTER TABLE "APPATTACH_CATALOGUES"
 ALTER COLUMN "META_FIELDS" SET NOT NULL;
 
 -- 添加 JSONB 格式验证约束（确保是数组格式）
-ALTER TABLE "APPATTACH_CATALOGUES" 
-ADD CONSTRAINT "CK_ATTACH_CATALOGUES_META_FIELDS_FORMAT" 
-CHECK (jsonb_typeof("META_FIELDS") = 'array');
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.check_constraints 
+        WHERE constraint_name = 'CK_ATTACH_CATALOGUES_META_FIELDS_FORMAT'
+    ) THEN
+        ALTER TABLE "APPATTACH_CATALOGUES" 
+        ADD CONSTRAINT "CK_ATTACH_CATALOGUES_META_FIELDS_FORMAT" 
+        CHECK (jsonb_typeof("META_FIELDS") = 'array');
+        
+        RAISE NOTICE '已添加元数据字段格式验证约束';
+    ELSE
+        RAISE NOTICE '元数据字段格式验证约束已存在';
+    END IF;
+END $$;
 
 -- =====================================================
 -- 创建有用的查询函数

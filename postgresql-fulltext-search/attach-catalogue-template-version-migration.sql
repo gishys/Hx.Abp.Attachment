@@ -5,6 +5,31 @@
 -- 描述: 支持基于模板ID和版本号的精确模板定位
 -- =====================================================
 
+-- 检查并安装必要的扩展
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+
+-- 检查并创建中文全文搜索配置
+DO $$
+BEGIN
+    -- 检查 chinese_fts 配置是否存在
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_ts_config 
+        WHERE cfgname = 'chinese_fts'
+    ) THEN
+        -- 创建中文全文搜索配置
+        CREATE TEXT SEARCH CONFIGURATION chinese_fts (COPY = simple);
+        
+        -- 配置中文分词器（使用pg_trgm扩展）
+        ALTER TEXT SEARCH CONFIGURATION chinese_fts 
+        ALTER MAPPING FOR asciiword, asciihword, hword_asciipart, word, hword, hword_part 
+        WITH simple;
+        
+        RAISE NOTICE '已创建中文全文搜索配置 chinese_fts';
+    ELSE
+        RAISE NOTICE '中文全文搜索配置 chinese_fts 已存在';
+    END IF;
+END $$;
+
 -- 0. 检查并添加 TEMPLATE_ID 字段（如果不存在）
 DO $$
 BEGIN
@@ -33,21 +58,50 @@ END $$;
 CREATE INDEX IF NOT EXISTS "IDX_ATTACH_CATALOGUES_TEMPLATE_ID" 
 ON "APPATTACH_CATALOGUES" ("TEMPLATE_ID");
 
--- 1. 添加 TemplateVersion 字段
-ALTER TABLE "APPATTACH_CATALOGUES" 
-ADD COLUMN "TEMPLATE_VERSION" INTEGER NULL;
-
--- 2. 添加字段注释
-COMMENT ON COLUMN "APPATTACH_CATALOGUES"."TEMPLATE_VERSION" IS '关联的模板版本号，与TEMPLATE_ID一起构成完整的模板标识';
+-- 1. 添加 TemplateVersion 字段（如果不存在）
+DO $$
+BEGIN
+    -- 检查 TEMPLATE_VERSION 字段是否存在
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name = 'APPATTACH_CATALOGUES' 
+          AND column_name = 'TEMPLATE_VERSION'
+          AND table_schema = 'public'
+    ) THEN
+        -- 添加 TEMPLATE_VERSION 字段
+        ALTER TABLE "APPATTACH_CATALOGUES" 
+        ADD COLUMN "TEMPLATE_VERSION" INTEGER NULL;
+        
+        -- 添加字段注释
+        COMMENT ON COLUMN "APPATTACH_CATALOGUES"."TEMPLATE_VERSION" IS '关联的模板版本号，与TEMPLATE_ID一起构成完整的模板标识';
+        
+        RAISE NOTICE 'TEMPLATE_VERSION field added successfully';
+    ELSE
+        RAISE NOTICE 'TEMPLATE_VERSION field already exists';
+    END IF;
+END $$;
 
 -- 3. 创建模板ID和版本的复合索引
 CREATE INDEX IF NOT EXISTS "IDX_ATTACH_CATALOGUES_TEMPLATE_ID_VERSION" 
 ON "APPATTACH_CATALOGUES" ("TEMPLATE_ID", "TEMPLATE_VERSION");
 
 -- 4. 添加检查约束，确保版本号为正数
-ALTER TABLE "APPATTACH_CATALOGUES" 
-ADD CONSTRAINT "CK_ATTACH_CATALOGUES_TEMPLATE_VERSION" 
-CHECK ("TEMPLATE_VERSION" IS NULL OR "TEMPLATE_VERSION" > 0);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.check_constraints 
+        WHERE constraint_name = 'CK_ATTACH_CATALOGUES_TEMPLATE_VERSION'
+    ) THEN
+        ALTER TABLE "APPATTACH_CATALOGUES" 
+        ADD CONSTRAINT "CK_ATTACH_CATALOGUES_TEMPLATE_VERSION" 
+        CHECK ("TEMPLATE_VERSION" IS NULL OR "TEMPLATE_VERSION" > 0);
+        
+        RAISE NOTICE '已添加模板版本约束';
+    ELSE
+        RAISE NOTICE '模板版本约束已存在';
+    END IF;
+END $$;
 
 -- 5. 添加外键约束（可选，如果需要强制引用完整性）
 -- 注意：这里需要根据实际的模板表结构调整

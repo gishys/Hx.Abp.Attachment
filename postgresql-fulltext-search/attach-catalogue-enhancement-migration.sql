@@ -230,25 +230,38 @@ FROM "APPATTACH_CATALOGUES";
 -- 最佳实践：优化 JSONB 字段配置
 -- =====================================================
 
--- 设置 PERMISSIONS 字段的默认值
-ALTER TABLE "APPATTACH_CATALOGUES" 
-ALTER COLUMN "PERMISSIONS" SET DEFAULT '[]'::jsonb;
-
--- 添加 NOT NULL 约束（确保数据一致性）
-ALTER TABLE "APPATTACH_CATALOGUES" 
-ALTER COLUMN "PERMISSIONS" SET NOT NULL;
+-- 设置 PERMISSIONS 字段的默认值和约束
+DO $$
+BEGIN
+    -- 设置默认值
+    ALTER TABLE "APPATTACH_CATALOGUES" 
+    ALTER COLUMN "PERMISSIONS" SET DEFAULT '[]'::jsonb;
+    
+    RAISE NOTICE '已设置权限字段默认值';
+    
+    -- 添加 NOT NULL 约束（确保数据一致性）
+    ALTER TABLE "APPATTACH_CATALOGUES" 
+    ALTER COLUMN "PERMISSIONS" SET NOT NULL;
+    
+    RAISE NOTICE '已设置权限字段NOT NULL约束';
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE '权限字段配置可能已存在或出现错误: %', SQLERRM;
+END $$;
 
 -- 添加 JSONB 格式验证约束（确保是数组格式）
-ALTER TABLE "APPATTACH_CATALOGUES" 
-ADD CONSTRAINT "CK_ATTACH_CATALOGUES_PERMISSIONS_FORMAT" 
-CHECK (jsonb_typeof("PERMISSIONS") = 'array');
-
--- 显示最终结果
-RAISE NOTICE '=====================================================';
-RAISE NOTICE '权限字段优化完成！';
-RAISE NOTICE '已创建以下功能：';
-RAISE NOTICE '1. 权限字段数据清理和标准化';
-RAISE NOTICE '2. 权限字段格式验证约束（数组格式）';
-RAISE NOTICE '3. 默认值设置为空数组';
-RAISE NOTICE '4. NOT NULL 约束确保数据一致性';
-RAISE NOTICE '=====================================================';
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.check_constraints 
+        WHERE constraint_name = 'CK_ATTACH_CATALOGUES_PERMISSIONS_FORMAT'
+    ) THEN
+        ALTER TABLE "APPATTACH_CATALOGUES" 
+        ADD CONSTRAINT "CK_ATTACH_CATALOGUES_PERMISSIONS_FORMAT" 
+        CHECK (jsonb_typeof("PERMISSIONS") = 'array');
+        
+        RAISE NOTICE '已添加权限格式验证约束';
+    ELSE
+        RAISE NOTICE '权限格式验证约束已存在';
+    END IF;
+END $$;

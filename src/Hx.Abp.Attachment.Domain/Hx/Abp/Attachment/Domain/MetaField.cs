@@ -237,7 +237,7 @@ namespace Hx.Abp.Attachment.Domain
                 throw new ArgumentException("数据类型不能为空", nameof(DataType));
 
             // 验证数据类型
-            var validDataTypes = new[] { "string", "number", "date", "boolean", "array", "object" };
+            var validDataTypes = new[] { "string", "number", "date", "boolean", "array", "object", "select" };
             if (!validDataTypes.Contains(DataType.ToLowerInvariant()))
                 throw new ArgumentException($"不支持的数据类型: {DataType}", nameof(DataType));
 

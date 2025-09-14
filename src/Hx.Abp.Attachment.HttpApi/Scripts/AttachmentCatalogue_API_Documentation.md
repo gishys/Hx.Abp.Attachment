@@ -1731,6 +1731,122 @@ const getCataloguesTree = async (
 };
 ```
 
+#### 返回类型
+
+**成功响应** (200 OK):
+
+返回 `List<AttachCatalogueTreeDto>` 类型的分类树形结构列表。
+
+**AttachCatalogueTreeDto 字段说明**:
+
+| 字段名                     | 类型                                    | 必填 | 描述                                    | 示例值                                 |
+| -------------------------- | --------------------------------------- | ---- | --------------------------------------- | -------------------------------------- |
+| id                         | Guid                                    | 是   | 分类ID                                  | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| reference                  | string                                  | 是   | 业务引用                                | "CONTRACT_001"                         |
+| attachReceiveType          | AttachReceiveType                      | 是   | 附件收取类型                            | 2                                      |
+| referenceType              | int                                     | 是   | 业务类型标识                            | 1                                      |
+| catalogueName              | string                                  | 是   | 分类名称                                | "合同文档分类"                         |
+| tags                       | List<string>                           | 否   | 分类标签                                | ["合同", "法律", "重要"]               |
+| sequenceNumber             | int                                     | 是   | 顺序号                                  | 100                                    |
+| parentId                   | Guid?                                   | 否   | 父分类ID                                | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| isRequired                 | bool                                    | 是   | 是否必收                                | true                                   |
+| attachCount                | int                                     | 是   | 附件数量                                | 5                                      |
+| pageCount                  | int                                     | 是   | 页数                                    | 10                                     |
+| isStatic                   | bool                                    | 是   | 静态标识                                | false                                  |
+| isVerification             | bool                                    | 是   | 是否核验                                | false                                  |
+| verificationPassed         | bool                                    | 是   | 核验通过                                | false                                  |
+| children                   | List<AttachCatalogueTreeDto>           | 否   | 子分类列表（树形结构）                  | []                                     |
+| attachFiles                | Collection<AttachFileDto>?             | 否   | 附件文件集合（当includeFiles=true时）   | null                                   |
+| templateId                 | Guid?                                   | 否   | 关联的模板ID                            | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| fullTextContent            | string?                                 | 否   | 全文内容                                | "合同文档内容..."                      |
+| fullTextContentUpdatedTime | DateTime?                               | 否   | 全文内容更新时间                        | "2024-01-01T00:00:00Z"                 |
+| catalogueFacetType         | FacetType                              | 是   | 分类分面类型                            | 0                                      |
+| cataloguePurpose           | TemplatePurpose                        | 是   | 分类用途                                | 1                                      |
+| textVector                 | List<double>?                          | 否   | 文本向量                                | [0.1, 0.2, 0.3]                       |
+| vectorDimension            | int                                     | 是   | 向量维度                                | 128                                    |
+| path                       | string?                                 | 否   | 分类路径（用于快速查询层级）            | "0000001.0000002.0000003"              |
+| permissions                | List<AttachCatalogueTemplatePermissionDto> | 否 | 权限集合                                | []                                     |
+| metaFields                 | List<MetaFieldDto>                     | 否   | 元数据字段集合                          | []                                     |
+| catalogueIdentifierDescription | string                             | 是   | 分类标识描述（计算属性）                | "General - Classification"             |
+| creationTime               | DateTime                               | 是   | 创建时间                                | "2024-01-01T00:00:00Z"                 |
+| lastModificationTime       | DateTime?                              | 否   | 最后修改时间                            | "2024-01-01T00:00:00Z"                 |
+| creatorId                  | Guid?                                  | 否   | 创建者ID                                | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| lastModifierId             | Guid?                                  | 否   | 最后修改者ID                            | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+
+**响应示例**:
+
+```json
+[
+    {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "reference": "CONTRACT_001",
+        "attachReceiveType": 2,
+        "referenceType": 1,
+        "catalogueName": "合同文档分类",
+        "tags": ["合同", "法律", "重要"],
+        "sequenceNumber": 100,
+        "parentId": null,
+        "isRequired": true,
+        "attachCount": 5,
+        "pageCount": 10,
+        "isStatic": false,
+        "isVerification": false,
+        "verificationPassed": false,
+        "children": [
+            {
+                "id": "4fa85f64-5717-4562-b3fc-2c963f66afa7",
+                "reference": "CONTRACT_001",
+                "attachReceiveType": 2,
+                "referenceType": 1,
+                "catalogueName": "合同正文",
+                "tags": ["正文", "核心"],
+                "sequenceNumber": 1,
+                "parentId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                "isRequired": true,
+                "attachCount": 2,
+                "pageCount": 5,
+                "isStatic": false,
+                "isVerification": true,
+                "verificationPassed": true,
+                "children": [],
+                "attachFiles": null,
+                "templateId": "5fa85f64-5717-4562-b3fc-2c963f66afa8",
+                "fullTextContent": "合同正文内容...",
+                "fullTextContentUpdatedTime": "2024-01-01T00:00:00Z",
+                "catalogueFacetType": 1,
+                "cataloguePurpose": 1,
+                "textVector": [0.1, 0.2, 0.3],
+                "vectorDimension": 128,
+                "path": "0000001.0000002",
+                "permissions": [],
+                "metaFields": [],
+                "catalogueIdentifierDescription": "Category - Classification",
+                "creationTime": "2024-01-01T00:00:00Z",
+                "lastModificationTime": "2024-01-01T00:00:00Z",
+                "creatorId": "6fa85f64-5717-4562-b3fc-2c963f66afa9",
+                "lastModifierId": "7fa85f64-5717-4562-b3fc-2c963f66afaa"
+            }
+        ],
+        "attachFiles": null,
+        "templateId": "8fa85f64-5717-4562-b3fc-2c963f66afab",
+        "fullTextContent": "合同文档分类的全文内容...",
+        "fullTextContentUpdatedTime": "2024-01-01T00:00:00Z",
+        "catalogueFacetType": 0,
+        "cataloguePurpose": 1,
+        "textVector": [0.1, 0.2, 0.3],
+        "vectorDimension": 128,
+        "path": "0000001",
+        "permissions": [],
+        "metaFields": [],
+        "catalogueIdentifierDescription": "General - Classification",
+        "creationTime": "2024-01-01T00:00:00Z",
+        "lastModificationTime": "2024-01-01T00:00:00Z",
+        "creatorId": "9fa85f64-5717-4562-b3fc-2c963f66afac",
+        "lastModifierId": "afa85f64-5717-4562-b3fc-2c963f66afad"
+    }
+]
+```
+
 ---
 
 ## 错误处理

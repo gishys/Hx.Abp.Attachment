@@ -26,12 +26,12 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                         "\"FACET_TYPE\" IN (0, 1, 2, 3, 4, 5, 6, 99)");
 
                     tableBuilder.HasCheckConstraint("CK_ATTACH_CATALOGUE_TEMPLATES_TEMPLATE_PURPOSE",
-                        "\"TEMPLATE_PURPOSE\" IN (1, 2, 3, 4, 99)");
+                        "\"TEMPLATE_PURPOSE\" IN (1, 2, 3, 4,5, 99)");
 
                     tableBuilder.HasCheckConstraint("CK_ATTACH_CATALOGUE_TEMPLATES_TEMPLATE_ROLE",
                         "\"TEMPLATE_ROLE\" IN (1, 2, 3)");
                 });
-            
+
             // 复合主键配置
             builder.HasKey(d => new { d.Id, d.Version }).HasName("PK_ATTACH_CATALOGUE_TEMPLATES");
 
@@ -65,9 +65,9 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .HasConversion<int>();
 
             // 新增模板角色字段配置
-        builder.Property(d => d.TemplateRole).HasColumnName("TEMPLATE_ROLE")
-            .HasConversion<int>()
-            .HasDefaultValue(TemplateRole.Normal);
+            builder.Property(d => d.TemplateRole).HasColumnName("TEMPLATE_ROLE")
+                .HasConversion<int>()
+                .HasDefaultValue(TemplateRole.Normal);
 
             builder.Property(d => d.TextVector).HasColumnName("TEXT_VECTOR")
                 .HasColumnType("double precision[]");
@@ -86,10 +86,10 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 #pragma warning disable CS8600 // 将 null 字面量或可能为 null 的值转换为非 null 类型。
             var tagsConverter = new ValueConverter<List<string>, string>(
                 // 转换为数据库值 - 空集合转换为空数组字符串，而不是null
-                v => v == null || v.Count == 0 ? "[]" : 
+                v => v == null || v.Count == 0 ? "[]" :
                      System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions)null),
                 // 从数据库值转换
-                v => string.IsNullOrEmpty(v) || v == "[]" ? new List<string>() : 
+                v => string.IsNullOrEmpty(v) || v == "[]" ? new List<string>() :
                      System.Text.Json.JsonSerializer.Deserialize<List<string>>(v, (System.Text.Json.JsonSerializerOptions)null) ?? new List<string>()
             );
 #pragma warning restore CS8600 // 将 null 字面量或可能为 null 的值转换为非 null 类型。
@@ -106,10 +106,10 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 #pragma warning disable CS8600 // 将 null 文本或可能的 null 值转换为不可为 null 类型
             var permissionsConverter = new ValueConverter<ICollection<AttachCatalogueTemplatePermission>, string>(
                 // 转换为数据库值 - 空集合转换为空数组字符串，而不是null
-                v => v == null || v.Count == 0 ? "[]" : 
+                v => v == null || v.Count == 0 ? "[]" :
                      System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions)null),
                 // 从数据库值转换
-                v => string.IsNullOrEmpty(v) || v == "[]" ? new List<AttachCatalogueTemplatePermission>() : 
+                v => string.IsNullOrEmpty(v) || v == "[]" ? new List<AttachCatalogueTemplatePermission>() :
                      System.Text.Json.JsonSerializer.Deserialize<List<AttachCatalogueTemplatePermission>>(v, (System.Text.Json.JsonSerializerOptions)null) ?? new List<AttachCatalogueTemplatePermission>()
             );
 #pragma warning restore CS8600
@@ -124,10 +124,10 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 #pragma warning disable CS8600 // 将 null 文本或可能的 null 值转换为不可为 null 类型
             var metaFieldsConverter = new ValueConverter<ICollection<MetaField>, string>(
                 // 转换为数据库值 - 空集合转换为空数组字符串，而不是null
-                v => v == null || v.Count == 0 ? "[]" : 
+                v => v == null || v.Count == 0 ? "[]" :
                      System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions)null),
                 // 从数据库值转换
-                v => string.IsNullOrEmpty(v) || v == "[]" ? new List<MetaField>() : 
+                v => string.IsNullOrEmpty(v) || v == "[]" ? new List<MetaField>() :
                      System.Text.Json.JsonSerializer.Deserialize<List<MetaField>>(v, (System.Text.Json.JsonSerializerOptions)null) ?? new List<MetaField>()
             );
 #pragma warning restore CS8600

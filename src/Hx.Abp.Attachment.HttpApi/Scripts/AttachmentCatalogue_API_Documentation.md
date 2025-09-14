@@ -25,27 +25,27 @@
 
 **请求体**: `AttachCatalogueCreateDto`
 
-| 参数名             | 类型                       | 必填 | 描述          | 示例值                                 |
-| ------------------ | -------------------------- | ---- | ------------- | -------------------------------------- |
-| attachReceiveType  | AttachReceiveType          | 是   | 附件收取类型  | 2                                      |
-| catalogueName      | string                     | 是   | 分类名称      | "合同文档分类"                         |
-| tags               | string[]                   | 否   | 分类标签      | ["合同", "法律", "重要"]               |
-| sequenceNumber     | int                        | 否   | 序号          | 100                                    |
-| referenceType      | int                        | 是   | 业务类型标识  | 1                                      |
-| reference          | string                     | 是   | 业务 Id       | "CONTRACT_001"                         |
-| parentId           | Guid?                      | 否   | 父节点 Id     | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
-| isVerification     | boolean                    | 否   | 是否核验      | false                                  |
-| verificationPassed | boolean                    | 否   | 核验通过      | false                                  |
-| isRequired         | boolean                    | 是   | 是否必收      | true                                   |
-| isStatic           | boolean                    | 否   | 静态标识      | false                                  |
-| children           | AttachCatalogueCreateDto[] | 否   | 子文件夹      | []                                     |
-| attachFiles        | AttachFileCreateDto[]      | 否   | 子文件        | []                                     |
-| templateId         | Guid?                      | 否   | 关联的模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
-| catalogueFacetType | FacetType                  | 否   | 分类分面类型  | 0                                      |
-| cataloguePurpose   | TemplatePurpose            | 否   | 分类用途      | 1                                      |
-| textVector         | double[]                   | 否   | 文本向量      | null                                   |
-| path               | string                     | 否   | 分类路径      | "0000001.0000002.0000003"              |
-| metaFields         | MetaFieldDto[]             | 否   | 元数据字段    | []                                     |
+| 参数名             | 类型                                           | 必填 | 描述          | 示例值                                 |
+| ------------------ | ---------------------------------------------- | ---- | ------------- | -------------------------------------- |
+| attachReceiveType  | AttachReceiveType                              | 是   | 附件收取类型  | 2                                      |
+| catalogueName      | string                                         | 是   | 分类名称      | "合同文档分类"                         |
+| tags               | string[]                                       | 否   | 分类标签      | ["合同", "法律", "重要"]               |
+| sequenceNumber     | int                                            | 否   | 序号          | 100                                    |
+| referenceType      | int                                            | 是   | 业务类型标识  | 1                                      |
+| reference          | string                                         | 是   | 业务 Id       | "CONTRACT_001"                         |
+| parentId           | Guid?                                          | 否   | 父节点 Id     | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| isVerification     | boolean                                        | 否   | 是否核验      | false                                  |
+| verificationPassed | boolean                                        | 否   | 核验通过      | false                                  |
+| isRequired         | boolean                                        | 是   | 是否必收      | true                                   |
+| isStatic           | boolean                                        | 否   | 静态标识      | false                                  |
+| children           | AttachCatalogueCreateDto[]                     | 否   | 子文件夹      | []                                     |
+| attachFiles        | AttachFileCreateDto[]                          | 否   | 子文件        | []                                     |
+| templateId         | Guid?                                          | 否   | 关联的模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| catalogueFacetType | FacetType                                      | 否   | 分类分面类型  | 0                                      |
+| cataloguePurpose   | TemplatePurpose                                | 否   | 分类用途      | 1                                      |
+| textVector         | double[]                                       | 否   | 文本向量      | null                                   |
+| path               | string                                         | 否   | 分类路径      | "0000001.0000002.0000003"              |
+| metaFields         | [MetaFieldDto](#metafielddto-用于查询和返回)[] | 否   | 元数据字段    | []                                     |
 
 #### 枚举值说明
 
@@ -158,6 +158,20 @@
 | effectiveTime       | DateTime?        | 否   | 生效时间            | "2024-01-01T00:00:00Z"                 |
 | expirationTime      | DateTime?        | 否   | 失效时间            | "2024-12-31T23:59:59Z"                 |
 | description         | string?          | 否   | 权限描述            | "管理员权限"                           |
+
+**AttachFileDto** (附件文件信息):
+
+| 字段名            | 类型   | 必填 | 描述           | 示例值                                 |
+| ----------------- | ------ | ---- | -------------- | -------------------------------------- |
+| id                | Guid   | 是   | 文件 ID        | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| fileAlias         | string | 是   | 文件别名       | "合同正文"                             |
+| sequenceNumber    | int    | 是   | 序号           | 1                                      |
+| filePath          | string | 是   | 文件路径       | "/host/attachment/contract_001.pdf"    |
+| fileName          | string | 是   | 文件名称       | "contract_001.pdf"                     |
+| fileType          | string | 是   | 文件类型       | "pdf"                                  |
+| fileSize          | int    | 是   | 文件大小(字节) | 1024000                                |
+| downloadTimes     | int    | 是   | 下载次数       | 5                                      |
+| attachCatalogueId | Guid?  | 否   | 关联分类 ID    | "3fa85f64-5717-4562-b3fc-2c963f66afa7" |
 
 #### 响应结果
 
@@ -1041,7 +1055,7 @@ const searchByHybrid = async (
 | ------ | ---- | ---- | ------- | -------------------------------------- |
 | id     | Guid | 是   | 目录 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
 
-**请求体**: `AttachCatalogueTemplatePermissionDto[]`
+**请求体**: `[AttachCatalogueTemplatePermissionDto](#attachcataloguetemplatepermissiondto)[]`
 
 #### React Axios 调用示例
 
@@ -1340,7 +1354,7 @@ const getByVectorDimension = async (
 | ------ | ---- | ---- | ------- | -------------------------------------- |
 | id     | Guid | 是   | 目录 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
 
-**请求体**: `CreateUpdateMetaFieldDto[]`
+**请求体**: `[CreateUpdateMetaFieldDto](#createupdatemetafielddto-用于创建和更新)[]`
 
 #### 功能特点
 
@@ -1739,39 +1753,39 @@ const getCataloguesTree = async (
 
 **AttachCatalogueTreeDto 字段说明**:
 
-| 字段名                     | 类型                                    | 必填 | 描述                                    | 示例值                                 |
-| -------------------------- | --------------------------------------- | ---- | --------------------------------------- | -------------------------------------- |
-| id                         | Guid                                    | 是   | 分类ID                                  | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
-| reference                  | string                                  | 是   | 业务引用                                | "CONTRACT_001"                         |
-| attachReceiveType          | AttachReceiveType                      | 是   | 附件收取类型                            | 2                                      |
-| referenceType              | int                                     | 是   | 业务类型标识                            | 1                                      |
-| catalogueName              | string                                  | 是   | 分类名称                                | "合同文档分类"                         |
-| tags                       | List<string>                           | 否   | 分类标签                                | ["合同", "法律", "重要"]               |
-| sequenceNumber             | int                                     | 是   | 顺序号                                  | 100                                    |
-| parentId                   | Guid?                                   | 否   | 父分类ID                                | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
-| isRequired                 | bool                                    | 是   | 是否必收                                | true                                   |
-| attachCount                | int                                     | 是   | 附件数量                                | 5                                      |
-| pageCount                  | int                                     | 是   | 页数                                    | 10                                     |
-| isStatic                   | bool                                    | 是   | 静态标识                                | false                                  |
-| isVerification             | bool                                    | 是   | 是否核验                                | false                                  |
-| verificationPassed         | bool                                    | 是   | 核验通过                                | false                                  |
-| children                   | List<AttachCatalogueTreeDto>           | 否   | 子分类列表（树形结构）                  | []                                     |
-| attachFiles                | Collection<AttachFileDto>?             | 否   | 附件文件集合（当includeFiles=true时）   | null                                   |
-| templateId                 | Guid?                                   | 否   | 关联的模板ID                            | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
-| fullTextContent            | string?                                 | 否   | 全文内容                                | "合同文档内容..."                      |
-| fullTextContentUpdatedTime | DateTime?                               | 否   | 全文内容更新时间                        | "2024-01-01T00:00:00Z"                 |
-| catalogueFacetType         | FacetType                              | 是   | 分类分面类型                            | 0                                      |
-| cataloguePurpose           | TemplatePurpose                        | 是   | 分类用途                                | 1                                      |
-| textVector                 | List<double>?                          | 否   | 文本向量                                | [0.1, 0.2, 0.3]                       |
-| vectorDimension            | int                                     | 是   | 向量维度                                | 128                                    |
-| path                       | string?                                 | 否   | 分类路径（用于快速查询层级）            | "0000001.0000002.0000003"              |
-| permissions                | List<AttachCatalogueTemplatePermissionDto> | 否 | 权限集合                                | []                                     |
-| metaFields                 | List<MetaFieldDto>                     | 否   | 元数据字段集合                          | []                                     |
-| catalogueIdentifierDescription | string                             | 是   | 分类标识描述（计算属性）                | "General - Classification"             |
-| creationTime               | DateTime                               | 是   | 创建时间                                | "2024-01-01T00:00:00Z"                 |
-| lastModificationTime       | DateTime?                              | 否   | 最后修改时间                            | "2024-01-01T00:00:00Z"                 |
-| creatorId                  | Guid?                                  | 否   | 创建者ID                                | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
-| lastModifierId             | Guid?                                  | 否   | 最后修改者ID                            | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| 字段名                         | 类型                                                                                | 必填 | 描述                                    | 示例值                                 |
+| ------------------------------ | ----------------------------------------------------------------------------------- | ---- | --------------------------------------- | -------------------------------------- |
+| id                             | Guid                                                                                | 是   | 分类 ID                                 | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| reference                      | string                                                                              | 是   | 业务引用                                | "CONTRACT_001"                         |
+| attachReceiveType              | [AttachReceiveType](#attachreceivetype)                                             | 是   | 附件收取类型                            | 2                                      |
+| referenceType                  | int                                                                                 | 是   | 业务类型标识                            | 1                                      |
+| catalogueName                  | string                                                                              | 是   | 分类名称                                | "合同文档分类"                         |
+| tags                           | List<string>                                                                        | 否   | 分类标签                                | ["合同", "法律", "重要"]               |
+| sequenceNumber                 | int                                                                                 | 是   | 顺序号                                  | 100                                    |
+| parentId                       | Guid?                                                                               | 否   | 父分类 ID                               | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| isRequired                     | bool                                                                                | 是   | 是否必收                                | true                                   |
+| attachCount                    | int                                                                                 | 是   | 附件数量                                | 5                                      |
+| pageCount                      | int                                                                                 | 是   | 页数                                    | 10                                     |
+| isStatic                       | bool                                                                                | 是   | 静态标识                                | false                                  |
+| isVerification                 | bool                                                                                | 是   | 是否核验                                | false                                  |
+| verificationPassed             | bool                                                                                | 是   | 核验通过                                | false                                  |
+| children                       | List<AttachCatalogueTreeDto>                                                        | 否   | 子分类列表（树形结构）                  | []                                     |
+| attachFiles                    | Collection<[AttachFileDto](#attachfiledto-附件文件信息)?                            | 否   | 附件文件集合（当 includeFiles=true 时） | null                                   |
+| templateId                     | Guid?                                                                               | 否   | 关联的模板 ID                           | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| fullTextContent                | string?                                                                             | 否   | 全文内容                                | "合同文档内容..."                      |
+| fullTextContentUpdatedTime     | DateTime?                                                                           | 否   | 全文内容更新时间                        | "2024-01-01T00:00:00Z"                 |
+| catalogueFacetType             | [FacetType](#facettype)                                                             | 是   | 分类分面类型                            | 0                                      |
+| cataloguePurpose               | [TemplatePurpose](#templatepurpose)                                                 | 是   | 分类用途                                | 1                                      |
+| textVector                     | List<double>?                                                                       | 否   | 文本向量                                | [0.1, 0.2, 0.3]                        |
+| vectorDimension                | int                                                                                 | 是   | 向量维度                                | 128                                    |
+| path                           | string?                                                                             | 否   | 分类路径（用于快速查询层级）            | "0000001.0000002.0000003"              |
+| permissions                    | List<[AttachCatalogueTemplatePermissionDto](#attachcataloguetemplatepermissiondto)> | 否   | 权限集合                                | []                                     |
+| metaFields                     | List<[MetaFieldDto](#metafielddto-用于查询和返回)>                                  | 否   | 元数据字段集合                          | []                                     |
+| catalogueIdentifierDescription | string                                                                              | 是   | 分类标识描述（计算属性）                | "General - Classification"             |
+| creationTime                   | DateTime                                                                            | 是   | 创建时间                                | "2024-01-01T00:00:00Z"                 |
+| lastModificationTime           | DateTime?                                                                           | 否   | 最后修改时间                            | "2024-01-01T00:00:00Z"                 |
+| creatorId                      | Guid?                                                                               | 否   | 创建者 ID                               | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| lastModifierId                 | Guid?                                                                               | 否   | 最后修改者 ID                           | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
 
 **响应示例**:
 

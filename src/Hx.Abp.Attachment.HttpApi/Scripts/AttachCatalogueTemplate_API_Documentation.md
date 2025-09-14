@@ -37,8 +37,8 @@
 | templatePurpose   | TemplatePurpose                        | 是   | 模板用途              | 1                                                    |
 | templateRole      | TemplateRole                           | 是   | 模板角色              | 3                                                    |
 | textVector        | double[]                               | 否   | 文本向量              | null                                                 |
-| permissions       | AttachCatalogueTemplatePermissionDto[] | 否   | 权限配置              | []                                                   |
-| metaFields        | CreateUpdateMetaFieldDto[]             | 否   | 元数据字段            | []                                                   |
+| permissions       | [AttachCatalogueTemplatePermissionDto](#attachcataloguetemplatepermissiondto)[] | 否   | 权限配置              | []                                                   |
+| metaFields        | [CreateUpdateMetaFieldDto](#createupdatemetafielddto)[] | 否   | 元数据字段            | []                                                   |
 
 #### 复杂类型说明
 
@@ -74,6 +74,42 @@
 | group | string? | 否 | 字段分组 | "基本信息" |
 | validationRules | string? | 否 | 验证规则(JSON 格式) | "{\"minLength\":1,\"maxLength\":100}" |
 | tags | string[] | 否 | 元数据标签 | ["重要", "必填"] |
+
+**MetaFieldDto** (用于查询和返回):
+
+| 字段名               | 类型     | 必填 | 描述                | 示例值                                |
+| -------------------- | -------- | ---- | ------------------- | ------------------------------------- |
+| entityType           | string   | 是   | 实体类型            | "Project"                             |
+| fieldKey             | string   | 是   | 字段键名            | "project_name"                        |
+| fieldName            | string   | 是   | 字段显示名称        | "项目名称"                            |
+| dataType             | string   | 是   | 数据类型            | "string"                              |
+| unit                 | string   | 否   | 单位                | "万元"                                |
+| isRequired           | boolean  | 是   | 是否必填            | true                                  |
+| regexPattern         | string   | 否   | 正则表达式模式      | "^[A-Za-z0-9]+$"                      |
+| options              | string   | 否   | 枚举选项(JSON 格式) | "[\"选项 1\",\"选项 2\"]"             |
+| description          | string   | 否   | 字段描述            | "项目名称字段"                        |
+| defaultValue         | string   | 否   | 默认值              | ""                                    |
+| order                | int      | 是   | 字段顺序            | 1                                     |
+| isEnabled            | boolean  | 是   | 是否启用            | true                                  |
+| group                | string   | 否   | 字段分组            | "基本信息"                            |
+| validationRules      | string   | 否   | 验证规则(JSON 格式) | "{\"minLength\":1,\"maxLength\":100}" |
+| tags                 | string[] | 否   | 元数据标签          | ["重要", "必填"]                      |
+| creationTime         | DateTime | 是   | 创建时间            | "2024-01-01T00:00:00Z"                |
+| lastModificationTime | DateTime | 否   | 最后修改时间        | "2024-01-01T00:00:00Z"                |
+
+**AttachFileDto** (附件文件信息):
+
+| 字段名            | 类型   | 必填 | 描述           | 示例值                                 |
+| ----------------- | ------ | ---- | -------------- | -------------------------------------- |
+| id                | Guid   | 是   | 文件 ID        | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| fileAlias         | string | 是   | 文件别名       | "合同正文"                             |
+| sequenceNumber    | int    | 是   | 序号           | 1                                      |
+| filePath          | string | 是   | 文件路径       | "/host/attachment/contract_001.pdf"    |
+| fileName          | string | 是   | 文件名称       | "contract_001.pdf"                     |
+| fileType          | string | 是   | 文件类型       | "pdf"                                  |
+| fileSize          | int    | 是   | 文件大小(字节) | 1024000                                |
+| downloadTimes     | int    | 是   | 下载次数       | 5                                      |
+| attachCatalogueId | Guid?  | 否   | 关联分类 ID    | "3fa85f64-5717-4562-b3fc-2c963f66afa7" |
 
 #### 枚举值说明
 
@@ -1175,8 +1211,8 @@ const searchTemplatesHybrid = async (searchParams) => {
 | templatePurpose               | TemplatePurpose                        | 模板用途（见枚举说明）  |
 | textVector                    | double[]                               | 文本向量                |
 | vectorDimension               | int                                    | 向量维度                |
-| permissions                   | AttachCatalogueTemplatePermissionDto[] | 权限集合                |
-| metaFields                    | MetaFieldDto[]                         | 元数据字段集合          |
+| permissions                   | [AttachCatalogueTemplatePermissionDto](#attachcataloguetemplatepermissiondto)[] | 权限集合                |
+| metaFields                    | [MetaFieldDto](#metafielddto-用于查询和返回)[] | 元数据字段集合          |
 | templateIdentifierDescription | string                                 | 模板标识描述            |
 | isRoot                        | boolean                                | 是否为根模板            |
 | isLeaf                        | boolean                                | 是否为叶子模板          |
@@ -1378,7 +1414,7 @@ const searchTemplatesBySemantic = async (semanticQuery, filters = {}) => {
 | -------------------------- | -------------------------------------- | ---- | ---------------- | -------------------------------------- |
 | id                         | string                                 | 是   | 模板 ID          | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
 | reference                  | string                                 | 是   | 业务类型 ID      | "PROJECT_001"                          |
-| attachReceiveType          | AttachReceiveType                      | 是   | 附件类型         | 1                                      |
+| attachReceiveType          | [AttachReceiveType](#attachreceivetype) | 是   | 附件类型         | 1                                      |
 | referenceType              | number                                 | 是   | 业务类型标识     | 1                                      |
 | catalogueName              | string                                 | 是   | 分类名称         | "项目文档模板"                         |
 | tags                       | string[]                               | 否   | 分类标签         | ["项目", "文档", "管理"]               |
@@ -1391,18 +1427,18 @@ const searchTemplatesBySemantic = async (semanticQuery, filters = {}) => {
 | isVerification             | boolean                                | 是   | 是否核验         | false                                  |
 | verificationPassed         | boolean                                | 是   | 核验通过         | true                                   |
 | children                   | AttachCatalogueTemplateTreeDto[]       | 否   | 子模板集合       | 递归结构，同父级结构                   |
-| attachFiles                | AttachFileDto[]                        | 否   | 附件文件集合     | 见下方附件文件字段说明                 |
+| attachFiles                | [AttachFileDto](#attachfiledto-附件文件信息)[] | 否   | 附件文件集合     | 见下方附件文件字段说明                 |
 | templateId                 | string                                 | 否   | 关联的模板 ID    | "3fa85f64-5717-4562-b3fc-2c963f66afa8" |
 | fullTextContent            | string                                 | 否   | 全文内容         | "项目文档模板相关内容..."              |
 | fullTextContentUpdatedTime | string                                 | 否   | 全文内容更新时间 | "2024-01-01T00:00:00Z"                 |
-| catalogueFacetType         | FacetType                              | 是   | 分类分面类型     | 0                                      |
-| cataloguePurpose           | TemplatePurpose                        | 是   | 分类用途         | 1                                      |
+| catalogueFacetType         | [FacetType](#facettype)                | 是   | 分类分面类型     | 0                                      |
+| cataloguePurpose           | [TemplatePurpose](#templatepurpose)    | 是   | 分类用途         | 1                                      |
 | templateRole               | TemplateRole                           | 是   | 模板角色         | 1                                      |
 | textVector                 | number[]                               | 否   | 文本向量         | [0.1, 0.2, 0.3, ...]                   |
 | vectorDimension            | number                                 | 是   | 向量维度         | 768                                    |
 | path                       | string                                 | 否   | 分类路径         | "0000001.0000002"                      |
-| permissions                | AttachCatalogueTemplatePermissionDto[] | 否   | 权限集合         | 见下方权限字段说明                     |
-| metaFields                 | MetaFieldDto[]                         | 否   | 元数据字段集合   | 见下方元数据字段说明                   |
+| permissions                | [AttachCatalogueTemplatePermissionDto](#attachcataloguetemplatepermissiondto)[] | 否   | 权限集合         | 见下方权限字段说明                     |
+| metaFields                 | [MetaFieldDto](#metafielddto-用于查询和返回)[] | 否   | 元数据字段集合   | 见下方元数据字段说明                   |
 | creationTime               | string                                 | 是   | 创建时间         | "2024-01-01T00:00:00Z"                 |
 | lastModificationTime       | string                                 | 否   | 最后修改时间     | "2024-01-01T00:00:00Z"                 |
 | creatorId                  | string                                 | 否   | 创建者 ID        | "3fa85f64-5717-4562-b3fc-2c963f66afa8" |
@@ -1938,7 +1974,7 @@ const findMatchingTemplates = async (matchInput) => {
 | referenceType | int                        | 是   | 业务类型                                           | 1                                      |
 | contextData   | Dictionary<string, object> | 否   | 上下文数据                                         | {"key": "value"}                       |
 | templateName  | string                     | 否   | 根节点分类名称（用于修改生成的根节点分类名称）     | "项目文档分类"                         |
-| metaFields    | CreateUpdateMetaFieldDto[] | 否   | 元数据字段集合（用于修改生成的根节点分类的元数据） | 见下方元数据字段说明                   |
+| metaFields    | [CreateUpdateMetaFieldDto](#createupdatemetafielddto)[] | 否   | 元数据字段集合（用于修改生成的根节点分类的元数据） | 见下方元数据字段说明                   |
 
 #### React Axios 调用示例
 
@@ -2754,7 +2790,7 @@ const getTemplateMetaFields = async (templateId) => {
 | ------ | ---- | ---- | ------- | -------------------------------------- |
 | id     | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
 
-**请求体**: `CreateUpdateMetaFieldDto[]`
+**请求体**: `[CreateUpdateMetaFieldDto](#createupdatemetafielddto)[]`
 
 ##### 功能特点
 

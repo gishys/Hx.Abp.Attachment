@@ -26,6 +26,11 @@ namespace Hx.Abp.Attachment.Domain.Shared
         Permission = 4,
 
         /// <summary>
+        /// 档案管理
+        /// </summary>
+        Archive = 5,
+
+        /// <summary>
         /// 其他用途
         /// </summary>
         Other = 99

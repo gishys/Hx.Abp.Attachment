@@ -4,6 +4,31 @@
 -- 支持复合主键 {ID, VERSION} 和完整的实体字段
 -- =====================================================
 
+-- 检查并安装必要的扩展
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+
+-- 检查并创建中文全文搜索配置
+DO $$
+BEGIN
+    -- 检查 chinese_fts 配置是否存在
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_ts_config 
+        WHERE cfgname = 'chinese_fts'
+    ) THEN
+        -- 创建中文全文搜索配置
+        CREATE TEXT SEARCH CONFIGURATION chinese_fts (COPY = simple);
+        
+        -- 配置中文分词器（使用pg_trgm扩展）
+        ALTER TEXT SEARCH CONFIGURATION chinese_fts 
+        ALTER MAPPING FOR asciiword, asciihword, hword_asciipart, word, hword, hword_part 
+        WITH simple;
+        
+        RAISE NOTICE '已创建中文全文搜索配置 chinese_fts';
+    ELSE
+        RAISE NOTICE '中文全文搜索配置 chinese_fts 已存在';
+    END IF;
+END $$;
+
 -- 设置事务隔离级别
 SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
 
@@ -252,7 +277,7 @@ BEGIN
     IF NOT EXISTS (SELECT FROM information_schema.check_constraints WHERE constraint_name = 'CK_ATTACH_CATALOGUE_TEMPLATES_TEMPLATE_PURPOSE') THEN
         ALTER TABLE "APPATTACH_CATALOGUE_TEMPLATES" 
         ADD CONSTRAINT "CK_ATTACH_CATALOGUE_TEMPLATES_TEMPLATE_PURPOSE" 
-        CHECK ("TEMPLATE_PURPOSE" IN (1, 2, 3, 4, 99));
+        CHECK ("TEMPLATE_PURPOSE" IN (1, 2, 3, 4, 5, 99));
         RAISE NOTICE '已添加模板用途约束';
     END IF;
 

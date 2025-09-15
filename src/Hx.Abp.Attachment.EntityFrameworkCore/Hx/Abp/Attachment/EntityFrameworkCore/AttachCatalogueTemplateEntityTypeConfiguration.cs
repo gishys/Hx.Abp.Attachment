@@ -67,7 +67,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             // 新增模板角色字段配置
             builder.Property(d => d.TemplateRole).HasColumnName("TEMPLATE_ROLE")
                 .HasConversion<int>()
-                .HasDefaultValue(TemplateRole.Normal);
+                .HasDefaultValue(TemplateRole.Branch);
 
             builder.Property(d => d.TextVector).HasColumnName("TEXT_VECTOR")
                 .HasColumnType("double precision[]");

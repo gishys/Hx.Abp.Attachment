@@ -104,7 +104,7 @@ namespace Hx.Abp.Attachment.Domain
         /// 模板角色 - 标识模板在层级结构中的角色
         /// 主要用于前端树状展示和动态分类树创建判断
         /// </summary>
-        public virtual TemplateRole TemplateRole { get; private set; } = TemplateRole.Normal;
+        public virtual TemplateRole TemplateRole { get; private set; } = TemplateRole.Branch;
 
         /// <summary>
         /// 文本向量（64-2048维）
@@ -146,7 +146,7 @@ namespace Hx.Abp.Attachment.Domain
             bool isLatest = true,
             FacetType facetType = FacetType.General,
             TemplatePurpose templatePurpose = TemplatePurpose.Classification,
-            TemplateRole templateRole = TemplateRole.Normal,
+            TemplateRole templateRole = TemplateRole.Branch,
             [CanBeNull] List<double>? textVector = null,
             [CanBeNull] string? description = null,
             [CanBeNull] List<string>? tags = null,
@@ -1103,10 +1103,16 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual bool IsNavigationTemplate => TemplateRole == TemplateRole.Navigation;
 
+
         /// <summary>
-        /// 检查是否为普通模板（既不是根模板也不是导航模板）
+        /// 检查是否为分支节点（可以有子节点，但不能直接上传文件）
         /// </summary>
-        public virtual bool IsNormalTemplate => TemplateRole == TemplateRole.Normal;
+        public virtual bool IsBranchNode => TemplateRole == TemplateRole.Branch;
+
+        /// <summary>
+        /// 检查是否为叶子节点（不能有子节点，但可以直接上传文件）
+        /// </summary>
+        public virtual bool IsLeafNode => TemplateRole == TemplateRole.Leaf;
 
         /// <summary>
         /// 检查是否可以参与动态分类树创建
@@ -1119,12 +1125,23 @@ namespace Hx.Abp.Attachment.Domain
 
         /// <summary>
         /// 检查是否可以包含子模板
-        /// 根模板和普通模板都可以包含子模板，子模板的层级关系由父子关系决定
+        /// 根模板和分支节点都可以包含子模板，子模板的层级关系由父子关系决定
         /// </summary>
         /// <returns>是否可以包含子模板</returns>
         public virtual bool CanContainChildTemplates()
         {
-            return TemplateRole == TemplateRole.Root || TemplateRole == TemplateRole.Normal;
+            return TemplateRole == TemplateRole.Root || 
+                   TemplateRole == TemplateRole.Branch;
+        }
+
+        /// <summary>
+        /// 检查是否支持文件上传
+        /// 只有叶子节点才支持直接上传文件，分支节点用于组织分类结构
+        /// </summary>
+        /// <returns>是否支持文件上传</returns>
+        public virtual bool SupportsFileUpload()
+        {
+            return TemplateRole == TemplateRole.Leaf;
         }
 
         /// <summary>

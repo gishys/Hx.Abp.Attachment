@@ -86,7 +86,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 模板角色 - 标识模板在层级结构中的角色
         /// </summary>
-        public TemplateRole TemplateRole { get; set; } = TemplateRole.Normal;
+        public TemplateRole TemplateRole { get; set; } = TemplateRole.Branch;
 
         /// <summary>
         /// 权限集合

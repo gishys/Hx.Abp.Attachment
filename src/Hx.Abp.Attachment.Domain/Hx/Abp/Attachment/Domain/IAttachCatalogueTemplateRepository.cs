@@ -203,6 +203,7 @@ namespace Hx.Abp.Attachment.Domain
             bool onlyLatest = true,
             string? fulltextQuery = null);
 
+
         /// <summary>
         /// 递归获取模板的完整子树
         /// </summary>

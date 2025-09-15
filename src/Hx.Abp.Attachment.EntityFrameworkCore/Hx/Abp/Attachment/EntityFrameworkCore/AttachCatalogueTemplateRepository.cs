@@ -1972,8 +1972,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     new Npgsql.NpgsqlParameter("@queryPattern", NpgsqlTypes.NpgsqlDbType.Text) { Value = queryPattern },
                     new Npgsql.NpgsqlParameter("@queryTagsJson", NpgsqlTypes.NpgsqlDbType.Text) { Value = queryTagsJson },
                     new Npgsql.NpgsqlParameter("@onlyLatest", NpgsqlTypes.NpgsqlDbType.Boolean) { Value = onlyLatest },
-                    new Npgsql.NpgsqlParameter("@facetType", NpgsqlTypes.NpgsqlDbType.Integer) { Value = facetType?.ToString() ?? (object)DBNull.Value },
-                    new Npgsql.NpgsqlParameter("@templatePurpose", NpgsqlTypes.NpgsqlDbType.Integer) { Value = templatePurpose?.ToString() ?? (object)DBNull.Value },
+                    new Npgsql.NpgsqlParameter("@facetType", NpgsqlTypes.NpgsqlDbType.Integer) { Value = (int?)facetType ?? (object)DBNull.Value },
+                    new Npgsql.NpgsqlParameter("@templatePurpose", NpgsqlTypes.NpgsqlDbType.Integer) { Value = (int?)templatePurpose ?? (object)DBNull.Value },
                     new Npgsql.NpgsqlParameter("@vectorTopN", NpgsqlTypes.NpgsqlDbType.Integer) { Value = vectorTopN },
                     new Npgsql.NpgsqlParameter("@similarityThreshold", NpgsqlTypes.NpgsqlDbType.Double) { Value = similarityThreshold },
                     new Npgsql.NpgsqlParameter("@semanticWeight", NpgsqlTypes.NpgsqlDbType.Double) { Value = semanticWeight },
@@ -2222,8 +2222,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     new NpgsqlParameter("@queryPattern", NpgsqlTypes.NpgsqlDbType.Text) { Value = queryPattern },
                     new NpgsqlParameter("@queryTagsJson", NpgsqlTypes.NpgsqlDbType.Text) { Value = queryTagsJson },
                     new NpgsqlParameter("@onlyLatest", NpgsqlTypes.NpgsqlDbType.Boolean) { Value = onlyLatest },
-                    new NpgsqlParameter("@facetType", NpgsqlTypes.NpgsqlDbType.Integer) { Value = facetType?.ToString() ?? (object)DBNull.Value },
-                    new NpgsqlParameter("@templatePurpose", NpgsqlTypes.NpgsqlDbType.Integer) { Value = templatePurpose?.ToString() ?? (object)DBNull.Value },
+                    new NpgsqlParameter("@facetType", NpgsqlTypes.NpgsqlDbType.Integer) { Value = (int?)facetType ?? (object)DBNull.Value },
+                    new NpgsqlParameter("@templatePurpose", NpgsqlTypes.NpgsqlDbType.Integer) { Value = (int?)templatePurpose ?? (object)DBNull.Value },
                     new NpgsqlParameter("@vectorTopN", NpgsqlTypes.NpgsqlDbType.Integer) { Value = vectorTopN },
                     new NpgsqlParameter("@similarityThreshold", NpgsqlTypes.NpgsqlDbType.Double) { Value = similarityThreshold },
                     new NpgsqlParameter("@semanticWeight", NpgsqlTypes.NpgsqlDbType.Double) { Value = semanticWeight },
@@ -2571,6 +2571,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 return [];
             }
         }
+
 
         /// <summary>
         /// 获取模板的完整子树

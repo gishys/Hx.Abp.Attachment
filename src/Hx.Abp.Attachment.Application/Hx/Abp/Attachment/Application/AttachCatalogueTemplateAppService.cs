@@ -2,7 +2,6 @@ using Hx.Abp.Attachment.Application.Contracts;
 using Hx.Abp.Attachment.Domain;
 using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.Extensions.Logging;
-using System.Linq;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
@@ -1154,6 +1153,7 @@ namespace Hx.Abp.Attachment.Application
                 throw new UserFriendlyException("获取模板树失败，请稍后重试");
             }
         }
+
 
         #region 元数据字段管理
 

@@ -73,6 +73,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
             bool onlyLatest = true,
             string? fulltextQuery = null);
 
+
         #region 元数据字段管理
 
         /// <summary>

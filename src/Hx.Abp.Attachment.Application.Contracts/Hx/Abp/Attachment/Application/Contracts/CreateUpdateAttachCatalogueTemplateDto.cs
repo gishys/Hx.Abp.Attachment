@@ -90,7 +90,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// 模板角色 - 标识模板在层级结构中的角色
         /// 主要用于前端树状展示和动态分类树创建判断
         /// </summary>
-        public TemplateRole TemplateRole { get; set; } = TemplateRole.Normal;
+        public TemplateRole TemplateRole { get; set; } = TemplateRole.Branch;
 
         /// <summary>
         /// 文本向量

@@ -26,6 +26,9 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
                     tableBuilder.HasCheckConstraint("CK_ATTACH_CATALOGUES_CATALOGUE_PURPOSE",
                         "\"CATALOGUE_PURPOSE\" IN (1, 2, 3, 4, 99)");
+
+                    tableBuilder.HasCheckConstraint("CK_ATTACH_CATALOGUES_TEMPLATE_ROLE",
+                        "\"TEMPLATE_ROLE\" IN (1, 2, 3, 4)");
                 });
             
             // 主键配置
@@ -92,6 +95,10 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
             builder.Property(d => d.CataloguePurpose).HasColumnName("CATALOGUE_PURPOSE")
                 .HasConversion<int>();
+
+            builder.Property(d => d.TemplateRole).HasColumnName("TEMPLATE_ROLE")
+                .HasConversion<int>()
+                .HasDefaultValue(Domain.Shared.TemplateRole.Branch);
 
             builder.Property(d => d.TextVector).HasColumnName("TEXT_VECTOR")
                 .HasColumnType("double precision[]");

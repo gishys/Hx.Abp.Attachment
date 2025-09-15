@@ -86,6 +86,12 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public TemplatePurpose CataloguePurpose { get; set; } = TemplatePurpose.Classification;
 
         /// <summary>
+        /// 分类角色 - 标识分类在层级结构中的角色
+        /// 主要用于前端树状展示和动态分类树创建判断
+        /// </summary>
+        public TemplateRole TemplateRole { get; set; } = TemplateRole.Branch;
+
+        /// <summary>
         /// 文本向量（可为空，如果提供则维度必须在64-2048之间）
         /// </summary>
         public List<double>? TextVector { get; set; }

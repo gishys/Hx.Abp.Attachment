@@ -43,6 +43,7 @@
 | templateId         | Guid?                                          | 否   | 关联的模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
 | catalogueFacetType | FacetType                                      | 否   | 分类分面类型  | 0                                      |
 | cataloguePurpose   | TemplatePurpose                                | 否   | 分类用途      | 1                                      |
+| templateRole       | TemplateRole                                   | 否   | 分类角色      | 3                                      |
 | textVector         | double[]                                       | 否   | 文本向量      | null                                   |
 | path               | string                                         | 否   | 分类路径      | "0000001.0000002.0000003"              |
 | metaFields         | [MetaFieldDto](#metafielddto-用于查询和返回)[] | 否   | 元数据字段    | []                                     |
@@ -77,6 +78,13 @@
 -   3: 流程管理
 -   4: 权限管理
 -   99: 其他用途
+
+**TemplateRole**:
+
+-   1: 根分类 - 可以作为根节点创建动态分类树
+-   2: 导航分类 - 仅用于导航，不参与动态分类树创建
+-   3: 分支节点 - 可以有子节点，但不能直接上传文件
+-   4: 叶子节点 - 不能有子节点，但可以直接上传文件
 
 **PermissionAction**:
 
@@ -196,6 +204,7 @@
     "templateId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
     "catalogueFacetType": 0,
     "cataloguePurpose": 1,
+    "templateRole": 3,
     "textVector": null,
     "path": "0000001.0000002.0000003",
     "metaFields": [
@@ -1776,6 +1785,7 @@ const getCataloguesTree = async (
 | fullTextContentUpdatedTime     | DateTime?                                                                           | 否   | 全文内容更新时间                        | "2024-01-01T00:00:00Z"                 |
 | catalogueFacetType             | [FacetType](#facettype)                                                             | 是   | 分类分面类型                            | 0                                      |
 | cataloguePurpose               | [TemplatePurpose](#templatepurpose)                                                 | 是   | 分类用途                                | 1                                      |
+| templateRole                   | [TemplateRole](#templaterole)                                                       | 是   | 分类角色                                | 3                                      |
 | textVector                     | List<double>?                                                                       | 否   | 文本向量                                | [0.1, 0.2, 0.3]                        |
 | vectorDimension                | int                                                                                 | 是   | 向量维度                                | 128                                    |
 | path                           | string?                                                                             | 否   | 分类路径（用于快速查询层级）            | "0000001.0000002.0000003"              |
@@ -1829,6 +1839,7 @@ const getCataloguesTree = async (
                 "fullTextContentUpdatedTime": "2024-01-01T00:00:00Z",
                 "catalogueFacetType": 1,
                 "cataloguePurpose": 1,
+                "templateRole": 3,
                 "textVector": [0.1, 0.2, 0.3],
                 "vectorDimension": 128,
                 "path": "0000001.0000002",
@@ -1847,6 +1858,7 @@ const getCataloguesTree = async (
         "fullTextContentUpdatedTime": "2024-01-01T00:00:00Z",
         "catalogueFacetType": 0,
         "cataloguePurpose": 1,
+        "templateRole": 1,
         "textVector": [0.1, 0.2, 0.3],
         "vectorDimension": 128,
         "path": "0000001",
@@ -1937,11 +1949,51 @@ const getCataloguesTree = async (
 -   **父子关系**: 通过路径可以快速判断分类间的父子关系
 -   **深度计算**: 使用路径可以快速计算分类的层级深度
 
+## TemplateRole 详细说明
+
+### 分类角色类型
+
+**TemplateRole** 字段用于标识分类在层级结构中的角色，主要用于前端树状展示和动态分类树创建判断：
+
+#### 1. Root (根分类) - 值: 1
+
+-   **特点**: 顶级分类，没有父分类
+-   **用途**: 可以作为根节点创建动态分类树
+-   **应用场景**: 知识库根目录、档案管理根分类、项目根节点等
+-   **权限**: 可以包含子分类，不能直接上传文件
+
+#### 2. Navigation (导航分类) - 值: 2
+
+-   **特点**: 纯导航作用，不参与动态分类树创建
+-   **用途**: 仅用于导航，前端展示但不作为树节点
+-   **应用场景**: 侧边栏导航、面包屑导航、菜单项等
+-   **权限**: 不能包含子分类，不能上传文件
+
+#### 3. Branch (分支节点) - 值: 3
+
+-   **特点**: 中间层节点，用于组织分类结构
+-   **用途**: 可以有子节点，但不能直接上传文件
+-   **应用场景**: 分类文件夹、组织架构中间层、知识库分类等
+-   **权限**: 可以包含子分类，不能直接上传文件
+
+#### 4. Leaf (叶子节点) - 值: 4
+
+-   **特点**: 终端节点，用于存放具体内容
+-   **用途**: 不能有子节点，但可以直接上传文件
+-   **应用场景**: 具体文档分类、文件存储目录、内容分类等
+-   **权限**: 不能包含子分类，可以直接上传文件
+
+### 前端使用建议
+
+1. **树状展示**: 根据 `templateRole` 字段决定节点的显示样式和交互行为
+2. **文件上传**: 只有 `Leaf` 类型的分类才允许直接上传文件
+3. **子分类创建**: 只有 `Root` 和 `Branch` 类型的分类才允许创建子分类
+4. **导航功能**: `Navigation` 类型的分类仅用于导航，不参与业务逻辑
+
 ## 版本信息
 
--   **文档版本**: 1.5.12
--   **API 版本**: v1.5.12
--   **最后更新**: 2025-09-10
+-   **文档版本**: 1.5.13
+-   **API 版本**: v1.5.13
+-   **最后更新**: 2024-12-19
 -   **维护人员**: 开发团队
--   **更新内容**: 新增 3 个接口（根据模板查询、根据模板 ID 查询、获取分类树形结构）
-
+-   **更新内容**: 新增 TemplateRole 字段支持，优化分类角色管理功能

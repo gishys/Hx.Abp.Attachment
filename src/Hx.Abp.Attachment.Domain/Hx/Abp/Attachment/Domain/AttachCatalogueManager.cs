@@ -132,6 +132,7 @@ namespace Hx.Abp.Attachment.Domain
                 templateVersion: template.Version,
                 catalogueFacetType: template.FacetType,
                 cataloguePurpose: template.TemplatePurpose,
+                templateRole: template.TemplateRole,
                 tags: template.Tags,
                 textVector: template.TextVector,
                 metaFields: metaFields,

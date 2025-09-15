@@ -98,6 +98,12 @@ namespace Hx.Abp.Attachment.Domain
         public virtual TemplatePurpose CataloguePurpose { get; private set; } = TemplatePurpose.Classification;
 
         /// <summary>
+        /// 分类角色 - 标识分类在层级结构中的角色
+        /// 主要用于前端树状展示和动态分类树创建判断
+        /// </summary>
+        public virtual TemplateRole TemplateRole { get; private set; } = TemplateRole.Branch;
+
+        /// <summary>
         /// 文本向量（64-2048维）
         /// </summary>
         [CanBeNull]
@@ -161,6 +167,7 @@ namespace Hx.Abp.Attachment.Domain
             int? templateVersion = null,
             FacetType catalogueFacetType = FacetType.General,
             TemplatePurpose cataloguePurpose = TemplatePurpose.Classification,
+            TemplateRole templateRole = TemplateRole.Branch,
             [CanBeNull] List<string>? tags = null,
             [CanBeNull] List<double>? textVector = null,
             [CanBeNull] List<MetaField>? metaFields = null,
@@ -183,6 +190,7 @@ namespace Hx.Abp.Attachment.Domain
             TemplateVersion = templateVersion;
             CatalogueFacetType = catalogueFacetType;
             CataloguePurpose = cataloguePurpose;
+            TemplateRole = templateRole;
             Tags = tags ?? [];
             SetTextVector(textVector);
             MetaFields = metaFields ?? [];
@@ -265,6 +273,12 @@ namespace Hx.Abp.Attachment.Domain
             TemplateId = templateId;
             TemplateVersion = templateVersion;
         }
+
+        /// <summary>
+        /// 设置分类角色
+        /// </summary>
+        /// <param name="templateRole">分类角色</param>
+        public virtual void SetTemplateRole(TemplateRole templateRole) => TemplateRole = templateRole;
 
 
         /// <summary>
@@ -954,6 +968,38 @@ namespace Hx.Abp.Attachment.Domain
                 var newPath = CalculateNextPath(parentPath);
                 SetPath(newPath);
             }
+        }
+
+
+        /// <summary>
+        /// 检查是否为分支节点（可以有子节点，但不能直接上传文件）
+        /// </summary>
+        public virtual bool IsBranchNode => TemplateRole == TemplateRole.Branch;
+
+        /// <summary>
+        /// 检查是否为叶子节点（不能有子节点，但可以直接上传文件）
+        /// </summary>
+        public virtual bool IsLeafNode => TemplateRole == TemplateRole.Leaf;
+
+        /// <summary>
+        /// 检查是否可以包含子分类
+        /// 根分类和分支节点都可以包含子分类
+        /// </summary>
+        /// <returns>是否可以包含子分类</returns>
+        public virtual bool CanContainChildCatalogues()
+        {
+            return TemplateRole == TemplateRole.Root || 
+                   TemplateRole == TemplateRole.Branch;
+        }
+
+        /// <summary>
+        /// 检查是否支持文件上传
+        /// 只有叶子节点才支持直接上传文件
+        /// </summary>
+        /// <returns>是否支持文件上传</returns>
+        public virtual bool SupportsFileUpload()
+        {
+            return TemplateRole == TemplateRole.Leaf;
         }
     }
 }

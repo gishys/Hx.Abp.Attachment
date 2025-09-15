@@ -115,6 +115,7 @@ namespace Hx.Abp.Attachment.Application
                     input.TemplateVersion,
                     input.CatalogueFacetType,
                     input.CataloguePurpose,
+                    input.TemplateRole,
                     input.Tags,
                     input.TextVector,
                     input.MetaFields?.Select(mf => new MetaField(
@@ -166,6 +167,7 @@ namespace Hx.Abp.Attachment.Application
 
             // 更新新增字段
             catalogue.SetCatalogueIdentifiers(input.CatalogueFacetType, input.CataloguePurpose);
+            catalogue.SetTemplateRole(input.TemplateRole);
             catalogue.SetTextVector(input.TextVector);
             
             // 更新路径
@@ -628,6 +630,7 @@ namespace Hx.Abp.Attachment.Application
                     input.TemplateVersion,
                     input.CatalogueFacetType,
                     input.CataloguePurpose,
+                    input.TemplateRole,
                     input.Tags,
                     input.TextVector,
                     input.MetaFields?.Select(mf => new MetaField(
@@ -1163,6 +1166,7 @@ namespace Hx.Abp.Attachment.Application
                 FullTextContentUpdatedTime = catalogue.FullTextContentUpdatedTime,
                 CatalogueFacetType = catalogue.CatalogueFacetType,
                 CataloguePurpose = catalogue.CataloguePurpose,
+                TemplateRole = catalogue.TemplateRole,
                 TextVector = catalogue.TextVector,
                 VectorDimension = catalogue.VectorDimension,
                 Path = catalogue.Path,

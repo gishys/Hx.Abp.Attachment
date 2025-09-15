@@ -87,7 +87,7 @@ BEGIN
     IF NOT EXISTS (SELECT FROM information_schema.check_constraints WHERE constraint_name = 'CK_ATTACH_CATALOGUES_CATALOGUE_TYPE') THEN
         ALTER TABLE "APPATTACH_CATALOGUES" 
         ADD CONSTRAINT "CK_ATTACH_CATALOGUES_CATALOGUE_TYPE" 
-        CHECK ("CATALOGUE_FACET_TYPE" IN (1, 2, 3, 4, 99));
+        CHECK ("CATALOGUE_FACET_TYPE" IN (0,1, 2, 3, 4,5, 6, 99));
         
         RAISE NOTICE '已添加分类类型约束';
     ELSE
@@ -98,7 +98,7 @@ BEGIN
     IF NOT EXISTS (SELECT FROM information_schema.check_constraints WHERE constraint_name = 'CK_ATTACH_CATALOGUES_CATALOGUE_PURPOSE') THEN
         ALTER TABLE "APPATTACH_CATALOGUES" 
         ADD CONSTRAINT "CK_ATTACH_CATALOGUES_CATALOGUE_PURPOSE" 
-        CHECK ("CATALOGUE_PURPOSE" IN (1, 2, 3, 4, 99));
+        CHECK ("CATALOGUE_PURPOSE" IN (1, 2, 3, 4,5, 99));
         
         RAISE NOTICE '已添加分类用途约束';
     ELSE

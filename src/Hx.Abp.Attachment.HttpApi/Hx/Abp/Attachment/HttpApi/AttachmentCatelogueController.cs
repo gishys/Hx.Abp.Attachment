@@ -124,7 +124,7 @@ namespace Hx.Abp.Attachment.HttpApi
 
         [Route("search/hybrid")]
         [HttpGet]
-        public virtual Task<List<AttachCatalogueDto>> SearchByHybridAsync(string searchText, string? reference = null, int? referenceType = null, int limit = 10, string? queryTextVector = null, float similarityThreshold = 0.7f)
+        public virtual Task<List<AttachCatalogueDto>> SearchByHybridAsync(string? searchText = null, string? reference = null, int? referenceType = null, int limit = 10, string? queryTextVector = null, float similarityThreshold = 0.7f)
         {
             return AttachCatalogueAppService.SearchByHybridAsync(searchText, reference, referenceType, limit, queryTextVector, similarityThreshold);
         }

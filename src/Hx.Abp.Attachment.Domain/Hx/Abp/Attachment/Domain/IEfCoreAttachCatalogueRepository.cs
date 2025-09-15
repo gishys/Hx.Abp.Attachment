@@ -67,7 +67,7 @@ namespace Hx.Abp.Attachment.Domain
         /// <summary>
         /// 混合搜索：结合全文检索和文本向量检索
         /// </summary>
-        /// <param name="searchText">搜索文本</param>
+        /// <param name="searchText">搜索文本（可选）</param>
         /// <param name="reference">业务引用</param>
         /// <param name="referenceType">业务类型</param>
         /// <param name="limit">返回数量限制</param>
@@ -76,7 +76,7 @@ namespace Hx.Abp.Attachment.Domain
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>匹配的分类列表</returns>
         Task<List<AttachCatalogue>> SearchByHybridAsync(
-            string searchText,
+            string? searchText = null,
             string? reference = null,
             int? referenceType = null,
             int limit = 10,

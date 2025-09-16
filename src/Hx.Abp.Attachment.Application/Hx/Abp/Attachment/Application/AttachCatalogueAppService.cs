@@ -1389,13 +1389,12 @@ namespace Hx.Abp.Attachment.Application
 
                 // 获取所有子分类（叶子节点）
                 var leafCategories = await CatalogueRepository.GetCatalogueWithAllChildrenAsync(catalogueId);
-                if (leafCategories.Count == 0)
+                // 构建分类选项列表
+                var categoryOptions = leafCategories.Where(c => c.TemplateRole == TemplateRole.Leaf).Select(c => c.CatalogueName).ToList();
+                if (categoryOptions.Count == 0)
                 {
                     throw new UserFriendlyException("没有找到可用的叶子分类节点");
                 }
-
-                // 构建分类选项列表
-                var categoryOptions = leafCategories.Where(c => c.TemplateRole == TemplateRole.Leaf).Select(c => c.CatalogueName).ToList();
 
                 // 2. 处理序号分配
                 await ProcessSequenceNumbersAsync(catalogueId, inputs);
@@ -1430,13 +1429,19 @@ namespace Hx.Abp.Attachment.Application
 
                         // 保存文件到Blob存储
                         await BlobContainer.SaveAsync(fileUrl, input.DocumentContent, overrideExisting: true);
+                        // 保存文件到数据库
+                        await EfCoreAttachFileRepository.InsertAsync(tempFile);
 
-                        // 3. OCR处理
+                        // 3. OCR处理 - 使用UnitOfWork确保数据已提交
                         string? ocrContent = null;
                         if (tempFile.IsSupportedForOcr())
                         {
                             try
                             {
+                                // 使用UnitOfWork确保文件数据已提交到数据库，OCR服务可以读取
+                                if (CurrentUnitOfWork != null)
+                                    await CurrentUnitOfWork.SaveChangesAsync();
+
                                 var ocrResult = await OcrService.ProcessFileAsync(tempFile.Id);
                                 ocrContent = ocrResult?.ExtractedText;
                                 tempFile.SetOcrContent(ocrContent);
@@ -1483,7 +1488,7 @@ namespace Hx.Abp.Attachment.Application
                         else
                         {
                             // 如果没有分类结果，默认选择第一个叶子分类
-                            var defaultCategory = leafCategories.First();
+                            var defaultCategory = leafCategories.Where(l => l.TemplateRole == TemplateRole.Leaf).First();
                             result.Classification = new ClassificationExtentResult
                             {
                                 RecommendedCategory = defaultCategory.CatalogueName,
@@ -1492,6 +1497,8 @@ namespace Hx.Abp.Attachment.Application
                             };
                         }
                         tempFile.SetAttachCatalogueId(result.Classification.RecommendedCategoryId);
+                        // 更新OCR内容到数据库
+                        await EfCoreAttachFileRepository.UpdateAsync(tempFile);
                         // 5. 构建返回结果
                         result.FileInfo = new AttachFileDto
                         {
@@ -1510,7 +1517,7 @@ namespace Hx.Abp.Attachment.Application
                         };
 
                         // 可选分类列表
-                        result.AvailableCategories = [.. leafCategories.Select(c => new CategoryOptionDto
+                        result.AvailableCategories = [.. leafCategories.Where(l=>l.TemplateRole==TemplateRole.Leaf).Select(c => new CategoryOptionDto
                         {
                             Id = c.Id,
                             Name = c.CatalogueName,
@@ -1520,9 +1527,6 @@ namespace Hx.Abp.Attachment.Application
 
                         result.OcrContent = ocrContent;
                         result.ProcessingTimeMs = fileStopwatch.ElapsedMilliseconds;
-
-                        // 保存文件到数据库
-                        await EfCoreAttachFileRepository.InsertAsync(tempFile);
                     }
                     catch (Exception ex)
                     {
@@ -1712,16 +1716,16 @@ namespace Hx.Abp.Attachment.Application
                     }
                     catch (Exception ex)
                     {
-                        Logger.LogError(ex, "批量确定文件分类失败，文件ID: {FileId}, 分类ID: {CatalogueId}", 
+                        Logger.LogError(ex, "批量确定文件分类失败，文件ID: {FileId}, 分类ID: {CatalogueId}",
                             request.FileId, request.CatalogueId);
-                        
+
                         // 继续处理其他文件，不中断整个批量操作
                         // 可以考虑添加错误信息到结果中
                         Logger.LogWarning("跳过失败的文件分类，文件ID: {FileId}", request.FileId);
                     }
                 }
 
-                Logger.LogInformation("批量确定文件分类完成，请求数量: {RequestCount}, 成功数量: {SuccessCount}", 
+                Logger.LogInformation("批量确定文件分类完成，请求数量: {RequestCount}, 成功数量: {SuccessCount}",
                     requests.Count, results.Count);
 
                 return results;
@@ -1814,18 +1818,17 @@ namespace Hx.Abp.Attachment.Application
                 }
 
                 // 查找根分类
-                var rootCatalogue = await CatalogueRepository.FindRootCataloguesAsync(reference, templatePurpose) 
+                var rootCatalogue = await CatalogueRepository.FindRootCataloguesAsync(reference, templatePurpose)
                     ?? throw new UserFriendlyException($"未找到匹配的根分类，Reference: {reference}, TemplatePurpose: {templatePurpose}");
 
                 // 获取所有子分类（叶子节点）
                 var leafCategories = await CatalogueRepository.GetCatalogueWithAllChildrenAsync(rootCatalogue.Id);
-                if (leafCategories.Count == 0)
+                // 构建分类选项列表
+                var categoryOptions = leafCategories.Where(c => c.TemplateRole == TemplateRole.Leaf).Select(c => c.CatalogueName).ToList();
+                if (categoryOptions.Count == 0)
                 {
                     throw new UserFriendlyException("没有找到可用的叶子分类节点");
                 }
-
-                // 构建分类选项列表
-                var categoryOptions = leafCategories.Where(c => c.TemplateRole == TemplateRole.Leaf).Select(c => c.CatalogueName).ToList();
 
                 // 查询未归档的文件
                 var files = await EfCoreAttachFileRepository.GetListByReferenceAndTemplatePurposeAsync(reference, templatePurpose);
@@ -1855,9 +1858,9 @@ namespace Hx.Abp.Attachment.Application
                     result.Status = SmartClassificationStatus.Success;
 
                     // 如果文件已经有分类，使用现有分类；否则使用默认分类
-                    var defaultCategory = file.AttachCatalogueId.HasValue 
-                        ? leafCategories.FirstOrDefault(d => d.Id == file.AttachCatalogueId) ?? leafCategories.First()
-                        : leafCategories.First();
+                    var defaultCategory = file.AttachCatalogueId.HasValue
+                        ? leafCategories.Where(l => l.TemplateRole == TemplateRole.Leaf).FirstOrDefault(d => d.Id == file.AttachCatalogueId) ?? leafCategories.Where(l => l.TemplateRole == TemplateRole.Leaf).First()
+                        : leafCategories.Where(l => l.TemplateRole == TemplateRole.Leaf).First();
 
                     result.Classification = new ClassificationExtentResult
                     {
@@ -1867,7 +1870,7 @@ namespace Hx.Abp.Attachment.Application
                     };
 
                     // 可选分类列表
-                    result.AvailableCategories = [.. leafCategories.Select(c => new CategoryOptionDto
+                    result.AvailableCategories = [.. leafCategories.Where(l => l.TemplateRole == TemplateRole.Leaf).Select(c => new CategoryOptionDto
                     {
                         Id = c.Id,
                         Name = c.CatalogueName,

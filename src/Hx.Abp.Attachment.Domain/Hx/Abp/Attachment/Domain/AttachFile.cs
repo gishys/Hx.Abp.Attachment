@@ -119,7 +119,7 @@ namespace Hx.Abp.Attachment.Domain
             DownloadTimes = downloadTimes;
             AttachCatalogueId = attachCatalogueId;
             OcrTextBlocks = [];
-            IsCategorized = true;
+            IsCategorized = false;
         }
         /// <summary>
         /// 创建附件文件，通过数据库持久化
@@ -149,7 +149,7 @@ namespace Hx.Abp.Attachment.Domain
             FileSize = fileSize;
             DownloadTimes = downloadTimes;
             OcrTextBlocks = [];
-            IsCategorized = true;
+            IsCategorized = false;
         }
         public virtual void SetFileAlias(string fileAlias)
         {

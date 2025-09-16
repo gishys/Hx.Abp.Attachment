@@ -654,7 +654,12 @@ namespace Hx.Abp.Attachment.Application
             }
         }
 
-
+        /// <summary>
+        /// 从模板生成分类
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        /// <exception cref="UserFriendlyException"></exception>
         public async Task GenerateCatalogueFromTemplateAsync(GenerateCatalogueInput input)
         {
             var template = await _templateRepository.GetLatestVersionAsync(input.TemplateId) ?? throw new UserFriendlyException($"未找到模板 {input.TemplateId}");

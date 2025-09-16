@@ -10,5 +10,9 @@
         /// 文件内容
         /// </summary>
         public required virtual byte[] DocumentContent { get; set; }
+        /// <summary>
+        /// 序号（可选，如果为空则自动分配）
+        /// </summary>
+        public virtual int? SequenceNumber { get; set; }
     }
 }

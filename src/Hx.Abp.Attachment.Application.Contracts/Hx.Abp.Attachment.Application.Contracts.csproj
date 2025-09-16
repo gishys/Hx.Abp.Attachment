@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Hx.Abp.Attachment.Application.ArchAI.Contracts\Hx.Abp.Attachment.Application.ArchAI.Contracts.csproj" />
     <ProjectReference Include="..\Hx.Abp.Attachment.Dmain.Shared\Hx.Abp.Attachment.Dmain.Shared.csproj" />
   </ItemGroup>
 

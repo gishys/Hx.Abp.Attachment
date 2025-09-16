@@ -247,5 +247,104 @@ namespace Hx.Abp.Attachment.HttpApi
                 reference, referenceType, catalogueFacetType, cataloguePurpose,
                 includeChildren, includeFiles, fulltextQuery, templateId, templateVersion);
         }
+
+        // ============= 智能分类接口 =============
+
+        /// <summary>
+        /// 智能分类文件上传和推荐
+        /// 基于OCR内容进行智能分类推荐，适用于文件自动归类场景
+        /// </summary>
+        /// <param name="catalogueId">分类ID</param>
+        /// <param name="prefix">文件前缀</param>
+        /// <returns>智能分类推荐结果列表</returns>
+        [Route("smart-classification/upload")]
+        [HttpPost]
+        public virtual async Task<List<SmartClassificationResultDto>> CreateFilesWithSmartClassificationAsync(
+            [FromQuery] Guid catalogueId, 
+            [FromQuery] string? prefix = null)
+        {
+            var files = Request.Form.Files;
+            var inputs = new List<AttachFileCreateDto>();
+            
+            foreach (var file in files)
+            {
+                using var stream = file.OpenReadStream();
+                using var memoryStream = new MemoryStream();
+                await stream.CopyToAsync(memoryStream);
+                
+                inputs.Add(new AttachFileCreateDto
+                {
+                    FileAlias = file.FileName ?? Guid.NewGuid().ToString(),
+                    DocumentContent = memoryStream.ToArray(),
+                    SequenceNumber = null // 让服务层自动分配序号
+                });
+            }
+
+            return await AttachCatalogueAppService.CreateFilesWithSmartClassificationAsync(catalogueId, inputs, prefix);
+        }
+
+        /// <summary>
+        /// 确定文件分类
+        /// 将文件归类到指定分类，并更新相关属性
+        /// </summary>
+        /// <param name="fileId">文件ID</param>
+        /// <param name="catalogueId">分类ID</param>
+        /// <param name="ocrContent">OCR全文内容（可选）</param>
+        /// <returns>更新后的文件信息</returns>
+        [Route("confirm-classification")]
+        [HttpPost]
+        public virtual Task<AttachFileDto> ConfirmFileClassificationAsync(
+            [FromQuery] Guid fileId, 
+            [FromQuery] Guid catalogueId, 
+            [FromBody] string? ocrContent = null)
+        {
+            return AttachCatalogueAppService.ConfirmFileClassificationAsync(fileId, catalogueId, ocrContent);
+        }
+
+        /// <summary>
+        /// 批量确定文件分类
+        /// 将多个文件归类到指定分类，并更新相关属性
+        /// </summary>
+        /// <param name="requests">文件分类请求列表</param>
+        /// <returns>更新后的文件信息列表</returns>
+        [Route("confirm-classifications")]
+        [HttpPost]
+        public virtual Task<List<AttachFileDto>> ConfirmFileClassificationsAsync(
+            [FromBody] List<ConfirmFileClassificationRequest> requests)
+        {
+            return AttachCatalogueAppService.ConfirmFileClassificationsAsync(requests);
+        }
+
+        /// <summary>
+        /// 根据业务引用和模板用途获取文件列表
+        /// 查询未归档的文件列表
+        /// </summary>
+        /// <param name="reference">业务引用</param>
+        /// <param name="templatePurpose">模板用途</param>
+        /// <returns>文件列表</returns>
+        [Route("files/by-reference-template")]
+        [HttpGet]
+        public virtual Task<List<AttachFileDto>> GetFilesByReferenceAndTemplatePurposeAsync(
+            [FromQuery] string reference, 
+            [FromQuery] TemplatePurpose templatePurpose)
+        {
+            return AttachCatalogueAppService.GetFilesByReferenceAndTemplatePurposeAsync(reference, templatePurpose);
+        }
+
+        /// <summary>
+        /// 根据业务引用和模板用途获取文件列表并进行智能分类推荐
+        /// 查询未归档的文件列表，并为每个文件提供分类推荐
+        /// </summary>
+        /// <param name="reference">业务引用</param>
+        /// <param name="templatePurpose">模板用途</param>
+        /// <returns>智能分类推荐结果列表</returns>
+        [Route("files/by-reference-template-with-classification")]
+        [HttpGet]
+        public virtual Task<List<SmartClassificationResultDto>> GetFilesWithSmartClassificationByReferenceAndTemplatePurposeAsync(
+            [FromQuery] string reference, 
+            [FromQuery] TemplatePurpose templatePurpose)
+        {
+            return AttachCatalogueAppService.GetFilesWithSmartClassificationByReferenceAndTemplatePurposeAsync(reference, templatePurpose);
+        }
     }
 }

@@ -129,8 +129,9 @@ namespace Hx.Abp.Attachment.Domain
         /// <param name="referenceType">业务类型</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>根分类列表</returns>
-        Task<List<AttachCatalogue>> FindRootCataloguesAsync(
-            string? reference = null,
+        Task<AttachCatalogue?> FindRootCataloguesAsync(
+            string reference,
+            TemplatePurpose purpose,
             int? referenceType = null,
             CancellationToken cancellationToken = default);
 
@@ -195,6 +196,15 @@ namespace Hx.Abp.Attachment.Domain
         Task<List<AttachCatalogue>> FindByTemplateIdAsync(
             Guid templateId,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 根据分类ID及其所有子分类（基于Path路径查询）
+        /// 一次性查询出指定分类及其所有层级的子分类，性能优化版本
+        /// </summary>
+        /// <param name="catalogueId">分类ID</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>分类及其所有子分类列表</returns>
+        Task<List<AttachCatalogue>> GetCatalogueWithAllChildrenAsync(Guid catalogueId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 获取分类树形结构（用于树状展示）

@@ -1,3 +1,5 @@
+using Hx.Abp.Attachment.Application.ArchAI;
+using Hx.Abp.Attachment.Application.ArchAI.Contracts;
 using Hx.Abp.Attachment.Application.Contracts;
 using Hx.Abp.Attachment.Application.Utils;
 using Hx.Abp.Attachment.Domain;
@@ -9,7 +11,6 @@ using Volo.Abp;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.DistributedLocking;
-using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Uow;
 
 namespace Hx.Abp.Attachment.Application
@@ -22,7 +23,8 @@ namespace Hx.Abp.Attachment.Application
         IEfCoreAttachFileRepository efCoreAttachFileRepository,
         IAbpDistributedLock distributedLock,
         OcrService ocrService,
-        IAttachCatalogueTemplateRepository templateRepository
+        IAttachCatalogueTemplateRepository templateRepository,
+        AIServiceFactory aiServiceFactory
         ) : AttachmentService, IAttachCatalogueAppService
     {
         private readonly IEfCoreAttachCatalogueRepository CatalogueRepository = catalogueRepository;
@@ -32,6 +34,7 @@ namespace Hx.Abp.Attachment.Application
         private readonly IAbpDistributedLock DistributedLock = distributedLock;
         private readonly OcrService OcrService = ocrService;
         private readonly IAttachCatalogueTemplateRepository TemplateRepository = templateRepository;
+        private readonly AIServiceFactory AIServiceFactory = aiServiceFactory;
         /// <summary>
         /// 创建文件夹
         /// </summary>
@@ -169,13 +172,13 @@ namespace Hx.Abp.Attachment.Application
             catalogue.SetCatalogueIdentifiers(input.CatalogueFacetType, input.CataloguePurpose);
             catalogue.SetTemplateRole(input.TemplateRole);
             catalogue.SetTextVector(input.TextVector);
-            
+
             // 更新路径
             if (!string.IsNullOrEmpty(input.Path))
             {
                 catalogue.SetPath(input.Path);
             }
-            
+
             // 更新元数据字段
             if (input.MetaFields != null)
             {
@@ -241,7 +244,7 @@ namespace Hx.Abp.Attachment.Application
         {
             var catalogue = await CatalogueRepository.GetAsync(id) ?? throw new UserFriendlyException($"分类不存在: {id}");
             var result = new List<AttachCatalogueTemplatePermissionDto>();
-            
+
             if (catalogue.Permissions != null)
             {
                 foreach (var permission in catalogue.Permissions)
@@ -303,7 +306,7 @@ namespace Hx.Abp.Attachment.Application
         public virtual async Task SetMetaFieldsAsync(Guid id, List<CreateUpdateMetaFieldDto> metaFields)
         {
             var catalogue = await CatalogueRepository.GetAsync(id) ?? throw new UserFriendlyException($"分类不存在: {id}");
-            
+
             // 验证输入参数
             if (metaFields == null)
             {
@@ -338,7 +341,7 @@ namespace Hx.Abp.Attachment.Application
 
             // 使用领域对象的批量设置方法
             catalogue.SetMetaFields(domainMetaFields);
-            
+
             // 保存到数据库
             await CatalogueRepository.UpdateAsync(catalogue);
         }
@@ -353,10 +356,10 @@ namespace Hx.Abp.Attachment.Application
         {
             var catalogue = await CatalogueRepository.GetAsync(id) ?? throw new UserFriendlyException($"分类不存在: {id}");
             var metaField = catalogue.GetMetaField(fieldKey);
-            
+
             if (metaField == null)
                 return null;
-                
+
             return new MetaFieldDto
             {
                 EntityType = metaField.EntityType,
@@ -386,7 +389,7 @@ namespace Hx.Abp.Attachment.Application
         {
             var catalogue = await CatalogueRepository.GetAsync(id) ?? throw new UserFriendlyException($"分类不存在: {id}");
             var metaFields = catalogue.GetEnabledMetaFields();
-            
+
             return [.. metaFields.Select(mf => new MetaFieldDto
             {
                 EntityType = mf.EntityType,
@@ -416,8 +419,8 @@ namespace Hx.Abp.Attachment.Application
         public virtual async Task<List<AttachCatalogueDto>> GetByCatalogueIdentifierAsync(FacetType? catalogueFacetType = null, TemplatePurpose? cataloguePurpose = null)
         {
             var catalogues = await CatalogueRepository.GetListAsync();
-            
-            var filteredCatalogues = catalogues.Where(c => 
+
+            var filteredCatalogues = catalogues.Where(c =>
                 c.MatchesCatalogueIdentifier(catalogueFacetType, cataloguePurpose)).ToList();
 
             var result = new List<AttachCatalogueDto>();
@@ -438,8 +441,8 @@ namespace Hx.Abp.Attachment.Application
         public virtual async Task<List<AttachCatalogueDto>> GetByVectorDimensionAsync(int? minDimension = null, int? maxDimension = null)
         {
             var catalogues = await CatalogueRepository.GetListAsync();
-            
-            var filteredCatalogues = catalogues.Where(c => 
+
+            var filteredCatalogues = catalogues.Where(c =>
                 (minDimension == null || c.VectorDimension >= minDimension) &&
                 (maxDimension == null || c.VectorDimension <= maxDimension)).ToList();
 
@@ -681,6 +684,9 @@ namespace Hx.Abp.Attachment.Application
                         FileSize = file.FileSize,
                         DownloadTimes = file.DownloadTimes,
                         AttachCatalogueId = file.AttachCatalogueId,
+                        Reference = file.Reference ?? catologue.Reference,
+                        TemplatePurpose = file.TemplatePurpose ?? catologue.CataloguePurpose,
+                        IsCategorized = file.IsCategorized,
                     };
                     files.Add(tempFile);
                     file.Download();
@@ -734,12 +740,12 @@ namespace Hx.Abp.Attachment.Application
             if (id.HasValue)
             {
                 catalogue = await CatalogueRepository.GetAsync(id.Value);
-                
+
                 // 获取分类关联的模板信息
                 if (catalogue != null && catalogue.TemplateId.HasValue)
                 {
                     template = await TemplateRepository.GetByVersionAsync(catalogue.TemplateId.Value, catalogue.TemplateVersion ?? 1);
-                    
+
                     // 解析工作流配置
                     if (template != null && !string.IsNullOrEmpty(template.WorkflowConfig))
                     {
@@ -750,14 +756,14 @@ namespace Hx.Abp.Attachment.Application
 
             var result = new List<AttachFileDto>();
             var entitys = new List<AttachFile>();
-            
+
             if (inputs.Count > 0)
             {
                 foreach (var input in inputs)
                 {
                     var attachId = GuidGenerator.Create();
                     string fileExtension = Path.GetExtension(input.FileAlias).ToLowerInvariant();
-                    
+
                     // 处理TIFF文件转换
                     if (fileExtension == ".tif" || fileExtension == ".tiff")
                     {
@@ -765,11 +771,11 @@ namespace Hx.Abp.Attachment.Application
                         fileExtension = ".jpeg";
                         input.FileAlias = $"{Path.GetFileNameWithoutExtension(input.FileAlias)}{fileExtension}";
                     }
-                    
+
                     var tempSequenceNumber = catalogue == null ? 0 : catalogue.SequenceNumber;
                     var fileName = $"{attachId}{fileExtension}";
                     var fileUrl = "";
-                    
+
                     if (catalogue != null)
                     {
                         fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{catalogue.Reference}/{fileName}";
@@ -778,7 +784,7 @@ namespace Hx.Abp.Attachment.Application
                     {
                         fileUrl = $"{prefix ?? "uploads"}/{fileName}";
                     }
-                    
+
                     var tempFile = new AttachFile(
                         attachId,
                         input.FileAlias,
@@ -789,12 +795,18 @@ namespace Hx.Abp.Attachment.Application
                         input.DocumentContent.Length,
                         0,
                         catalogue?.Id);
-                    
+
+                    // 设置从AttachCatalogue获取的属性
+                    if (catalogue != null)
+                    {
+                        tempFile.SetFromAttachCatalogue(catalogue);
+                    }
+
                     // 保存文件到存储
                     await BlobContainer.SaveAsync(fileUrl, input.DocumentContent, overrideExisting: true);
-                    
+
                     entitys.Add(tempFile);
-                    
+
                     var src = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{fileUrl}";
                     var retFile = new AttachFileDto()
                     {
@@ -807,18 +819,21 @@ namespace Hx.Abp.Attachment.Application
                         FileSize = tempFile.FileSize,
                         DownloadTimes = tempFile.DownloadTimes,
                         AttachCatalogueId = tempFile.AttachCatalogueId,
+                        Reference = tempFile.Reference,
+                        TemplatePurpose = tempFile.TemplatePurpose,
+                        IsCategorized = tempFile.IsCategorized,
                     };
                     result.Add(retFile);
                 }
-                
+
                 // 批量插入文件实体
                 await EfCoreAttachFileRepository.InsertManyAsync(entitys);
-                
+
                 // 文件入库后，检查是否需要OCR识别
                 if (workflowConfig != null && workflowConfig.IsOcrEnabled())
                 {
                     var ocrConfig = workflowConfig.GetOcrConfigOrDefault();
-                    
+
                     foreach (var file in entitys)
                     {
                         // 检查文件是否支持OCR
@@ -828,13 +843,13 @@ namespace Hx.Abp.Attachment.Application
                             {
                                 // 执行OCR识别
                                 var ocrResult = await OcrService.ProcessFileAsync(file.Id);
-                                
+
                                 // 更新文件的OCR状态和内容
                                 if (ocrResult.IsSuccess && !string.IsNullOrEmpty(ocrResult.ExtractedText))
                                 {
                                     file.SetOcrContent(ocrResult.ExtractedText);
                                     file.SetOcrProcessStatus(OcrProcessStatus.Completed);
-                                    
+
                                     // 更新文件实体到数据库
                                     await EfCoreAttachFileRepository.UpdateAsync(file);
                                 }
@@ -842,7 +857,7 @@ namespace Hx.Abp.Attachment.Application
                                 {
                                     file.SetOcrProcessStatus(OcrProcessStatus.Failed);
                                     await EfCoreAttachFileRepository.UpdateAsync(file);
-                                    Logger.LogWarning("文件 {FileName} OCR识别失败: {ErrorMessage}", 
+                                    Logger.LogWarning("文件 {FileName} OCR识别失败: {ErrorMessage}",
                                         file.FileName, ocrResult.ErrorMessage);
                                 }
                             }
@@ -870,7 +885,7 @@ namespace Hx.Abp.Attachment.Application
                         await EfCoreAttachFileRepository.UpdateAsync(file);
                     }
                 }
-                
+
                 await uow.CompleteAsync();
                 return result;
             }
@@ -906,6 +921,8 @@ namespace Hx.Abp.Attachment.Application
                     input.DocumentContent.Length,
                     0,
                     catalogue.Id);
+                // 设置从AttachCatalogue获取的属性
+                tempFile.SetFromAttachCatalogue(catalogue);
                 await BlobContainer.SaveAsync(fileUrl, input.DocumentContent, overrideExisting: true);
                 entitys.Add(tempFile);
             }
@@ -953,6 +970,8 @@ namespace Hx.Abp.Attachment.Application
                     Path.GetExtension(input.FileAlias),
                     input.DocumentContent.Length,
                     0);
+                // 设置从AttachCatalogue获取的属性
+                tempFile.SetFromAttachCatalogue(entity);
                 await BlobContainer.SaveAsync(fileName, input.DocumentContent, overrideExisting: true);
                 entity.AddAttachFile(tempFile, entity.PageCount + 1);
                 await uow.SaveChangesAsync();
@@ -998,6 +1017,10 @@ namespace Hx.Abp.Attachment.Application
                     {
                         var fileDto = ObjectMapper.Map<AttachFile, AttachFileDto>(file);
                         fileDto.FilePath = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{file.FilePath}";
+                        // 如果文件没有Reference和TemplatePurpose，从分类中获取
+                        fileDto.Reference = file.Reference ?? cat.Reference;
+                        fileDto.TemplatePurpose = file.TemplatePurpose ?? cat.CataloguePurpose;
+                        fileDto.IsCategorized = file.IsCategorized;
                         catalogueDto.AttachFiles.Add(fileDto);
                     }
                 }
@@ -1341,6 +1364,537 @@ namespace Hx.Abp.Attachment.Application
             }
 
             return treeDto;
+        }
+
+        /// <summary>
+        /// 智能分类文件上传和推荐
+        /// 基于OCR内容进行智能分类推荐，适用于文件自动归类场景
+        /// </summary>
+        /// <param name="catalogueId">分类ID</param>
+        /// <param name="inputs">文件列表</param>
+        /// <param name="prefix">文件前缀</param>
+        /// <returns>智能分类推荐结果列表</returns>
+        public virtual async Task<List<SmartClassificationResultDto>> CreateFilesWithSmartClassificationAsync(
+            Guid catalogueId,
+            List<AttachFileCreateDto> inputs,
+            string? prefix = null)
+        {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var results = new List<SmartClassificationResultDto>();
+
+            try
+            {
+                // 1. 查找分类实体及其所有子实体
+                var catalogue = await CatalogueRepository.GetAsync(catalogueId) ?? throw new UserFriendlyException($"分类不存在: {catalogueId}");
+
+                // 获取所有子分类（叶子节点）
+                var leafCategories = await CatalogueRepository.GetCatalogueWithAllChildrenAsync(catalogueId);
+                if (leafCategories.Count == 0)
+                {
+                    throw new UserFriendlyException("没有找到可用的叶子分类节点");
+                }
+
+                // 构建分类选项列表
+                var categoryOptions = leafCategories.Where(c => c.TemplateRole == TemplateRole.Leaf).Select(c => c.CatalogueName).ToList();
+
+                // 2. 处理序号分配
+                await ProcessSequenceNumbersAsync(catalogueId, inputs);
+
+                // 3. 处理每个文件
+                foreach (var input in inputs)
+                {
+                    var result = new SmartClassificationResultDto();
+                    var fileStopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+                    try
+                    {
+                        // 创建文件实体
+                        var attachId = GuidGenerator.Create();
+                        var fileName = !string.IsNullOrEmpty(prefix) ? $"{prefix}_{input.FileAlias}" : input.FileAlias;
+                        var fileUrl = $"{attachId}_{fileName}";
+                        var fileExtension = Path.GetExtension(input.FileAlias).ToLowerInvariant();
+
+                        var tempFile = new AttachFile(
+                            attachId,
+                            input.FileAlias,
+                            input.SequenceNumber ?? 1, // 使用处理后的序号
+                            fileName,
+                            fileUrl,
+                            fileExtension,
+                            input.DocumentContent.Length,
+                            0,
+                            catalogueId);
+
+                        // 设置从AttachCatalogue获取的属性
+                        tempFile.SetFromAttachCatalogue(catalogue);
+
+                        // 保存文件到Blob存储
+                        await BlobContainer.SaveAsync(fileUrl, input.DocumentContent, overrideExisting: true);
+
+                        // 3. OCR处理
+                        string? ocrContent = null;
+                        if (tempFile.IsSupportedForOcr())
+                        {
+                            try
+                            {
+                                var ocrResult = await OcrService.ProcessFileAsync(tempFile.Id);
+                                ocrContent = ocrResult?.ExtractedText;
+                                tempFile.SetOcrContent(ocrContent);
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.LogWarning(ex, "OCR处理失败，文件ID: {FileId}", tempFile.Id);
+                                result.Status = SmartClassificationStatus.OcrFailed;
+                                result.ErrorMessage = $"OCR处理失败: {ex.Message}";
+                            }
+                        }
+                        else
+                        {
+                            result.Status = SmartClassificationStatus.FileNotSupportedForOcr;
+                            result.ErrorMessage = "文件类型不支持OCR处理";
+                        }
+
+                        // 4. 智能分类推荐
+                        ClassificationResult? classificationResult = null;
+                        if (!string.IsNullOrEmpty(ocrContent) && result.Status != SmartClassificationStatus.OcrFailed)
+                        {
+                            try
+                            {
+                                var classificationService = AIServiceFactory.GetIntelligentClassificationService();
+                                classificationResult = await classificationService.RecommendDocumentCategoryAsync(ocrContent, categoryOptions);
+                                result.Status = SmartClassificationStatus.Success;
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.LogWarning(ex, "智能分类推荐失败，文件ID: {FileId}", tempFile.Id);
+                                result.Status = SmartClassificationStatus.ClassificationFailed;
+                                result.ErrorMessage = $"智能分类推荐失败: {ex.Message}";
+                            }
+                        }
+                        if (classificationResult != null && !string.IsNullOrEmpty(classificationResult.RecommendedCategory))
+                        {
+                            result.Classification = new ClassificationExtentResult
+                            {
+                                RecommendedCategory = classificationResult.RecommendedCategory,
+                                RecommendedCategoryId = leafCategories.First(leaf => leaf.CatalogueName == classificationResult.RecommendedCategory).Id,
+                                Confidence = classificationResult?.Confidence ?? 0.5
+                            };
+                        }
+                        else
+                        {
+                            // 如果没有分类结果，默认选择第一个叶子分类
+                            var defaultCategory = leafCategories.First();
+                            result.Classification = new ClassificationExtentResult
+                            {
+                                RecommendedCategory = defaultCategory.CatalogueName,
+                                RecommendedCategoryId = defaultCategory.Id,
+                                Confidence = 0.5f // 默认置信度
+                            };
+                        }
+                        tempFile.SetAttachCatalogueId(result.Classification.RecommendedCategoryId);
+                        // 5. 构建返回结果
+                        result.FileInfo = new AttachFileDto
+                        {
+                            Id = tempFile.Id,
+                            FileAlias = input.FileAlias,
+                            FilePath = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{fileUrl}",
+                            SequenceNumber = tempFile.SequenceNumber,
+                            FileName = fileName,
+                            FileType = tempFile.FileType,
+                            FileSize = tempFile.FileSize,
+                            DownloadTimes = tempFile.DownloadTimes,
+                            AttachCatalogueId = tempFile.AttachCatalogueId,
+                            Reference = tempFile.Reference,
+                            TemplatePurpose = tempFile.TemplatePurpose,
+                            IsCategorized = tempFile.IsCategorized
+                        };
+
+                        // 可选分类列表
+                        result.AvailableCategories = [.. leafCategories.Select(c => new CategoryOptionDto
+                        {
+                            Id = c.Id,
+                            Name = c.CatalogueName,
+                            Path = c.Path,
+                            ParentId = c.ParentId
+                        })];
+
+                        result.OcrContent = ocrContent;
+                        result.ProcessingTimeMs = fileStopwatch.ElapsedMilliseconds;
+
+                        // 保存文件到数据库
+                        await EfCoreAttachFileRepository.InsertAsync(tempFile);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError(ex, "处理文件失败: {FileName}", input.FileAlias);
+                        result.Status = SmartClassificationStatus.SystemError;
+                        result.ErrorMessage = $"处理文件失败: {ex.Message}";
+                        result.ProcessingTimeMs = fileStopwatch.ElapsedMilliseconds;
+                    }
+                    finally
+                    {
+                        fileStopwatch.Stop();
+                    }
+
+                    results.Add(result);
+                }
+
+                stopwatch.Stop();
+                Logger.LogInformation("智能分类文件上传完成，处理文件数: {FileCount}, 总耗时: {TotalTime}ms",
+                    inputs.Count, stopwatch.ElapsedMilliseconds);
+
+                return results;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "智能分类文件上传失败");
+                throw new UserFriendlyException($"智能分类文件上传失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 处理序号分配
+        /// </summary>
+        /// <param name="catalogueId">分类ID</param>
+        /// <param name="inputs">文件输入列表</param>
+        private async Task ProcessSequenceNumbersAsync(Guid catalogueId, List<AttachFileCreateDto> inputs)
+        {
+            // 获取该分类下现有的最大序号
+            var maxSequenceNumber = await EfCoreAttachFileRepository.GetMaxSequenceNumberByCatalogueIdAsync(catalogueId);
+
+            // 获取现有文件列表用于冲突检查
+            var existingFiles = await EfCoreAttachFileRepository.GetListByCatalogueIdAsync(catalogueId);
+            var existingSequenceNumbers = existingFiles.Select(f => f.SequenceNumber).ToHashSet();
+
+            // 处理每个文件的序号
+            var usedSequenceNumbers = new HashSet<int>();
+
+            foreach (var input in inputs)
+            {
+                if (input.SequenceNumber.HasValue)
+                {
+                    // 如果传入了序号，检查是否重复
+                    var sequenceNumber = input.SequenceNumber.Value;
+
+                    // 如果序号重复，则依次+1直到不重复
+                    while (usedSequenceNumbers.Contains(sequenceNumber) ||
+                           existingSequenceNumbers.Contains(sequenceNumber))
+                    {
+                        sequenceNumber++;
+                    }
+
+                    input.SequenceNumber = sequenceNumber;
+                }
+                else
+                {
+                    // 如果没有传入序号，则分配下一个可用序号
+                    maxSequenceNumber++;
+                    input.SequenceNumber = maxSequenceNumber;
+                }
+
+                usedSequenceNumbers.Add(input.SequenceNumber.Value);
+            }
+        }
+
+        /// <summary>
+        /// 确定文件分类
+        /// 将文件归类到指定分类，并更新相关属性
+        /// </summary>
+        /// <param name="fileId">文件ID</param>
+        /// <param name="catalogueId">分类ID</param>
+        /// <param name="ocrContent">OCR全文内容</param>
+        /// <returns>更新后的文件信息</returns>
+        public virtual async Task<AttachFileDto> ConfirmFileClassificationAsync(Guid fileId, Guid catalogueId, string? ocrContent = null)
+        {
+            try
+            {
+                // 1. 获取文件实体
+                var file = await EfCoreAttachFileRepository.GetAsync(fileId) ?? throw new UserFriendlyException($"文件不存在: {fileId}");
+
+                // 2. 获取分类实体
+                var catalogue = await CatalogueRepository.GetAsync(catalogueId) ?? throw new UserFriendlyException($"分类不存在: {catalogueId}");
+
+                // 3. 更新文件属性
+                // 设置分类ID
+                file.SetAttachCatalogueId(catalogueId);
+
+                // 设置从AttachCatalogue获取的属性
+                file.SetFromAttachCatalogue(catalogue);
+
+                // 标记为已归类
+                file.SetIsCategorized(true);
+
+                // 4. 处理OCR内容
+                if (!string.IsNullOrEmpty(ocrContent))
+                {
+                    // 设置OCR内容并标记为完成
+                    file.SetOcrContent(ocrContent);
+                }
+                else if (file.IsSupportedForOcr() && string.IsNullOrEmpty(file.OcrContent))
+                {
+                    // 如果文件支持OCR但还没有OCR内容，尝试进行OCR处理
+                    try
+                    {
+                        var ocrResult = await OcrService.ProcessFileAsync(fileId);
+                        if (ocrResult?.IsSuccess == true && !string.IsNullOrEmpty(ocrResult.ExtractedText))
+                        {
+                            file.SetOcrContent(ocrResult.ExtractedText);
+                        }
+                        else
+                        {
+                            // OCR处理失败，设置处理状态为失败
+                            file.SetOcrProcessStatus(OcrProcessStatus.Failed);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogWarning(ex, "OCR处理失败，文件ID: {FileId}", fileId);
+                        file.SetOcrProcessStatus(OcrProcessStatus.Failed);
+                    }
+                }
+
+                // 5. 保存文件更新
+                await EfCoreAttachFileRepository.UpdateAsync(file);
+
+                // 6. 构建返回的DTO
+                var fileDto = new AttachFileDto
+                {
+                    Id = file.Id,
+                    FileAlias = file.FileAlias,
+                    FilePath = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{file.FilePath}",
+                    SequenceNumber = file.SequenceNumber,
+                    FileName = file.FileName,
+                    FileType = file.FileType,
+                    FileSize = file.FileSize,
+                    DownloadTimes = file.DownloadTimes,
+                    AttachCatalogueId = file.AttachCatalogueId,
+                    Reference = file.Reference,
+                    TemplatePurpose = file.TemplatePurpose,
+                    IsCategorized = file.IsCategorized
+                };
+
+                Logger.LogInformation("文件分类确认成功，文件ID: {FileId}, 分类ID: {CatalogueId}", fileId, catalogueId);
+                return fileDto;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "确定文件分类失败，文件ID: {FileId}, 分类ID: {CatalogueId}", fileId, catalogueId);
+                throw new UserFriendlyException($"确定文件分类失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 批量确定文件分类
+        /// 将多个文件归类到指定分类，并更新相关属性
+        /// </summary>
+        /// <param name="requests">文件分类请求列表</param>
+        /// <returns>更新后的文件信息列表</returns>
+        public virtual async Task<List<AttachFileDto>> ConfirmFileClassificationsAsync(List<ConfirmFileClassificationRequest> requests)
+        {
+            try
+            {
+                // 参数验证
+                if (requests == null || requests.Count == 0)
+                {
+                    throw new UserFriendlyException("文件分类请求列表不能为空");
+                }
+
+                var results = new List<AttachFileDto>();
+
+                // 批量处理文件分类
+                foreach (var request in requests)
+                {
+                    try
+                    {
+                        // 调用单个文件分类方法
+                        var result = await ConfirmFileClassificationAsync(request.FileId, request.CatalogueId, request.OcrContent);
+                        results.Add(result);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError(ex, "批量确定文件分类失败，文件ID: {FileId}, 分类ID: {CatalogueId}", 
+                            request.FileId, request.CatalogueId);
+                        
+                        // 继续处理其他文件，不中断整个批量操作
+                        // 可以考虑添加错误信息到结果中
+                        Logger.LogWarning("跳过失败的文件分类，文件ID: {FileId}", request.FileId);
+                    }
+                }
+
+                Logger.LogInformation("批量确定文件分类完成，请求数量: {RequestCount}, 成功数量: {SuccessCount}", 
+                    requests.Count, results.Count);
+
+                return results;
+            }
+            catch (UserFriendlyException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "批量确定文件分类失败");
+                throw new UserFriendlyException($"批量确定文件分类失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 根据业务引用和模板用途获取文件列表
+        /// 查询未归档的文件列表
+        /// </summary>
+        /// <param name="reference">业务引用</param>
+        /// <param name="templatePurpose">模板用途</param>
+        /// <returns>文件列表</returns>
+        public virtual async Task<List<AttachFileDto>> GetFilesByReferenceAndTemplatePurposeAsync(string reference, TemplatePurpose templatePurpose)
+        {
+            try
+            {
+                // 参数验证
+                if (string.IsNullOrWhiteSpace(reference))
+                {
+                    throw new UserFriendlyException("业务引用不能为空");
+                }
+
+                // 查询未归档的文件
+                var files = await EfCoreAttachFileRepository.GetListByReferenceAndTemplatePurposeAsync(reference, templatePurpose);
+
+                // 转换为DTO
+                var fileDtos = new List<AttachFileDto>();
+                foreach (var file in files)
+                {
+                    var fileDto = new AttachFileDto
+                    {
+                        Id = file.Id,
+                        FileAlias = file.FileAlias,
+                        FilePath = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{file.FilePath}",
+                        SequenceNumber = file.SequenceNumber,
+                        FileName = file.FileName,
+                        FileType = file.FileType,
+                        FileSize = file.FileSize,
+                        DownloadTimes = file.DownloadTimes,
+                        AttachCatalogueId = file.AttachCatalogueId,
+                        Reference = file.Reference,
+                        TemplatePurpose = file.TemplatePurpose,
+                        IsCategorized = file.IsCategorized
+                    };
+                    fileDtos.Add(fileDto);
+                }
+
+                Logger.LogInformation("根据业务引用和模板用途获取文件列表成功，Reference: {Reference}, TemplatePurpose: {TemplatePurpose}, 文件数量: {Count}",
+                    reference, templatePurpose, fileDtos.Count);
+
+                return fileDtos;
+            }
+            catch (UserFriendlyException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "根据业务引用和模板用途获取文件列表失败，Reference: {Reference}, TemplatePurpose: {TemplatePurpose}",
+                    reference, templatePurpose);
+                throw new UserFriendlyException($"获取文件列表失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 根据业务引用和模板用途获取文件列表并进行智能分类推荐
+        /// 查询未归档的文件列表，并为每个文件提供分类推荐
+        /// </summary>
+        /// <param name="reference">业务引用</param>
+        /// <param name="templatePurpose">模板用途</param>
+        /// <returns>智能分类推荐结果列表</returns>
+        public virtual async Task<List<SmartClassificationResultDto>> GetFilesWithSmartClassificationByReferenceAndTemplatePurposeAsync(string reference, TemplatePurpose templatePurpose)
+        {
+            try
+            {
+                // 参数验证
+                if (string.IsNullOrWhiteSpace(reference))
+                {
+                    throw new UserFriendlyException("业务引用不能为空");
+                }
+
+                // 查找根分类
+                var rootCatalogue = await CatalogueRepository.FindRootCataloguesAsync(reference, templatePurpose) 
+                    ?? throw new UserFriendlyException($"未找到匹配的根分类，Reference: {reference}, TemplatePurpose: {templatePurpose}");
+
+                // 获取所有子分类（叶子节点）
+                var leafCategories = await CatalogueRepository.GetCatalogueWithAllChildrenAsync(rootCatalogue.Id);
+                if (leafCategories.Count == 0)
+                {
+                    throw new UserFriendlyException("没有找到可用的叶子分类节点");
+                }
+
+                // 构建分类选项列表
+                var categoryOptions = leafCategories.Where(c => c.TemplateRole == TemplateRole.Leaf).Select(c => c.CatalogueName).ToList();
+
+                // 查询未归档的文件
+                var files = await EfCoreAttachFileRepository.GetListByReferenceAndTemplatePurposeAsync(reference, templatePurpose);
+
+                // 转换为智能分类结果
+                var results = new List<SmartClassificationResultDto>();
+                foreach (var file in files)
+                {
+                    var result = new SmartClassificationResultDto();
+                    var fileDto = new AttachFileDto
+                    {
+                        Id = file.Id,
+                        FileAlias = file.FileAlias,
+                        FilePath = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{file.FilePath}",
+                        SequenceNumber = file.SequenceNumber,
+                        FileName = file.FileName,
+                        FileType = file.FileType,
+                        FileSize = file.FileSize,
+                        DownloadTimes = file.DownloadTimes,
+                        AttachCatalogueId = file.AttachCatalogueId,
+                        Reference = file.Reference,
+                        TemplatePurpose = file.TemplatePurpose,
+                        IsCategorized = file.IsCategorized
+                    };
+
+                    result.FileInfo = fileDto;
+                    result.Status = SmartClassificationStatus.Success;
+
+                    // 如果文件已经有分类，使用现有分类；否则使用默认分类
+                    var defaultCategory = file.AttachCatalogueId.HasValue 
+                        ? leafCategories.FirstOrDefault(d => d.Id == file.AttachCatalogueId) ?? leafCategories.First()
+                        : leafCategories.First();
+
+                    result.Classification = new ClassificationExtentResult
+                    {
+                        RecommendedCategory = defaultCategory.CatalogueName,
+                        RecommendedCategoryId = defaultCategory.Id,
+                        Confidence = file.AttachCatalogueId.HasValue ? 0.8f : 0.5f // 已有分类的置信度更高
+                    };
+
+                    // 可选分类列表
+                    result.AvailableCategories = [.. leafCategories.Select(c => new CategoryOptionDto
+                    {
+                        Id = c.Id,
+                        Name = c.CatalogueName,
+                        Path = c.Path,
+                        ParentId = c.ParentId
+                    })];
+
+                    result.OcrContent = file.OcrContent;
+                    result.ProcessingTimeMs = 0;
+                    results.Add(result);
+                }
+
+                Logger.LogInformation("根据业务引用和模板用途获取文件列表并进行智能分类推荐成功，Reference: {Reference}, TemplatePurpose: {TemplatePurpose}, 文件数量: {Count}",
+                    reference, templatePurpose, results.Count);
+
+                return results;
+            }
+            catch (UserFriendlyException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "根据业务引用和模板用途获取文件列表并进行智能分类推荐失败，Reference: {Reference}, TemplatePurpose: {TemplatePurpose}",
+                    reference, templatePurpose);
+                throw new UserFriendlyException($"获取文件列表并进行智能分类推荐失败: {ex.Message}");
+            }
         }
     }
 }

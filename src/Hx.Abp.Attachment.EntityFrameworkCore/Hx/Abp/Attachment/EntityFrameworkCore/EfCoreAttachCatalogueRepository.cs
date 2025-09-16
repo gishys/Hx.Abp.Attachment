@@ -1299,20 +1299,22 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         /// <summary>
         /// 查找根分类
         /// </summary>
-        public virtual async Task<List<AttachCatalogue>> FindRootCataloguesAsync(
-            string? reference = null,
+        public virtual async Task<AttachCatalogue?> FindRootCataloguesAsync(
+            string reference,
+            TemplatePurpose purpose,
             int? referenceType = null,
             CancellationToken cancellationToken = default)
         {
             var query = (await GetQueryableAsync())
                 .Where(c => !c.IsDeleted)
-                .Where(c => c.Path == null || c.Path == "" || !EF.Functions.Like(c.Path, "%.%"));
+                .Where(c => !string.IsNullOrEmpty(c.Path) && !EF.Functions.Like(c.Path, "%.%"));
 
-            if (!string.IsNullOrWhiteSpace(reference))
+            if (string.IsNullOrWhiteSpace(reference))
             {
-                query = query.Where(c => c.Reference == reference);
+                return null;
             }
-
+            query = query.Where(c => c.Reference == reference);
+            query = query.Where(c => c.CataloguePurpose == purpose);
             if (referenceType.HasValue)
             {
                 query = query.Where(c => c.ReferenceType == referenceType.Value);
@@ -1320,7 +1322,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
             return await query
                 .OrderBy(c => c.Path)
-                .ToListAsync(cancellationToken);
+                .FirstOrDefaultAsync(cancellationToken);
         }
 
         /// <summary>
@@ -1692,6 +1694,51 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .ToListAsync(cancellationToken);
 
             return allRelatedCatalogues;
+        }
+
+        /// <summary>
+        /// 根据分类ID及其所有子分类（基于Path路径查询）
+        /// 一次性查询出指定分类及其所有层级的子分类，性能优化版本
+        /// </summary>
+        /// <param name="catalogueId">分类ID</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>分类及其所有子分类列表</returns>
+        public virtual async Task<List<AttachCatalogue>> GetCatalogueWithAllChildrenAsync(Guid catalogueId, CancellationToken cancellationToken = default)
+        {
+            // 1. 首先获取指定分类
+            var targetCatalogue = await GetAsync(catalogueId, cancellationToken: cancellationToken);
+            if (targetCatalogue == null)
+            {
+                return [];
+            }
+
+            // 2. 基于Path路径一次性查询所有子分类
+            var query = (await GetQueryableAsync())
+                .Where(c => !c.IsDeleted);
+
+            if (string.IsNullOrEmpty(targetCatalogue.Path))
+            {
+                // 如果目标分类是根节点（Path为空），查询所有分类
+                // 这种情况比较少见，但需要处理
+                query = query.Where(c => c.Id == catalogueId || c.Path != null);
+            }
+            else
+            {
+                // 查询目标分类本身以及所有以目标分类Path开头的子分类
+                // 使用EF.Functions.Like进行高效的路径匹配
+                query = query.Where(c =>
+                    c.Id == catalogueId ||
+                    (c.Path != null && EF.Functions.Like(c.Path, targetCatalogue.Path + ".%")));
+            }
+
+            // 3. 按路径排序，确保层级关系正确
+            var allCatalogues = await query
+                .OrderBy(c => c.Path)
+                .ThenBy(c => c.SequenceNumber)
+                .ThenBy(c => c.CreationTime)
+                .ToListAsync(cancellationToken);
+
+            return allCatalogues;
         }
     }
 }

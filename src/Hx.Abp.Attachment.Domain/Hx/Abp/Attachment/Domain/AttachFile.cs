@@ -49,6 +49,21 @@ namespace Hx.Abp.Attachment.Domain
         public virtual int DownloadTimes { get; protected set; }
 
         /// <summary>
+        /// 业务引用（从AttachCatalogue获取）
+        /// </summary>
+        public virtual string? Reference { get; protected set; }
+
+        /// <summary>
+        /// 模板用途（从AttachCatalogue获取）
+        /// </summary>
+        public virtual TemplatePurpose? TemplatePurpose { get; protected set; }
+
+        /// <summary>
+        /// 是否已归类到某个分类
+        /// </summary>
+        public virtual bool IsCategorized { get; protected set; } = true;
+
+        /// <summary>
         /// OCR提取的文本内容
         /// </summary>
         public virtual string? OcrContent { get; protected set; }
@@ -104,6 +119,7 @@ namespace Hx.Abp.Attachment.Domain
             DownloadTimes = downloadTimes;
             AttachCatalogueId = attachCatalogueId;
             OcrTextBlocks = [];
+            IsCategorized = true;
         }
         /// <summary>
         /// 创建附件文件，通过数据库持久化
@@ -133,6 +149,7 @@ namespace Hx.Abp.Attachment.Domain
             FileSize = fileSize;
             DownloadTimes = downloadTimes;
             OcrTextBlocks = [];
+            IsCategorized = true;
         }
         public virtual void SetFileAlias(string fileAlias)
         {
@@ -254,6 +271,60 @@ namespace Hx.Abp.Attachment.Domain
         public virtual bool IsOcrProcessing()
         {
             return OcrProcessStatus == OcrProcessStatus.Processing;
+        }
+
+        /// <summary>
+        /// 设置业务引用
+        /// </summary>
+        /// <param name="reference">业务引用</param>
+        public virtual void SetReference(string? reference)
+        {
+            Reference = reference;
+        }
+
+        /// <summary>
+        /// 设置模板用途
+        /// </summary>
+        /// <param name="templatePurpose">模板用途</param>
+        public virtual void SetTemplatePurpose(TemplatePurpose? templatePurpose)
+        {
+            TemplatePurpose = templatePurpose;
+        }
+
+        /// <summary>
+        /// 设置是否已归类
+        /// </summary>
+        /// <param name="isCategorized">是否已归类</param>
+        public virtual void SetIsCategorized(bool isCategorized)
+        {
+            IsCategorized = isCategorized;
+        }
+
+        /// <summary>
+        /// 设置关联的分类ID
+        /// </summary>
+        /// <param name="catalogueId">分类ID</param>
+        public virtual void SetAttachCatalogueId(Guid? catalogueId)
+        {
+            AttachCatalogueId = catalogueId;
+        }
+
+        /// <summary>
+        /// 从AttachCatalogue设置相关属性
+        /// </summary>
+        /// <param name="catalogue">附件分类</param>
+        public virtual void SetFromAttachCatalogue(AttachCatalogue? catalogue)
+        {
+            if (catalogue != null)
+            {
+                Reference = catalogue.Reference;
+                TemplatePurpose = catalogue.CataloguePurpose;
+            }
+            else
+            {
+                Reference = null;
+                TemplatePurpose = null;
+            }
         }
 
         public virtual void Download()

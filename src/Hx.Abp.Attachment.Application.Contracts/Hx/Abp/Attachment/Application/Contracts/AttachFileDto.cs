@@ -1,3 +1,5 @@
+using Hx.Abp.Attachment.Domain.Shared;
+
 namespace Hx.Abp.Attachment.Application.Contracts
 {
     public class AttachFileDto
@@ -29,5 +31,20 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// Attach catalogue id of this attach file.
         /// </summary>
         public Guid? AttachCatalogueId { get; set; }
+
+        /// <summary>
+        /// 业务引用（从AttachCatalogue获取）
+        /// </summary>
+        public string? Reference { get; set; }
+
+        /// <summary>
+        /// 模板用途（从AttachCatalogue获取）
+        /// </summary>
+        public TemplatePurpose? TemplatePurpose { get; set; }
+
+        /// <summary>
+        /// 是否已归类到某个分类
+        /// </summary>
+        public bool IsCategorized { get; set; } = true;
     }
 }

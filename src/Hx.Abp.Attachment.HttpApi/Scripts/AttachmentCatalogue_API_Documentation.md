@@ -169,17 +169,20 @@
 
 **AttachFileDto** (附件文件信息):
 
-| 字段名            | 类型   | 必填 | 描述           | 示例值                                 |
-| ----------------- | ------ | ---- | -------------- | -------------------------------------- |
-| id                | Guid   | 是   | 文件 ID        | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
-| fileAlias         | string | 是   | 文件别名       | "合同正文"                             |
-| sequenceNumber    | int    | 是   | 序号           | 1                                      |
-| filePath          | string | 是   | 文件路径       | "/host/attachment/contract_001.pdf"    |
-| fileName          | string | 是   | 文件名称       | "contract_001.pdf"                     |
-| fileType          | string | 是   | 文件类型       | "pdf"                                  |
-| fileSize          | int    | 是   | 文件大小(字节) | 1024000                                |
-| downloadTimes     | int    | 是   | 下载次数       | 5                                      |
-| attachCatalogueId | Guid?  | 否   | 关联分类 ID    | "3fa85f64-5717-4562-b3fc-2c963f66afa7" |
+| 字段名            | 类型                                 | 必填 | 描述           | 示例值                                 |
+| ----------------- | ------------------------------------ | ---- | -------------- | -------------------------------------- |
+| id                | Guid                                 | 是   | 文件 ID        | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| fileAlias         | string                               | 是   | 文件别名       | "合同正文"                             |
+| sequenceNumber    | int                                  | 是   | 序号           | 1                                      |
+| filePath          | string                               | 是   | 文件路径       | "/host/attachment/contract_001.pdf"    |
+| fileName          | string                               | 是   | 文件名称       | "contract_001.pdf"                     |
+| fileType          | string                               | 是   | 文件类型       | "pdf"                                  |
+| fileSize          | int                                  | 是   | 文件大小(字节) | 1024000                                |
+| downloadTimes     | int                                  | 是   | 下载次数       | 5                                      |
+| attachCatalogueId | Guid?                                | 否   | 关联分类 ID    | "3fa85f64-5717-4562-b3fc-2c963f66afa7" |
+| reference         | string?                              | 否   | 业务引用       | "CONTRACT_001"                         |
+| templatePurpose   | [TemplatePurpose](#templatepurpose)? | 否   | 模板用途       | 1                                      |
+| isCategorized     | bool                                 | 是   | 是否已归类     | true                                   |
 
 #### 响应结果
 
@@ -2076,10 +2079,671 @@ const getCataloguesTree = async (
 3. **子分类创建**: 只有 `Root` 和 `Branch` 类型的分类才允许创建子分类
 4. **导航功能**: `Navigation` 类型的分类仅用于导航，不参与业务逻辑
 
+## 29. 智能分类文件上传接口
+
+### 接口描述
+
+基于 OCR 内容进行智能分类推荐的文件上传接口，适用于文件自动归类场景。该接口会：
+
+1. 上传文件并保存到存储系统
+2. 对支持的文件类型进行 OCR 处理
+3. 基于 OCR 内容调用 AI 智能分类服务
+4. 返回分类推荐结果和文件基本信息
+
+### 请求信息
+
+-   **URL**: `/api/app/attachment/smart-classification/upload`
+-   **方法**: `POST`
+-   **描述**: 智能分类文件上传和推荐
+
+### 请求参数
+
+| 参数名      | 类型   | 必填 | 位置  | 描述           | 示例值                                 |
+| ----------- | ------ | ---- | ----- | -------------- | -------------------------------------- |
+| catalogueId | Guid   | 是   | Query | 分类 ID        | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| prefix      | string | 否   | Query | 文件前缀       | "CONTRACT_2024"                        |
+| files       | File[] | 是   | Form  | 上传的文件列表 | 多文件上传                             |
+
+### 请求体说明
+
+上传的文件会自动创建 `AttachFileCreateDto` 对象，包含以下字段：
+
+| 字段名          | 类型   | 必填 | 描述                         | 示例值             |
+| --------------- | ------ | ---- | ---------------------------- | ------------------ |
+| fileAlias       | string | 是   | 文件别名（来自文件名）       | "contract_001.pdf" |
+| documentContent | byte[] | 是   | 文件内容（二进制数据）       | 文件二进制数据     |
+| sequenceNumber  | int?   | 否   | 序号（可选，为空时自动分配） | 1 或 null          |
+
+### 返回类型
+
+**成功响应** (200 OK):
+
+返回 `List<SmartClassificationResultDto>` 类型的智能分类结果列表。
+
+**SmartClassificationResultDto 字段说明**:
+
+| 字段名              | 类型                                                                 | 必填 | 描述                     | 示例值                       |
+| ------------------- | -------------------------------------------------------------------- | ---- | ------------------------ | ---------------------------- |
+| fileInfo            | [AttachFileDto](#attachfiledto-附件文件信息)                         | 是   | 文件基本信息             | 见 AttachFileDto 说明        |
+| classification      | [ClassificationResult](#classificationresult-分类推荐结果)           | 是   | 推荐分类结果             | 见 ClassificationResult 说明 |
+| availableCategories | List<[CategoryOptionDto](#categoryoptiondto-分类选项)>               | 是   | 可选的分类列表           | 见 CategoryOptionDto 说明    |
+| ocrContent          | string?                                                              | 否   | OCR 提取的文本内容       | "合同编号：CONTRACT_001..."  |
+| processingTimeMs    | long                                                                 | 是   | 处理时间（毫秒）         | 1500                         |
+| status              | [SmartClassificationStatus](#smartclassificationstatus-智能分类状态) | 是   | 处理状态                 | 0                            |
+| errorMessage        | string?                                                              | 否   | 错误信息（如果处理失败） | "OCR 处理失败"               |
+
+**ClassificationResult** (分类推荐结果):
+
+| 字段名              | 类型   | 必填 | 描述         | 示例值     |
+| ------------------- | ------ | ---- | ------------ | ---------- |
+| recommendedCategory | string | 是   | 推荐分类名称 | "合同文档" |
+| confidence          | double | 是   | 置信度       | 0.85       |
+
+**CategoryOptionDto** (分类选项):
+
+| 字段名   | 类型   | 必填 | 描述      | 示例值                                 |
+| -------- | ------ | ---- | --------- | -------------------------------------- |
+| id       | Guid   | 是   | 分类 ID   | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| name     | string | 是   | 分类名称  | "合同文档"                             |
+| path     | string | 否   | 分类路径  | "0000001.0000002"                      |
+| parentId | Guid?  | 否   | 父分类 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa7" |
+
+**SmartClassificationStatus** (智能分类状态):
+
+| 值  | 名称                   | 描述               |
+| --- | ---------------------- | ------------------ |
+| 0   | Success                | 成功               |
+| 1   | OcrFailed              | OCR 处理失败       |
+| 2   | ClassificationFailed   | 分类推荐失败       |
+| 3   | NoCategoriesAvailable  | 没有可用的分类选项 |
+| 4   | FileNotSupportedForOcr | 文件不支持 OCR     |
+| 99  | SystemError            | 系统错误           |
+
+### 响应示例
+
+```json
+[
+    {
+        "fileInfo": {
+            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "fileAlias": "contract_001.pdf",
+            "filePath": "https://example.com/host/attachment/3fa85f64-5717-4562-b3fc-2c963f66afa6_contract_001.pdf",
+            "sequenceNumber": 1,
+            "fileName": "contract_001.pdf",
+            "fileType": "pdf",
+            "fileSize": 1024000,
+            "downloadTimes": 0,
+            "attachCatalogueId": "3fa85f64-5717-4562-b3fc-2c963f66afa7",
+            "reference": "CONTRACT_001",
+            "templatePurpose": 1,
+            "isCategorized": true
+        },
+        "classification": {
+            "recommendedCategory": "合同文档",
+            "confidence": 0.85
+        },
+        "availableCategories": [
+            {
+                "id": "3fa85f64-5717-4562-b3fc-2c963f66afa8",
+                "name": "合同文档",
+                "path": "0000001.0000002",
+                "parentId": "3fa85f64-5717-4562-b3fc-2c963f66afa7"
+            },
+            {
+                "id": "3fa85f64-5717-4562-b3fc-2c963f66afa9",
+                "name": "技术文档",
+                "path": "0000001.0000003",
+                "parentId": "3fa85f64-5717-4562-b3fc-2c963f66afa7"
+            }
+        ],
+        "ocrContent": "合同编号：CONTRACT_001\n甲方：ABC公司\n乙方：XYZ公司\n合同内容：...",
+        "processingTimeMs": 1500,
+        "status": 0,
+        "errorMessage": null
+    }
+]
+```
+
+### 业务说明
+
+1. **智能分类流程**:
+
+    - 文件上传后自动进行 OCR 处理（支持 PDF、图片等格式）
+    - 基于 OCR 内容调用 AI 智能分类服务
+    - 返回推荐分类和置信度
+
+2. **分类选项来源**:
+
+    - 基于指定的分类 ID 查找所有子分类
+    - 只使用叶子节点分类作为推荐选项
+    - 确保分类推荐的准确性
+
+3. **错误处理**:
+
+    - 支持多种错误状态的详细反馈
+    - 即使部分处理失败也会返回结果
+    - 提供详细的错误信息用于调试
+
+4. **性能优化**:
+
+    - 支持批量文件处理
+    - 异步处理提高响应速度
+    - 详细的处理时间统计
+
+5. **序号处理**:
+
+    - 如果未指定序号，自动分配该分类下的下一个可用序号
+    - 如果指定了序号，检查是否与现有文件重复
+    - 序号重复时自动递增直到找到可用序号
+    - 确保同一分类下文件序号的唯一性
+
+## 30. 确定文件分类接口
+
+### 接口描述
+
+将文件归类到指定分类，并更新相关属性。该接口会：
+
+1. 更新文件的分类 ID
+2. 设置文件的归类状态为已归类
+3. 从分类中继承相关属性（Reference、TemplatePurpose 等）
+4. 处理 OCR 内容（如果提供或文件支持 OCR）
+
+### 请求信息
+
+-   **URL**: `/api/app/attachment/confirm-classification`
+-   **方法**: `POST`
+-   **描述**: 确定文件分类
+
+### 请求参数
+
+| 参数名      | 类型   | 必填 | 位置  | 描述                 | 示例值                                 |
+| ----------- | ------ | ---- | ----- | -------------------- | -------------------------------------- |
+| fileId      | Guid   | 是   | Query | 文件 ID              | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| catalogueId | Guid   | 是   | Query | 分类 ID              | "3fa85f64-5717-4562-b3fc-2c963f66afa7" |
+| ocrContent  | string | 否   | Body  | OCR 全文内容（可选） | "合同编号：CONTRACT_001..."            |
+
+### 返回类型
+
+**成功响应** (200 OK):
+
+返回 `AttachFileDto` 类型的更新后文件信息。
+
+**AttachFileDto 字段说明**:
+
+| 字段名            | 类型                                 | 必填 | 描述           | 示例值                                 |
+| ----------------- | ------------------------------------ | ---- | -------------- | -------------------------------------- |
+| id                | Guid                                 | 是   | 文件 ID        | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| fileAlias         | string                               | 是   | 文件别名       | "合同正文"                             |
+| sequenceNumber    | int                                  | 是   | 序号           | 1                                      |
+| filePath          | string                               | 是   | 文件路径       | "/host/attachment/contract_001.pdf"    |
+| fileName          | string                               | 是   | 文件名称       | "contract_001.pdf"                     |
+| fileType          | string                               | 是   | 文件类型       | "pdf"                                  |
+| fileSize          | int                                  | 是   | 文件大小(字节) | 1024000                                |
+| downloadTimes     | int                                  | 是   | 下载次数       | 5                                      |
+| attachCatalogueId | Guid?                                | 否   | 关联分类 ID    | "3fa85f64-5717-4562-b3fc-2c963f66afa7" |
+| reference         | string?                              | 否   | 业务引用       | "CONTRACT_001"                         |
+| templatePurpose   | [TemplatePurpose](#templatepurpose)? | 否   | 模板用途       | 1                                      |
+| isCategorized     | bool                                 | 是   | 是否已归类     | true                                   |
+
+### 响应示例
+
+```json
+{
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "fileAlias": "contract_001.pdf",
+    "filePath": "https://example.com/host/attachment/3fa85f64-5717-4562-b3fc-2c963f66afa6_contract_001.pdf",
+    "sequenceNumber": 1,
+    "fileName": "contract_001.pdf",
+    "fileType": "pdf",
+    "fileSize": 1024000,
+    "downloadTimes": 0,
+    "attachCatalogueId": "3fa85f64-5717-4562-b3fc-2c963f66afa7",
+    "reference": "CONTRACT_001",
+    "templatePurpose": 1,
+    "isCategorized": true
+}
+```
+
+### 业务说明
+
+1. **文件分类更新**:
+
+    - 更新文件的 `AttachCatalogueId` 属性
+    - 设置 `IsCategorized` 为 `true`
+    - 从分类中继承 `Reference` 和 `TemplatePurpose` 属性
+
+2. **OCR 处理**:
+
+    - 如果提供了 `ocrContent`，直接设置并标记为完成
+    - 如果未提供但文件支持 OCR，自动进行 OCR 处理
+    - 如果 OCR 处理失败，设置处理状态为失败
+
+3. **错误处理**:
+
+    - 文件不存在时抛出异常
+    - 分类不存在时抛出异常
+    - OCR 处理失败时记录警告但不影响分类操作
+
+4. **数据一致性**:
+
+    - 确保文件与分类的关联关系正确
+    - 保持文件属性的完整性
+    - 记录操作日志用于审计
+
+````
+
+## 31. 批量确定文件分类接口
+
+### 接口描述
+
+批量将多个文件归类到指定分类，并更新相关属性。该接口会：
+
+1. 批量更新文件的分类 ID
+2. 设置文件的归类状态为已归类
+3. 从分类中继承相关属性（Reference、TemplatePurpose 等）
+4. 处理 OCR 内容（如果提供或文件支持 OCR）
+5. 支持部分成功，单个文件失败不影响其他文件处理
+
+### 请求信息
+
+-   **URL**: `/api/app/attachment/confirm-classifications`
+-   **方法**: `POST`
+-   **描述**: 批量确定文件分类
+
+### 请求参数
+
+**请求体**:
+
+| 参数名  | 类型                                                      | 必填 | 描述                 | 示例值                                 |
+| ------- | --------------------------------------------------------- | ---- | -------------------- | -------------------------------------- |
+| requests | List<[ConfirmFileClassificationRequest](#confirmfileclassificationrequest-文件分类请求)> | 是   | 文件分类请求列表     | 见 ConfirmFileClassificationRequest 说明 |
+
+**ConfirmFileClassificationRequest** (文件分类请求):
+
+| 参数名      | 类型   | 必填 | 描述                 | 示例值                                 |
+| ----------- | ------ | ---- | -------------------- | -------------------------------------- |
+| fileId      | Guid   | 是   | 文件 ID              | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| catalogueId | Guid   | 是   | 分类 ID              | "3fa85f64-5717-4562-b3fc-2c963f66afa7" |
+| ocrContent  | string | 否   | OCR 全文内容（可选） | "合同编号：CONTRACT_001..."            |
+
+### 返回类型
+
+**成功响应** (200 OK):
+
+返回 `List<AttachFileDto>` 类型的更新后文件信息列表。
+
+**AttachFileDto 字段说明**:
+
+| 字段名            | 类型                                 | 必填 | 描述           | 示例值                                 |
+| ----------------- | ------------------------------------ | ---- | -------------- | -------------------------------------- |
+| id                | Guid                                 | 是   | 文件 ID        | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| fileAlias         | string                               | 是   | 文件别名       | "合同正文"                             |
+| sequenceNumber    | int                                  | 是   | 序号           | 1                                      |
+| filePath          | string                               | 是   | 文件路径       | "/host/attachment/contract_001.pdf"    |
+| fileName          | string                               | 是   | 文件名称       | "contract_001.pdf"                     |
+| fileType          | string                               | 是   | 文件类型       | "pdf"                                  |
+| fileSize          | int                                  | 是   | 文件大小(字节) | 1024000                                |
+| downloadTimes     | int                                  | 是   | 下载次数       | 5                                      |
+| attachCatalogueId | Guid?                                | 否   | 关联分类 ID    | "3fa85f64-5717-4562-b3fc-2c963f66afa7" |
+| reference         | string?                              | 否   | 业务引用       | "CONTRACT_001"                         |
+| templatePurpose   | [TemplatePurpose](#templatepurpose)? | 否   | 模板用途       | 1                                      |
+| isCategorized     | bool                                 | 是   | 是否已归类     | true                                   |
+
+### 响应示例
+
+```json
+[
+    {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "fileAlias": "contract_001.pdf",
+        "filePath": "https://example.com/host/attachment/3fa85f64-5717-4562-b3fc-2c963f66afa6_contract_001.pdf",
+        "sequenceNumber": 1,
+        "fileName": "contract_001.pdf",
+        "fileType": "pdf",
+        "fileSize": 1024000,
+        "downloadTimes": 0,
+        "attachCatalogueId": "3fa85f64-5717-4562-b3fc-2c963f66afa7",
+        "reference": "CONTRACT_001",
+        "templatePurpose": 1,
+        "isCategorized": true
+    },
+    {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa8",
+        "fileAlias": "contract_002.pdf",
+        "filePath": "https://example.com/host/attachment/3fa85f64-5717-4562-b3fc-2c963f66afa8_contract_002.pdf",
+        "sequenceNumber": 2,
+        "fileName": "contract_002.pdf",
+        "fileType": "pdf",
+        "fileSize": 2048000,
+        "downloadTimes": 0,
+        "attachCatalogueId": "3fa85f64-5717-4562-b3fc-2c963f66afa7",
+        "reference": "CONTRACT_001",
+        "templatePurpose": 1,
+        "isCategorized": true
+    }
+]
+````
+
+### 业务说明
+
+1. **批量处理**:
+
+    - 支持一次处理多个文件的分类
+    - 单个文件失败不影响其他文件处理
+    - 返回成功处理的文件列表
+
+2. **文件分类更新**:
+
+    - 更新文件的 `AttachCatalogueId` 属性
+    - 设置 `IsCategorized` 为 `true`
+    - 从分类中继承 `Reference` 和 `TemplatePurpose` 属性
+
+3. **OCR 处理**:
+
+    - 如果提供了 `ocrContent`，直接设置并标记为完成
+    - 如果未提供但文件支持 OCR，自动进行 OCR 处理
+    - 如果 OCR 处理失败，设置处理状态为失败
+
+4. **错误处理**:
+
+    - 文件不存在时跳过该文件
+    - 分类不存在时跳过该文件
+    - 记录详细的错误日志
+    - 返回成功处理的文件列表
+
+5. **性能优化**:
+
+    - 批量处理减少网络请求次数
+    - 支持事务性处理（可选）
+    - 详细的处理统计信息
+
+### 使用示例
+
+```javascript
+// 批量确定文件分类
+const requests = [
+    {
+        fileId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+        catalogueId: '3fa85f64-5717-4562-b3fc-2c963f66afa7',
+        ocrContent: '合同编号：CONTRACT_001...',
+    },
+    {
+        fileId: '3fa85f64-5717-4562-b3fc-2c963f66afa8',
+        catalogueId: '3fa85f64-5717-4562-b3fc-2c963f66afa7',
+    },
+];
+
+const response = await fetch('/api/app/attachment/confirm-classifications', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(requests),
+});
+
+const results = await response.json();
+console.log(`成功处理 ${results.length} 个文件`);
+```
+
+## 32. 根据业务引用和模板用途获取文件列表接口
+
+### 接口描述
+
+根据业务引用（Reference）和模板用途（TemplatePurpose）查询未归档的文件列表。该接口用于获取特定业务场景下尚未分类的文件，便于后续的文件管理和分类操作。
+
+### 请求信息
+
+-   **URL**: `/api/app/attachment/files/by-reference-template`
+-   **方法**: `GET`
+-   **描述**: 根据业务引用和模板用途获取未归档文件列表
+
+### 请求参数
+
+| 参数名          | 类型                                | 必填 | 位置  | 描述     | 示例值         |
+| --------------- | ----------------------------------- | ---- | ----- | -------- | -------------- |
+| reference       | string                              | 是   | Query | 业务引用 | "CONTRACT_001" |
+| templatePurpose | [TemplatePurpose](#templatepurpose) | 是   | Query | 模板用途 | 1              |
+
+### 返回类型
+
+**成功响应** (200 OK):
+
+返回 `List<AttachFileDto>` 类型的文件列表。
+
+**AttachFileDto 字段说明**:
+
+| 字段名            | 类型                                 | 必填 | 描述           | 示例值                                 |
+| ----------------- | ------------------------------------ | ---- | -------------- | -------------------------------------- |
+| id                | Guid                                 | 是   | 文件 ID        | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| fileAlias         | string                               | 是   | 文件别名       | "合同正文"                             |
+| sequenceNumber    | int                                  | 是   | 序号           | 1                                      |
+| filePath          | string                               | 是   | 文件路径       | "/host/attachment/contract_001.pdf"    |
+| fileName          | string                               | 是   | 文件名称       | "contract_001.pdf"                     |
+| fileType          | string                               | 是   | 文件类型       | "pdf"                                  |
+| fileSize          | int                                  | 是   | 文件大小(字节) | 1024000                                |
+| downloadTimes     | int                                  | 是   | 下载次数       | 5                                      |
+| attachCatalogueId | Guid?                                | 否   | 关联分类 ID    | "3fa85f64-5717-4562-b3fc-2c963f66afa7" |
+| reference         | string?                              | 否   | 业务引用       | "CONTRACT_001"                         |
+| templatePurpose   | [TemplatePurpose](#templatepurpose)? | 否   | 模板用途       | 1                                      |
+| isCategorized     | bool                                 | 是   | 是否已归类     | false                                  |
+
+### 响应示例
+
+```json
+[
+    {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "fileAlias": "contract_001.pdf",
+        "filePath": "https://example.com/host/attachment/3fa85f64-5717-4562-b3fc-2c963f66afa6_contract_001.pdf",
+        "sequenceNumber": 1,
+        "fileName": "contract_001.pdf",
+        "fileType": "pdf",
+        "fileSize": 1024000,
+        "downloadTimes": 0,
+        "attachCatalogueId": null,
+        "reference": "CONTRACT_001",
+        "templatePurpose": 1,
+        "isCategorized": false
+    },
+    {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa7",
+        "fileAlias": "contract_002.pdf",
+        "filePath": "https://example.com/host/attachment/3fa85f64-5717-4562-b3fc-2c963f66afa7_contract_002.pdf",
+        "sequenceNumber": 2,
+        "fileName": "contract_002.pdf",
+        "fileType": "pdf",
+        "fileSize": 2048000,
+        "downloadTimes": 0,
+        "attachCatalogueId": null,
+        "reference": "CONTRACT_001",
+        "templatePurpose": 1,
+        "isCategorized": false
+    }
+]
+```
+
+### 业务说明
+
+1. **查询条件**:
+
+    - 必须提供 `reference` 和 `templatePurpose` 参数
+    - 只返回 `IsCategorized = false` 的未归档文件
+    - 按序号和创建时间排序
+
+2. **使用场景**:
+
+    - 获取特定业务场景下的待分类文件
+    - 批量文件管理操作
+    - 文件分类前的预览
+
+3. **性能优化**:
+
+    - 使用数据库索引进行高效查询
+    - 只返回必要的文件信息
+    - 支持分页（如需要）
+
+4. **错误处理**:
+
+    - 参数验证：业务引用不能为空
+    - 异常处理：提供详细的错误信息
+    - 日志记录：记录查询操作和结果
+
+### 使用示例
+
+```javascript
+// 获取合同相关的未归档文件
+const response = await fetch(
+    '/api/app/attachment/files/by-reference-template?reference=CONTRACT_001&templatePurpose=1'
+);
+const files = await response.json();
+
+// 处理文件列表
+files.forEach((file) => {
+    console.log(`文件: ${file.fileName}, 大小: ${file.fileSize} 字节`);
+});
+```
+
+## 33. 根据业务引用和模板用途获取文件列表并进行智能分类推荐接口
+
+### 接口描述
+
+根据业务引用（Reference）和模板用途（TemplatePurpose）查询未归档的文件列表，并为每个文件提供智能分类推荐。该接口结合了文件查询和智能分类功能，适用于需要为文件提供分类建议的场景。
+
+### 请求信息
+
+-   **URL**: `/api/app/attachment/files/by-reference-template-with-classification`
+-   **方法**: `GET`
+-   **描述**: 根据业务引用和模板用途获取文件列表并进行智能分类推荐
+
+### 请求参数
+
+| 参数名          | 类型                                | 必填 | 位置  | 描述     | 示例值         |
+| --------------- | ----------------------------------- | ---- | ----- | -------- | -------------- |
+| reference       | string                              | 是   | Query | 业务引用 | "CONTRACT_001" |
+| templatePurpose | [TemplatePurpose](#templatepurpose) | 是   | Query | 模板用途 | 1              |
+
+### 返回类型
+
+**成功响应** (200 OK):
+
+返回 `List<SmartClassificationResultDto>` 类型的智能分类推荐结果列表。
+
+**SmartClassificationResultDto 字段说明**:
+
+| 字段名              | 类型                                                                   | 必填 | 描述                     | 示例值                             |
+| ------------------- | ---------------------------------------------------------------------- | ---- | ------------------------ | ---------------------------------- |
+| fileInfo            | [AttachFileDto](#attachfiledto-附件文件信息)                           | 是   | 文件基本信息             | 见 AttachFileDto 说明              |
+| classification      | [ClassificationExtentResult](#classificationextentresult-分类推荐结果) | 是   | 推荐分类结果             | 见 ClassificationExtentResult 说明 |
+| availableCategories | List<[CategoryOptionDto](#categoryoptiondto-分类选项)>                 | 是   | 可选的分类列表           | 见 CategoryOptionDto 说明          |
+| ocrContent          | string?                                                                | 否   | OCR 提取的文本内容       | "合同编号：CONTRACT_001..."        |
+| processingTimeMs    | long                                                                   | 是   | 处理时间（毫秒）         | 0                                  |
+| status              | [SmartClassificationStatus](#smartclassificationstatus-智能分类状态)   | 是   | 处理状态                 | 0                                  |
+| errorMessage        | string?                                                                | 否   | 错误信息（如果处理失败） | null                               |
+
+**ClassificationExtentResult** (扩展分类推荐结果):
+
+| 字段名                | 类型   | 必填 | 描述         | 示例值                                 |
+| --------------------- | ------ | ---- | ------------ | -------------------------------------- |
+| recommendedCategory   | string | 是   | 推荐分类名称 | "合同文档"                             |
+| recommendedCategoryId | Guid   | 是   | 推荐分类 ID  | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| confidence            | double | 是   | 置信度       | 0.8                                    |
+
+### 响应示例
+
+```json
+[
+    {
+        "fileInfo": {
+            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "fileAlias": "contract_001.pdf",
+            "filePath": "https://example.com/host/attachment/3fa85f64-5717-4562-b3fc-2c963f66afa6_contract_001.pdf",
+            "sequenceNumber": 1,
+            "fileName": "contract_001.pdf",
+            "fileType": "pdf",
+            "fileSize": 1024000,
+            "downloadTimes": 0,
+            "attachCatalogueId": null,
+            "reference": "CONTRACT_001",
+            "templatePurpose": 1,
+            "isCategorized": false
+        },
+        "classification": {
+            "recommendedCategory": "合同文档",
+            "recommendedCategoryId": "3fa85f64-5717-4562-b3fc-2c963f66afa7",
+            "confidence": 0.8
+        },
+        "availableCategories": [
+            {
+                "id": "3fa85f64-5717-4562-b3fc-2c963f66afa7",
+                "name": "合同文档",
+                "path": "0000001.0000002",
+                "parentId": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+            },
+            {
+                "id": "3fa85f64-5717-4562-b3fc-2c963f66afa8",
+                "name": "技术文档",
+                "path": "0000001.0000003",
+                "parentId": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+            }
+        ],
+        "ocrContent": "合同编号：CONTRACT_001...",
+        "processingTimeMs": 0,
+        "status": 0,
+        "errorMessage": null
+    }
+]
+```
+
+### 业务说明
+
+1. **功能特点**:
+
+    - 查询指定业务引用和模板用途的未归档文件
+    - 为每个文件提供智能分类推荐
+    - 基于现有分类结构提供推荐选项
+
+2. **分类推荐逻辑**:
+
+    - 如果文件已有分类，使用现有分类并提高置信度
+    - 如果文件未分类，使用默认分类并降低置信度
+    - 提供所有可用的分类选项供用户选择
+
+3. **使用场景**:
+
+    - 文件分类前的预览和推荐
+    - 批量文件分类管理
+    - 智能分类辅助决策
+
+4. **性能优化**:
+
+    - 基于 Path 路径的高效分类查询
+    - 单次数据库查询获取所有相关数据
+    - 内存中构建分类推荐结果
+
+### 使用示例
+
+```javascript
+// 获取合同相关的未归档文件并进行智能分类推荐
+const response = await fetch(
+    '/api/app/attachment/files/by-reference-template-with-classification?reference=CONTRACT_001&templatePurpose=1'
+);
+const results = await response.json();
+
+// 处理智能分类结果
+results.forEach((result) => {
+    console.log(`文件: ${result.fileInfo.fileName}`);
+    console.log(`推荐分类: ${result.classification.recommendedCategory}`);
+    console.log(`置信度: ${result.classification.confidence}`);
+    console.log(
+        `可选分类: ${result.availableCategories.map((c) => c.name).join(', ')}`
+    );
+});
+```
+
 ## 版本信息
 
--   **文档版本**: 1.5.13
--   **API 版本**: v1.5.13
+-   **文档版本**: 1.5.14
+-   **API 版本**: v1.5.14
 -   **最后更新**: 2024-12-19
 -   **维护人员**: 开发团队
--   **更新内容**: 新增 TemplateRole 字段支持，优化分类角色管理功能，完善 API 接口文档结构
+-   **更新内容**: 新增智能分类文件上传接口，支持 OCR+AI 分类推荐，完善文件自动归类功能

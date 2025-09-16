@@ -29,6 +29,9 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.Property(d => d.FileType).HasColumnName("FILETYPE").HasMaxLength(10);
             builder.Property(d => d.FileSize).HasColumnName("FILESIZE").HasDefaultValue(0);
             builder.Property(d => d.DownloadTimes).HasColumnName("DOWNLOADTIMES").HasDefaultValue(0);
+            builder.Property(d => d.Reference).HasColumnName("REFERENCE").HasMaxLength(28);
+            builder.Property(d => d.TemplatePurpose).HasColumnName("TEMPLATE_PURPOSE");
+            builder.Property(d => d.IsCategorized).HasColumnName("IS_CATEGORIZED").HasDefaultValue(true);
 
             // OCR相关字段配置
             builder.Property(d => d.OcrContent).HasColumnName("OCR_CONTENT").HasColumnType("text");

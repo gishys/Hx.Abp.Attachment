@@ -1157,7 +1157,7 @@ namespace Hx.Abp.Attachment.Application
         public virtual async Task<List<AttachCatalogueDto>> SearchByHybridAsync(string? searchText = null, string? reference = null, int? referenceType = null, int limit = 10, string? queryTextVector = null, float similarityThreshold = 0.7f)
         {
             var results = await CatalogueRepository.SearchByHybridAsync(searchText, reference, referenceType, limit, queryTextVector, similarityThreshold);
-            return ObjectMapper.Map<List<AttachCatalogue>, List<AttachCatalogueDto>>(results);
+            return ConvertSrc(results);
         }
 
 

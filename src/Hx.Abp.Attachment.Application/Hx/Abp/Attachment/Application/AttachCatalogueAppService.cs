@@ -11,6 +11,7 @@ using Volo.Abp;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.DistributedLocking;
+using Volo.Abp.Domain.Entities;
 using Volo.Abp.Uow;
 
 namespace Hx.Abp.Attachment.Application
@@ -1409,8 +1410,8 @@ namespace Hx.Abp.Attachment.Application
                     {
                         // 创建文件实体
                         var attachId = GuidGenerator.Create();
-                        var fileName = !string.IsNullOrEmpty(prefix) ? $"{prefix}_{input.FileAlias}" : input.FileAlias;
-                        var fileUrl = $"{attachId}_{fileName}";
+                        var fileName = $"{attachId}{Path.GetExtension(input.FileAlias)}";
+                        var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{catalogue.Reference}/{fileName}";
                         var fileExtension = Path.GetExtension(input.FileAlias).ToLowerInvariant();
 
                         var tempFile = new AttachFile(

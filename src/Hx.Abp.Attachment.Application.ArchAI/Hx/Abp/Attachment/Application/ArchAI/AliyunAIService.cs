@@ -217,7 +217,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         }
 
         /// <summary>
-        /// 实体识别 - 从文本中识别指定类型的实体
+        /// 实体识别 - 使用DashScope API进行智能实体识别
         /// </summary>
         /// <param name="content">文本内容</param>
         /// <param name="entityTypes">要识别的实体类型列表</param>
@@ -230,7 +230,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         {
             try
             {
-                _logger.LogInformation("开始调用阿里云AI进行实体识别，文本长度: {TextLength}, 实体类型数量: {EntityTypeCount}",
+                _logger.LogInformation("开始使用DashScope API进行实体识别，文本长度: {TextLength}, 实体类型数量: {EntityTypeCount}",
                     content.Length, entityTypes.Count);
 
                 if (entityTypes.Count == 0)
@@ -238,33 +238,34 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                     throw new UserFriendlyException("实体类型不能为空");
                 }
 
-                var request = new AliyunNLURequest
-                {
-                    Model = "opennlu-v1",
-                    Input = new AliyunNLUInput
-                    {
-                        Sentence = content,
-                        Task = "extraction",
-                        Labels = string.Join(",", entityTypes)
-                    }
-                };
+                // 限制输入长度，避免超过token限制
+                var processedContent = content.Length > 3000 ? content[..3000] + "..." : content;
 
-                var response = await CallAliyunNLUApiAsync(request);
+                // 生成实体识别提示词
+                var systemPrompt = GenerateEntityRecognitionSystemPrompt();
+                var userPrompt = GenerateEntityRecognitionUserPrompt(processedContent, entityTypes, includePosition);
+
+                var response = await CallDashScopeApiAsync(systemPrompt, userPrompt);
                 
-                if (!string.IsNullOrEmpty(response.Output?.Text))
+                if (!string.IsNullOrEmpty(response))
                 {
-                    var result = ParseEntityRecognitionResponse(response.Output.Text, entityTypes, includePosition);
-                    _logger.LogInformation("阿里云AI实体识别成功，识别实体数量: {EntityCount}", result.Entities.Count);
-                    return result;
+                    var result = ParseEntityRecognitionResponse(response, entityTypes, includePosition);
+                    if (result.Entities.Count > 0)
+                    {
+                        _logger.LogInformation("DashScope API实体识别成功，识别实体数量: {EntityCount}", result.Entities.Count);
+                        return result;
+                    }
                 }
 
-                _logger.LogWarning("阿里云AI实体识别响应为空或解析失败");
-                throw new UserFriendlyException("阿里云AI返回的实体识别结果为空");
+                // 降级方案：使用简单实体识别
+                _logger.LogWarning("DashScope API实体识别失败，使用简单实体识别作为降级方案");
+                return ExtractEntitiesWithSimpleAnalysis(processedContent, entityTypes, includePosition);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "阿里云AI实体识别失败");
-                throw new UserFriendlyException("阿里云AI实体识别服务暂时不可用，请稍后再试");
+                _logger.LogError(ex, "DashScope API实体识别失败");
+                // 降级到简单实体识别
+                return ExtractEntitiesWithSimpleAnalysis(content, entityTypes, includePosition);
             }
         }
 
@@ -676,237 +677,6 @@ namespace Hx.Abp.Attachment.Application.ArchAI
 
         [System.Text.RegularExpressions.GeneratedRegex(@"\{.*\}")]
         private static partial System.Text.RegularExpressions.Regex JsonObjectRegex();
-
-        /// <summary>
-        /// 解析实体识别响应
-        /// </summary>
-        /// <param name="responseText">API响应文本</param>
-        /// <param name="entityTypes">实体类型列表</param>
-        /// <param name="includePosition">是否包含位置信息</param>
-        /// <returns>实体识别结果</returns>
-        private static EntityRecognitionResultDto ParseEntityRecognitionResponse(
-            string responseText, 
-            List<string> entityTypes, 
-            bool includePosition)
-        {
-            var result = new EntityRecognitionResultDto
-            {
-                Entities = [],
-                Confidence = 0.8,
-                RecognitionTime = DateTime.Now,
-                EntityTypeCounts = entityTypes.ToDictionary(et => et, _ => 0),
-                Metadata = new EntityRecognitionMetadata
-                {
-                    TextLength = 0,
-                    ProcessingTimeMs = 0,
-                    Model = "opennlu-v1",
-                    RecognizedEntityTypeCount = 0,
-                    TotalEntityCount = 0
-                }
-            };
-
-            if (string.IsNullOrWhiteSpace(responseText))
-                return result;
-
-            try
-            {
-                // 尝试从响应中提取实体信息
-                var entities = ExtractEntitiesFromResponse(responseText, entityTypes, includePosition);
-                result.Entities = entities;
-                result.Metadata!.TotalEntityCount = entities.Count;
-
-                // 统计各类型实体数量
-                foreach (var entity in entities)
-                {
-                    if (result.EntityTypeCounts.TryGetValue(entity.Type, out int value))
-                    {
-                        result.EntityTypeCounts[entity.Type] = ++value;
-                    }
-                }
-
-                result.Metadata!.RecognizedEntityTypeCount = result.EntityTypeCounts.Count(kvp => kvp.Value > 0);
-                result.Confidence = entities.Count > 0 ? 0.9 : 0.5;
-            }
-            catch (Exception)
-            {
-                // 解析失败时返回默认结果
-                result.Confidence = 0.3;
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// 从响应中提取实体信息
-        /// </summary>
-        /// <param name="responseText">API响应文本</param>
-        /// <param name="entityTypes">实体类型列表</param>
-        /// <param name="includePosition">是否包含位置信息</param>
-        /// <returns>实体列表</returns>
-        private static List<RecognizedEntity> ExtractEntitiesFromResponse(
-            string responseText, 
-            List<string> entityTypes, 
-            bool includePosition)
-        {
-            var entities = new List<RecognizedEntity>();
-
-            try
-            {
-                // 尝试解析JSON格式的响应
-                var jsonMatch = AliyunAIService.JsonObjectRegex().Match(responseText);
-                if (jsonMatch.Success)
-                {
-                    var jsonText = jsonMatch.Value;
-                    var response = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonText);
-                    
-                    if (response != null && response.TryGetValue("entities", out object? value))
-                    {
-                        // 处理结构化的实体数据
-                        var entitiesData = JsonSerializer.Deserialize<List<Dictionary<string, object>>>(value.ToString() ?? "[]");
-                        foreach (var entityData in entitiesData ?? [])
-                        {
-                            var entity = new RecognizedEntity
-                            {
-                                Name = entityData.GetValueOrDefault("name", "").ToString() ?? "",
-                                Type = entityData.GetValueOrDefault("type", "").ToString() ?? "",
-                                Value = entityData.GetValueOrDefault("value", "").ToString() ?? "",
-                                Confidence = Convert.ToDouble(entityData.GetValueOrDefault("confidence", 0.8))
-                            };
-
-                            if (includePosition)
-                            {
-                                entity.StartPosition = Convert.ToInt32(entityData.GetValueOrDefault("start", 0));
-                                entity.EndPosition = Convert.ToInt32(entityData.GetValueOrDefault("end", 0));
-                            }
-
-                            entities.Add(entity);
-                        }
-                    }
-                }
-
-                // 如果没有找到结构化数据，尝试从文本中提取
-                if (entities.Count == 0)
-                {
-                    entities = ExtractEntitiesFromText(responseText, entityTypes);
-                }
-            }
-            catch (Exception)
-            {
-                // 解析失败时使用文本提取作为备选方案
-                entities = ExtractEntitiesFromText(responseText, entityTypes);
-            }
-
-            return entities;
-        }
-
-        /// <summary>
-        /// 从文本中提取实体信息（备选方案）
-        /// </summary>
-        /// <param name="text">文本内容</param>
-        /// <param name="entityTypes">实体类型列表</param>
-        /// <returns>实体列表</returns>
-        private static List<RecognizedEntity> ExtractEntitiesFromText(string text, List<string> entityTypes)
-        {
-            var entities = new List<RecognizedEntity>();
-
-            // 简单的文本模式匹配提取
-            foreach (var entityType in entityTypes)
-            {
-                var pattern = $@"{entityType}[:：]\s*([^，,;；\n\r]+)";
-                var matches = System.Text.RegularExpressions.Regex.Matches(text, pattern);
-                
-                foreach (System.Text.RegularExpressions.Match match in matches)
-                {
-                    if (match.Groups.Count > 1)
-                    {
-                        var entityValue = match.Groups[1].Value.Trim();
-                        if (!string.IsNullOrEmpty(entityValue))
-                        {
-                            entities.Add(new RecognizedEntity
-                            {
-                                Name = entityValue,
-                                Type = entityType,
-                                Value = entityValue,
-                                Confidence = 0.7
-                            });
-                        }
-                    }
-                }
-            }
-
-            return entities;
-        }
-
-        /// <summary>
-        /// 解析分类名称推荐响应
-        /// </summary>
-        /// <param name="responseText">API响应文本</param>
-        /// <param name="businessDomain">业务领域</param>
-        /// <param name="documentType">文档类型</param>
-        /// <param name="recommendationCount">推荐数量</param>
-        /// <returns>分类名称推荐结果</returns>
-        private static CategoryNameRecommendationResultDto ParseCategoryNameRecommendationResponse(
-            string responseText, 
-            string? businessDomain, 
-            string? documentType, 
-            int recommendationCount)
-        {
-            var result = new CategoryNameRecommendationResultDto
-            {
-                RecommendedCategories = [],
-                Confidence = 0.8,
-                RecommendationTime = DateTime.Now,
-                Metadata = new CategoryRecommendationMetadata
-                {
-                    TextLength = 0,
-                    ProcessingTimeMs = 0,
-                    Model = "opennlu-v1",
-                    RecommendedCategoryCount = 0,
-                    IdentifiedBusinessDomain = businessDomain,
-                    IdentifiedDocumentType = documentType
-                }
-            };
-
-            if (string.IsNullOrWhiteSpace(responseText))
-                return result;
-
-            try
-            {
-                // 尝试从响应中提取分类信息
-                var categories = ExtractCategoriesFromResponse(responseText, recommendationCount);
-                
-                // 验证提取的分类是否有效
-                var validCategories = categories.Where(c => 
-                    !string.IsNullOrEmpty(c.Name) && 
-                    !c.Name.Equals("None", StringComparison.OrdinalIgnoreCase) &&
-                    !c.Name.Equals("无", StringComparison.OrdinalIgnoreCase) &&
-                    !c.Name.Equals("空", StringComparison.OrdinalIgnoreCase) &&
-                    c.Name.Length > 1).ToList();
-                
-                result.RecommendedCategories = validCategories;
-                result.Metadata.RecommendedCategoryCount = validCategories.Count;
-                
-                // 根据有效分类数量调整置信度
-                if (validCategories.Count > 0)
-                {
-                    result.Confidence = Math.Min(0.9, 0.5 + (validCategories.Count * 0.1));
-                }
-                else
-                {
-                    result.Confidence = 0.3;
-                    // 如果没有有效分类，尝试生成一些默认分类建议
-                    result.RecommendedCategories = GenerateDefaultCategorySuggestions(businessDomain, documentType, recommendationCount);
-                }
-            }
-            catch (Exception)
-            {
-                // 解析失败时返回默认结果
-                result.Confidence = 0.3;
-                result.RecommendedCategories = GenerateDefaultCategorySuggestions(businessDomain, documentType, recommendationCount);
-            }
-
-            return result;
-    }
 
     /// <summary>
         /// 从响应中提取分类信息
@@ -1522,6 +1292,316 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             }
 
             return string.IsNullOrEmpty(summary) ? content[..Math.Min(content.Length, maxLength)] : summary;
+        }
+
+        /// <summary>
+        /// 生成实体识别系统提示词
+        /// </summary>
+        /// <returns>系统提示词</returns>
+        private static string GenerateEntityRecognitionSystemPrompt()
+        {
+            return """
+                你是一个专业的实体识别专家，擅长从各种类型的文档中准确识别和提取结构化实体信息。
+                
+                你的任务是：
+                1. 仔细分析文档内容，理解其语义和上下文
+                2. 根据指定的实体类型，识别对应的实体信息
+                3. 确保识别的实体准确、完整、符合要求
+                4. 提供置信度评估和位置信息（如果需要）
+                5. 如果无法识别到实体，返回空结果而不是猜测
+                
+                识别原则：
+                - 优先识别明确存在的实体
+                - 确保实体文本的准确性和完整性
+                - 避免过度猜测或编造不存在的实体
+                - 提供合理的置信度评估
+                - 如果提取不到实体，诚实返回空结果
+                
+                输出要求：
+                - 直接返回JSON格式，不要使用markdown代码块包装
+                - 不要使用```json```或```包装输出
+                - 确保返回的是有效的JSON格式
+                """;
+        }
+
+        /// <summary>
+        /// 生成实体识别用户提示词
+        /// </summary>
+        /// <param name="content">文档内容</param>
+        /// <param name="entityTypes">实体类型列表</param>
+        /// <param name="includePosition">是否包含位置信息</param>
+        /// <returns>用户提示词</returns>
+        private static string GenerateEntityRecognitionUserPrompt(string content, List<string> entityTypes, bool includePosition)
+        {
+            var prompt = $"请从以下文档中识别指定的实体信息：\n\n文档内容：\n{content}\n\n需要识别的实体类型：\n";
+            
+            foreach (var entityType in entityTypes)
+            {
+                prompt += $"- {entityType}\n";
+            }
+            
+            prompt += "\n要求：\n";
+            prompt += "1. 准确识别每个类型的实体信息\n";
+            prompt += "2. 只返回确实存在的实体，不要猜测或编造\n";
+            prompt += "3. 如果某个类型没有找到实体，不要强制返回\n";
+            if (includePosition)
+                prompt += "4. 提供实体在文本中的位置信息\n";
+            prompt += "5. 直接返回JSON格式，不要使用markdown代码块等内容包装\n";
+            prompt += "6. 返回格式如下：\n";
+            prompt += "{\n";
+            prompt += "  \"entities\": [\n";
+            prompt += "    {\n";
+            prompt += "      \"text\": \"识别的实体文本\",\n";
+            prompt += "      \"entityType\": \"实体类型\",\n";
+            prompt += "      \"confidence\": 0.95";
+            if (includePosition)
+            {
+                prompt += ",\n";
+                prompt += "      \"startPosition\": 10,\n";
+                prompt += "      \"endPosition\": 20";
+            }
+            prompt += "\n    }\n";
+            prompt += "  ]\n";
+            prompt += "}\n\n";
+            prompt += "注意：请直接返回JSON，不要使用```json```包装";
+            
+            return prompt;
+        }
+
+        /// <summary>
+        /// 解析实体识别响应
+        /// </summary>
+        /// <param name="responseText">API响应文本</param>
+        /// <param name="entityTypes">实体类型列表</param>
+        /// <param name="includePosition">是否包含位置信息</param>
+        /// <returns>实体识别结果</returns>
+        private static EntityRecognitionResultDto ParseEntityRecognitionResponse(string responseText, List<string> entityTypes, bool includePosition)
+        {
+            var result = new EntityRecognitionResultDto
+            {
+                Entities = []
+            };
+
+            if (string.IsNullOrWhiteSpace(responseText))
+            {
+                return result;
+            }
+
+            try
+            {
+                // 清理响应文本，移除可能的markdown代码块
+                var cleanedResponse = CleanJsonResponse(responseText);
+                
+                // 尝试解析JSON响应
+                var jsonResponse = JsonSerializer.Deserialize<JsonElement>(cleanedResponse);
+                
+                if (jsonResponse.TryGetProperty("entities", out var entitiesArray))
+                {
+                    foreach (var entityElement in entitiesArray.EnumerateArray())
+                    {
+                        var entity = ParseEntityFromJson(entityElement, entityTypes, includePosition);
+                        if (entity != null)
+                        {
+                            result.Entities.Add(entity);
+                        }
+                    }
+                }
+                else
+                {
+                    // 如果不是标准JSON格式，尝试从文本中提取实体
+                    result.Entities = ExtractEntitiesFromText(responseText, entityTypes, includePosition);
+                }
+            }
+            catch (JsonException)
+            {
+                // JSON解析失败，尝试从文本中提取实体
+                result.Entities = ExtractEntitiesFromText(responseText, entityTypes, includePosition);
+            }
+
+            // 更新统计信息
+            UpdateEntityRecognitionStatistics(result);
+
+            return result;
+        }
+
+        /// <summary>
+        /// 清理JSON响应，移除markdown代码块
+        /// </summary>
+        /// <param name="responseText">原始响应文本</param>
+        /// <returns>清理后的JSON文本</returns>
+        private static string CleanJsonResponse(string responseText)
+        {
+            if (string.IsNullOrWhiteSpace(responseText))
+                return responseText;
+
+            // 移除markdown代码块标记
+            var cleaned = responseText.Trim();
+            
+            // 移除开头的```json或```
+            if (cleaned.StartsWith("```json"))
+            {
+                cleaned = cleaned[7..].TrimStart();
+            }
+            else if (cleaned.StartsWith("```"))
+            {
+                cleaned = cleaned[3..].TrimStart();
+            }
+            
+            // 移除结尾的```
+            if (cleaned.EndsWith("```"))
+            {
+                cleaned = cleaned[..^3].TrimEnd();
+            }
+            
+            return cleaned.Trim();
+        }
+
+        /// <summary>
+        /// 从JSON元素解析实体
+        /// </summary>
+        private static RecognizedEntity? ParseEntityFromJson(JsonElement entityElement, List<string> entityTypes, bool includePosition)
+        {
+            try
+            {
+                var entity = new RecognizedEntity();
+
+                if (entityElement.TryGetProperty("text", out var textElement))
+                    entity.Name = textElement.GetString() ?? string.Empty;
+
+                if (entityElement.TryGetProperty("entityType", out var entityTypeElement))
+                    entity.Type = entityTypeElement.GetString() ?? string.Empty;
+
+                if (entityElement.TryGetProperty("confidence", out var confidenceElement))
+                    entity.Confidence = (double)confidenceElement.GetSingle();
+
+                if (includePosition)
+                {
+                    if (entityElement.TryGetProperty("startPosition", out var startElement))
+                        entity.StartPosition = startElement.GetInt32();
+
+                    if (entityElement.TryGetProperty("endPosition", out var endElement))
+                        entity.EndPosition = endElement.GetInt32();
+                }
+
+                // 验证实体类型是否在允许的列表中
+                if (!entityTypes.Contains(entity.Type))
+                {
+                    return null;
+                }
+
+                return entity;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 从文本中提取实体（降级方案）
+        /// </summary>
+        private static List<RecognizedEntity> ExtractEntitiesFromText(string responseText, List<string> entityTypes, bool includePosition)
+        {
+            var entities = new List<RecognizedEntity>();
+
+            foreach (var entityType in entityTypes)
+            {
+                // 简单的文本匹配提取实体
+                var pattern = $@"{entityType}[：:]\s*([^\n\r,，;；]+)";
+                var matches = System.Text.RegularExpressions.Regex.Matches(responseText, pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+                foreach (System.Text.RegularExpressions.Match match in matches)
+                {
+                    var entityText = match.Groups[1].Value.Trim();
+                    if (!string.IsNullOrWhiteSpace(entityText))
+                    {
+                        entities.Add(new RecognizedEntity
+                        {
+                            Name = entityText,
+                            Type = entityType,
+                            Value = entityText,
+                            Confidence = 0.8, // 默认置信度
+                            StartPosition = includePosition ? match.Index : null,
+                            EndPosition = includePosition ? match.Index + match.Length : null
+                        });
+                    }
+                }
+            }
+
+            return entities;
+        }
+
+        /// <summary>
+        /// 使用简单文本分析提取实体（降级方案）
+        /// </summary>
+        private static EntityRecognitionResultDto ExtractEntitiesWithSimpleAnalysis(string content, List<string> entityTypes, bool includePosition)
+        {
+            var result = new EntityRecognitionResultDto
+            {
+                Entities = []
+            };
+
+            foreach (var entityType in entityTypes)
+            {
+                // 基于实体类型进行简单的文本匹配
+                var patterns = new[]
+                {
+                    $@"{entityType}[：:]\s*([^\n\r,，;；]+)",
+                    $@"{entityType}\s*[：:]\s*([^\n\r,，;；]+)",
+                    $@"{entityType}\s*[：:]\s*([^\n\r,，;；]+)"
+                };
+
+                foreach (var pattern in patterns)
+                {
+                    var matches = System.Text.RegularExpressions.Regex.Matches(content, pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    foreach (System.Text.RegularExpressions.Match match in matches)
+                    {
+                        var entityText = match.Groups[1].Value.Trim();
+                        if (!string.IsNullOrWhiteSpace(entityText))
+                        {
+                            result.Entities.Add(new RecognizedEntity
+                            {
+                                Name = entityText,
+                                Type = entityType,
+                                Value = entityText,
+                                Confidence = 0.6, // 降级方案的较低置信度
+                                StartPosition = includePosition ? match.Index : null,
+                                EndPosition = includePosition ? match.Index + match.Length : null
+                            });
+                        }
+                    }
+                }
+            }
+
+            UpdateEntityRecognitionStatistics(result);
+            return result;
+        }
+
+        /// <summary>
+        /// 更新实体识别统计信息
+        /// </summary>
+        private static void UpdateEntityRecognitionStatistics(EntityRecognitionResultDto result)
+        {
+            // 计算平均置信度
+            if (result.Entities.Count > 0)
+            {
+                result.Confidence = result.Entities.Average(e => e.Confidence);
+            }
+
+            // 按类型分组统计
+            result.EntityTypeCounts = result.Entities
+                .GroupBy(e => e.Type)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            // 设置元数据
+            result.Metadata = new EntityRecognitionMetadata
+            {
+                TextLength = 0, // 这里需要传入原始文本长度
+                ProcessingTimeMs = 0, // 这里需要传入处理时间
+                Model = "qwen-doc-turbo",
+                RecognizedEntityTypeCount = result.EntityTypeCounts.Count,
+                TotalEntityCount = result.Entities.Count
+            };
         }
 
         /// <summary>

@@ -1740,5 +1740,70 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
             return allCatalogues;
         }
+
+        /// <summary>
+        /// 根据归档状态查询分类
+        /// </summary>
+        /// <param name="isArchived">归档状态</param>
+        /// <param name="reference">业务引用过滤</param>
+        /// <param name="referenceType">业务类型过滤</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>匹配的分类列表</returns>
+        public virtual async Task<List<AttachCatalogue>> GetByArchivedStatusAsync(
+            bool isArchived,
+            string? reference = null,
+            int? referenceType = null,
+            CancellationToken cancellationToken = default)
+        {
+            var query = (await GetQueryableAsync())
+                .Where(c => !c.IsDeleted && c.IsArchived == isArchived);
+
+            if (!string.IsNullOrWhiteSpace(reference))
+            {
+                query = query.Where(c => c.Reference == reference);
+            }
+
+            if (referenceType.HasValue)
+            {
+                query = query.Where(c => c.ReferenceType == referenceType.Value);
+            }
+
+            return await query
+                .OrderBy(c => c.Reference)
+                .ThenBy(c => c.SequenceNumber)
+                .ThenBy(c => c.CreationTime)
+                .ToListAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// 批量设置归档状态
+        /// </summary>
+        /// <param name="catalogueIds">分类ID列表</param>
+        /// <param name="isArchived">归档状态</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>更新的记录数</returns>
+        public virtual async Task<int> SetArchivedStatusAsync(
+            List<Guid> catalogueIds,
+            bool isArchived,
+            CancellationToken cancellationToken = default)
+        {
+            if (catalogueIds == null || catalogueIds.Count == 0)
+            {
+                return 0;
+            }
+
+            var dbSet = await GetDbSetAsync();
+            var catalogues = await dbSet
+                .Where(c => catalogueIds.Contains(c.Id) && !c.IsDeleted)
+                .ToListAsync(cancellationToken);
+
+            foreach (var catalogue in catalogues)
+            {
+                catalogue.SetIsArchived(isArchived);
+            }
+
+            await SaveChangesAsync(cancellationToken);
+            return catalogues.Count;
+        }
     }
 }

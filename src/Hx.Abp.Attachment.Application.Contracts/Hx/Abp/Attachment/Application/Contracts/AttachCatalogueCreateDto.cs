@@ -107,5 +107,16 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// 元数据字段集合
         /// </summary>
         public List<CreateUpdateMetaFieldDto>? MetaFields { get; set; }
+
+        /// <summary>
+        /// 归档标识 - 标识分类是否已归档
+        /// </summary>
+        public bool IsArchived { get; set; } = false;
+
+        /// <summary>
+        /// 概要信息 - 分类的描述信息
+        /// </summary>
+        [MaxLength(2000)]
+        public string? Summary { get; set; }
     }
 }

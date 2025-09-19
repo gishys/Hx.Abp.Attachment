@@ -201,5 +201,38 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <param name="templatePurpose">模板用途</param>
         /// <returns>智能分类推荐结果列表</returns>
         Task<List<SmartClassificationResultDto>> GetFilesWithSmartClassificationByReferenceAndTemplatePurposeAsync(string reference, TemplatePurpose templatePurpose);
+
+        /// <summary>
+        /// 根据归档状态查询分类
+        /// </summary>
+        /// <param name="isArchived">归档状态</param>
+        /// <param name="reference">业务引用过滤</param>
+        /// <param name="referenceType">业务类型过滤</param>
+        /// <returns>匹配的分类列表</returns>
+        Task<List<AttachCatalogueDto>> GetByArchivedStatusAsync(bool isArchived, string? reference = null, int? referenceType = null);
+
+        /// <summary>
+        /// 批量设置归档状态
+        /// </summary>
+        /// <param name="catalogueIds">分类ID列表</param>
+        /// <param name="isArchived">归档状态</param>
+        /// <returns>更新的记录数</returns>
+        Task<int> SetArchivedStatusAsync(List<Guid> catalogueIds, bool isArchived);
+
+        /// <summary>
+        /// 设置分类归档状态
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <param name="isArchived">归档状态</param>
+        /// <returns>更新后的分类信息</returns>
+        Task<AttachCatalogueDto?> SetCatalogueArchivedStatusAsync(Guid id, bool isArchived);
+
+        /// <summary>
+        /// 设置分类概要信息
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <param name="summary">概要信息</param>
+        /// <returns>更新后的分类信息</returns>
+        Task<AttachCatalogueDto?> SetCatalogueSummaryAsync(Guid id, string? summary);
     }
 }

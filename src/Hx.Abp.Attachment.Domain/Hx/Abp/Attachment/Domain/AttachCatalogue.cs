@@ -67,6 +67,17 @@ namespace Hx.Abp.Attachment.Domain
         public virtual bool IsStatic { get; private set; }
 
         /// <summary>
+        /// 归档标识 - 标识分类是否已归档
+        /// </summary>
+        public virtual bool IsArchived { get; private set; } = false;
+
+        /// <summary>
+        /// 概要信息 - 分类的描述信息
+        /// </summary>
+        [CanBeNull]
+        public virtual string? Summary { get; private set; }
+
+        /// <summary>
         /// 关联的模板ID
         /// </summary>
         public virtual Guid? TemplateId { get; private set; }
@@ -171,7 +182,9 @@ namespace Hx.Abp.Attachment.Domain
             [CanBeNull] List<string>? tags = null,
             [CanBeNull] List<double>? textVector = null,
             [CanBeNull] List<MetaField>? metaFields = null,
-            [CanBeNull] string? path = null)
+            [CanBeNull] string? path = null,
+            bool isArchived = false,
+            [CanBeNull] string? summary = null)
         {
             Id = id;
             AttachReceiveType = attachReceiveType;
@@ -186,6 +199,8 @@ namespace Hx.Abp.Attachment.Domain
             AttachCount = attachCount;
             PageCount = pageCount;
             IsStatic = isStatic;
+            IsArchived = isArchived;
+            Summary = summary;
             TemplateId = templateId;
             TemplateVersion = templateVersion;
             CatalogueFacetType = catalogueFacetType;
@@ -250,6 +265,18 @@ namespace Hx.Abp.Attachment.Domain
         public virtual void SetIsVerification(bool isVerification) => IsVerification = isVerification;
         public virtual void SetIsRequired(bool isIsRequired) => IsRequired = isIsRequired;
         public virtual void SetIsStatic(bool isIsStatic) => IsStatic = isIsStatic;
+
+        /// <summary>
+        /// 设置归档状态
+        /// </summary>
+        /// <param name="isArchived">是否归档</param>
+        public virtual void SetIsArchived(bool isArchived) => IsArchived = isArchived;
+
+        /// <summary>
+        /// 设置概要信息
+        /// </summary>
+        /// <param name="summary">概要信息</param>
+        public virtual void SetSummary([CanBeNull] string? summary) => Summary = summary;
 
         /// <summary>
         /// 设置关联的模板ID

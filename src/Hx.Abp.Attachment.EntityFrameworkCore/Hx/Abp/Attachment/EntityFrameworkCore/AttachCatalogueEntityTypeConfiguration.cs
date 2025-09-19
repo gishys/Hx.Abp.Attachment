@@ -137,6 +137,17 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .HasConversion(metaFieldsConverter)
                 .IsRequired(false);
 
+            // 归档标识字段配置
+            builder.Property(d => d.IsArchived)
+                .HasColumnName("IS_ARCHIVED")
+                .HasDefaultValue(false);
+
+            // 概要信息字段配置
+            builder.Property(d => d.Summary)
+                .HasColumnName("SUMMARY")
+                .HasMaxLength(2000)
+                .IsRequired(false);
+
             // 审计字段配置
             builder.Property(p => p.ExtraProperties).HasColumnName("EXTRA_PROPERTIES");
             builder.Property(p => p.ConcurrencyStamp).HasColumnName("CONCURRENCY_STAMP")
@@ -186,6 +197,13 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
             builder.HasIndex(e => new { e.TemplateId, e.TemplateVersion })
                 .HasDatabaseName("IDX_ATTACH_CATALOGUES_TEMPLATE_ID_VERSION");
+
+            // 归档相关索引
+            builder.HasIndex(e => e.IsArchived)
+                .HasDatabaseName("IDX_ATTACH_CATALOGUES_IS_ARCHIVED");
+
+            builder.HasIndex(e => new { e.Reference, e.ReferenceType, e.IsArchived })
+                .HasDatabaseName("IDX_ATTACH_CATALOGUES_REF_TYPE_ARCHIVED");
 
             // 关系配置
             builder.HasMany(d => d.AttachFiles)

@@ -11,7 +11,6 @@ using Volo.Abp;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.DistributedLocking;
-using Volo.Abp.Domain.Entities;
 using Volo.Abp.Uow;
 
 namespace Hx.Abp.Attachment.Application
@@ -642,7 +641,9 @@ namespace Hx.Abp.Attachment.Application
                         mf.Unit, mf.RegexPattern, mf.Options, mf.Description, mf.DefaultValue,
                         mf.Order, mf.IsEnabled, mf.Group, mf.ValidationRules, mf.Tags
                     )).ToList(),
-                    path);
+                    path,
+                    input.IsArchived,
+                    input.Summary);
                 if (input.Children?.Count > 0)
                 {
                     var children = await GetEntitys([.. input.Children], 0);
@@ -1898,6 +1899,238 @@ namespace Hx.Abp.Attachment.Application
                 Logger.LogError(ex, "根据业务引用和模板用途获取文件列表并进行智能分类推荐失败，Reference: {Reference}, TemplatePurpose: {TemplatePurpose}",
                     reference, templatePurpose);
                 throw new UserFriendlyException($"获取文件列表并进行智能分类推荐失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 根据归档状态查询分类
+        /// </summary>
+        /// <param name="isArchived">归档状态</param>
+        /// <param name="reference">业务引用过滤</param>
+        /// <param name="referenceType">业务类型过滤</param>
+        /// <returns>匹配的分类列表</returns>
+        public virtual async Task<List<AttachCatalogueDto>> GetByArchivedStatusAsync(bool isArchived, string? reference = null, int? referenceType = null)
+        {
+            try
+            {
+                var catalogues = await CatalogueRepository.GetByArchivedStatusAsync(isArchived, reference, referenceType);
+                
+                var catalogueDtos = new List<AttachCatalogueDto>();
+                foreach (var catalogue in catalogues)
+                {
+                    var catalogueDto = new AttachCatalogueDto
+                    {
+                        Id = catalogue.Id,
+                        Reference = catalogue.Reference,
+                        AttachReceiveType = catalogue.AttachReceiveType,
+                        ReferenceType = catalogue.ReferenceType,
+                        CatalogueName = catalogue.CatalogueName,
+                        Tags = catalogue.Tags ?? [],
+                        SequenceNumber = catalogue.SequenceNumber,
+                        ParentId = catalogue.ParentId,
+                        IsRequired = catalogue.IsRequired,
+                        AttachCount = catalogue.AttachCount,
+                        PageCount = catalogue.PageCount,
+                        IsStatic = catalogue.IsStatic,
+                        IsVerification = catalogue.IsVerification,
+                        VerificationPassed = catalogue.VerificationPassed,
+                        TemplateId = catalogue.TemplateId,
+                        TemplateVersion = catalogue.TemplateVersion,
+                        FullTextContent = catalogue.FullTextContent,
+                        FullTextContentUpdatedTime = catalogue.FullTextContentUpdatedTime,
+                        CatalogueFacetType = catalogue.CatalogueFacetType,
+                        CataloguePurpose = catalogue.CataloguePurpose,
+                        TemplateRole = catalogue.TemplateRole,
+                        TextVector = catalogue.TextVector,
+                        VectorDimension = catalogue.VectorDimension,
+                        Path = catalogue.Path,
+                        IsArchived = catalogue.IsArchived,
+                        Summary = catalogue.Summary,
+                        CreationTime = catalogue.CreationTime,
+                        CreatorId = catalogue.CreatorId,
+                        LastModificationTime = catalogue.LastModificationTime,
+                        LastModifierId = catalogue.LastModifierId,
+                        IsDeleted = catalogue.IsDeleted,
+                        DeleterId = catalogue.DeleterId,
+                        DeletionTime = catalogue.DeletionTime
+                    };
+                    catalogueDtos.Add(catalogueDto);
+                }
+
+                Logger.LogInformation("根据归档状态查询分类成功，IsArchived: {IsArchived}, Reference: {Reference}, ReferenceType: {ReferenceType}, 数量: {Count}",
+                    isArchived, reference, referenceType, catalogueDtos.Count);
+
+                return catalogueDtos;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "根据归档状态查询分类失败，IsArchived: {IsArchived}, Reference: {Reference}, ReferenceType: {ReferenceType}",
+                    isArchived, reference, referenceType);
+                throw new UserFriendlyException($"查询分类失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 批量设置归档状态
+        /// </summary>
+        /// <param name="catalogueIds">分类ID列表</param>
+        /// <param name="isArchived">归档状态</param>
+        /// <returns>更新的记录数</returns>
+        public virtual async Task<int> SetArchivedStatusAsync(List<Guid> catalogueIds, bool isArchived)
+        {
+            try
+            {
+                if (catalogueIds == null || catalogueIds.Count == 0)
+                {
+                    throw new UserFriendlyException("分类ID列表不能为空");
+                }
+
+                var updatedCount = await CatalogueRepository.SetArchivedStatusAsync(catalogueIds, isArchived);
+
+                Logger.LogInformation("批量设置归档状态成功，CatalogueIds: {CatalogueIds}, IsArchived: {IsArchived}, 更新数量: {Count}",
+                    string.Join(",", catalogueIds), isArchived, updatedCount);
+
+                return updatedCount;
+            }
+            catch (UserFriendlyException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "批量设置归档状态失败，CatalogueIds: {CatalogueIds}, IsArchived: {IsArchived}",
+                    string.Join(",", catalogueIds), isArchived);
+                throw new UserFriendlyException($"批量设置归档状态失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 设置分类归档状态
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <param name="isArchived">归档状态</param>
+        /// <returns>更新后的分类信息</returns>
+        public virtual async Task<AttachCatalogueDto?> SetCatalogueArchivedStatusAsync(Guid id, bool isArchived)
+        {
+            try
+            {
+                var catalogue = await CatalogueRepository.GetAsync(id) ?? throw new UserFriendlyException($"分类不存在: {id}");
+                catalogue.SetIsArchived(isArchived);
+                await CatalogueRepository.UpdateAsync(catalogue);
+
+                var catalogueDto = new AttachCatalogueDto
+                {
+                    Id = catalogue.Id,
+                    Reference = catalogue.Reference,
+                    AttachReceiveType = catalogue.AttachReceiveType,
+                    ReferenceType = catalogue.ReferenceType,
+                    CatalogueName = catalogue.CatalogueName,
+                    Tags = catalogue.Tags ?? [],
+                    SequenceNumber = catalogue.SequenceNumber,
+                    ParentId = catalogue.ParentId,
+                    IsRequired = catalogue.IsRequired,
+                    AttachCount = catalogue.AttachCount,
+                    PageCount = catalogue.PageCount,
+                    IsStatic = catalogue.IsStatic,
+                    IsVerification = catalogue.IsVerification,
+                    VerificationPassed = catalogue.VerificationPassed,
+                    TemplateId = catalogue.TemplateId,
+                    TemplateVersion = catalogue.TemplateVersion,
+                    FullTextContent = catalogue.FullTextContent,
+                    FullTextContentUpdatedTime = catalogue.FullTextContentUpdatedTime,
+                    CatalogueFacetType = catalogue.CatalogueFacetType,
+                    CataloguePurpose = catalogue.CataloguePurpose,
+                    TemplateRole = catalogue.TemplateRole,
+                    TextVector = catalogue.TextVector,
+                    VectorDimension = catalogue.VectorDimension,
+                    Path = catalogue.Path,
+                    IsArchived = catalogue.IsArchived,
+                    Summary = catalogue.Summary,
+                    CreationTime = catalogue.CreationTime,
+                    CreatorId = catalogue.CreatorId,
+                    LastModificationTime = catalogue.LastModificationTime,
+                    LastModifierId = catalogue.LastModifierId,
+                    IsDeleted = catalogue.IsDeleted,
+                    DeleterId = catalogue.DeleterId,
+                    DeletionTime = catalogue.DeletionTime
+                };
+
+                Logger.LogInformation("设置分类归档状态成功，Id: {Id}, IsArchived: {IsArchived}", id, isArchived);
+                return catalogueDto;
+            }
+            catch (UserFriendlyException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "设置分类归档状态失败，Id: {Id}, IsArchived: {IsArchived}", id, isArchived);
+                throw new UserFriendlyException($"设置分类归档状态失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 设置分类概要信息
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <param name="summary">概要信息</param>
+        /// <returns>更新后的分类信息</returns>
+        public virtual async Task<AttachCatalogueDto?> SetCatalogueSummaryAsync(Guid id, string? summary)
+        {
+            try
+            {
+                var catalogue = await CatalogueRepository.GetAsync(id) ?? throw new UserFriendlyException($"分类不存在: {id}");
+                catalogue.SetSummary(summary);
+                await CatalogueRepository.UpdateAsync(catalogue);
+
+                var catalogueDto = new AttachCatalogueDto
+                {
+                    Id = catalogue.Id,
+                    Reference = catalogue.Reference,
+                    AttachReceiveType = catalogue.AttachReceiveType,
+                    ReferenceType = catalogue.ReferenceType,
+                    CatalogueName = catalogue.CatalogueName,
+                    Tags = catalogue.Tags ?? [],
+                    SequenceNumber = catalogue.SequenceNumber,
+                    ParentId = catalogue.ParentId,
+                    IsRequired = catalogue.IsRequired,
+                    AttachCount = catalogue.AttachCount,
+                    PageCount = catalogue.PageCount,
+                    IsStatic = catalogue.IsStatic,
+                    IsVerification = catalogue.IsVerification,
+                    VerificationPassed = catalogue.VerificationPassed,
+                    TemplateId = catalogue.TemplateId,
+                    TemplateVersion = catalogue.TemplateVersion,
+                    FullTextContent = catalogue.FullTextContent,
+                    FullTextContentUpdatedTime = catalogue.FullTextContentUpdatedTime,
+                    CatalogueFacetType = catalogue.CatalogueFacetType,
+                    CataloguePurpose = catalogue.CataloguePurpose,
+                    TemplateRole = catalogue.TemplateRole,
+                    TextVector = catalogue.TextVector,
+                    VectorDimension = catalogue.VectorDimension,
+                    Path = catalogue.Path,
+                    IsArchived = catalogue.IsArchived,
+                    Summary = catalogue.Summary,
+                    CreationTime = catalogue.CreationTime,
+                    CreatorId = catalogue.CreatorId,
+                    LastModificationTime = catalogue.LastModificationTime,
+                    LastModifierId = catalogue.LastModifierId,
+                    IsDeleted = catalogue.IsDeleted,
+                    DeleterId = catalogue.DeleterId,
+                    DeletionTime = catalogue.DeletionTime
+                };
+
+                Logger.LogInformation("设置分类概要信息成功，Id: {Id}, Summary: {Summary}", id, summary);
+                return catalogueDto;
+            }
+            catch (UserFriendlyException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "设置分类概要信息失败，Id: {Id}, Summary: {Summary}", id, summary);
+                throw new UserFriendlyException($"设置分类概要信息失败: {ex.Message}");
             }
         }
     }

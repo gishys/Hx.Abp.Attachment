@@ -233,5 +233,31 @@ namespace Hx.Abp.Attachment.Domain
             Guid? templateId = null,
             int? templateVersion = null,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 根据归档状态查询分类
+        /// </summary>
+        /// <param name="isArchived">归档状态</param>
+        /// <param name="reference">业务引用过滤</param>
+        /// <param name="referenceType">业务类型过滤</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>匹配的分类列表</returns>
+        Task<List<AttachCatalogue>> GetByArchivedStatusAsync(
+            bool isArchived,
+            string? reference = null,
+            int? referenceType = null,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 批量设置归档状态
+        /// </summary>
+        /// <param name="catalogueIds">分类ID列表</param>
+        /// <param name="isArchived">归档状态</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>更新的记录数</returns>
+        Task<int> SetArchivedStatusAsync(
+            List<Guid> catalogueIds,
+            bool isArchived,
+            CancellationToken cancellationToken = default);
     }
 }

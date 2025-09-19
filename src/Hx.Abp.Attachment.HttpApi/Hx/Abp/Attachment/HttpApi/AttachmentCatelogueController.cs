@@ -346,5 +346,69 @@ namespace Hx.Abp.Attachment.HttpApi
         {
             return AttachCatalogueAppService.GetFilesWithSmartClassificationByReferenceAndTemplatePurposeAsync(reference, templatePurpose);
         }
+
+        // ============= 归档管理接口 =============
+
+        /// <summary>
+        /// 根据归档状态查询分类
+        /// </summary>
+        /// <param name="isArchived">归档状态</param>
+        /// <param name="reference">业务引用过滤</param>
+        /// <param name="referenceType">业务类型过滤</param>
+        /// <returns>匹配的分类列表</returns>
+        [Route("search/by-archived-status")]
+        [HttpGet]
+        public virtual Task<List<AttachCatalogueDto>> GetByArchivedStatusAsync(
+            [FromQuery] bool isArchived, 
+            [FromQuery] string? reference = null, 
+            [FromQuery] int? referenceType = null)
+        {
+            return AttachCatalogueAppService.GetByArchivedStatusAsync(isArchived, reference, referenceType);
+        }
+
+        /// <summary>
+        /// 批量设置归档状态
+        /// </summary>
+        /// <param name="catalogueIds">分类ID列表</param>
+        /// <param name="isArchived">归档状态</param>
+        /// <returns>更新的记录数</returns>
+        [Route("archive/batch-set")]
+        [HttpPut]
+        public virtual Task<int> SetArchivedStatusAsync(
+            [FromBody] List<Guid> catalogueIds, 
+            [FromQuery] bool isArchived)
+        {
+            return AttachCatalogueAppService.SetArchivedStatusAsync(catalogueIds, isArchived);
+        }
+
+        /// <summary>
+        /// 设置分类归档状态
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <param name="isArchived">归档状态</param>
+        /// <returns>更新后的分类信息</returns>
+        [Route("archive/set")]
+        [HttpPut]
+        public virtual Task<AttachCatalogueDto?> SetCatalogueArchivedStatusAsync(
+            [FromQuery] Guid id, 
+            [FromQuery] bool isArchived)
+        {
+            return AttachCatalogueAppService.SetCatalogueArchivedStatusAsync(id, isArchived);
+        }
+
+        /// <summary>
+        /// 设置分类概要信息
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <param name="summary">概要信息</param>
+        /// <returns>更新后的分类信息</returns>
+        [Route("summary/set")]
+        [HttpPut]
+        public virtual Task<AttachCatalogueDto?> SetCatalogueSummaryAsync(
+            [FromQuery] Guid id, 
+            [FromBody] string? summary)
+        {
+            return AttachCatalogueAppService.SetCatalogueSummaryAsync(id, summary);
+        }
     }
 }

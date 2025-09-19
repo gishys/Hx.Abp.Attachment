@@ -2351,7 +2351,7 @@ namespace Hx.Abp.Attachment.Application
                     Text = allTextContent,
                     MaxSummaryLength = 500,
                     KeywordCount = 10,
-                    GenerateSemanticVector = false,
+                    GenerateSemanticVector = true, // 启用语义向量生成
                     ExtractEntities = false
                 };
 
@@ -2363,6 +2363,7 @@ namespace Hx.Abp.Attachment.Application
                     result.Keywords = analysisResult.Keywords ?? [];
                     result.Confidence = (float)analysisResult.Confidence;
                     result.IsUpdated = true;
+                    result.SemanticVector = analysisResult.SemanticVector; // 添加语义向量
                 }
             }
             catch (Exception ex)

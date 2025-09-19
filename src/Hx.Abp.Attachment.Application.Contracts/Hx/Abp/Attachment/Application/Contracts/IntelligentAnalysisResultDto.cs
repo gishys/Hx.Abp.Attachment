@@ -116,6 +116,11 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// 关键字列表
         /// </summary>
         public List<string> Keywords { get; set; } = [];
+
+        /// <summary>
+        /// 语义向量（用于相似度计算）
+        /// </summary>
+        public List<double>? SemanticVector { get; set; }
     }
 
     /// <summary>

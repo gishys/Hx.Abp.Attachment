@@ -83,6 +83,11 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public List<string>? Tags { get; set; }
 
         /// <summary>
+        /// 字段值（从识别的实体中提取的实际值）
+        /// </summary>
+        public string? FieldValue { get; set; }
+
+        /// <summary>
         /// 创建时间
         /// </summary>
         public DateTime CreationTime { get; set; }

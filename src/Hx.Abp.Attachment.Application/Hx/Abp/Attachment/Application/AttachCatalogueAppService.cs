@@ -2464,18 +2464,22 @@ namespace Hx.Abp.Attachment.Application
                 var existingField = existingMetaFields?.FirstOrDefault(mf =>
                     mf.FieldName.Equals(entityType, StringComparison.OrdinalIgnoreCase));
 
+                // 根据数据类型进行数据校验和转换
+                var (validatedValue, dataType) = ValidateAndConvertEntityValues(entitiesOfType, existingField?.DataType ?? "string");
+
                 var metaField = new MetaFieldDto
                 {
                     EntityType = "AttachCatalogue",
                     FieldKey = existingField?.FieldKey ?? entityType.ToLowerInvariant().Replace(" ", "_"),
                     FieldName = entityType,
-                    DataType = existingField?.DataType ?? "string",
+                    DataType = dataType,
                     IsRequired = existingField?.IsRequired ?? false,
                     Unit = existingField?.Unit,
                     RegexPattern = existingField?.RegexPattern,
                     Options = existingField?.Options,
                     Description = existingField?.Description ?? $"自动识别的{entityType}实体",
                     DefaultValue = string.Join(", ", entitiesOfType.Select(e => e.Name)),
+                    FieldValue = validatedValue, // 设置字段值
                     Order = existingField?.Order ?? (metaFields.Count + 1),
                     IsEnabled = true,
                     Group = existingField?.Group ?? "智能识别",
@@ -2487,6 +2491,115 @@ namespace Hx.Abp.Attachment.Application
             }
 
             return metaFields;
+        }
+
+        /// <summary>
+        /// 根据数据类型进行数据校验和转换
+        /// </summary>
+        /// <param name="entities">实体列表</param>
+        /// <param name="dataType">数据类型</param>
+        /// <returns>校验后的值和数据类型</returns>
+        private static (string validatedValue, string dataType) ValidateAndConvertEntityValues(List<Contracts.RecognizedEntity> entities, string dataType)
+        {
+            if (entities.Count == 0)
+            {
+                return (string.Empty, dataType);
+            }
+
+            var values = entities.Select(e => e.Name).ToList();
+            var validatedValues = new List<string>();
+
+            // 支持的数据类型
+            var validDataTypes = new[] { "string", "number", "date", "boolean", "array", "object", "select" };
+            
+            // 如果数据类型不在支持列表中，默认为string
+            if (!validDataTypes.Contains(dataType.ToLowerInvariant()))
+            {
+                dataType = "string";
+            }
+
+            switch (dataType.ToLowerInvariant())
+            {
+                case "number":
+                    foreach (var value in values)
+                    {
+                        if (double.TryParse(value, out var numberValue))
+                        {
+                            validatedValues.Add(numberValue.ToString());
+                        }
+                    }
+                    return (string.Join(", ", validatedValues), "number");
+
+                case "date":
+                    foreach (var value in values)
+                    {
+                        if (DateTime.TryParse(value, out var dateValue))
+                        {
+                            validatedValues.Add(dateValue.ToString("yyyy-MM-dd"));
+                        }
+                        else if (DateTime.TryParseExact(value, ["yyyy-MM-dd", "yyyy/MM/dd", "MM/dd/yyyy", "dd/MM/yyyy"], 
+                            null, System.Globalization.DateTimeStyles.None, out var exactDateValue))
+                        {
+                            validatedValues.Add(exactDateValue.ToString("yyyy-MM-dd"));
+                        }
+                    }
+                    return (string.Join(", ", validatedValues), "date");
+
+                case "boolean":
+                    foreach (var value in values)
+                    {
+                        var boolValue = value.ToLowerInvariant() switch
+                        {
+                            "是" or "true" or "1" or "yes" or "y" => "true",
+                            "否" or "false" or "0" or "no" or "n" => "false",
+                            _ => null
+                        };
+                        if (boolValue != null)
+                        {
+                            validatedValues.Add(boolValue);
+                        }
+                    }
+                    return (string.Join(", ", validatedValues), "boolean");
+
+                case "array":
+                    // 数组类型：将多个值用逗号分隔
+                    foreach (var value in values)
+                    {
+                        var cleanedValue = value.Trim();
+                        if (!string.IsNullOrWhiteSpace(cleanedValue))
+                        {
+                            validatedValues.Add(cleanedValue);
+                        }
+                    }
+                    return ($"[{string.Join(", ", validatedValues.Select(v => $"\"{v}\""))}]", "array");
+
+                case "object":
+                    // 对象类型：将实体转换为JSON对象
+                    var objectData = new Dictionary<string, object>();
+                    foreach (var entity in entities)
+                    {
+                        objectData[entity.Type] = entity.Name;
+                    }
+                    return (System.Text.Json.JsonSerializer.Serialize(objectData), "object");
+
+                case "select":
+                    // 选择类型：返回第一个有效值
+                    var firstValidValue = values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v.Trim()));
+                    return (firstValidValue ?? string.Empty, "select");
+
+                case "string":
+                default:
+                    // 字符串类型：进行基本的清理和验证
+                    foreach (var value in values)
+                    {
+                        var cleanedValue = value.Trim();
+                        if (!string.IsNullOrWhiteSpace(cleanedValue))
+                        {
+                            validatedValues.Add(cleanedValue);
+                        }
+                    }
+                    return (string.Join(", ", validatedValues), "string");
+            }
         }
 
         /// <summary>

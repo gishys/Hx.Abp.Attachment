@@ -3,6 +3,7 @@ using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Volo.Abp;
 using Volo.Abp.DependencyInjection;
 
@@ -24,10 +25,11 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         private readonly string _workspaceId = Environment.GetEnvironmentVariable("ALIYUN_WORKSPACE_ID")
                 ?? throw new UserFriendlyException("缺少环境变量 ALIYUN_WORKSPACE_ID");
         private readonly string _baseUrl = "https://dashscope.aliyuncs.com/api/v1/services/nlp/nlu/understanding";
+        private readonly string _dashScopeUrl = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
         private readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = true };
 
         /// <summary>
-        /// 生成文本摘要 - 适用于AttachCatalogue智能查询
+        /// 生成文本摘要 - 使用DashScope API进行智能文本摘要提取
         /// </summary>
         /// <param name="content">文本内容</param>
         /// <param name="maxLength">最大长度</param>
@@ -36,43 +38,42 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         {
             try
             {
-                _logger.LogInformation("开始调用阿里云AI生成摘要，文本长度: {TextLength}", content.Length);
+                _logger.LogInformation("开始使用DashScope API生成摘要，文本长度: {TextLength}, 最大长度: {MaxLength}", 
+                    content.Length, maxLength);
 
-                var request = new AliyunNLURequest
-                {
-                    Model = "opennlu-v1",
-                    Input = new AliyunNLUInput
-                    {
-                        Sentence = content,
-                        Task = "extraction",
-                        Labels = "摘要,核心内容,主要信息"
-                    }
-                };
+                // 限制输入长度，避免超过token限制
+                var processedContent = content.Length > 3000 ? content[..3000] + "..." : content;
 
-                var response = await CallAliyunNLUApiAsync(request);
+                // 生成通用的摘要提取提示词
+                var systemPrompt = GenerateSummaryExtractionSystemPrompt();
+                var userPrompt = GenerateSummaryExtractionUserPrompt(processedContent, maxLength);
+
+                var response = await CallDashScopeApiAsync(systemPrompt, userPrompt);
                 
-                if (!string.IsNullOrEmpty(response.Output?.Text))
+                if (!string.IsNullOrEmpty(response))
                 {
-                    var summary = ExtractSummaryFromResponse(response.Output.Text);
+                    var summary = ExtractSummaryFromResponse(response);
                     if (!string.IsNullOrEmpty(summary))
                     {
-                        _logger.LogInformation("阿里云AI摘要生成成功，长度: {SummaryLength}", summary.Length);
+                        _logger.LogInformation("DashScope API摘要生成成功，长度: {SummaryLength}", summary.Length);
                         return summary.Length > maxLength ? summary[..maxLength] : summary;
                     }
                 }
 
-                _logger.LogWarning("阿里云AI摘要生成响应为空或解析失败");
-                throw new UserFriendlyException("阿里云AI返回的摘要内容为空");
+                // 降级方案：使用简单文本摘要
+                _logger.LogWarning("DashScope API摘要生成失败，使用简单文本摘要作为降级方案");
+                return ExtractSummaryWithSimpleAnalysis(processedContent, maxLength);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "阿里云AI摘要生成失败");
-                throw new UserFriendlyException("阿里云AI摘要生成服务暂时不可用，请稍后再试");
+                _logger.LogError(ex, "DashScope API摘要生成失败");
+                // 降级到简单文本摘要
+                return ExtractSummaryWithSimpleAnalysis(content, maxLength);
             }
         }
 
         /// <summary>
-        /// 提取关键词 - 适用于AttachCatalogue智能查询
+        /// 提取关键词 - 使用DashScope API进行智能关键词提取
         /// </summary>
         /// <param name="content">文本内容</param>
         /// <param name="keywordCount">关键词数量</param>
@@ -81,39 +82,37 @@ namespace Hx.Abp.Attachment.Application.ArchAI
         {
             try
             {
-                _logger.LogInformation("开始调用阿里云AI提取关键词，文本长度: {TextLength}, 关键词数量: {KeywordCount}",
+                _logger.LogInformation("开始使用DashScope API提取关键词，文本长度: {TextLength}, 关键词数量: {KeywordCount}",
                     content.Length, keywordCount);
 
-                var request = new AliyunNLURequest
-                {
-                    Model = "opennlu-v1",
-                    Input = new AliyunNLUInput
-                    {
-                        Sentence = content,
-                        Task = "extraction",
-                        Labels = "关键词,重要词汇,核心概念"
-                    }
-                };
+                // 限制输入长度，避免超过token限制
+                var processedContent = content.Length > 3000 ? content[..3000] + "..." : content;
 
-                var response = await CallAliyunNLUApiAsync(request);
+                // 生成通用的关键词提取提示词
+                var systemPrompt = GenerateKeywordExtractionSystemPrompt();
+                var userPrompt = GenerateKeywordExtractionUserPrompt(processedContent, keywordCount);
+
+                var response = await CallDashScopeApiAsync(systemPrompt, userPrompt);
                 
-                if (!string.IsNullOrEmpty(response.Output?.Text))
+                if (!string.IsNullOrEmpty(response))
                 {
-                    var keywords = ExtractKeywordsFromResponse(response.Output.Text, keywordCount);
+                    var keywords = ParseKeywordsFromJson(response);
                     if (keywords.Count > 0)
                     {
-                        _logger.LogInformation("阿里云AI关键词提取成功，提取数量: {KeywordCount}", keywords.Count);
+                        _logger.LogInformation("DashScope API关键词提取成功，提取数量: {KeywordCount}", keywords.Count);
                         return keywords;
                     }
                 }
 
-                _logger.LogWarning("阿里云AI关键词提取响应为空或解析失败");
-                throw new UserFriendlyException("阿里云AI返回的关键词内容为空");
+                // 降级方案：使用简单文本分析
+                _logger.LogWarning("DashScope API提取失败，使用简单文本分析作为降级方案");
+                return ExtractKeywordsWithSimpleAnalysis(processedContent, keywordCount);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "阿里云AI关键词提取失败");
-                throw new UserFriendlyException("阿里云AI关键词提取服务暂时不可用，请稍后再试");
+                _logger.LogError(ex, "DashScope API关键词提取失败");
+                // 降级到简单文本分析
+                return ExtractKeywordsWithSimpleAnalysis(content, keywordCount);
             }
         }
 
@@ -496,67 +495,6 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                 _logger.LogWarning(ex, "生成语义向量失败，继续处理其他功能");
                 return null;
             }
-        }
-
-        /// <summary>
-        /// 从响应中提取摘要内容
-        /// </summary>
-        /// <param name="responseText">API响应文本</param>
-        /// <returns>提取的摘要</returns>
-        private static string ExtractSummaryFromResponse(string responseText)
-        {
-            if (string.IsNullOrWhiteSpace(responseText))
-                return string.Empty;
-
-            // 按优先级尝试提取：主要信息 -> 核心内容 -> 摘要 -> text 字段
-            string[] candidates = new string[4];
-
-            var mainInfo = AliyunAIService.MainInfoFieldRegex().Match(responseText);
-            if (mainInfo.Success)
-            {
-                candidates[0] = mainInfo.Groups[1].Value.Trim();
-            }
-
-            var coreContent = AliyunAIService.CoreContentFieldRegex().Match(responseText);
-            if (coreContent.Success)
-            {
-                candidates[1] = coreContent.Groups[1].Value.Trim();
-            }
-
-            var summaryMatch = AliyunAIService.SummaryRegex().Match(responseText);
-            if (summaryMatch.Success)
-            {
-                candidates[2] = summaryMatch.Groups[1].Value.Trim();
-            }
-
-            var textMatch = AliyunAIService.TextFieldRegex().Match(responseText);
-            if (textMatch.Success)
-            {
-                candidates[3] = textMatch.Groups[1].Value.Trim();
-            }
-
-            foreach (var candidate in candidates)
-            {
-                if (string.IsNullOrWhiteSpace(candidate)) continue;
-                var cleaned = AliyunAIService.WhitespaceRegex().Replace(candidate, " ");
-                if (string.Equals(cleaned, "None", StringComparison.OrdinalIgnoreCase)) continue;
-                if (string.Equals(cleaned, "无", StringComparison.OrdinalIgnoreCase)) continue;
-                if (cleaned.Length < 2) continue;
-                return cleaned;
-            }
-
-            // 兜底：从原始文本中按分号切片，选择最长的非None片段
-            // 使用优化的扩展方法避免歧义
-            var slices = responseText.SplitEfficient([';', '；'])
-                                     .Select(s => s.Trim())
-                                     .Where(s => !string.IsNullOrWhiteSpace(s) &&
-                                                 !s.EndsWith(": None", StringComparison.OrdinalIgnoreCase) &&
-                                                 !s.Equals("None", StringComparison.OrdinalIgnoreCase) &&
-                                                 !s.Equals("无", StringComparison.OrdinalIgnoreCase))
-                                     .Select(s => AliyunAIService.WhitespaceRegex().Replace(s, " "))
-                                     .OrderByDescending(s => s.Length)
-                                     .ToList();
-            return slices.FirstOrDefault() ?? string.Empty;
         }
 
         /// <summary>
@@ -1412,5 +1350,365 @@ namespace Hx.Abp.Attachment.Application.ArchAI
             
             return suggestions;
         }
+
+        /// <summary>
+        /// 调用DashScope API进行文本分析
+        /// </summary>
+        /// <param name="systemPrompt">系统提示词</param>
+        /// <param name="userPrompt">用户提示词</param>
+        /// <returns>分析结果</returns>
+        public async Task<string> CallDashScopeApiAsync(string systemPrompt, string userPrompt)
+        {
+            try
+            {
+                var request = new DashScopeRequest
+                {
+                    Model = "qwen-doc-turbo",
+                    Messages =
+                    [
+                        new() { Role = "system", Content = "You are a helpful assistant." },
+                        new() { Role = "system", Content = systemPrompt },
+                        new() { Role = "user", Content = userPrompt }
+                    ],
+                    Stream = false,
+                    StreamOptions = new DashScopeStreamOptions { IncludeUsage = false }
+                };
+
+                var json = JsonSerializer.Serialize(request, _jsonOptions);
+                var httpContent = new StringContent(json, Encoding.UTF8, "application/json");
+
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+
+                _logger.LogDebug("发送DashScope API请求: {RequestJson}", json);
+
+                var response = await _httpClient.PostAsync(_dashScopeUrl, httpContent);
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                _logger.LogDebug("DashScope API响应: {ResponseContent}", responseContent);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var dashScopeResponse = JsonSerializer.Deserialize<DashScopeResponse>(responseContent, _jsonOptions);
+                    if (dashScopeResponse?.Choices?.Count > 0)
+                    {
+                        return dashScopeResponse.Choices[0].Message.Content;
+                    }
+                }
+
+                _logger.LogWarning("DashScope API调用失败，状态码: {StatusCode}, 响应: {ResponseContent}", 
+                    response.StatusCode, responseContent);
+                return string.Empty;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "调用DashScope API失败");
+                return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// 生成摘要提取系统提示词
+        /// </summary>
+        /// <returns>系统提示词</returns>
+        private static string GenerateSummaryExtractionSystemPrompt()
+        {
+            return """
+                你是一个专业的文档摘要专家，擅长从各种类型的文档中提取核心信息和生成准确摘要。
+                
+                你的任务是：
+                1. 仔细分析文档内容，理解其主题和核心观点
+                2. 识别文档中的关键信息、重要观点、核心结论
+                3. 生成准确、简洁、具有代表性的摘要
+                4. 确保摘要逻辑清晰、语言流畅
+                5. 保持原文的核心信息和重要观点
+                
+                摘要原则：
+                - 准确反映原文的核心内容和主要观点
+                - 保持逻辑清晰和语言流畅
+                - 避免遗漏重要信息
+                - 确保摘要的完整性和可读性
+                """;
+        }
+
+        /// <summary>
+        /// 生成摘要提取用户提示词
+        /// </summary>
+        /// <param name="content">文档内容</param>
+        /// <param name="maxLength">最大长度</param>
+        /// <returns>用户提示词</returns>
+        private static string GenerateSummaryExtractionUserPrompt(string content, int maxLength)
+        {
+            return $"""
+                请为以下文档生成一个简洁准确的摘要，摘要长度不超过 {maxLength} 个字符：
+                
+                文档内容：
+                {content}
+                
+                要求：
+                1. 摘要应该准确反映文档的核心内容和主要观点
+                2. 保持逻辑清晰，语言流畅
+                3. 避免遗漏重要信息
+                4. 摘要长度不超过 {maxLength} 个字符
+                5. 直接返回摘要内容，不需要额外的格式说明
+                """;
+        }
+
+        /// <summary>
+        /// 从响应中提取摘要
+        /// </summary>
+        /// <param name="responseText">API响应文本</param>
+        /// <returns>摘要内容</returns>
+        private static string ExtractSummaryFromResponse(string responseText)
+        {
+            if (string.IsNullOrWhiteSpace(responseText))
+                return string.Empty;
+
+            // 清理响应文本，移除可能的格式标记
+            var summary = responseText.Trim();
+            
+            // 移除可能的引号
+            if (summary.StartsWith('"') && summary.EndsWith('"'))
+            {
+                summary = summary[1..^1];
+            }
+            
+            // 移除可能的"摘要："等前缀
+            var prefixes = new[] { "摘要：", "摘要:", "Summary:", "Summary：" };
+            foreach (var prefix in prefixes)
+            {
+                if (summary.StartsWith(prefix))
+                {
+                    summary = summary[prefix.Length..].Trim();
+                    break;
+                }
+            }
+
+            return summary;
+        }
+
+        /// <summary>
+        /// 使用简单文本分析生成摘要（降级方案）
+        /// </summary>
+        /// <param name="content">文本内容</param>
+        /// <param name="maxLength">最大长度</param>
+        /// <returns>摘要内容</returns>
+        private static string ExtractSummaryWithSimpleAnalysis(string content, int maxLength)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+                return string.Empty;
+
+            // 简单的摘要生成：取前几段或前几个句子
+            var sentences = content
+                .Split(['。', '！', '？', '.', '!', '?'], StringSplitOptions.RemoveEmptyEntries)
+                .Where(s => !string.IsNullOrWhiteSpace(s.Trim()))
+                .Select(s => s.Trim())
+                .ToList();
+
+            if (sentences.Count == 0)
+                return content.Length > maxLength ? content[..maxLength] : content;
+
+            var summary = string.Empty;
+            foreach (var sentence in sentences)
+            {
+                if (summary.Length + sentence.Length + 1 <= maxLength)
+                {
+                    summary += (string.IsNullOrEmpty(summary) ? "" : "。") + sentence;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return string.IsNullOrEmpty(summary) ? content[..Math.Min(content.Length, maxLength)] : summary;
+        }
+
+        /// <summary>
+        /// 生成关键词提取系统提示词
+        /// </summary>
+        /// <returns>系统提示词</returns>
+        private static string GenerateKeywordExtractionSystemPrompt()
+        {
+            return """
+                你是一个专业的文档分析专家，擅长从各种类型的文档中提取关键词。
+                
+                你的任务是：
+                1. 仔细分析文档内容，理解其主题和核心概念
+                2. 识别文档中的关键术语、重要概念、专业词汇
+                3. 提取最具代表性和重要性的关键词
+                4. 确保关键词准确、简洁、具有代表性
+                5. 避免提取过于通用或无关的词汇
+                
+                提取原则：
+                - 优先选择专业术语和核心概念
+                - 考虑词汇的重要性和代表性
+                - 保持关键词的简洁性和准确性
+                - 避免重复或近义词
+                """;
+        }
+
+        /// <summary>
+        /// 生成关键词提取用户提示词
+        /// </summary>
+        /// <param name="content">文档内容</param>
+        /// <param name="keywordCount">关键词数量</param>
+        /// <returns>用户提示词</returns>
+        private static string GenerateKeywordExtractionUserPrompt(string content, int keywordCount)
+        {
+            return $"""
+                请从以下文档中提取 {keywordCount} 个最重要的关键词：
+                
+                文档内容：
+                {content}
+                
+                要求：
+                1. 提取 {keywordCount} 个最具代表性的关键词
+                2. 关键词应该准确反映文档的核心内容
+                3. 优先选择专业术语、重要概念、核心主题
+                4. 避免过于通用或无关的词汇
+                5. 以JSON数组格式返回，格式：["关键词1", "关键词2", "关键词3"]
+                """;
+        }
+
+        /// <summary>
+        /// 从JSON字符串中解析关键词
+        /// </summary>
+        /// <param name="jsonContent">JSON内容</param>
+        /// <returns>关键词列表</returns>
+        private static List<string> ParseKeywordsFromJson(string jsonContent)
+        {
+            var keywords = new List<string>();
+            
+            if (string.IsNullOrWhiteSpace(jsonContent))
+                return keywords;
+
+            try
+            {
+                // 尝试直接解析JSON数组
+                var jsonArray = JsonSerializer.Deserialize<string[]>(jsonContent);
+                if (jsonArray != null)
+                {
+                    keywords.AddRange(jsonArray.Where(k => !string.IsNullOrWhiteSpace(k)));
+                }
+            }
+            catch
+            {
+                // 如果JSON解析失败，尝试从文本中提取关键词
+                var matches = QuotedStringsRegex().Matches(jsonContent);
+                foreach (System.Text.RegularExpressions.Match match in matches)
+                {
+                    var keyword = match.Groups[1].Value.Trim();
+                    if (!string.IsNullOrWhiteSpace(keyword))
+                    {
+                        keywords.Add(keyword);
+                    }
+                }
+            }
+
+            return [.. keywords.Distinct()];
+        }
+
+        /// <summary>
+        /// 使用简单文本分析提取关键词（降级方案）
+        /// </summary>
+        /// <param name="content">文本内容</param>
+        /// <param name="keywordCount">关键词数量</param>
+        /// <returns>关键词列表</returns>
+        private static List<string> ExtractKeywordsWithSimpleAnalysis(string content, int keywordCount)
+        {
+            var keywords = new List<string>();
+            
+            if (string.IsNullOrWhiteSpace(content))
+                return keywords;
+
+            // 简单的关键词提取：基于词频和长度
+            var words = content
+                .Split([' ', '\n', '\r', '\t', '，', '。', '！', '？', '；', '：', '、', '（', '）', '【', '】', '《', '》'], StringSplitOptions.RemoveEmptyEntries)
+                .Where(w => w.Length > 1 && w.Length < 10) // 过滤太短或太长的词
+                .GroupBy(w => w.ToLowerInvariant())
+                .OrderByDescending(g => g.Count())
+                .ThenByDescending(g => g.Key.Length)
+                .Select(g => g.Key)
+                .Take(keywordCount)
+                .ToList();
+
+            return words;
+        }
+
+        // 编译时生成的正则表达式方法
+        [System.Text.RegularExpressions.GeneratedRegex(@"\d+")]
+        private static partial System.Text.RegularExpressions.Regex NumbersRegex();
+
+        [System.Text.RegularExpressions.GeneratedRegex(@"\d{4}[-/]\d{1,2}[-/]\d{1,2}")]
+        private static partial System.Text.RegularExpressions.Regex DatesRegex();
+
+        [System.Text.RegularExpressions.GeneratedRegex(@"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")]
+        private static partial System.Text.RegularExpressions.Regex EmailsRegex();
+
+        [System.Text.RegularExpressions.GeneratedRegex(@"https?://[^\s]+")]
+        private static partial System.Text.RegularExpressions.Regex UrlsRegex();
+
+        [System.Text.RegularExpressions.GeneratedRegex(@"[\u4e00-\u9fff]")]
+        private static partial System.Text.RegularExpressions.Regex ChineseRegex();
+
+        [System.Text.RegularExpressions.GeneratedRegex(@"[a-zA-Z]")]
+        private static partial System.Text.RegularExpressions.Regex EnglishRegex();
+
+        [System.Text.RegularExpressions.GeneratedRegex(@"""([^""]+)""")]
+        private static partial System.Text.RegularExpressions.Regex QuotedStringsRegex();
+    }
+
+    /// <summary>
+    /// DashScope API请求模型
+    /// </summary>
+    public class DashScopeRequest
+    {
+        [JsonPropertyName("model")]
+        public string Model { get; set; } = string.Empty;
+        [JsonPropertyName("messages")]
+        public List<DashScopeMessage> Messages { get; set; } = [];
+        [JsonPropertyName("stream")]
+        public bool Stream { get; set; } = false;
+        [JsonPropertyName("streamOptions")]
+        public DashScopeStreamOptions? StreamOptions { get; set; }
+    }
+
+    /// <summary>
+    /// DashScope流式选项
+    /// </summary>
+    public class DashScopeStreamOptions
+    {
+        [JsonPropertyName("includeUsage")]
+        public bool IncludeUsage { get; set; } = true;
+    }
+
+    /// <summary>
+    /// DashScope消息模型
+    /// </summary>
+    public class DashScopeMessage
+    {
+        [JsonPropertyName("role")]
+        public string Role { get; set; } = string.Empty;
+        [JsonPropertyName("content")]
+        public string Content { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// DashScope API响应模型
+    /// </summary>
+    public class DashScopeResponse
+    {
+        [JsonPropertyName("choices")]
+        public List<DashScopeChoice> Choices { get; set; } = [];
+    }
+
+    /// <summary>
+    /// DashScope选择模型
+    /// </summary>
+    public class DashScopeChoice
+    {
+        [JsonPropertyName("message")]
+        public DashScopeMessage Message { get; set; } = new();
     }
 }

@@ -1914,7 +1914,7 @@ namespace Hx.Abp.Attachment.Application
             try
             {
                 var catalogues = await CatalogueRepository.GetByArchivedStatusAsync(isArchived, reference, referenceType);
-                
+
                 var catalogueDtos = new List<AttachCatalogueDto>();
                 foreach (var catalogue in catalogues)
                 {
@@ -2131,6 +2131,502 @@ namespace Hx.Abp.Attachment.Application
             {
                 Logger.LogError(ex, "设置分类概要信息失败，Id: {Id}, Summary: {Summary}", id, summary);
                 throw new UserFriendlyException($"设置分类概要信息失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 智能分析分类信息
+        /// 基于分类下的文件内容，自动生成概要信息、分类标签、全文内容和元数据
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <param name="forceUpdate">是否强制更新（默认false，只更新空值）</param>
+        /// <returns>智能分析结果</returns>
+        public virtual async Task<IntelligentAnalysisResultDto> AnalyzeCatalogueIntelligentlyAsync(Guid id, bool forceUpdate = false)
+        {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var result = new IntelligentAnalysisResultDto
+            {
+                CatalogueId = id,
+                Status = AnalysisStatus.Success,
+                Statistics = new AnalysisStatistics()
+            };
+
+            try
+            {
+                // 1. 获取分类信息
+                var catalogue = await CatalogueRepository.GetAsync(id) ?? throw new UserFriendlyException($"分类不存在: {id}");
+                result.CatalogueName = catalogue.CatalogueName;
+
+                // 2. 获取分类及其所有子分类的文件
+                var files = await GetCatalogueFilesWithChildrenAsync(id);
+                result.Statistics.TotalFilesProcessed = files.Count;
+
+                if (files.Count == 0)
+                {
+                    result.Status = AnalysisStatus.Skipped;
+                    result.ErrorMessage = "分类下没有文件，跳过分析";
+                    return result;
+                }
+
+                // 3. 分析全文内容（OCR处理）
+                var fullTextResult = await AnalyzeFullTextContentAsync(files);
+                result.FullTextAnalysis = fullTextResult;
+                result.Statistics.SuccessfulFilesProcessed = fullTextResult.SuccessfulFilesCount;
+                result.Statistics.TotalExtractedTextLength = fullTextResult.ExtractedTextLength;
+
+                // 4. 分析概要信息、关键字和标签（合并处理）
+                var summaryResult = await AnalyzeSummaryAndKeywordsAsync(catalogue, fullTextResult, forceUpdate);
+                result.SummaryAnalysis = summaryResult;
+
+                // 5. 标签分析结果（从概要分析中获取）
+                var tagsResult = new TagsAnalysisResult
+                {
+                    OriginalTags = catalogue.Tags ?? [],
+                    GeneratedTags = summaryResult.Keywords ?? [],
+                    IsUpdated = summaryResult.IsUpdated && (summaryResult.Keywords?.Count > 0),
+                    TagConfidences = summaryResult.Keywords?.ToDictionary(k => k, _ => summaryResult.Confidence) ?? []
+                };
+                result.TagsAnalysis = tagsResult;
+                result.Statistics.GeneratedTagsCount = tagsResult.GeneratedTags.Count;
+
+                // 6. 分析元数据
+                var metaDataResult = await AnalyzeMetaDataAsync(catalogue, fullTextResult, forceUpdate);
+                result.MetaDataAnalysis = metaDataResult;
+                result.Statistics.RecognizedEntitiesCount = metaDataResult.RecognizedEntities.Count;
+
+                // 7. 更新分类信息
+                await UpdateCatalogueWithAnalysisResultsAsync(catalogue, summaryResult, tagsResult, metaDataResult);
+
+                // 8. 统计更新字段
+                result.UpdatedFields = GetUpdatedFields(summaryResult, tagsResult, fullTextResult, metaDataResult);
+                result.Statistics.UpdatedFieldsCount = result.UpdatedFields.Count;
+
+                // 9. 设置最终状态
+                result.Status = result.UpdatedFields.Count > 0 ? AnalysisStatus.Success : AnalysisStatus.Skipped;
+
+                stopwatch.Stop();
+                result.ProcessingTimeMs = stopwatch.ElapsedMilliseconds;
+                result.Statistics.TotalProcessingTimeMs = stopwatch.ElapsedMilliseconds;
+
+                Logger.LogInformation("智能分析分类完成，分类ID: {CatalogueId}, 处理文件数: {FileCount}, 更新字段数: {UpdatedFieldsCount}, 耗时: {ProcessingTime}ms",
+                    id, files.Count, result.UpdatedFields.Count, stopwatch.ElapsedMilliseconds);
+
+                return result;
+            }
+            catch (UserFriendlyException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                result.Status = AnalysisStatus.Failed;
+                result.ErrorMessage = ex.Message;
+                result.ProcessingTimeMs = stopwatch.ElapsedMilliseconds;
+
+                Logger.LogError(ex, "智能分析分类失败，分类ID: {CatalogueId}", id);
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// 分析全文内容（OCR处理）
+        /// </summary>
+        private async Task<FullTextAnalysisResult> AnalyzeFullTextContentAsync(List<AttachFile> files)
+        {
+            var result = new FullTextAnalysisResult
+            {
+                ProcessedFilesCount = files.Count
+            };
+
+            var processingDetails = new List<FileProcessingDetail>();
+
+            foreach (var file in files)
+            {
+                var detail = new FileProcessingDetail
+                {
+                    FileId = file.Id,
+                    FileName = file.FileAlias,
+                    Status = FileProcessingStatus.Skipped
+                };
+
+                var fileStopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+                try
+                {
+                    // 首先检查是否已有OCR内容
+                    if (!string.IsNullOrEmpty(file.OcrContent))
+                    {
+                        // 已有OCR内容，直接使用
+                        detail.Status = FileProcessingStatus.Success;
+                        detail.ExtractedText = file.OcrContent;
+                        detail.ExtractedTextLength = file.OcrContent.Length;
+                        result.SuccessfulFilesCount++;
+                        result.ExtractedTextLength += file.OcrContent.Length;
+                        detail.ErrorMessage = "使用已存在的OCR内容";
+                    }
+                    else if (!file.IsSupportedForOcr())
+                    {
+                        // 文件不支持OCR处理
+                        detail.Status = FileProcessingStatus.Skipped;
+                        detail.ErrorMessage = "文件不支持OCR处理";
+                    }
+                    else
+                    {
+                        // 执行OCR处理
+                        var ocrResult = await OcrService.ProcessFileAsync(file.Id);
+                        if (ocrResult?.IsSuccess == true && !string.IsNullOrEmpty(ocrResult.ExtractedText))
+                        {
+                            file.SetOcrContent(ocrResult.ExtractedText);
+                            await EfCoreAttachFileRepository.UpdateAsync(file);
+
+                            detail.Status = FileProcessingStatus.Success;
+                            detail.ExtractedText = ocrResult.ExtractedText;
+                            detail.ExtractedTextLength = ocrResult.ExtractedText.Length;
+                            result.SuccessfulFilesCount++;
+                            result.ExtractedTextLength += ocrResult.ExtractedText.Length;
+                        }
+                        else
+                        {
+                            detail.Status = FileProcessingStatus.Failed;
+                            detail.ErrorMessage = "OCR处理失败";
+                            result.FailedFilesCount++;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    detail.Status = FileProcessingStatus.Failed;
+                    detail.ErrorMessage = ex.Message;
+                    result.FailedFilesCount++;
+                    Logger.LogWarning(ex, "OCR处理文件失败，文件ID: {FileId}", file.Id);
+                }
+                finally
+                {
+                    fileStopwatch.Stop();
+                    detail.ProcessingTimeMs = fileStopwatch.ElapsedMilliseconds;
+                }
+
+                processingDetails.Add(detail);
+            }
+
+            result.ProcessingDetails = processingDetails;
+            result.IsUpdated = result.SuccessfulFilesCount > 0;
+
+            return result;
+        }
+
+        /// <summary>
+        /// 分析概要信息和关键字
+        /// </summary>
+        private async Task<SummaryAnalysisResult> AnalyzeSummaryAndKeywordsAsync(AttachCatalogue catalogue, FullTextAnalysisResult fullTextResult, bool forceUpdate)
+        {
+            var result = new SummaryAnalysisResult
+            {
+                OriginalSummary = catalogue.Summary
+            };
+
+            // 检查是否需要更新概要信息
+            if (!forceUpdate && !string.IsNullOrEmpty(catalogue.Summary))
+            {
+                return result;
+            }
+            try
+            {
+                // 收集所有OCR内容
+                var allTextContent = string.Join("\n", fullTextResult.ProcessingDetails
+                    .Where(d => d.Status == FileProcessingStatus.Success && !string.IsNullOrWhiteSpace(d.ExtractedText))
+                    .Select(d => d.ExtractedText!)
+                    .Where(content => !string.IsNullOrWhiteSpace(content)));
+
+                if (string.IsNullOrWhiteSpace(allTextContent))
+                {
+                    return result;
+                }
+
+                // 使用文档智能分析服务
+                var documentAnalysisService = AIServiceFactory.GetDocumentAnalysisService();
+                var analysisInput = new TextAnalysisInputDto
+                {
+                    Text = allTextContent,
+                    MaxSummaryLength = 500,
+                    KeywordCount = 10,
+                    GenerateSemanticVector = false,
+                    ExtractEntities = false
+                };
+
+                var analysisResult = await documentAnalysisService.AnalyzeDocumentAsync(analysisInput);
+
+                if (analysisResult != null)
+                {
+                    result.GeneratedSummary = analysisResult.Summary;
+                    result.Keywords = analysisResult.Keywords ?? [];
+                    result.Confidence = (float)analysisResult.Confidence;
+                    result.IsUpdated = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "概要信息分析失败，分类ID: {CatalogueId}", catalogue.Id);
+            }
+
+            return result;
+        }
+
+
+        /// <summary>
+        /// 分析元数据
+        /// </summary>
+        private async Task<MetaDataAnalysisResult> AnalyzeMetaDataAsync(AttachCatalogue catalogue, FullTextAnalysisResult fullTextResult, bool forceUpdate)
+        {
+            var result = new MetaDataAnalysisResult
+            {
+                OriginalMetaFieldsCount = catalogue.MetaFields?.Count ?? 0
+            };
+
+            // 检查是否需要更新元数据
+            if (!forceUpdate && (catalogue.MetaFields?.Count > 0))
+            {
+                return result;
+            }
+
+            try
+            {
+                // 收集所有OCR内容
+                var allTextContent = string.Join("\n", fullTextResult.ProcessingDetails
+                    .Where(d => d.Status == FileProcessingStatus.Success && !string.IsNullOrWhiteSpace(d.ExtractedText))
+                    .Select(d => d.ExtractedText!)
+                    .Where(content => !string.IsNullOrWhiteSpace(content)));
+
+                if (string.IsNullOrWhiteSpace(allTextContent))
+                {
+                    return result;
+                }
+
+                // 使用实体识别服务
+                var entityRecognitionService = AIServiceFactory.GetEntityRecognitionService();
+
+                // 从分类的元数据字段中获取实体类型
+                var entityTypes = catalogue.MetaFields?
+                    .Where(mf => mf.IsEnabled && !string.IsNullOrEmpty(mf.FieldName))
+                    .Select(mf => mf.FieldName)
+                    .Distinct()
+                    .ToList() ?? ["人名", "地名", "机构", "时间", "数字"]; // 默认实体类型
+
+                var recognitionInput = new EntityRecognitionInputDto
+                {
+                    Text = allTextContent,
+                    EntityTypes = entityTypes,
+                    IncludePosition = false
+                };
+
+                var recognitionResult = await entityRecognitionService.RecognizeEntitiesAsync(recognitionInput);
+
+                if (recognitionResult != null && recognitionResult.Entities?.Count > 0)
+                {
+                    result.RecognizedEntities = [.. recognitionResult.Entities.Select(e => new Contracts.RecognizedEntity
+                    {
+                        Name = e.Name,
+                        Type = e.Type,
+                        Confidence = (float)e.Confidence
+                    })];
+
+                    // 根据识别的实体生成元数据字段
+                    result.GeneratedMetaFields = GenerateMetaFieldsFromEntities(result.RecognizedEntities, catalogue.MetaFields?.ToList());
+                    result.GeneratedMetaFieldsCount = result.GeneratedMetaFields.Count;
+                    result.IsUpdated = result.GeneratedMetaFieldsCount > 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "元数据分析失败，分类ID: {CatalogueId}", catalogue.Id);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// 根据识别的实体生成元数据字段
+        /// </summary>
+        private static List<MetaFieldDto> GenerateMetaFieldsFromEntities(List<Contracts.RecognizedEntity> entities, List<MetaField>? existingMetaFields = null)
+        {
+            var metaFields = new List<MetaFieldDto>();
+
+            // 按实体类型分组
+            var entityGroups = entities.GroupBy(e => e.Type).ToList();
+
+            foreach (var group in entityGroups)
+            {
+                var entityType = group.Key;
+                var entitiesOfType = group.ToList();
+
+                // 查找是否已存在相同类型的元数据字段
+                var existingField = existingMetaFields?.FirstOrDefault(mf =>
+                    mf.FieldName.Equals(entityType, StringComparison.OrdinalIgnoreCase));
+
+                var metaField = new MetaFieldDto
+                {
+                    EntityType = "AttachCatalogue",
+                    FieldKey = existingField?.FieldKey ?? entityType.ToLowerInvariant().Replace(" ", "_"),
+                    FieldName = entityType,
+                    DataType = existingField?.DataType ?? "string",
+                    IsRequired = existingField?.IsRequired ?? false,
+                    Unit = existingField?.Unit,
+                    RegexPattern = existingField?.RegexPattern,
+                    Options = existingField?.Options,
+                    Description = existingField?.Description ?? $"自动识别的{entityType}实体",
+                    DefaultValue = string.Join(", ", entitiesOfType.Select(e => e.Name)),
+                    Order = existingField?.Order ?? (metaFields.Count + 1),
+                    IsEnabled = true,
+                    Group = existingField?.Group ?? "智能识别",
+                    ValidationRules = existingField?.ValidationRules,
+                    Tags = existingField?.Tags?.Concat([entityType, "智能分析"]).Distinct().ToList() ?? [entityType, "智能分析"]
+                };
+
+                metaFields.Add(metaField);
+            }
+
+            return metaFields;
+        }
+
+        /// <summary>
+        /// 更新分类信息
+        /// </summary>
+        private async Task UpdateCatalogueWithAnalysisResultsAsync(
+            AttachCatalogue catalogue,
+            SummaryAnalysisResult summaryResult,
+            TagsAnalysisResult tagsResult,
+            MetaDataAnalysisResult metaDataResult)
+        {
+            var hasUpdates = false;
+
+            // 更新概要信息
+            if (summaryResult.IsUpdated && !string.IsNullOrEmpty(summaryResult.GeneratedSummary))
+            {
+                catalogue.SetSummary(summaryResult.GeneratedSummary);
+                hasUpdates = true;
+            }
+
+            // 更新标签
+            if (tagsResult.IsUpdated && tagsResult.GeneratedTags.Count > 0)
+            {
+                catalogue.SetTags(tagsResult.GeneratedTags);
+                hasUpdates = true;
+            }
+
+            // 更新元数据字段
+            if (metaDataResult.IsUpdated && metaDataResult.GeneratedMetaFields.Count > 0)
+            {
+                var newMetaFields = metaDataResult.GeneratedMetaFields.Select(mf => new MetaField(
+                    mf.EntityType, mf.FieldKey, mf.FieldName, mf.DataType, mf.IsRequired,
+                    mf.Unit, mf.RegexPattern, mf.Options, mf.Description, mf.DefaultValue,
+                    mf.Order, mf.IsEnabled, mf.Group, mf.ValidationRules, mf.Tags
+                )).ToList();
+
+                catalogue.SetMetaFields(newMetaFields);
+                hasUpdates = true;
+            }
+
+            // 保存更新
+            if (hasUpdates)
+            {
+                await CatalogueRepository.UpdateAsync(catalogue);
+            }
+        }
+
+        /// <summary>
+        /// 获取更新的字段列表
+        /// </summary>
+        private static List<string> GetUpdatedFields(
+            SummaryAnalysisResult summaryResult,
+            TagsAnalysisResult tagsResult,
+            FullTextAnalysisResult fullTextResult,
+            MetaDataAnalysisResult metaDataResult)
+        {
+            var updatedFields = new List<string>();
+
+            if (summaryResult.IsUpdated)
+                updatedFields.Add("Summary");
+
+            if (tagsResult.IsUpdated)
+                updatedFields.Add("Tags");
+
+            if (fullTextResult.IsUpdated)
+                updatedFields.Add("FullTextContent");
+
+            if (metaDataResult.IsUpdated)
+                updatedFields.Add("MetaFields");
+
+            return updatedFields;
+        }
+
+        /// <summary>
+        /// 获取分类及其所有子分类的文件
+        /// </summary>
+        /// <param name="catalogueId">分类ID</param>
+        /// <returns>所有文件列表</returns>
+        private async Task<List<AttachFile>> GetCatalogueFilesWithChildrenAsync(Guid catalogueId)
+        {
+            try
+            {
+                // 1. 获取所有子分类（包括叶子节点）
+                var allCategories = await CatalogueRepository.GetCatalogueWithAllChildrenAsync(catalogueId);
+                
+                if (allCategories.Count == 0)
+                {
+                    Logger.LogWarning("分类 {CatalogueId} 下没有找到任何子分类", catalogueId);
+                    return [];
+                }
+
+                // 2. 筛选出叶子节点分类（只有叶子节点有文件）
+                var leafCategories = allCategories.Where(c => c.TemplateRole == TemplateRole.Leaf).ToList();
+                
+                if (leafCategories.Count == 0)
+                {
+                    Logger.LogWarning("分类 {CatalogueId} 下没有叶子节点分类，总分类数: {TotalCount}", 
+                        catalogueId, allCategories.Count);
+                    
+                    // 如果当前分类本身就是叶子节点，直接获取其文件
+                    var currentCategory = allCategories.FirstOrDefault(c => c.Id == catalogueId);
+                    if (currentCategory?.TemplateRole == TemplateRole.Leaf)
+                    {
+                        var currentFiles = await EfCoreAttachFileRepository.GetListByCatalogueIdAsync(catalogueId);
+                        Logger.LogInformation("当前分类 {CatalogueId} 是叶子节点，获取文件数: {FileCount}", 
+                            catalogueId, currentFiles.Count);
+                        return currentFiles;
+                    }
+                    
+                    return [];
+                }
+
+                // 3. 获取所有叶子节点的文件
+                var leafCategoryIds = leafCategories.Select(c => c.Id).ToList();
+                
+                // 批量获取文件，提高性能
+                var files = await EfCoreAttachFileRepository.GetListByCatalogueIdsAsync(leafCategoryIds);
+
+                Logger.LogInformation("获取分类 {CatalogueId} 及其子分类的文件，总分类数: {TotalCount}, 叶子节点数: {LeafCount}, 文件数: {FileCount}", 
+                    catalogueId, allCategories.Count, leafCategories.Count, files.Count);
+
+                return files;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取分类 {CatalogueId} 及其子分类的文件失败", catalogueId);
+                
+                // 降级处理：只获取当前分类的文件
+                try
+                {
+                    var fallbackFiles = await EfCoreAttachFileRepository.GetListByCatalogueIdAsync(catalogueId);
+                    Logger.LogWarning("降级处理：只获取当前分类 {CatalogueId} 的文件，文件数: {FileCount}", 
+                        catalogueId, fallbackFiles.Count);
+                    return fallbackFiles;
+                }
+                catch (Exception fallbackEx)
+                {
+                    Logger.LogError(fallbackEx, "降级处理也失败，分类 {CatalogueId}", catalogueId);
+                    return [];
+                }
             }
         }
     }

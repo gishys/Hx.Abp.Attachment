@@ -32,5 +32,13 @@ namespace Hx.Abp.Attachment.Domain
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>文件列表</returns>
         Task<List<AttachFile>> GetListByReferenceAndTemplatePurposeAsync(string reference, TemplatePurpose templatePurpose, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 根据多个分类ID获取文件列表
+        /// </summary>
+        /// <param name="catalogueIds">分类ID列表</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>文件列表</returns>
+        Task<List<AttachFile>> GetListByCatalogueIdsAsync(List<Guid> catalogueIds, CancellationToken cancellationToken = default);
     }
 }

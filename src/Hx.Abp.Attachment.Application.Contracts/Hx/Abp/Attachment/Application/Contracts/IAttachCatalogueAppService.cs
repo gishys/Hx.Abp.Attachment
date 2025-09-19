@@ -234,5 +234,14 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <param name="summary">概要信息</param>
         /// <returns>更新后的分类信息</returns>
         Task<AttachCatalogueDto?> SetCatalogueSummaryAsync(Guid id, string? summary);
+
+        /// <summary>
+        /// 智能分析分类信息
+        /// 基于分类下的文件内容，自动生成概要信息、分类标签、全文内容和元数据
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <param name="forceUpdate">是否强制更新（默认false，只更新空值）</param>
+        /// <returns>智能分析结果</returns>
+        Task<IntelligentAnalysisResultDto> AnalyzeCatalogueIntelligentlyAsync(Guid id, bool forceUpdate = false);
     }
 }

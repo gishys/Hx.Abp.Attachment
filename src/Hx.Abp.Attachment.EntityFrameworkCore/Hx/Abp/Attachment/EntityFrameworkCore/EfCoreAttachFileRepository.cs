@@ -15,7 +15,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         {
             return await (await GetDbSetAsync()).Where(d => d.AttachCatalogueId == catalogueId).ExecuteDeleteAsync();
         }
-        
+
         public async Task<List<AttachFile>> GetListByIdsAsync(List<Guid> ids)
         {
             return await (await GetDbSetAsync()).Where(d => ids.Any(id => id == d.Id)).ToListAsync();
@@ -41,11 +41,25 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         public async Task<List<AttachFile>> GetListByReferenceAndTemplatePurposeAsync(string reference, TemplatePurpose templatePurpose, CancellationToken cancellationToken = default)
         {
             return await (await GetDbSetAsync())
-                .Where(f => f.Reference == reference && 
-                           f.TemplatePurpose == templatePurpose && 
+                .Where(f => f.Reference == reference &&
+                           f.TemplatePurpose == templatePurpose &&
                            f.IsCategorized == false) // 未归档的文件
                 .OrderBy(f => f.SequenceNumber)
                 .ThenBy(f => f.CreationTime)
+                .ToListAsync(cancellationToken);
+        }
+
+        public async Task<List<AttachFile>> GetListByCatalogueIdsAsync(List<Guid> catalogueIds, CancellationToken cancellationToken = default)
+        {
+            if (catalogueIds == null || catalogueIds.Count == 0)
+            {
+                return [];
+            }
+
+            return await (await GetDbSetAsync())
+                .Where(f => f.AttachCatalogueId.HasValue && catalogueIds.Contains(f.AttachCatalogueId.Value))
+                .OrderBy(f => f.AttachCatalogueId)
+                .ThenBy(f => f.SequenceNumber)
                 .ToListAsync(cancellationToken);
         }
     }

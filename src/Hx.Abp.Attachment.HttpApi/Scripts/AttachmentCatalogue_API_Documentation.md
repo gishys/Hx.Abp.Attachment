@@ -2740,10 +2740,326 @@ results.forEach((result) => {
 });
 ```
 
+## 34. 智能分析分类信息接口
+
+### 接口描述
+
+基于分类下的文件内容，自动生成概要信息、分类标签、全文内容和元数据。该接口会：
+
+1. 分析分类下的所有文件内容
+2. 基于文件内容自动生成分类标签
+3. 提取和汇总全文内容
+4. 生成分类的概要信息
+5. 更新分类的元数据字段
+
+### 请求信息
+
+-   **URL**: `/api/app/attachment/intelligent-analysis`
+-   **方法**: `POST`
+-   **描述**: 智能分析分类信息
+
+### 请求参数
+
+| 参数名      | 类型 | 必填 | 位置  | 描述                       | 示例值                                 |
+| ----------- | ---- | ---- | ----- | -------------------------- | -------------------------------------- |
+| id          | Guid | 是   | Query | 分类 ID                    | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+| forceUpdate | bool | 否   | Query | 是否强制更新（默认 false） | false                                  |
+
+### 返回类型
+
+**成功响应** (200 OK):
+
+返回 `IntelligentAnalysisResultDto` 类型的智能分析结果。
+
+**IntelligentAnalysisResultDto 字段说明**:
+
+| 字段名           | 类型                                                              | 必填 | 描述                     | 示例值                                 |
+| ---------------- | ----------------------------------------------------------------- | ---- | ------------------------ | -------------------------------------- |
+| catalogueId      | Guid                                                              | 是   | 分类 ID                  | "3a1c5fd7-26fa-d2a4-fc3f-45cc6b7f1644" |
+| catalogueName    | string                                                            | 是   | 分类名称                 | "抵押登记 002"                         |
+| status           | [AnalysisStatus](#analysisstatus-分析状态)                        | 是   | 分析状态                 | 0                                      |
+| errorMessage     | string?                                                           | 否   | 错误信息（如果分析失败） | null                                   |
+| processingTimeMs | long                                                              | 是   | 分析耗时（毫秒）         | 37814                                  |
+| summaryAnalysis  | [SummaryAnalysisResult](#summaryanalysisresult-概要分析结果)?     | 否   | 概要分析结果             | 见 SummaryAnalysisResult 说明          |
+| tagsAnalysis     | [TagsAnalysisResult](#tagsanalysisresult-标签分析结果)?           | 否   | 标签分析结果             | 见 TagsAnalysisResult 说明             |
+| fullTextAnalysis | [FullTextAnalysisResult](#fulltextanalysisresult-全文分析结果)?   | 否   | 全文分析结果             | 见 FullTextAnalysisResult 说明         |
+| metaDataAnalysis | [MetaDataAnalysisResult](#metadataanalysisresult-元数据分析结果)? | 否   | 元数据分析结果           | 见 MetaDataAnalysisResult 说明         |
+| updatedFields    | List<string>                                                      | 是   | 更新的字段列表           | ["Summary", "Tags", "FullTextContent"] |
+| statistics       | [AnalysisStatistics](#analysisstatistics-分析统计)                | 是   | 分析统计信息             | 见 AnalysisStatistics 说明             |
+
+**AnalysisStatus** (分析状态):
+
+| 值  | 名称           | 描述             |
+| --- | -------------- | ---------------- |
+| 0   | Success        | 成功             |
+| 1   | PartialSuccess | 部分成功         |
+| 2   | Failed         | 失败             |
+| 3   | Skipped        | 跳过（无需分析） |
+
+**SummaryAnalysisResult** (概要分析结果):
+
+| 字段名           | 类型          | 必填 | 描述           | 示例值                         |
+| ---------------- | ------------- | ---- | -------------- | ------------------------------ |
+| originalSummary  | string?       | 否   | 原始概要信息   | null                           |
+| generatedSummary | string?       | 否   | 生成的概要信息 | "文档内容重复强调"收件受理"... |
+| isUpdated        | bool          | 是   | 是否已更新     | true                           |
+| confidence       | float         | 是   | 分析置信度     | 0.9                            |
+| keywords         | List<string>  | 是   | 提取的关键词   | ["收件受理"]                   |
+| semanticVector   | List<double>? | 否   | 语义向量       | [-0.040063563734292984, ...]   |
+
+**TagsAnalysisResult** (标签分析结果):
+
+| 字段名         | 类型                      | 必填 | 描述           | 示例值            |
+| -------------- | ------------------------- | ---- | -------------- | ----------------- |
+| originalTags   | List<string>              | 是   | 原始标签列表   | []                |
+| generatedTags  | List<string>              | 是   | 生成的标签列表 | ["收件受理"]      |
+| isUpdated      | bool                      | 是   | 是否已更新     | true              |
+| tagConfidences | Dictionary<string, float> | 是   | 标签置信度映射 | {"收件受理": 0.9} |
+
+**FullTextAnalysisResult** (全文分析结果):
+
+| 字段名               | 类型                                                             | 必填 | 描述               | 示例值                       |
+| -------------------- | ---------------------------------------------------------------- | ---- | ------------------ | ---------------------------- |
+| processedFilesCount  | int                                                              | 是   | 处理的文件数量     | 3                            |
+| successfulFilesCount | int                                                              | 是   | 成功处理的文件数量 | 3                            |
+| failedFilesCount     | int                                                              | 是   | 处理失败的文件数量 | 0                            |
+| isUpdated            | bool                                                             | 是   | 是否已更新         | true                         |
+| extractedTextLength  | int                                                              | 是   | 提取的文本长度     | 12                           |
+| processingDetails    | List<[FileProcessingDetail](#fileprocessingdetail-文件处理详情)> | 是   | 文件处理详情列表   | 见 FileProcessingDetail 说明 |
+
+**MetaDataAnalysisResult** (元数据分析结果):
+
+| 字段名                   | 类型                                                   | 必填 | 描述                 | 示例值                   |
+| ------------------------ | ------------------------------------------------------ | ---- | -------------------- | ------------------------ |
+| originalMetaFieldsCount  | int                                                    | 是   | 原始元数据字段数量   | 1                        |
+| generatedMetaFieldsCount | int                                                    | 是   | 生成的元数据字段数量 | 0                        |
+| isUpdated                | bool                                                   | 是   | 是否已更新           | false                    |
+| recognizedEntities       | List<[RecognizedEntity](#recognizedentity-识别的实体)> | 是   | 识别的实体列表       | 见 RecognizedEntity 说明 |
+| generatedMetaFields      | List<[MetaFieldDto](#metafielddto-用于查询和返回)>     | 是   | 生成的元数据字段列表 | 见 MetaFieldDto 说明     |
+
+**AnalysisStatistics** (分析统计):
+
+| 字段名                   | 类型 | 必填 | 描述               | 示例值 |
+| ------------------------ | ---- | ---- | ------------------ | ------ |
+| totalProcessingTimeMs    | long | 是   | 总处理时间（毫秒） | 37814  |
+| totalFilesProcessed      | int  | 是   | 总处理文件数量     | 3      |
+| successfulFilesProcessed | int  | 是   | 成功处理文件数量   | 3      |
+| totalExtractedTextLength | int  | 是   | 总提取文本长度     | 12     |
+| generatedTagsCount       | int  | 是   | 生成标签数量       | 1      |
+| recognizedEntitiesCount  | int  | 是   | 识别实体数量       | 0      |
+| updatedFieldsCount       | int  | 是   | 更新字段数量       | 3      |
+
+**FileProcessingDetail** (文件处理详情):
+
+| 字段名              | 类型                                                       | 必填 | 描述             | 示例值                                 |
+| ------------------- | ---------------------------------------------------------- | ---- | ---------------- | -------------------------------------- |
+| fileId              | Guid                                                       | 是   | 文件 ID          | "3a1c64ed-9bd5-001d-d7bd-ab1622859886" |
+| fileName            | string                                                     | 是   | 文件名称         | "抵押登记智能审核.png"                 |
+| status              | [FileProcessingStatus](#fileprocessingstatus-文件处理状态) | 是   | 处理状态         | 0                                      |
+| extractedTextLength | int                                                        | 是   | 提取文本长度     | 4                                      |
+| extractedText       | string?                                                    | 否   | 提取的文本内容   | "收件受理"                             |
+| processingTimeMs    | long                                                       | 是   | 处理时间（毫秒） | 11413                                  |
+| errorMessage        | string?                                                    | 否   | 错误信息         | null                                   |
+
+**FileProcessingStatus** (文件处理状态):
+
+| 值  | 名称    | 描述               |
+| --- | ------- | ------------------ |
+| 0   | Success | 成功               |
+| 1   | Failed  | 失败               |
+| 2   | Skipped | 跳过（不支持 OCR） |
+
+**RecognizedEntity** (识别的实体):
+
+| 字段名          | 类型   | 必填 | 描述     | 示例值 |
+| --------------- | ------ | ---- | -------- | ------ |
+| name            | string | 是   | 实体名称 | "张三" |
+| type            | string | 是   | 实体类型 | "人名" |
+| confidence      | float  | 是   | 置信度   | 0.95   |
+| occurrenceCount | int    | 是   | 出现次数 | 3      |
+
+### 响应示例
+
+```json
+{
+    "catalogueId": "3a1c5fd7-26fa-d2a4-fc3f-45cc6b7f1644",
+    "catalogueName": "抵押登记002",
+    "status": 0,
+    "errorMessage": null,
+    "processingTimeMs": 37814,
+    "summaryAnalysis": {
+        "originalSummary": null,
+        "generatedSummary": "文档内容重复强调"收件受理"，核心内容为收件受理相关事宜。主要观点是聚焦于收件受理流程或状态，虽无更多具体内容描述，但重点在于该主题的重复提及，可能用于强调其重要性或作为某种流程提示。摘要需准确反映这一核心内容和重复强调的特点，保持逻辑清晰与语言流畅。",
+        "isUpdated": true,
+        "confidence": 0.9,
+        "keywords": ["收件受理"],
+        "semanticVector": [-0.040063563734292984, -0.055492572486400604, 0.05808568373322487, ...]
+    },
+    "tagsAnalysis": {
+        "originalTags": [],
+        "generatedTags": ["收件受理"],
+        "isUpdated": true,
+        "tagConfidences": {
+            "收件受理": 0.9
+        }
+    },
+    "fullTextAnalysis": {
+        "processedFilesCount": 3,
+        "successfulFilesCount": 3,
+        "failedFilesCount": 0,
+        "isUpdated": true,
+        "extractedTextLength": 12,
+        "processingDetails": [
+            {
+                "fileId": "3a1c64ed-9bd5-001d-d7bd-ab1622859886",
+                "fileName": "抵押登记智能审核.png",
+                "status": 0,
+                "extractedTextLength": 4,
+                "extractedText": "收件受理",
+                "processingTimeMs": 11413,
+                "errorMessage": null
+            },
+            {
+                "fileId": "3a1c6503-04d9-6e91-e69b-b98545635e17",
+                "fileName": "抵押登记智能审核.png",
+                "status": 0,
+                "extractedTextLength": 4,
+                "extractedText": "收件受理",
+                "processingTimeMs": 357,
+                "errorMessage": null
+            },
+            {
+                "fileId": "3a1c6517-b0e5-7d7d-5017-e248b496b88d",
+                "fileName": "抵押登记智能审核.png",
+                "status": 0,
+                "extractedTextLength": 4,
+                "extractedText": "收件受理",
+                "processingTimeMs": 368,
+                "errorMessage": null
+            }
+        ]
+    },
+    "metaDataAnalysis": {
+        "originalMetaFieldsCount": 1,
+        "generatedMetaFieldsCount": 0,
+        "isUpdated": false,
+        "recognizedEntities": [
+            {
+                "name": "张三",
+                "type": "人名",
+                "confidence": 0.95,
+                "occurrenceCount": 3
+            },
+            {
+                "name": "合同编号",
+                "type": "标识符",
+                "confidence": 0.88,
+                "occurrenceCount": 1
+            }
+        ],
+        "generatedMetaFields": []
+    },
+    "updatedFields": ["Summary", "Tags", "FullTextContent"],
+    "statistics": {
+        "totalProcessingTimeMs": 37814,
+        "totalFilesProcessed": 3,
+        "successfulFilesProcessed": 3,
+        "totalExtractedTextLength": 12,
+        "generatedTagsCount": 1,
+        "recognizedEntitiesCount": 2,
+        "updatedFieldsCount": 3
+    }
+}
+```
+
+### 业务说明
+
+1. **智能分析流程**:
+
+    - 扫描分类下的所有文件
+    - 对支持的文件类型进行 OCR 处理
+    - 基于文件内容进行智能分析
+    - 生成分类标签和概要信息
+
+2. **标签生成逻辑**:
+
+    - 基于文件内容提取关键词
+    - 使用 AI 算法生成相关标签
+    - 过滤重复和无关标签
+    - 按重要性排序标签
+
+3. **概要信息生成**:
+
+    - 分析文件内容的主题和类型
+    - 生成简洁的分类描述
+    - 突出分类的主要特征
+    - 提供分类用途说明
+
+4. **全文内容提取**:
+
+    - 提取所有文件的文本内容
+    - 合并和整理文本信息
+    - 保持内容的完整性和可读性
+    - 更新分类的全文内容字段
+
+5. **错误处理**:
+
+    - 支持部分成功的情况
+    - 记录处理失败的文件
+    - 提供详细的错误信息
+    - 确保数据一致性
+
+6. **性能优化**:
+
+    - 异步处理提高响应速度
+    - 批量处理减少资源消耗
+    - 详细的处理统计信息
+    - 支持增量更新
+
+### 使用示例
+
+```javascript
+// 智能分析分类信息
+const analyzeCatalogue = async (catalogueId, forceUpdate = false) => {
+    try {
+        const response = await axios.post(
+            '/api/app/attachment/intelligent-analysis',
+            null,
+            {
+                params: {
+                    id: catalogueId,
+                    forceUpdate: forceUpdate,
+                },
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        console.log('智能分析成功:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('智能分析失败:', error.response?.data || error.message);
+        throw error;
+    }
+};
+
+// 使用示例
+const catalogueId = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
+const result = await analyzeCatalogue(catalogueId, false);
+
+console.log(`分析完成，处理了 ${result.processedFilesCount} 个文件`);
+console.log(`生成的标签: ${result.generatedTags.join(', ')}`);
+console.log(`概要信息: ${result.summary}`);
+```
+
+---
+
 ## 版本信息
 
--   **文档版本**: 1.5.14
--   **API 版本**: v1.5.14
+-   **文档版本**: 1.5.15
+-   **API 版本**: v1.5.15
 -   **最后更新**: 2024-12-19
 -   **维护人员**: 开发团队
--   **更新内容**: 新增智能分类文件上传接口，支持 OCR+AI 分类推荐，完善文件自动归类功能
+-   **更新内容**: 新增智能分析分类信息接口，支持基于文件内容的自动标签生成、概要信息提取和全文内容分析
+

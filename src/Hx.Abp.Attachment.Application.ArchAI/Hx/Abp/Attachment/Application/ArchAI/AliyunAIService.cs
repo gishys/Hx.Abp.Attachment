@@ -1270,7 +1270,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
 
             // 简单的摘要生成：取前几段或前几个句子
             var sentences = content
-                .Split(['。', '！', '？', '.', '!', '?'], StringSplitOptions.RemoveEmptyEntries)
+                .SplitEfficient(['。', '！', '？', '.', '!', '?'])
                 .Where(s => !string.IsNullOrWhiteSpace(s.Trim()))
                 .Select(s => s.Trim())
                 .ToList();
@@ -1704,7 +1704,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
 
             // 简单的关键词提取：基于词频和长度
             var words = content
-                .Split([' ', '\n', '\r', '\t', '，', '。', '！', '？', '；', '：', '、', '（', '）', '【', '】', '《', '》'], StringSplitOptions.RemoveEmptyEntries)
+                .SplitEfficient([' ', '\n', '\r', '\t', '，', '。', '！', '？', '；', '：', '、', '（', '）', '【', '】', '《', '》'])
                 .Where(w => w.Length > 1 && w.Length < 10) // 过滤太短或太长的词
                 .GroupBy(w => w.ToLowerInvariant())
                 .OrderByDescending(g => g.Count())

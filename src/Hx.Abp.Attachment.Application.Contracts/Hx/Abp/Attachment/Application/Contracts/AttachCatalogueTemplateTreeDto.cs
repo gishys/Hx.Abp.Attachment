@@ -64,6 +64,11 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public Guid? ParentId { get; set; }
 
         /// <summary>
+        /// 父模板版本号（用于复合主键场景下的父节点唯一标识）
+        /// </summary>
+        public virtual int? ParentVersion { get; protected set; }
+
+        /// <summary>
         /// 分面类型
         /// </summary>
         public FacetType FacetType { get; set; }

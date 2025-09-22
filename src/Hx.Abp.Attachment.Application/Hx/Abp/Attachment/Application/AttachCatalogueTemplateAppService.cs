@@ -143,26 +143,26 @@ namespace Hx.Abp.Attachment.Application
         public async Task<PagedResultDto<AttachCatalogueTemplateDto>> GetListAsync(GetAttachCatalogueTemplateListDto input)
         {
             var query = await _templateRepository.GetQueryableAsync();
-            
+
             // 应用过滤条件
             if (input.FacetType.HasValue)
             {
                 query = query.Where(t => t.FacetType == input.FacetType.Value);
             }
-            
+
             if (input.TemplatePurpose.HasValue)
             {
                 query = query.Where(t => t.TemplatePurpose == input.TemplatePurpose.Value);
             }
-            
+
             if (input.IsLatest.HasValue && input.IsLatest.Value)
             {
                 query = query.Where(t => t.IsLatest);
             }
-            
+
             if (!string.IsNullOrEmpty(input.Name))
             {
-                query = query.Where(t => t.TemplateName.Contains(input.Name) || 
+                query = query.Where(t => t.TemplateName.Contains(input.Name) ||
                                        (t.Description != null && t.Description.Contains(input.Name)));
             }
 
@@ -173,7 +173,7 @@ namespace Hx.Abp.Attachment.Application
                      .Take(input.MaxResultCount));
 
             var templateDtos = ObjectMapper.Map<List<AttachCatalogueTemplate>, List<AttachCatalogueTemplateDto>>(templates);
-            
+
             return new PagedResultDto<AttachCatalogueTemplateDto>(totalCount, templateDtos);
         }
 
@@ -363,7 +363,7 @@ namespace Hx.Abp.Attachment.Application
                             parentTemplate = await _templateRepository.GetLatestVersionAsync(input.ParentId.Value) ?? throw new UserFriendlyException($"未找到父模板 {input.ParentId.Value}");
                         }
                         var maxPathAtSameLevel = await _templateRepository.GetMaxTemplatePathAtSameLevelAsync(parentTemplate.TemplatePath);
-                        
+
                         if (string.IsNullOrEmpty(maxPathAtSameLevel))
                         {
                             // 没有同级，创建第一个子路径
@@ -382,7 +382,7 @@ namespace Hx.Abp.Attachment.Application
                     {
                         // 成为根节点：查找根级别最大路径
                         var maxPathAtRootLevel = await _templateRepository.GetMaxTemplatePathAtSameLevelAsync(null);
-                        
+
                         if (string.IsNullOrEmpty(maxPathAtRootLevel))
                         {
                             // 没有根级别模板，创建第一个
@@ -396,17 +396,19 @@ namespace Hx.Abp.Attachment.Application
                         }
                     }
                 }
-
+                else
+                {
+                    newTemplatePath = template.TemplatePath;
+                }
                 // 验证路径格式
                 if (!AttachCatalogueTemplate.IsValidTemplatePath(newTemplatePath))
                 {
                     throw new UserFriendlyException("模板路径格式不正确");
                 }
-                if(string.IsNullOrEmpty(newTemplatePath))
+                if (string.IsNullOrEmpty(newTemplatePath))
                 {
                     newTemplatePath = template.TemplatePath;
                 }
-
                 // 更新实体
                 template.Update(
                     input.Name,
@@ -431,7 +433,7 @@ namespace Hx.Abp.Attachment.Application
                 // 如果父模板发生变化，更新父模板ID和版本
                 if (template.ParentId != input.ParentId || template.ParentVersion != input.ParentVersion)
                 {
-                    template.ChangeParent(input.ParentId, input.ParentVersion, newTemplatePath);
+                    template.ChangeParent(input.ParentId, input.ParentVersion);
                 }
 
                 // 验证配置
@@ -493,10 +495,10 @@ namespace Hx.Abp.Attachment.Application
             if (!string.IsNullOrWhiteSpace(input.SemanticQuery))
             {
                 templates = await _templateRepository.GetIntelligentRecommendationsAsync(
-                    input.SemanticQuery, 
-                    input.Threshold, 
-                    input.TopN, 
-                    input.OnlyLatest, 
+                    input.SemanticQuery,
+                    input.Threshold,
+                    input.TopN,
+                    input.OnlyLatest,
                     input.IncludeHistory);
             }
             else if (input.ContextData != null && input.ContextData.Count > 0)
@@ -521,14 +523,14 @@ namespace Hx.Abp.Attachment.Application
 
             // 构建版本列表
             var versions = new List<AttachCatalogueTemplateDto>();
-            
+
             // 添加当前版本
             var currentVersionDto = ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(currentTemplate);
-            
+
             // 使用基于路径的优化方法构建树形结构
             await BuildTemplateTreeByPath(currentVersionDto, currentTemplate);
             versions.Add(currentVersionDto);
-            
+
             // 如果需要包含历史版本
             if (includeHistory)
             {
@@ -536,16 +538,16 @@ namespace Hx.Abp.Attachment.Application
                 foreach (var historyTemplate in historyTemplates.Where(t => t.Id != id))
                 {
                     var historyDto = ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(historyTemplate);
-                    
+
                     // 为历史版本也构建树形结构
                     await BuildTemplateTreeByPath(historyDto, historyTemplate);
                     versions.Add(historyDto);
                 }
             }
-            
+
             // 按版本号降序排列
             versions = [.. versions.OrderByDescending(v => v.Version)];
-            
+
             return new TemplateStructureDto
             {
                 Versions = versions
@@ -570,14 +572,14 @@ namespace Hx.Abp.Attachment.Application
                 {
                     // 转换为DTO并构建树形结构
                     var childDtos = children.Select(c => ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(c)).ToList();
-                    
+
                     // 构建父子关系映射
                     var childDict = childDtos.ToDictionary(c => c.Id, c => c);
                     var childTemplateDict = children.ToDictionary(c => c.Id, c => c);
 
                     // 构建树形结构
                     templateDto.Children = [];
-                    
+
                     foreach (var childDto in childDtos)
                     {
                         if (childTemplateDict.TryGetValue(childDto.Id, out var childTemplate))
@@ -591,7 +593,7 @@ namespace Hx.Abp.Attachment.Application
                             {
                                 // 间接子节点，添加到对应的父节点
                                 parentChildDto.Children ??= [];
-                                
+
                                 parentChildDto.Children.Add(childDto);
                             }
                         }
@@ -637,18 +639,18 @@ namespace Hx.Abp.Attachment.Application
         {
             // 获取子模板
             var children = await _templateRepository.GetChildrenAsync(template.Id, template.Version);
-            
+
             if (children.Count != 0)
             {
                 templateDto.Children = [];
-                
+
                 foreach (var child in children.OrderBy(c => c.SequenceNumber))
                 {
                     var childDto = ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(child);
-                    
+
                     // 递归构建子模板的树形结构
                     await BuildTemplateTreeWithChildren(childDto, child);
-                    
+
                     templateDto.Children.Add(childDto);
                 }
             }
@@ -878,7 +880,7 @@ namespace Hx.Abp.Attachment.Application
 
         // ============= 新增向量相关方法 =============
         public async Task<ListResultDto<AttachCatalogueTemplateDto>> FindSimilarTemplatesAsync(
-            string semanticQuery, 
+            string semanticQuery,
             double similarityThreshold = 0.7,
             int maxResults = 10)
         {
@@ -890,8 +892,8 @@ namespace Hx.Abp.Attachment.Application
         }
 
         public async Task<ListResultDto<AttachCatalogueTemplateDto>> GetTemplatesByVectorDimensionAsync(
-            int minDimension, 
-            int maxDimension, 
+            int minDimension,
+            int maxDimension,
             bool onlyLatest = true)
         {
             var templates = await _templateRepository.GetTemplatesByVectorDimensionAsync(
@@ -908,7 +910,7 @@ namespace Hx.Abp.Attachment.Application
             {
                 _logger.LogInformation("开始获取模板统计信息");
                 var domainStatistics = await _templateRepository.GetTemplateStatisticsAsync();
-                
+
                 // 映射Domain值对象到Application DTO
                 var dto = new AttachCatalogueTemplateStatisticsDto
                 {
@@ -929,7 +931,7 @@ namespace Hx.Abp.Attachment.Application
                     LatestCreationTime = domainStatistics.LatestCreationTime?.ToString("yyyy-MM-ddTHH:mm:ssZ"),
                     LatestModificationTime = domainStatistics.LatestModificationTime?.ToString("yyyy-MM-ddTHH:mm:ssZ")
                 };
-                
+
                 _logger.LogInformation("获取模板统计信息完成，总数量：{totalCount}", dto.TotalCount);
                 return dto;
             }
@@ -986,10 +988,10 @@ namespace Hx.Abp.Attachment.Application
         }
 
         public async Task<ListResultDto<TemplateSearchResultDto>> SearchTemplatesByTextAsync(
-            string keyword, 
-            FacetType? facetType = null, 
-            TemplatePurpose? templatePurpose = null, 
-            List<string>? tags = null, 
+            string keyword,
+            FacetType? facetType = null,
+            TemplatePurpose? templatePurpose = null,
+            List<string>? tags = null,
             int maxResults = 20)
         {
             try
@@ -1024,9 +1026,9 @@ namespace Hx.Abp.Attachment.Application
         }
 
         public async Task<ListResultDto<TemplateSearchResultDto>> SearchTemplatesByTagsAsync(
-            List<string> tags, 
-            FacetType? facetType = null, 
-            TemplatePurpose? templatePurpose = null, 
+            List<string> tags,
+            FacetType? facetType = null,
+            TemplatePurpose? templatePurpose = null,
             int maxResults = 20)
         {
             try
@@ -1061,10 +1063,10 @@ namespace Hx.Abp.Attachment.Application
         }
 
         public async Task<ListResultDto<TemplateSearchResultDto>> SearchTemplatesBySemanticAsync(
-            string semanticQuery, 
-            FacetType? facetType = null, 
-            TemplatePurpose? templatePurpose = null, 
-            double similarityThreshold = 0.7, 
+            string semanticQuery,
+            FacetType? facetType = null,
+            TemplatePurpose? templatePurpose = null,
+            double similarityThreshold = 0.7,
             int maxResults = 20)
         {
             try
@@ -1144,10 +1146,10 @@ namespace Hx.Abp.Attachment.Application
                 var rootTemplates = await _templateRepository.GetRootTemplatesAsync(
                     facetType, templatePurpose, includeChildren, onlyLatest, fulltextQuery);
 
-                var treeDtos = rootTemplates.Select(t => 
+                var treeDtos = rootTemplates.Select(t =>
                     ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateTreeDto>(t)).ToList();
 
-                _logger.LogInformation("获取根节点模板完成，数量：{count}，包含子节点：{includeChildren}，使用路径优化：{optimized}，全文检索：{fulltextQuery}", 
+                _logger.LogInformation("获取根节点模板完成，数量：{count}，包含子节点：{includeChildren}，使用路径优化：{optimized}，全文检索：{fulltextQuery}",
                     treeDtos.Count, includeChildren, includeChildren, fulltextQuery ?? "无");
 
                 return new ListResultDto<AttachCatalogueTemplateTreeDto>(treeDtos);
@@ -1169,9 +1171,9 @@ namespace Hx.Abp.Attachment.Application
                 var template = await _templateRepository.GetLatestVersionAsync(id) ?? throw new UserFriendlyException($"未找到模板 {id}");
                 var metaFields = template.GetEnabledMetaFields().ToList();
                 var metaFieldDtos = ObjectMapper.Map<List<MetaField>, List<MetaFieldDto>>(metaFields);
-                
+
                 _logger.LogInformation("获取模板 {id} 的元数据字段完成，数量：{count}", id, metaFieldDtos.Count);
-                
+
                 return new ListResultDto<MetaFieldDto>(metaFieldDtos);
             }
             catch (Exception ex)
@@ -1193,7 +1195,7 @@ namespace Hx.Abp.Attachment.Application
             try
             {
                 var template = await _templateRepository.GetLatestVersionAsync(id) ?? throw new UserFriendlyException($"未找到模板 {id}");
-                
+
                 // 验证输入参数
                 if (metaFields == null)
                 {
@@ -1228,10 +1230,10 @@ namespace Hx.Abp.Attachment.Application
 
                 // 使用领域对象的批量设置方法
                 template.SetMetaFields(domainMetaFields);
-                
+
                 // 保存到数据库
                 await _templateRepository.UpdateAsync(template);
-                
+
                 _logger.LogInformation("批量设置模板 {id} 的元数据字段成功，字段数量：{count}", id, metaFields.Count);
             }
             catch (Exception ex)
@@ -1248,10 +1250,10 @@ namespace Hx.Abp.Attachment.Application
             {
                 var template = await _templateRepository.GetLatestVersionAsync(templateId) ?? throw new UserFriendlyException($"未找到模板 {templateId}");
                 var metaField = template.GetMetaField(fieldKey);
-                
+
                 if (metaField == null)
                     return null;
-                    
+
                 return ObjectMapper.Map<MetaField, MetaFieldDto>(metaField);
             }
             catch (Exception ex)
@@ -1267,36 +1269,36 @@ namespace Hx.Abp.Attachment.Application
             {
                 var template = await _templateRepository.GetLatestVersionAsync(id) ?? throw new UserFriendlyException($"未找到模板 {id}");
                 var metaFields = template.GetEnabledMetaFields().ToList();
-                
+
                 // 应用查询条件
                 var filteredFields = metaFields.AsQueryable();
-                
+
                 if (!string.IsNullOrWhiteSpace(input.EntityType))
                     filteredFields = filteredFields.Where(f => f.EntityType == input.EntityType);
-                    
+
                 if (!string.IsNullOrWhiteSpace(input.DataType))
                     filteredFields = filteredFields.Where(f => f.DataType == input.DataType);
-                    
+
                 if (input.IsRequired.HasValue)
                     filteredFields = filteredFields.Where(f => f.IsRequired == input.IsRequired.Value);
-                    
+
                 if (input.IsEnabled.HasValue)
                     filteredFields = filteredFields.Where(f => f.IsEnabled == input.IsEnabled.Value);
-                    
+
                 if (!string.IsNullOrWhiteSpace(input.Group))
                     filteredFields = filteredFields.Where(f => f.Group == input.Group);
-                    
+
                 if (!string.IsNullOrWhiteSpace(input.SearchTerm))
                     filteredFields = filteredFields.Where(f => f.MatchesSearch(input.SearchTerm));
-                    
+
                 if (input.Tags != null && input.Tags.Count > 0)
                     filteredFields = filteredFields.Where(f => f.Tags != null && input.Tags.Any(tag => f.Tags.Contains(tag)));
-                
+
                 var result = filteredFields.OrderBy(f => f.Order).ToList();
                 var metaFieldDtos = ObjectMapper.Map<List<MetaField>, List<MetaFieldDto>>(result);
-                
+
                 _logger.LogInformation("查询模板 {id} 的元数据字段完成，数量：{count}", id, metaFieldDtos.Count);
-                
+
                 return new ListResultDto<MetaFieldDto>(metaFieldDtos);
             }
             catch (Exception ex)
@@ -1316,9 +1318,9 @@ namespace Hx.Abp.Attachment.Application
                     var field = template.GetMetaField(fieldKeys[i]);
                     field?.Update(order: i);
                 }
-                
+
                 await _templateRepository.UpdateAsync(template);
-                
+
                 _logger.LogInformation("更新模板 {id} 的元数据字段顺序成功，字段数量：{count}", id, fieldKeys.Count);
             }
             catch (Exception ex)
@@ -1341,9 +1343,9 @@ namespace Hx.Abp.Attachment.Application
             {
                 var templates = await _templateRepository.GetTemplatesByPathAsync(templatePath, includeChildren);
                 var templateDtos = ObjectMapper.Map<List<AttachCatalogueTemplate>, List<AttachCatalogueTemplateDto>>(templates);
-                
+
                 _logger.LogInformation("根据路径获取模板完成，路径：{templatePath}，数量：{count}", templatePath, templateDtos.Count);
-                
+
                 return new ListResultDto<AttachCatalogueTemplateDto>(templateDtos);
             }
             catch (Exception ex)
@@ -1362,9 +1364,9 @@ namespace Hx.Abp.Attachment.Application
             {
                 var templates = await _templateRepository.GetTemplatesByPathDepthAsync(depth, onlyLatest);
                 var templateDtos = ObjectMapper.Map<List<AttachCatalogueTemplate>, List<AttachCatalogueTemplateDto>>(templates);
-                
+
                 _logger.LogInformation("根据路径深度获取模板完成，深度：{depth}，数量：{count}", depth, templateDtos.Count);
-                
+
                 return new ListResultDto<AttachCatalogueTemplateDto>(templateDtos);
             }
             catch (Exception ex)
@@ -1382,9 +1384,9 @@ namespace Hx.Abp.Attachment.Application
             try
             {
                 var nextPath = AttachCatalogueTemplate.CalculateNextTemplatePath(parentPath);
-                
+
                 _logger.LogInformation("计算下一个模板路径完成，父路径：{parentPath}，下一个路径：{nextPath}", parentPath, nextPath);
-                
+
                 return Task.FromResult(nextPath);
             }
             catch (Exception ex)
@@ -1402,9 +1404,9 @@ namespace Hx.Abp.Attachment.Application
             try
             {
                 var isValid = AttachCatalogueTemplate.IsValidTemplatePath(templatePath);
-                
+
                 _logger.LogInformation("验证模板路径完成，路径：{templatePath}，是否有效：{isValid}", templatePath, isValid);
-                
+
                 return Task.FromResult(isValid);
             }
             catch (Exception ex)
@@ -1423,9 +1425,9 @@ namespace Hx.Abp.Attachment.Application
             {
                 var templates = await _templateRepository.GetTemplatesByPathRangeAsync(startPath, endPath, onlyLatest);
                 var templateDtos = ObjectMapper.Map<List<AttachCatalogueTemplate>, List<AttachCatalogueTemplateDto>>(templates);
-                
+
                 _logger.LogInformation("根据路径范围获取模板完成，起始路径：{startPath}，结束路径：{endPath}，数量：{count}", startPath, endPath, templateDtos.Count);
-                
+
                 return new ListResultDto<AttachCatalogueTemplateDto>(templateDtos);
             }
             catch (Exception ex)

@@ -341,6 +341,11 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                             COALESCE(ft.""CONCURRENCY_STAMP"", fz.""CONCURRENCY_STAMP"") as ""CONCURRENCY_STAMP"",
                             COALESCE(ft.""DELETER_ID"", fz.""DELETER_ID"") as ""DELETER_ID"",
                             COALESCE(ft.""DELETION_TIME"", fz.""DELETION_TIME"") as ""DELETION_TIME"",
+                            COALESCE(ft.""IS_ARCHIVED"", fz.""IS_ARCHIVED"") as ""IS_ARCHIVED"",
+                            COALESCE(ft.""PATH"", fz.""PATH"") as ""PATH"",
+                            COALESCE(ft.""TEMPLATE_VERSION"", fz.""TEMPLATE_VERSION"") as ""TEMPLATE_VERSION"",
+                            COALESCE(ft.""SUMMARY"", fz.""SUMMARY"") as ""SUMMARY"",
+                            COALESCE(ft.""TEMPLATE_ROLE"", fz.""TEMPLATE_ROLE"") as ""TEMPLATE_ROLE"",
                             -- 综合评分：全文搜索分数 + 模糊搜索分数
                             COALESCE(ft.fulltext_rank, 0) + COALESCE(fz.fuzzy_score, 0) as final_score
                         FROM fulltext_results ft
@@ -380,7 +385,6 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
 
                 var results = await dbContext.Set<AttachCatalogue>()
                     .FromSqlRaw(sql, [.. parameters])
-                    .IncludeDetails()
                     .ToListAsync(cancellationToken);
 
                 return results;

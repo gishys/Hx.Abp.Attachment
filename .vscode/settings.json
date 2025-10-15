@@ -1,7 +1,6 @@
 {
     "dotnet.defaultSolution": "Hx.Abp.Attachment.sln",
     "omnisharp.enableEditorConfigSupport": true,
-    "omnisharp.enableImportCompletion": true,
     "omnisharp.enableRoslynAnalyzers": true,
     "csharp.format.enable": true,
     "csharp.semanticHighlighting.enabled": true,
@@ -17,5 +16,6 @@
         "**/bin": true,
         "**/obj": true,
         "**/.vs": true
-    }
+    },
+    "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true
 }

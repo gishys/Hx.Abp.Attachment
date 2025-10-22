@@ -15,5 +15,23 @@ namespace Hx.Abp.Attachment.Domain
         Task<AttachCatalogueTemplate> CreateTemplateVersionAsync(
             AttachCatalogueTemplate baseTemplate,
             Guid? newParentId = null);
+
+        /// <summary>
+        /// 软删除分类及其所有子分类
+        /// </summary>
+        /// <param name="catalogue">要删除的分类</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        Task SoftDeleteCatalogueWithChildrenAsync(
+            AttachCatalogue catalogue,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 硬删除分类及其所有子分类
+        /// </summary>
+        /// <param name="catalogue">要删除的分类</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        Task HardDeleteCatalogueWithChildrenAsync(
+            AttachCatalogue catalogue,
+            CancellationToken cancellationToken = default);
     }
 }

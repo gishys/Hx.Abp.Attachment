@@ -88,9 +88,21 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             var predicate = PredicateBuilder.New<AttachCatalogue>(true);
             foreach (var input in inputs)
             {
-                predicate = predicate?.Or(d =>
-                d.Reference == input.Reference &&
-                d.ReferenceType == input.ReferenceType);
+                if (string.IsNullOrWhiteSpace(input.CatalogueName))
+                {
+                    predicate = predicate?.Or(d =>
+                    d.ParentId == null &&
+                    d.Reference == input.Reference &&
+                    d.ReferenceType == input.ReferenceType);
+                }
+                else
+                {
+                    predicate = predicate?.Or(d =>
+                    d.ParentId == null &&
+                    d.Reference == input.Reference &&
+                    d.ReferenceType == input.ReferenceType &&
+                    d.CatalogueName == input.CatalogueName);
+                }
             }
             if (predicate == null)
             {

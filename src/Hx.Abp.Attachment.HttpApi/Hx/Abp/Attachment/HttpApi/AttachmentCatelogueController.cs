@@ -103,7 +103,7 @@ namespace Hx.Abp.Attachment.HttpApi
 
         [Route("deletebyreference")]
         [HttpPost]
-        public virtual Task DeleteByReferenceAsync(List<AttachCatalogueCreateDto> inputs)
+        public virtual Task DeleteByReferenceAsync(List<GetAttachListInput> inputs)
         {
             return AttachCatalogueAppService.DeleteByReferenceAsync(inputs);
         }

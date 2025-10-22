@@ -13,12 +13,14 @@ namespace Hx.Abp.Attachment.Domain
         IRepository<AttachCatalogue, Guid> catalogueRepository,
         IAttachCatalogueTemplateRepository templateRepository,
         IRulesEngine rulesEngine,
-        IGuidGenerator guidGenerator) : DomainService, IAttachCatalogueManager
+        IGuidGenerator guidGenerator,
+        IEfCoreAttachFileRepository fileRepository) : DomainService, IAttachCatalogueManager
     {
         private readonly IRepository<AttachCatalogue, Guid> _catalogueRepository = catalogueRepository;
         private readonly IAttachCatalogueTemplateRepository _templateRepository = templateRepository;
         private readonly IRulesEngine _rulesEngine = rulesEngine;
         private readonly IGuidGenerator _guidGenerator = guidGenerator;
+        private readonly IEfCoreAttachFileRepository _fileRepository = fileRepository;
 
         // 用于在事务中跟踪已创建的分类，避免重复查询数据库
         private readonly Dictionary<string, int> _sequenceNumberCache = [];
@@ -111,8 +113,8 @@ namespace Hx.Abp.Attachment.Domain
             string? path = await CalculatePathAsync(parentId);
 
             // 使用自定义名称或模板名称
-            var catalogueName = !string.IsNullOrWhiteSpace(customTemplateName) 
-                ? customTemplateName 
+            var catalogueName = !string.IsNullOrWhiteSpace(customTemplateName)
+                ? customTemplateName
                 : await ResolveCatalogueName(template, contextData);
 
             // 使用自定义元数据或模板元数据
@@ -337,6 +339,95 @@ namespace Hx.Abp.Attachment.Domain
                     contextData);
 
                 await CreateChildCatalogues(childTemplate, childCatalogue, reference, referenceType, contextData);
+            }
+        }
+
+        /// <summary>
+        /// 软删除分类及其所有子分类
+        /// </summary>
+        /// <param name="catalogue">要删除的分类</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        public virtual async Task SoftDeleteCatalogueWithChildrenAsync(
+            AttachCatalogue catalogue,
+            CancellationToken cancellationToken = default)
+        {
+            if (catalogue == null)
+                return;
+
+            var catalogueIds = new List<Guid>();
+            var fileIds = new List<Guid>();
+
+            // 递归收集所有子分类和文件的ID
+            CollectChildrenIds(catalogue, catalogueIds, fileIds);
+
+            // 软删除所有关联的文件
+            if (fileIds.Count > 0)
+            {
+                await _fileRepository.DeleteManyAsync(fileIds, false, cancellationToken);
+            }
+
+            // 软删除所有分类（包括父分类和子分类）
+            await _catalogueRepository.DeleteManyAsync(catalogueIds, true, cancellationToken);
+        }
+
+        /// <summary>
+        /// 硬删除分类及其所有子分类
+        /// </summary>
+        /// <param name="catalogue">要删除的分类</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        public virtual async Task HardDeleteCatalogueWithChildrenAsync(
+            AttachCatalogue catalogue,
+            CancellationToken cancellationToken = default)
+        {
+            if (catalogue == null)
+                return;
+
+            var catalogueIds = new List<Guid>();
+            var fileIds = new List<Guid>();
+
+            // 递归收集所有子分类和文件的ID
+            CollectChildrenIds(catalogue, catalogueIds, fileIds);
+
+            // 硬删除所有关联的文件
+            if (fileIds.Count > 0)
+            {
+                await _fileRepository.DeleteManyAsync(fileIds, true, cancellationToken);
+            }
+
+            // 硬删除所有分类（包括父分类和子分类）
+            if (catalogueIds.Count > 0)
+            {
+                foreach (var id in catalogueIds)
+                {
+                    await _catalogueRepository.HardDeleteAsync(c => c.Id == id, true, cancellationToken);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 递归收集子分类和文件的ID
+        /// </summary>
+        /// <param name="catalogue">分类</param>
+        /// <param name="catalogueIds">分类ID列表</param>
+        /// <param name="fileIds">文件ID列表（可选）</param>
+        private static void CollectChildrenIds(AttachCatalogue catalogue, List<Guid> catalogueIds, List<Guid>? fileIds = null)
+        {
+            // 添加当前分类ID
+            catalogueIds.Add(catalogue.Id);
+
+            // 添加当前分类下的所有文件ID（如果提供了文件ID列表）
+            if (fileIds != null && catalogue.AttachFiles != null && catalogue.AttachFiles.Count > 0)
+            {
+                fileIds.AddRange(catalogue.AttachFiles.Select(f => f.Id));
+            }
+
+            // 递归处理子分类
+            if (catalogue.Children != null && catalogue.Children.Count > 0)
+            {
+                foreach (var child in catalogue.Children)
+                {
+                    CollectChildrenIds(child, catalogueIds, fileIds);
+                }
             }
         }
     }

@@ -11,6 +11,7 @@ using Volo.Abp;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.DistributedLocking;
+using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Uow;
 
 namespace Hx.Abp.Attachment.Application
@@ -24,7 +25,8 @@ namespace Hx.Abp.Attachment.Application
         IAbpDistributedLock distributedLock,
         OcrService ocrService,
         IAttachCatalogueTemplateRepository templateRepository,
-        AIServiceFactory aiServiceFactory
+        AIServiceFactory aiServiceFactory,
+        IAttachCatalogueManager attachCatalogueManager
         ) : AttachmentService, IAttachCatalogueAppService
     {
         private readonly IEfCoreAttachCatalogueRepository CatalogueRepository = catalogueRepository;
@@ -35,6 +37,7 @@ namespace Hx.Abp.Attachment.Application
         private readonly OcrService OcrService = ocrService;
         private readonly IAttachCatalogueTemplateRepository TemplateRepository = templateRepository;
         private readonly AIServiceFactory AIServiceFactory = aiServiceFactory;
+        private readonly IAttachCatalogueManager AttachCatalogueManager = attachCatalogueManager;
         /// <summary>
         /// 创建文件夹
         /// </summary>
@@ -562,10 +565,25 @@ namespace Hx.Abp.Attachment.Application
                 throw;
             }
         }
-        public virtual async Task DeleteByReferenceAsync(List<AttachCatalogueCreateDto> inputs)
+        public virtual async Task DeleteByReferenceAsync(List<GetAttachListInput> inputs, bool softDeleted = false)
         {
             var deletePara = inputs.Select(d => new GetAttachListInput() { Reference = d.Reference, ReferenceType = d.ReferenceType }).Distinct().ToList();
-            await CatalogueRepository.DeleteByReferenceAsync(deletePara);
+            if (softDeleted)
+            {
+                var entitys = await CatalogueRepository.FindByReferenceAsync(deletePara);
+                foreach (var entity in entitys)
+                {
+                    await AttachCatalogueManager.SoftDeleteCatalogueWithChildrenAsync(entity);
+                }
+            }
+            else
+            {
+                var entitys = await CatalogueRepository.FindByReferenceAsync(deletePara);
+                foreach (var entity in entitys)
+                {
+                    await AttachCatalogueManager.HardDeleteCatalogueWithChildrenAsync(entity);
+                }
+            }
         }
         private async Task<List<AttachCatalogue>> GetEntitys(List<AttachCatalogueCreateDto> inputs, int maxNumber)
         {

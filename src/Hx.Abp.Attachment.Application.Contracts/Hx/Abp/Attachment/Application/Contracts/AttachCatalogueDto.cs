@@ -1,4 +1,4 @@
-﻿using Hx.Abp.Attachment.Domain.Shared;
+using Hx.Abp.Attachment.Domain.Shared;
 using System.Collections.ObjectModel;
 using System.Text.Json.Serialization;
 using Volo.Abp.Application.Dtos;
@@ -65,7 +65,6 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 子文件夹
         /// </summary>
-        [JsonIgnore]
         public ICollection<AttachCatalogueDto>? Children { get; set; }
 
         /// <summary>

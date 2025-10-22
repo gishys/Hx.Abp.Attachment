@@ -58,7 +58,6 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 子文件夹
         /// </summary>
-        [JsonIgnore]
         public ICollection<AttachCatalogueCreateDto>? Children { get; set; }
         /// <summary>
         /// 子文件

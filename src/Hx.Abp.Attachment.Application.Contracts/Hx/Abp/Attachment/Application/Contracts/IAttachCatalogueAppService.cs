@@ -236,6 +236,22 @@ namespace Hx.Abp.Attachment.Application.Contracts
         Task<AttachCatalogueDto?> SetCatalogueSummaryAsync(Guid id, string? summary);
 
         /// <summary>
+        /// 设置分类标签
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <param name="tags">标签列表</param>
+        /// <returns>更新后的分类信息</returns>
+        Task<AttachCatalogueDto?> SetCatalogueTagsAsync(Guid id, List<string>? tags);
+
+        /// <summary>
+        /// 获取指定分类下的所有叶子节点选项
+        /// 用于智能分类和文件归类场景，返回可分类的叶子节点列表
+        /// </summary>
+        /// <param name="catalogueId">分类ID</param>
+        /// <returns>叶子节点选项列表</returns>
+        Task<List<LeafCategoryOptionDto>> GetLeafCategoriesAsync(Guid catalogueId);
+
+        /// <summary>
         /// 智能分析分类信息
         /// 基于分类下的文件内容，自动生成概要信息、分类标签、全文内容和元数据
         /// </summary>

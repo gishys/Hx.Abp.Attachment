@@ -2153,6 +2153,118 @@ namespace Hx.Abp.Attachment.Application
         }
 
         /// <summary>
+        /// 设置分类标签
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <param name="tags">标签列表</param>
+        /// <returns>更新后的分类信息</returns>
+        public virtual async Task<AttachCatalogueDto?> SetCatalogueTagsAsync(Guid id, List<string>? tags)
+        {
+            try
+            {
+                var catalogue = await CatalogueRepository.GetAsync(id) ?? throw new UserFriendlyException($"分类不存在: {id}");
+                catalogue.SetTags(tags);
+                await CatalogueRepository.UpdateAsync(catalogue);
+
+                var catalogueDto = new AttachCatalogueDto
+                {
+                    Id = catalogue.Id,
+                    Reference = catalogue.Reference,
+                    AttachReceiveType = catalogue.AttachReceiveType,
+                    ReferenceType = catalogue.ReferenceType,
+                    CatalogueName = catalogue.CatalogueName,
+                    Tags = catalogue.Tags ?? [],
+                    SequenceNumber = catalogue.SequenceNumber,
+                    ParentId = catalogue.ParentId,
+                    IsRequired = catalogue.IsRequired,
+                    AttachCount = catalogue.AttachCount,
+                    PageCount = catalogue.PageCount,
+                    IsStatic = catalogue.IsStatic,
+                    IsVerification = catalogue.IsVerification,
+                    VerificationPassed = catalogue.VerificationPassed,
+                    TemplateId = catalogue.TemplateId,
+                    TemplateVersion = catalogue.TemplateVersion,
+                    FullTextContent = catalogue.FullTextContent,
+                    FullTextContentUpdatedTime = catalogue.FullTextContentUpdatedTime,
+                    CatalogueFacetType = catalogue.CatalogueFacetType,
+                    CataloguePurpose = catalogue.CataloguePurpose,
+                    TemplateRole = catalogue.TemplateRole,
+                    TextVector = catalogue.TextVector,
+                    VectorDimension = catalogue.VectorDimension,
+                    Path = catalogue.Path,
+                    IsArchived = catalogue.IsArchived,
+                    Summary = catalogue.Summary,
+                    CreationTime = catalogue.CreationTime,
+                    CreatorId = catalogue.CreatorId,
+                    LastModificationTime = catalogue.LastModificationTime,
+                    LastModifierId = catalogue.LastModifierId,
+                    IsDeleted = catalogue.IsDeleted,
+                    DeleterId = catalogue.DeleterId,
+                    DeletionTime = catalogue.DeletionTime
+                };
+
+                Logger.LogInformation("设置分类标签成功，Id: {Id}, Tags: {Tags}", id, string.Join(", ", tags ?? []));
+                return catalogueDto;
+            }
+            catch (UserFriendlyException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "设置分类标签失败，Id: {Id}, Tags: {Tags}", id, string.Join(", ", tags ?? []));
+                throw new UserFriendlyException($"设置分类标签失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 获取指定分类下的所有叶子节点选项
+        /// 用于智能分类和文件归类场景，返回可分类的叶子节点列表
+        /// </summary>
+        /// <param name="catalogueId">分类ID</param>
+        /// <returns>叶子节点选项列表</returns>
+        public virtual async Task<List<LeafCategoryOptionDto>> GetLeafCategoriesAsync(Guid catalogueId)
+        {
+            try
+            {
+                // 1. 验证分类是否存在
+                var catalogue = await CatalogueRepository.GetAsync(catalogueId) ?? throw new UserFriendlyException($"分类不存在: {catalogueId}");
+
+                // 2. 获取所有子分类（叶子节点）
+                var leafCategories = await CatalogueRepository.GetCatalogueWithAllChildrenAsync(catalogueId);
+                
+                // 3. 过滤出叶子节点并构建选项列表
+                var leafOptions = leafCategories
+                    .Where(c => c.TemplateRole == TemplateRole.Leaf)
+                    .OrderBy(c => c.SequenceNumber)
+                    .ThenBy(c => c.CreationTime)
+                    .Select(c => new LeafCategoryOptionDto
+                    {
+                        Id = c.Id,
+                        CatalogueName = c.CatalogueName,
+                        Path = c.Path,
+                        SequenceNumber = c.SequenceNumber,
+                        ParentId = c.ParentId,
+                        Reference = c.Reference,
+                        TemplatePurpose = c.CataloguePurpose
+                    })
+                    .ToList();
+
+                Logger.LogInformation("获取叶子节点选项成功，分类ID: {CatalogueId}, 叶子节点数量: {Count}", catalogueId, leafOptions.Count);
+                return leafOptions;
+            }
+            catch (UserFriendlyException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取叶子节点选项失败，分类ID: {CatalogueId}", catalogueId);
+                throw new UserFriendlyException($"获取叶子节点选项失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// 智能分析分类信息
         /// 基于分类下的文件内容，自动生成概要信息、分类标签、全文内容和元数据
         /// </summary>

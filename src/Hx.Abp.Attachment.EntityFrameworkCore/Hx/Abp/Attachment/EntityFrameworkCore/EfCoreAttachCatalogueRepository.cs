@@ -1538,14 +1538,24 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 // 全文检索过滤条件
                 if (!string.IsNullOrWhiteSpace(fulltextQuery))
                 {
-                    // 使用 EF.Functions.JsonContains 进行 JSONB 字段查询
-                    baseFilter = baseFilter.Where(c => 
+                    // 使用原生SQL进行JSONB模糊匹配
+                    var dbContext = await GetDbContextAsync();
+                    var escapedQuery = fulltextQuery.Replace("'", "''"); // 防止SQL注入
+
+                    baseFilter = baseFilter.Where(c =>
                         c.CatalogueName.Contains(fulltextQuery) ||
                         (c.FullTextContent != null && c.FullTextContent.Contains(fulltextQuery)) ||
+                        (c.Summary != null && c.Summary.Contains(fulltextQuery)) ||
+                        // Tags字段：使用JSONB的精确匹配
                         (c.Tags != null && EF.Functions.JsonContains(c.Tags, $"[{JsonConvert.SerializeObject(fulltextQuery)}]")) ||
+                        // MetaFields字段：使用PostgreSQL原生JSONB操作符进行模糊匹配
                         (c.MetaFields != null && (
+                            // 使用 @> 操作符进行精确匹配（保持向后兼容）
                             EF.Functions.JsonContains(c.MetaFields, $"[{{\"FieldName\":{JsonConvert.SerializeObject(fulltextQuery)}}}]") ||
-                            EF.Functions.JsonContains(c.MetaFields, $"[{{\"FieldValue\":{JsonConvert.SerializeObject(fulltextQuery)}}}]")
+                            EF.Functions.JsonContains(c.MetaFields, $"[{{\"DefaultValue\":{JsonConvert.SerializeObject(fulltextQuery)}}}]") ||
+                            EF.Functions.JsonContains(c.MetaFields, $"[{{\"Tags\":{JsonConvert.SerializeObject(fulltextQuery)}}}]") ||
+                            // 或者使用JSON路径表达式进行匹配
+                            EF.Functions.JsonContains(c.MetaFields, $"[{JsonConvert.SerializeObject(fulltextQuery)}]")
                         ))
                     );
                 }
@@ -1653,12 +1663,16 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 return [];
 
             var dbSet = await GetDbSetAsync();
-            var allNodeIds = new HashSet<Guid>();
+            var allRelatedCatalogues = new List<AttachCatalogue>();
+            var addedIds = new HashSet<Guid>(); // 使用HashSet进行O(1)查找
 
-            // 收集所有匹配节点的ID
+            // 收集所有匹配节点
             foreach (var catalogue in matchedCatalogues)
             {
-                allNodeIds.Add(catalogue.Id);
+                if (addedIds.Add(catalogue.Id)) // HashSet.Add返回true表示成功添加（不重复）
+                {
+                    allRelatedCatalogues.Add(catalogue);
+                }
             }
 
             // 为每个匹配的节点，获取其所有父节点和子节点
@@ -1666,50 +1680,31 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             {
                 if (!string.IsNullOrEmpty(catalogue.Path))
                 {
-                    // 解析路径，获取所有父节点ID
-                    var pathParts = catalogue.Path.Split('.');
-                    for (int i = 1; i <= pathParts.Length; i++)
+                    // 获取根节点：路径按'.'截取的第一部分
+                    var rootPath = catalogue.Path.Split('.')[0];
+                    
+                    // 直接获取所有以根节点开头的分类（包括父节点和子节点）
+                    var relatedCatalogues = await dbSet
+                        .Where(c => c.Path != null && c.Path.StartsWith(rootPath) && !c.IsDeleted)
+                        .ToListAsync(cancellationToken);
+                    
+                    // 高效去重：使用HashSet进行O(1)查找
+                    foreach (var relatedCatalogue in relatedCatalogues)
                     {
-                        var parentPath = string.Join(".", pathParts.Take(i));
-                        // 这里需要根据实际的路径格式来解析父节点ID
-                        // 假设路径格式为 "0000001.0000002.0000003"
-                        if (int.TryParse(pathParts[i - 1], out var sequenceNumber))
+                        if (addedIds.Add(relatedCatalogue.Id)) // O(1)时间复杂度
                         {
-                            // 根据序列号查找父节点（这里需要根据实际业务逻辑调整）
-                            var parentCatalogues = await dbSet
-                                .Where(c => c.SequenceNumber == sequenceNumber && !c.IsDeleted)
-                                .Select(c => c.Id)
-                                .ToListAsync(cancellationToken);
-                            
-                            foreach (var parentId in parentCatalogues)
-                            {
-                                allNodeIds.Add(parentId);
-                            }
+                            allRelatedCatalogues.Add(relatedCatalogue);
                         }
                     }
                 }
-
-                // 获取所有子节点
-                var childCatalogues = await dbSet
-                    .Where(c => c.Path != null && c.Path.StartsWith(catalogue.Path + ".") && !c.IsDeleted)
-                    .Select(c => c.Id)
-                    .ToListAsync(cancellationToken);
-                
-                foreach (var childId in childCatalogues)
-                {
-                    allNodeIds.Add(childId);
-                }
             }
 
-            // 获取所有相关节点
-            var allRelatedCatalogues = await dbSet
-                .Where(c => allNodeIds.Contains(c.Id) && !c.IsDeleted)
+            // 按路径排序，确保层级关系正确
+            return allRelatedCatalogues
                 .OrderBy(c => c.Path)
                 .ThenBy(c => c.SequenceNumber)
                 .ThenBy(c => c.CreationTime)
-                .ToListAsync(cancellationToken);
-
-            return allRelatedCatalogues;
+                .ToList();
         }
 
         /// <summary>
@@ -1740,11 +1735,14 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             }
             else
             {
-                // 查询目标分类本身以及所有以目标分类Path开头的子分类
-                // 使用EF.Functions.Like进行高效的路径匹配
+                // 获取根节点：路径按'.'截取的第一部分
+                var rootPath = targetCatalogue.Path.Split('.')[0];
+                
+                // 查询目标分类本身以及所有以根节点开头的分类
+                // 这样可以获取整个分类树，包括所有分支
                 query = query.Where(c =>
                     c.Id == catalogueId ||
-                    (c.Path != null && EF.Functions.Like(c.Path, targetCatalogue.Path + ".%")));
+                    (c.Path != null && c.Path.StartsWith(rootPath)));
             }
 
             // 3. 按路径排序，确保层级关系正确

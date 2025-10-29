@@ -411,6 +411,35 @@ namespace Hx.Abp.Attachment.HttpApi
             return AttachCatalogueAppService.SetCatalogueSummaryAsync(id, summary);
         }
 
+        /// <summary>
+        /// 设置分类标签
+        /// </summary>
+        /// <param name="id">分类ID</param>
+        /// <param name="tags">标签列表</param>
+        /// <returns>更新后的分类信息</returns>
+        [Route("tags/set")]
+        [HttpPut]
+        public virtual Task<AttachCatalogueDto?> SetCatalogueTagsAsync(
+            [FromQuery] Guid id, 
+            [FromBody] List<string>? tags)
+        {
+            return AttachCatalogueAppService.SetCatalogueTagsAsync(id, tags);
+        }
+
+        /// <summary>
+        /// 获取指定分类下的所有叶子节点选项
+        /// 用于智能分类和文件归类场景，返回可分类的叶子节点列表
+        /// </summary>
+        /// <param name="catalogueId">分类ID</param>
+        /// <returns>叶子节点选项列表</returns>
+        [Route("leaf-categories")]
+        [HttpGet]
+        public virtual Task<List<LeafCategoryOptionDto>> GetLeafCategoriesAsync(
+            [FromQuery] Guid catalogueId)
+        {
+            return AttachCatalogueAppService.GetLeafCategoriesAsync(catalogueId);
+        }
+
         // ============= 智能分析接口 =============
 
         /// <summary>

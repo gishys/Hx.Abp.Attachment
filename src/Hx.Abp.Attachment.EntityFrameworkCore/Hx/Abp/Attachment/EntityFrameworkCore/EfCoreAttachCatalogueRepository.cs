@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using Npgsql;
 using System.Linq.Dynamic.Core;
 using System.Text;
+using System.Text.RegularExpressions;
 using Volo.Abp;
 using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
@@ -1507,22 +1508,23 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             try
             {
                 var dbSet = (await GetDbSetAsync()).IncludeDetails(includeFiles);
-                
+
+                var likePattern = $"%{fulltextQuery}%";
                 // 基础过滤条件
                 var baseFilter = dbSet.Where(c => !c.IsDeleted);
-                
+
                 // 业务引用过滤
                 if (!string.IsNullOrEmpty(reference))
                     baseFilter = baseFilter.Where(c => c.Reference == reference);
-                
+
                 // 业务类型过滤
                 if (referenceType.HasValue)
                     baseFilter = baseFilter.Where(c => c.ReferenceType == referenceType.Value);
-                
+
                 // 分类分面类型过滤
                 if (catalogueFacetType.HasValue)
                     baseFilter = baseFilter.Where(c => c.CatalogueFacetType == catalogueFacetType.Value);
-                
+
                 // 分类用途过滤
                 if (cataloguePurpose.HasValue)
                     baseFilter = baseFilter.Where(c => c.CataloguePurpose == cataloguePurpose.Value);
@@ -1547,17 +1549,15 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                         (c.FullTextContent != null && c.FullTextContent.Contains(fulltextQuery)) ||
                         (c.Summary != null && c.Summary.Contains(fulltextQuery)) ||
                         // Tags字段：使用JSONB的精确匹配
-                        (c.Tags != null && EF.Functions.JsonContains(c.Tags, $"[{JsonConvert.SerializeObject(fulltextQuery)}]")) ||
-                        // MetaFields字段：使用PostgreSQL原生JSONB操作符进行模糊匹配
-                        (c.MetaFields != null && (
-                            // 使用 @> 操作符进行精确匹配（保持向后兼容）
-                            EF.Functions.JsonContains(c.MetaFields, $"[{{\"FieldName\":{JsonConvert.SerializeObject(fulltextQuery)}}}]") ||
-                            EF.Functions.JsonContains(c.MetaFields, $"[{{\"DefaultValue\":{JsonConvert.SerializeObject(fulltextQuery)}}}]") ||
-                            EF.Functions.JsonContains(c.MetaFields, $"[{{\"Tags\":{JsonConvert.SerializeObject(fulltextQuery)}}}]") ||
-                            // 或者使用JSON路径表达式进行匹配
-                            EF.Functions.JsonContains(c.MetaFields, $"[{JsonConvert.SerializeObject(fulltextQuery)}]")
-                        ))
+                        (c.Tags != null && EF.Functions.JsonExistAny(c.Tags, "$[*] ? (@ like_regex {0})", $"{Regex.Escape(fulltextQuery)}")) ||
+// MetaFields字段：多种模糊查询方式
+(c.MetaFields != null && (
+            EF.Functions.JsonExistAny(c.MetaFields, "FieldName", likePattern) ||
+            EF.Functions.JsonExistAny(c.MetaFields, "DefaultValue", likePattern) ||
+            EF.Functions.JsonExistAny(c.MetaFields, "Tags", likePattern)
+        ))
                     );
+                    //baseFilter = await ApplyJsonbFuzzySearch(baseFilter, fulltextQuery);
                 }
 
                 if (includeChildren)
@@ -1700,11 +1700,10 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             }
 
             // 按路径排序，确保层级关系正确
-            return allRelatedCatalogues
+            return [.. allRelatedCatalogues
                 .OrderBy(c => c.Path)
                 .ThenBy(c => c.SequenceNumber)
-                .ThenBy(c => c.CreationTime)
-                .ToList();
+                .ThenBy(c => c.CreationTime)];
         }
 
         /// <summary>

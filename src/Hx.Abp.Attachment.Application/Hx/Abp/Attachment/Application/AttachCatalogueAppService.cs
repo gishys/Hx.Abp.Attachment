@@ -1481,43 +1481,72 @@ namespace Hx.Abp.Attachment.Application
 
                         // 4. 智能分类推荐
                         ClassificationResult? classificationResult = null;
-                        if (!string.IsNullOrEmpty(ocrContent) && result.Status != SmartClassificationStatus.OcrFailed)
+
+                        // 检查catalogue本身是否为叶子节点
+                        if (catalogue.TemplateRole == TemplateRole.Leaf)
                         {
-                            try
-                            {
-                                var classificationService = AIServiceFactory.GetIntelligentClassificationService();
-                                classificationResult = await classificationService.RecommendDocumentCategoryAsync(ocrContent, categoryOptions);
-                                result.Status = SmartClassificationStatus.Success;
-                            }
-                            catch (Exception ex)
-                            {
-                                Logger.LogWarning(ex, "智能分类推荐失败，文件ID: {FileId}", tempFile.Id);
-                                result.Status = SmartClassificationStatus.ClassificationFailed;
-                                result.ErrorMessage = $"智能分类推荐失败: {ex.Message}";
-                            }
-                        }
-                        if (classificationResult != null && !string.IsNullOrEmpty(classificationResult.RecommendedCategory))
-                        {
+                            // 如果catalogue本身就是叶子节点，直接推荐该分类
                             result.Classification = new ClassificationExtentResult
                             {
-                                RecommendedCategory = classificationResult.RecommendedCategory,
-                                RecommendedCategoryId = leafCategories.First(leaf => leaf.CatalogueName == classificationResult.RecommendedCategory).Id,
-                                Confidence = classificationResult?.Confidence ?? 0.5
+                                RecommendedCategory = catalogue.CatalogueName,
+                                RecommendedCategoryId = catalogue.Id,
+                                Confidence = 1.0f // 叶子节点直接分类，置信度为1.0
                             };
+
+                            // 设置分类ID
+                            tempFile.SetAttachCatalogueId(catalogue.Id);
+
+                            // 设置从AttachCatalogue获取的属性
+                            tempFile.SetFromAttachCatalogue(catalogue);
+
+                            // 标记为已归类
+                            tempFile.SetIsCategorized(true);
+
+                            result.Status = SmartClassificationStatus.Success;
                         }
                         else
                         {
-                            // 如果没有分类结果，默认选择第一个叶子分类
-                            var defaultCategory = leafCategories.Where(l => l.TemplateRole == TemplateRole.Leaf).First();
-                            result.Classification = new ClassificationExtentResult
+                            // 如果catalogue不是叶子节点，进行智能分类推荐
+                            if (!string.IsNullOrEmpty(ocrContent) && result.Status != SmartClassificationStatus.OcrFailed)
                             {
-                                RecommendedCategory = defaultCategory.CatalogueName,
-                                RecommendedCategoryId = defaultCategory.Id,
-                                Confidence = 0.5f // 默认置信度
-                            };
+                                try
+                                {
+                                    var classificationService = AIServiceFactory.GetIntelligentClassificationService();
+                                    classificationResult = await classificationService.RecommendDocumentCategoryAsync(ocrContent, categoryOptions);
+                                    result.Status = SmartClassificationStatus.Success;
+                                }
+                                catch (Exception ex)
+                                {
+                                    Logger.LogWarning(ex, "智能分类推荐失败，文件ID: {FileId}", tempFile.Id);
+                                    result.Status = SmartClassificationStatus.ClassificationFailed;
+                                    result.ErrorMessage = $"智能分类推荐失败: {ex.Message}";
+                                }
+                            }
+                            if (classificationResult != null && !string.IsNullOrEmpty(classificationResult.RecommendedCategory))
+                            {
+                                result.Classification = new ClassificationExtentResult
+                                {
+                                    RecommendedCategory = classificationResult.RecommendedCategory,
+                                    RecommendedCategoryId = leafCategories.First(leaf => leaf.CatalogueName == classificationResult.RecommendedCategory).Id,
+                                    Confidence = classificationResult?.Confidence ?? 0.5
+                                };
+                            }
+                            else
+                            {
+                                // 如果没有分类结果，默认选择第一个叶子分类
+                                var defaultCategory = leafCategories.Where(l => l.TemplateRole == TemplateRole.Leaf).First();
+                                result.Classification = new ClassificationExtentResult
+                                {
+                                    RecommendedCategory = defaultCategory.CatalogueName,
+                                    RecommendedCategoryId = defaultCategory.Id,
+                                    Confidence = 0.5f // 默认置信度
+                                };
+                            }
+                            if (result.Status != SmartClassificationStatus.ClassificationFailed)
+                                tempFile.SetAttachCatalogueId(result.Classification.RecommendedCategoryId);
                         }
-                        tempFile.SetAttachCatalogueId(result.Classification.RecommendedCategoryId);
-                        // 更新OCR内容到数据库
+                        
+                        // 更新内容到数据库
                         await EfCoreAttachFileRepository.UpdateAsync(tempFile);
                         // 5. 构建返回结果
                         result.FileInfo = new AttachFileDto

@@ -400,15 +400,15 @@ namespace Hx.Abp.Attachment.HttpApi
         /// 设置分类概要信息
         /// </summary>
         /// <param name="id">分类ID</param>
-        /// <param name="summary">概要信息</param>
+        /// <param name="input">概要信息输入</param>
         /// <returns>更新后的分类信息</returns>
         [Route("summary/set")]
         [HttpPut]
         public virtual Task<AttachCatalogueDto?> SetCatalogueSummaryAsync(
             [FromQuery] Guid id, 
-            [FromBody] string? summary)
+            [FromBody] SetCatalogueSummaryInputDto input)
         {
-            return AttachCatalogueAppService.SetCatalogueSummaryAsync(id, summary);
+            return AttachCatalogueAppService.SetCatalogueSummaryAsync(id, input?.Summary);
         }
 
         /// <summary>

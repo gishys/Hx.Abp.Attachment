@@ -98,16 +98,16 @@ namespace Hx.Abp.Attachment.Domain
     /// </summary>
     public class TextPosition
     {
-        public int Angle { get; set; }
-        public int Height { get; set; }
-        public int Left { get; set; }
-        public int Top { get; set; }
-        public int Width { get; set; }
+        public long Angle { get; set; }
+        public long Height { get; set; }
+        public long Left { get; set; }
+        public long Top { get; set; }
+        public long Width { get; set; }
 
         /// <summary>
         /// 计算文本块的中心点
         /// </summary>
-        public (int X, int Y) GetCenter()
+        public (long X, long Y) GetCenter()
         {
             return (Left + Width / 2, Top + Height / 2);
         }

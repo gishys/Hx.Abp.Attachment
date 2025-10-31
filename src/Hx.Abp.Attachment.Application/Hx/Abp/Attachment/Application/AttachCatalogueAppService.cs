@@ -11,7 +11,6 @@ using Volo.Abp;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.DistributedLocking;
-using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Uow;
 
 namespace Hx.Abp.Attachment.Application
@@ -2414,14 +2413,14 @@ namespace Hx.Abp.Attachment.Application
                 try
                 {
                     // 首先检查是否已有OCR内容
-                    if (!string.IsNullOrEmpty(file.OcrContent))
+                    if (file.OcrProcessStatus == OcrProcessStatus.Completed || (!string.IsNullOrEmpty(file.OcrContent)))
                     {
                         // 已有OCR内容，直接使用
                         detail.Status = FileProcessingStatus.Success;
                         detail.ExtractedText = file.OcrContent;
-                        detail.ExtractedTextLength = file.OcrContent.Length;
+                        detail.ExtractedTextLength = file.OcrContent?.Length ?? 0;
                         result.SuccessfulFilesCount++;
-                        result.ExtractedTextLength += file.OcrContent.Length;
+                        result.ExtractedTextLength += file.OcrContent?.Length ?? 0;
                         detail.ErrorMessage = "使用已存在的OCR内容";
                     }
                     else if (!file.IsSupportedForOcr())

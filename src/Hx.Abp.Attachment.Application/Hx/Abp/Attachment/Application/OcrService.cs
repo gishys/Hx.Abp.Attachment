@@ -163,113 +163,61 @@ namespace Hx.Abp.Attachment.Application
         {
             try
             {
-                // 在使用Path.Combine前，确保fileServerBasePath不为null，否则抛出异常
-                var fileServerBasePath = _configuration[AppGlobalProperties.FileServerBasePath]
-                    ?? throw new InvalidOperationException($"配置项 {AppGlobalProperties.FileServerBasePath} 不能为空");
-                var fullFilePath = Path.Combine(fileServerBasePath, "host", "attachment", attachFile.FilePath);
+                // 构建文件URL
+                var fileServerBaseUrl = _configuration[AppGlobalProperties.FileServerBasePath]
+                    ?? throw new InvalidOperationException("配置项 FileServer:BaseUrl 不能为空");
+                var imageUrl = $"{fileServerBaseUrl.TrimEnd('/')}/host/attachment/{attachFile.FilePath.Replace('\\', '/')}";
 
-                if (!File.Exists(fullFilePath))
+                // 验证URL是否可访问
+                if (!await IsUrlAccessibleAsync(imageUrl))
                 {
-                    throw new FileNotFoundException($"PDF文件不存在: {fullFilePath}");
+                    throw new FileNotFoundException($"图片文件URL不可访问: {imageUrl}");
                 }
 
-                // 创建临时目录
-                var tempDir = Path.Combine(Path.GetTempPath(), "pdf_ocr", GuidGenerator.Create().ToString());
-                Directory.CreateDirectory(tempDir);
-                List<string> imagePaths = [];
+                // 使用阿里云OCR处理图片
+                var ocrResult = await ProcessPdfWithAliyunOcrDetailedAsync(imageUrl);
+                var extractedText = string.Empty;
+                var textBlocks = new List<OcrTextBlock>();
 
-                try
+                if (ocrResult?.Results?.Count > 0)
                 {
-                    // 将PDF转换为图片
-                    imagePaths = await _pdfConverter.ConvertPdfToImagesAsync(fullFilePath, tempDir, "jpg", 300);
-                    
-                    if (imagePaths.Count == 0)
-                    {
-                        _logger.LogWarning("PDF文件 {FileName} 转换图片失败", attachFile.FileName);
-                        // 将
-                        // return null;
-                        // 替换为
-                        return (null, new List<OcrTextBlock>());
-                    }
+                    extractedText = OcrComposer.Compose(ocrResult);
 
-                    // 对每个图片进行OCR处理
-                    var allTexts = new List<string>();
-                    var allTextBlocks = new List<OcrTextBlock>();
+                    // 处理文本块
                     var blockOrder = 0;
-                    
-                    for (int pageIndex = 0; pageIndex < imagePaths.Count; pageIndex++)
+                    foreach (var result in ocrResult.Results)
                     {
-                        var imagePath = imagePaths[pageIndex];
-                        var imageUrl = ConvertLocalPathToUrl(imagePath);
-                        
-                        // 获取详细的OCR结果
-                        var ocrResult = await ProcessImageWithAliyunOcrDetailedAsync(imageUrl);
-                        if (ocrResult?.Results?.Count > 0)
+                        if (!string.IsNullOrWhiteSpace(result.Text) && result.TextRectangles != null)
                         {
-                            var imageText = OcrComposer.Compose(ocrResult);
-                            if (!string.IsNullOrWhiteSpace(imageText))
-                            {
-                                allTexts.Add(imageText);
-                            }
-                            
-                            // 处理文本块
-                            foreach (var result in ocrResult.Results)
-                            {
-                                if (!string.IsNullOrWhiteSpace(result.Text) && result.TextRectangles != null)
+                            var textBlock = new OcrTextBlock(
+                                GuidGenerator.Create(),
+                                attachFile.Id,
+                                result.Text,
+                                result.Probability ?? 0.0f,
+                                0, // 单页图片
+                                JsonSerializer.Serialize(new TextPosition
                                 {
-                                    var textBlock = new OcrTextBlock(
-                                        GuidGenerator.Create(),
-                                        attachFile.Id,
-                                        result.Text,
-                                        result.Probability ?? 0.0f,
-                                        pageIndex,
-                                        JsonSerializer.Serialize(new TextPosition
-                                        {
-                                            Angle = result.TextRectangles.Angle,
-                                            Height = result.TextRectangles.Height,
-                                            Left = result.TextRectangles.Left,
-                                            Top = result.TextRectangles.Top,
-                                            Width = result.TextRectangles.Width
-                                        }),
-                                        blockOrder++
-                                    );
-                                    allTextBlocks.Add(textBlock);
-                                }
-                            }
+                                    Angle = result.TextRectangles.Angle,
+                                    Height = result.TextRectangles.Height,
+                                    Left = result.TextRectangles.Left,
+                                    Top = result.TextRectangles.Top,
+                                    Width = result.TextRectangles.Width
+                                }),
+                                blockOrder++
+                            );
+                            textBlocks.Add(textBlock);
                         }
                     }
-
-                    // 合并所有页面的文本
-                    var combinedText = string.Join("\n\n--- 页面分隔 ---\n\n", allTexts);
-                    
-                    _logger.LogInformation("PDF文件 {FileName} 处理完成，共 {PageCount} 页，提取文本长度: {TextLength}，文本块数量: {BlockCount}", 
-                        attachFile.FileName, imagePaths.Count, combinedText.Length, allTextBlocks.Count);
-
-                    return (combinedText, allTextBlocks);
                 }
-                finally
-                {
-                    // 清理临时文件
-                    if (imagePaths.Count != 0)
-                    {
-                        await _pdfConverter.CleanupTempImagesAsync(imagePaths);
-                    }
-                    try
-                    {
-                        if (Directory.Exists(tempDir))
-                        {
-                            Directory.Delete(tempDir, true);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "清理临时目录失败: {TempDir}", tempDir);
-                    }
-                }
+
+                _logger.LogInformation("图片文件 {FileName} 处理完成，提取文本长度: {TextLength}，文本块数量: {BlockCount}",
+                    attachFile.FileName, extractedText.Length, textBlocks.Count);
+
+                return (extractedText, textBlocks);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "PDF文件 {FileName} 处理失败", attachFile.FileName);
+                _logger.LogError(ex, "图片文件 {FileName} 处理失败", attachFile.FileName);
                 throw;
             }
         }
@@ -365,26 +313,30 @@ namespace Hx.Abp.Attachment.Application
                 throw;
             }
         }
-
         /// <summary>
-        /// 将本地文件路径转换为URL
+        /// 使用阿里云OCR处理图片并返回详细结果
         /// </summary>
-        private string ConvertLocalPathToUrl(string localPath)
+        private async Task<RecognizeCharacterDto?> ProcessPdfWithAliyunOcrDetailedAsync(string imageUrl)
         {
-            // 这里需要根据实际的文件服务器配置来实现
-            // 假设文件服务器的基础URL配置在配置文件中
-            var fileServerBaseUrl = _configuration["FileServer:BaseUrl"] ?? "http://localhost:5000";
-            
-            // 提取相对路径
-            var fileServerBasePath = _configuration[AppGlobalProperties.FileServerBasePath];
-            if (!string.IsNullOrEmpty(fileServerBasePath) && localPath.StartsWith(fileServerBasePath))
+            try
             {
-                var relativePath = localPath[fileServerBasePath.Length..].Replace('\\', '/');
-                return $"{fileServerBaseUrl.TrimEnd('/')}{relativePath}";
-            }
+                // 获取阿里云OCR配置
+                var accessKeyId = Environment.GetEnvironmentVariable("ALIBABA_CLOUD_ACCESS_KEY_ID")
+                    ?? throw new InvalidOperationException("缺少环境变量 ALIBABA_CLOUD_ACCESS_KEY_ID");
+                var accessKeySecret = Environment.GetEnvironmentVariable("ALIBABA_CLOUD_ACCESS_KEY_SECRET")
+                    ?? throw new InvalidOperationException("缺少环境变量 ALIBABA_CLOUD_ACCESS_KEY_SECRET");
 
-            // 如果无法转换，返回原始路径（假设已经是URL）
-            return localPath;
+                // 调用阿里云OCR
+                var ocrResult = await UniversalTextRecognitionHelper.PdfUniversalTextRecognition(
+                    accessKeyId, accessKeySecret, imageUrl);
+
+                return ocrResult;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "阿里云OCR处理失败: {ImageUrl}", imageUrl);
+                throw;
+            }
         }
 
         /// <summary>

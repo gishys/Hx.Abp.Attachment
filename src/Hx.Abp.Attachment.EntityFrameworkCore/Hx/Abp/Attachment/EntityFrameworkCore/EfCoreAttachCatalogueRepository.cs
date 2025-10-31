@@ -1735,7 +1735,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             else
             {
                 // 获取根节点：路径按'.'截取的第一部分
-                var rootPath = targetCatalogue.Path.Split('.')[0];
+                var rootPath = targetCatalogue.Path;
                 
                 // 查询目标分类本身以及所有以根节点开头的分类
                 // 这样可以获取整个分类树，包括所有分支

@@ -56,37 +56,37 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <summary>
         /// 角度
         /// </summary>
-        public int Angle { get; set; }
+        public long Angle { get; set; }
 
         /// <summary>
         /// 高度
         /// </summary>
-        public int Height { get; set; }
+        public long Height { get; set; }
 
         /// <summary>
         /// 左边距
         /// </summary>
-        public int Left { get; set; }
+        public long Left { get; set; }
 
         /// <summary>
         /// 上边距
         /// </summary>
-        public int Top { get; set; }
+        public long Top { get; set; }
 
         /// <summary>
         /// 宽度
         /// </summary>
-        public int Width { get; set; }
+        public long Width { get; set; }
 
         /// <summary>
         /// 中心点X坐标
         /// </summary>
-        public int CenterX => Left + Width / 2;
+        public long CenterX => Left + Width / 2;
 
         /// <summary>
         /// 中心点Y坐标
         /// </summary>
-        public int CenterY => Top + Height / 2;
+        public long CenterY => Top + Height / 2;
     }
 
     /// <summary>

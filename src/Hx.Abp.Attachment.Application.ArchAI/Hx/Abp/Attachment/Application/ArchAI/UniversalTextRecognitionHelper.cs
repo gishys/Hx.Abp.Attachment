@@ -1,5 +1,6 @@
 using AlibabaCloud.SDK.Ocr20191230.Models;
 using Hx.Abp.Attachment.Application.ArchAI.Contracts;
+using System.Net;
 using Tea;
 using Volo.Abp;
 
@@ -75,20 +76,26 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                 throw new UserFriendlyException(message: _error.Message);
             }
         }
-        public static Task<RecognizeCharacterDto> PdfUniversalTextRecognition(string accessKeyId, string accessKeySecret, string pdfUrl)
+        public static async Task<RecognizeCharacterDto> PdfUniversalTextRecognition(string accessKeyId, string accessKeySecret, string pdfUrl)
         {
             // 创建AccessKey ID和AccessKey Secret，请参考https://help.aliyun.com/document_detail/175144.html
             // 如果您使用的是RAM用户的AccessKey，还需要为子账号授予权限AliyunVIAPIFullAccess，请参考https://help.aliyun.com/document_detail/145025.html
             // 从环境变量读取配置的AccessKey ID和AccessKey Secret。运行代码示例前必须先配置环境变量。
             AlibabaCloud.SDK.Ocr20191230.Client client = CreateClient(accessKeyId, accessKeySecret);
-            AlibabaCloud.SDK.Ocr20191230.Models.RecognizePdfRequest recognizePdfRequest = new()
-            {
-                FileURL = pdfUrl,
-            };
+            AlibabaCloud.SDK.Ocr20191230.Models.RecognizePdfAdvanceRequest recognizePdfAdvanceRequest = new                        ();
+            /* 场景一，使用本地文件
+            System.IO.StreamReader file = new System.IO.StreamReader(@"/tmp/RecognizePdf1.pdf");
+            recognizePdfAdvanceRequest.FileURLObject = file.BaseStream;
+            */
+            // 场景二，使用任意可访问的url
+            using var httpClient = new HttpClient();
+            var uri = new Uri(pdfUrl);
+            var stream = await httpClient.GetStreamAsync(uri);
+            recognizePdfAdvanceRequest.FileURLObject = stream;
             AlibabaCloud.TeaUtil.Models.RuntimeOptions runtime = new();
             try
             {
-                AlibabaCloud.SDK.Ocr20191230.Models.RecognizePdfResponse recognizePdfResponse = client.RecognizePdfWithOptions(recognizePdfRequest, runtime);
+                AlibabaCloud.SDK.Ocr20191230.Models.RecognizePdfResponse recognizePdfResponse = client.RecognizePdfAdvance(recognizePdfAdvanceRequest, runtime);
                 var body = recognizePdfResponse.Body;
                 var rc = new RecognizeCharacterDto(body.RequestId);
                 foreach (var item in body.Data.WordsInfo)
@@ -103,7 +110,7 @@ namespace Hx.Abp.Attachment.Application.ArchAI
                     };
                     rc.Results.Add(new(0, item.Word, rectangle));
                 }
-                return Task.FromResult(rc);
+                return rc;
             }
             catch (TeaException error)
             {

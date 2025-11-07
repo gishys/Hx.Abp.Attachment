@@ -578,25 +578,159 @@ namespace Hx.Abp.Attachment.Domain
 
         /// <summary>
         /// 检查用户是否具有指定权限
+        /// 支持用户权限和角色权限检查
         /// </summary>
-        public virtual bool HasPermission(Guid userId, PermissionAction action)
+        /// <param name="userId">用户ID</param>
+        /// <param name="action">权限操作</param>
+        /// <param name="userRoles">用户角色列表（可选，用于角色权限检查）</param>
+        /// <returns>是否具有权限</returns>
+        public virtual bool HasPermission(Guid userId, PermissionAction action, List<string>? userRoles = null)
         {
             if (Permissions == null || Permissions.Count == 0)
                 return false;
 
             // 检查直接权限
-            var directPermissions = Permissions
+            var relevantPermissions = Permissions
                 .Where(p => p.IsEffective() && p.Action == action)
                 .ToList();
 
-            if (directPermissions.Count != 0)
+            if (relevantPermissions.Count == 0)
+                return false;
+
+            // 检查用户权限
+            var userPermissions = relevantPermissions
+                .Where(p => p.PermissionType == "User" && 
+                           p.PermissionTarget == userId.ToString())
+                .ToList();
+
+            // 检查角色权限
+            var rolePermissions = new List<AttachCatalogueTemplatePermission>();
+            if (userRoles != null && userRoles.Count > 0)
             {
-                // 如果有拒绝权限，直接拒绝
-                if (directPermissions.Any(p => p.Effect == PermissionEffect.Deny))
-                    return false;
-                
-                // 如果有允许权限，返回允许
-                return directPermissions.Any(p => p.Effect == PermissionEffect.Allow);
+                rolePermissions = [.. relevantPermissions
+                    .Where(p => p.PermissionType == "Role" && 
+                               userRoles.Contains(p.PermissionTarget))];
+            }
+
+            // 合并所有相关权限
+            var allPermissions = userPermissions.Concat(rolePermissions).ToList();
+
+            if (allPermissions.Count == 0)
+                return false;
+
+            // 权限优先级：拒绝 > 允许 > 继承
+            // 如果有拒绝权限，直接拒绝
+            if (allPermissions.Any(p => p.Effect == PermissionEffect.Deny))
+                return false;
+            
+            // 如果有允许权限，返回允许
+            if (allPermissions.Any(p => p.Effect == PermissionEffect.Allow))
+                return true;
+
+            // 继承权限需要进一步处理（在权限检查器中处理）
+            return false;
+        }
+
+        /// <summary>
+        /// 检查继承权限（从父分类和模板）
+        /// 注意：此方法需要外部提供父分类和模板实体，实体类不直接访问仓储
+        /// </summary>
+        /// <param name="userId">用户ID</param>
+        /// <param name="action">权限操作</param>
+        /// <param name="userRoles">用户角色列表</param>
+        /// <param name="parentCatalogue">父分类实体（可选）</param>
+        /// <param name="template">模板实体（可选）</param>
+        /// <returns>是否具有继承权限</returns>
+        public virtual bool HasInheritedPermission(
+            Guid userId,
+            PermissionAction action,
+            List<string>? userRoles = null,
+            AttachCatalogue? parentCatalogue = null,
+            AttachCatalogueTemplate? template = null)
+        {
+            // 1. 从父分类继承权限
+            if (parentCatalogue != null)
+            {
+                // 检查父分类的直接权限
+                var hasParentPermission = parentCatalogue.HasPermission(userId, action, userRoles);
+                if (hasParentPermission)
+                {
+                    return true;
+                }
+
+                // 检查父分类的继承权限（Effect == Inherit）
+                if (parentCatalogue.Permissions != null && parentCatalogue.Permissions.Count > 0)
+                {
+                    var inheritedPermissions = parentCatalogue.Permissions
+                        .Where(p => p.IsEffective() && 
+                                   p.Action == action && 
+                                   p.Effect == PermissionEffect.Inherit)
+                        .ToList();
+
+                    if (inheritedPermissions.Count > 0)
+                    {
+                        var roles = userRoles ?? [];
+                        var userInheritedPermissions = inheritedPermissions
+                            .Where(p => p.PermissionType == "User" && 
+                                       p.PermissionTarget == userId.ToString())
+                            .ToList();
+
+                        var roleInheritedPermissions = inheritedPermissions
+                            .Where(p => p.PermissionType == "Role" && 
+                                       roles.Contains(p.PermissionTarget))
+                            .ToList();
+
+                        if (userInheritedPermissions.Count > 0 || roleInheritedPermissions.Count > 0)
+                        {
+                            // 继续向上查找父分类（需要外部递归调用）
+                            return true; // 表示需要继续向上查找
+                        }
+                    }
+                }
+            }
+
+            // 2. 从模板继承权限
+            if (template != null && template.Permissions != null && template.Permissions.Count > 0)
+            {
+                var roles = userRoles ?? [];
+                var relevantPermissions = template.Permissions
+                    .Where(p => p.IsEffective() && p.Action == action)
+                    .ToList();
+
+                if (relevantPermissions.Count > 0)
+                {
+                    var userPermissions = relevantPermissions
+                        .Where(p => p.PermissionType == "User" && 
+                                   p.PermissionTarget == userId.ToString())
+                        .ToList();
+
+                    var rolePermissions = relevantPermissions
+                        .Where(p => p.PermissionType == "Role" && 
+                                   roles.Contains(p.PermissionTarget))
+                        .ToList();
+
+                    var allPermissions = userPermissions.Concat(rolePermissions).ToList();
+
+                    if (allPermissions.Count > 0)
+                    {
+                        // 权限优先级：拒绝 > 允许 > 继承
+                        if (allPermissions.Any(p => p.Effect == PermissionEffect.Deny))
+                        {
+                            return false;
+                        }
+
+                        if (allPermissions.Any(p => p.Effect == PermissionEffect.Allow))
+                        {
+                            return true;
+                        }
+
+                        // 如果有继承权限，需要检查模板的父模板（需要外部递归调用）
+                        if (allPermissions.Any(p => p.Effect == PermissionEffect.Inherit))
+                        {
+                            return true; // 表示需要继续向上查找
+                        }
+                    }
+                }
             }
 
             return false;

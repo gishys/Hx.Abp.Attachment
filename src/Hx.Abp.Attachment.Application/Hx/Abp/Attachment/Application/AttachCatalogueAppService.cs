@@ -25,7 +25,8 @@ namespace Hx.Abp.Attachment.Application
         OcrService ocrService,
         IAttachCatalogueTemplateRepository templateRepository,
         AIServiceFactory aiServiceFactory,
-        IAttachCatalogueManager attachCatalogueManager
+        IAttachCatalogueManager attachCatalogueManager,
+        AttachCataloguePermissionChecker permissionChecker
         ) : AttachmentService, IAttachCatalogueAppService
     {
         private readonly IEfCoreAttachCatalogueRepository CatalogueRepository = catalogueRepository;
@@ -37,6 +38,7 @@ namespace Hx.Abp.Attachment.Application
         private readonly IAttachCatalogueTemplateRepository TemplateRepository = templateRepository;
         private readonly AIServiceFactory AIServiceFactory = aiServiceFactory;
         private readonly IAttachCatalogueManager AttachCatalogueManager = attachCatalogueManager;
+        private readonly AttachCataloguePermissionChecker PermissionChecker = permissionChecker;
         /// <summary>
         /// 创建文件夹
         /// </summary>
@@ -271,20 +273,28 @@ namespace Hx.Abp.Attachment.Application
 
         /// <summary>
         /// 检查用户权限
+        /// 集成ABP vNext权限系统与业务权限的最佳实践实现
+        /// 权限检查优先级：
+        /// 1. ABP系统权限（全局权限）
+        /// 2. 分类特定权限（业务权限：用户权限、角色权限）
+        /// 3. 继承权限（从父分类继承）
         /// </summary>
         /// <param name="id">分类ID</param>
         /// <param name="userId">用户ID</param>
         /// <param name="action">权限操作</param>
-        /// <returns></returns>
+        /// <returns>是否具有权限</returns>
         public virtual async Task<bool> HasPermissionAsync(Guid id, Guid userId, PermissionAction action)
         {
             var catalogue = await CatalogueRepository.GetAsync(id);
             if (catalogue == null)
             {
+                Logger.LogWarning("分类不存在，权限检查失败，分类ID: {CatalogueId}, 用户ID: {UserId}, 操作: {Action}",
+                    id, userId, action);
                 return false;
             }
 
-            return catalogue.HasPermission(userId, action);
+            // 使用权限检查器进行权限检查（集成ABP权限系统）
+            return await PermissionChecker.CheckPermissionAsync(catalogue, action, userId);
         }
 
         /// <summary>

@@ -207,7 +207,7 @@ namespace Hx.Abp.Attachment.Application
         /// <param name="id">分类ID</param>
         /// <param name="permissions">权限列表</param>
         /// <returns></returns>
-        public virtual async Task SetPermissionsAsync(Guid id, List<AttachCatalogueTemplatePermissionDto> permissions)
+        public virtual async Task SetPermissionsAsync(Guid id, List<CreateAttachCatalogueTemplatePermissionDto> permissions)
         {
             var catalogue = await CatalogueRepository.GetAsync(id) ?? throw new UserFriendlyException($"分类不存在: {id}");
 

@@ -7,7 +7,7 @@ namespace OcrTextComposer
     {
         private static readonly Regex _meaninglessRegex = InvalidCharacter();   // 1. 过滤整串无意义字符
 
-        public static string Compose(RecognizeCharacterDto page, double minProbability = 0.8)
+        public static string Compose(RecognizeCharacterDto page, double minProbability = 0)
         {
 #pragma warning disable CS8604 // 引用类型参数可能为 null。
             var blocks = page.Results

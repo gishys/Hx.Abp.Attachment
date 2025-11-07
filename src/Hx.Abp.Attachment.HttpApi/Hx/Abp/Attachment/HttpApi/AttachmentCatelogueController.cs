@@ -134,7 +134,7 @@ namespace Hx.Abp.Attachment.HttpApi
 
         [Route("permissions/set")]
         [HttpPut]
-        public virtual Task SetPermissionsAsync(Guid id, [FromBody] List<AttachCatalogueTemplatePermissionDto> permissions)
+        public virtual Task SetPermissionsAsync(Guid id, [FromBody] List<CreateAttachCatalogueTemplatePermissionDto> permissions)
         {
             return AttachCatalogueAppService.SetPermissionsAsync(id, permissions);
         }

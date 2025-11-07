@@ -48,7 +48,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <param name="id">分类ID</param>
         /// <param name="permissions">权限列表</param>
         /// <returns></returns>
-        Task SetPermissionsAsync(Guid id, List<AttachCatalogueTemplatePermissionDto> permissions);
+        Task SetPermissionsAsync(Guid id, List<CreateAttachCatalogueTemplatePermissionDto> permissions);
 
         /// <summary>
         /// 获取分类权限

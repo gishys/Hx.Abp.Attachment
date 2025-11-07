@@ -213,10 +213,8 @@ namespace Hx.Abp.Attachment.Application
         {
             var catalogue = await CatalogueRepository.GetAsync(id) ?? throw new UserFriendlyException($"分类不存在: {id}");
 
-            // 清空现有权限
-            catalogue.Permissions?.Clear();
+            var permissionEntities = new List<AttachCatalogueTemplatePermission>();
 
-            // 添加新权限
             if (permissions != null)
             {
                 foreach (var permissionDto in permissions)
@@ -231,9 +229,12 @@ namespace Hx.Abp.Attachment.Application
                         permissionDto.ExpirationTime,
                         permissionDto.Description
                     );
-                    catalogue.AddPermission(permission);
+
+                    permissionEntities.Add(permission);
                 }
             }
+
+            catalogue.SetPermissions(permissionEntities);
 
             // 保存到数据库
             await CatalogueRepository.UpdateAsync(catalogue);

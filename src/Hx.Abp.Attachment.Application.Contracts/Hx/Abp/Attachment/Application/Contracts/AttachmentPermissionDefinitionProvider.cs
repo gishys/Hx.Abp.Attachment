@@ -1,6 +1,7 @@
 using Hx.Abp.Attachment.Domain.Shared;
 using Volo.Abp.Authorization.Permissions;
 using Volo.Abp.Localization;
+using Volo.Abp.MultiTenancy;
 
 namespace Hx.Abp.Attachment.Application.Contracts
 {
@@ -12,6 +13,110 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public override void Define(IPermissionDefinitionContext context)
         {
             var attachmentGroup = context.AddGroup(AttachmentPermissions.GroupName, L("Permission:Attachment"));
+
+            // 分类管理权限
+            var cataloguePermission = attachmentGroup.AddPermission(
+                "Attachment.Catalogue",
+                L("Permission:Attachment.Catalogue"),
+                multiTenancySide: MultiTenancySides.Both
+            );
+
+            cataloguePermission.AddChild(
+                "Attachment.Catalogue.View",
+                L("Permission:Attachment.Catalogue.View"),
+                multiTenancySide: MultiTenancySides.Both
+            );
+
+            cataloguePermission.AddChild(
+                "Attachment.Catalogue.Create",
+                L("Permission:Attachment.Catalogue.Create"),
+                multiTenancySide: MultiTenancySides.Both
+            );
+
+            cataloguePermission.AddChild(
+                "Attachment.Catalogue.Edit",
+                L("Permission:Attachment.Catalogue.Edit"),
+                multiTenancySide: MultiTenancySides.Both
+            );
+
+            cataloguePermission.AddChild(
+                "Attachment.Catalogue.Delete",
+                L("Permission:Attachment.Catalogue.Delete"),
+                multiTenancySide: MultiTenancySides.Both
+            );
+
+            cataloguePermission.AddChild(
+                "Attachment.Catalogue.Approve",
+                L("Permission:Attachment.Catalogue.Approve"),
+                multiTenancySide: MultiTenancySides.Both
+            );
+
+            cataloguePermission.AddChild(
+                "Attachment.Catalogue.Publish",
+                L("Permission:Attachment.Catalogue.Publish"),
+                multiTenancySide: MultiTenancySides.Both
+            );
+
+            cataloguePermission.AddChild(
+                "Attachment.Catalogue.Archive",
+                L("Permission:Attachment.Catalogue.Archive"),
+                multiTenancySide: MultiTenancySides.Both
+            );
+
+            cataloguePermission.AddChild(
+                "Attachment.Catalogue.Export",
+                L("Permission:Attachment.Catalogue.Export"),
+                multiTenancySide: MultiTenancySides.Both
+            );
+
+            cataloguePermission.AddChild(
+                "Attachment.Catalogue.Import",
+                L("Permission:Attachment.Catalogue.Import"),
+                multiTenancySide: MultiTenancySides.Both
+            );
+
+            cataloguePermission.AddChild(
+                "Attachment.Catalogue.ManagePermissions",
+                L("Permission:Attachment.Catalogue.ManagePermissions"),
+                multiTenancySide: MultiTenancySides.Both
+            );
+
+            cataloguePermission.AddChild(
+                "Attachment.Catalogue.ManageConfiguration",
+                L("Permission:Attachment.Catalogue.ManageConfiguration"),
+                multiTenancySide: MultiTenancySides.Both
+            );
+
+            cataloguePermission.AddChild(
+                "Attachment.Catalogue.ViewAuditLog",
+                L("Permission:Attachment.Catalogue.ViewAuditLog"),
+                multiTenancySide: MultiTenancySides.Both
+            );
+
+            // 文件管理权限
+            var filePermission = attachmentGroup.AddPermission(
+                "Attachment.File",
+                L("Permission:Attachment.File"),
+                multiTenancySide: MultiTenancySides.Both
+            );
+
+            filePermission.AddChild(
+                "Attachment.File.Upload",
+                L("Permission:Attachment.File.Upload"),
+                multiTenancySide: MultiTenancySides.Both
+            );
+
+            filePermission.AddChild(
+                "Attachment.File.Download",
+                L("Permission:Attachment.File.Download"),
+                multiTenancySide: MultiTenancySides.Both
+            );
+
+            filePermission.AddChild(
+                "Attachment.File.Delete",
+                L("Permission:Attachment.File.Delete"),
+                multiTenancySide: MultiTenancySides.Both
+            );
 
             // 模板管理权限
             var templatePermission = attachmentGroup.AddPermission(AttachmentPermissions.Templates.Default, L("Permission:Templates"));

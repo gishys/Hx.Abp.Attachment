@@ -510,6 +510,29 @@ namespace Hx.Abp.Attachment.Domain
         }
 
         /// <summary>
+        /// 批量替换权限集合
+        /// </summary>
+        /// <param name="permissions">新的权限集合</param>
+        public virtual void SetPermissions(IEnumerable<AttachCatalogueTemplatePermission>? permissions)
+        {
+            if (permissions == null)
+            {
+                Permissions = [];
+                return;
+            }
+
+            var permissionList = new List<AttachCatalogueTemplatePermission>();
+
+            foreach (var permission in permissions)
+            {
+                ValidatePermissionObject(permission);
+                permissionList.Add(permission);
+            }
+
+            Permissions = permissionList;
+        }
+
+        /// <summary>
         /// 验证权限对象格式
         /// </summary>
         private static void ValidatePermissionObject(AttachCatalogueTemplatePermission permission)

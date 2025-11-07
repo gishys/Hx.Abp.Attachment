@@ -131,6 +131,7 @@ namespace Hx.Abp.Attachment.Application
             if (catalogue.TemplateId.HasValue)
             {
                 var hasTemplatePermission = await CheckTemplateInheritedPermissionAsync(
+                    catalogue,
                     catalogue.TemplateId.Value,
                     catalogue.TemplateVersion,
                     userId,
@@ -205,7 +206,27 @@ namespace Hx.Abp.Attachment.Application
                                        userRoles.Contains(p.PermissionTarget))
                             .ToList();
 
-                        if (userInheritedPermissions.Count > 0 || roleInheritedPermissions.Count > 0)
+                        // 检查策略权限
+                        var policyInheritedPermissions = inheritedPermissions
+                            .Where(p => p.PermissionType == "Policy")
+                            .ToList();
+
+                        var matchedPolicyPermissions = new List<AttachCatalogueTemplatePermission>();
+                        if (policyInheritedPermissions.Count > 0)
+                        {
+                            var policyContext = CreatePolicyContext(parentCatalogue, userId, userRoles);
+                            foreach (var policyPermission in policyInheritedPermissions)
+                            {
+                                if (policyPermission.EvaluatePolicyCondition(policyContext))
+                                {
+                                    matchedPolicyPermissions.Add(policyPermission);
+                                }
+                            }
+                        }
+
+                        if (userInheritedPermissions.Count > 0 || 
+                            roleInheritedPermissions.Count > 0 || 
+                            matchedPolicyPermissions.Count > 0)
                         {
                             // 继续向上查找父分类
                             if (parentCatalogue.ParentId.HasValue)
@@ -245,6 +266,7 @@ namespace Hx.Abp.Attachment.Application
         /// 检查模板继承权限
         /// </summary>
         private async Task<bool> CheckTemplateInheritedPermissionAsync(
+            AttachCatalogue catalogue,
             Guid templateId,
             int? templateVersion,
             Guid userId,
@@ -291,8 +313,26 @@ namespace Hx.Abp.Attachment.Application
                                userRoles.Contains(p.PermissionTarget))
                     .ToList();
 
+                // 检查策略权限
+                var policyPermissions = relevantPermissions
+                    .Where(p => p.PermissionType == "Policy")
+                    .ToList();
+
+                var matchedPolicyPermissions = new List<AttachCatalogueTemplatePermission>();
+                if (policyPermissions.Count > 0)
+                {
+                    var policyContext = CreatePolicyContext(catalogue, userId, userRoles);
+                    foreach (var policyPermission in policyPermissions)
+                    {
+                        if (policyPermission.EvaluatePolicyCondition(policyContext))
+                        {
+                            matchedPolicyPermissions.Add(policyPermission);
+                        }
+                    }
+                }
+
                 // 合并所有相关权限
-                var allPermissions = userPermissions.Concat(rolePermissions).ToList();
+                var allPermissions = userPermissions.Concat(rolePermissions).Concat(matchedPolicyPermissions).ToList();
 
                 if (allPermissions.Count == 0)
                 {
@@ -318,6 +358,7 @@ namespace Hx.Abp.Attachment.Application
                     if (template.ParentId.HasValue)
                     {
                         return await CheckTemplateInheritedPermissionAsync(
+                            catalogue,
                             template.ParentId.Value,
                             template.ParentVersion,
                             userId,
@@ -337,7 +378,7 @@ namespace Hx.Abp.Attachment.Application
         }
 
         /// <summary>
-        /// 检查分类特定权限（支持用户角色参数）
+        /// 检查分类特定权限（支持用户角色参数和策略权限）
         /// </summary>
         private bool CheckCataloguePermission(
             AttachCatalogue catalogue,
@@ -377,8 +418,28 @@ namespace Hx.Abp.Attachment.Application
                            p.Effect != PermissionEffect.Inherit) // 排除继承权限
                 .ToList();
 
+            // 检查策略权限
+            var policyPermissions = relevantPermissions
+                .Where(p => p.PermissionType == "Policy" &&
+                           p.Effect != PermissionEffect.Inherit) // 排除继承权限
+                .ToList();
+
+            // 评估策略权限
+            var matchedPolicyPermissions = new List<AttachCatalogueTemplatePermission>();
+            if (policyPermissions.Count > 0)
+            {
+                var policyContext = CreatePolicyContext(catalogue, userId, roles);
+                foreach (var policyPermission in policyPermissions)
+                {
+                    if (policyPermission.EvaluatePolicyCondition(policyContext))
+                    {
+                        matchedPolicyPermissions.Add(policyPermission);
+                    }
+                }
+            }
+
             // 合并所有相关权限
-            var allPermissions = userPermissions.Concat(rolePermissions).ToList();
+            var allPermissions = userPermissions.Concat(rolePermissions).Concat(matchedPolicyPermissions).ToList();
 
             if (allPermissions.Count == 0)
             {
@@ -399,6 +460,36 @@ namespace Hx.Abp.Attachment.Application
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// 创建策略上下文
+        /// </summary>
+        private PolicyConditionEvaluator.PolicyContext CreatePolicyContext(
+            AttachCatalogue catalogue,
+            Guid userId,
+            string[]? userRoles = null)
+        {
+            return new PolicyConditionEvaluator.PolicyContext
+            {
+                UserId = userId,
+                UserRoles = userRoles ?? _currentUser.Roles?.ToArray(),
+                Reference = catalogue.Reference,
+                ReferenceType = catalogue.ReferenceType,
+                CatalogueFacetType = (int?)catalogue.CatalogueFacetType,
+                CataloguePurpose = (int?)catalogue.CataloguePurpose,
+                Path = catalogue.Path,
+                CustomAttributes = new Dictionary<string, object>
+                {
+                    { "CatalogueId", catalogue.Id },
+                    { "CatalogueName", catalogue.CatalogueName },
+                    { "ParentId", catalogue.ParentId ?? Guid.Empty },
+                    { "TemplateId", catalogue.TemplateId ?? Guid.Empty },
+                    { "TemplateVersion", catalogue.TemplateVersion ?? 0 },
+                    { "IsArchived", catalogue.IsArchived },
+                    { "IsStatic", catalogue.IsStatic }
+                }
+            };
         }
 
         /// <summary>

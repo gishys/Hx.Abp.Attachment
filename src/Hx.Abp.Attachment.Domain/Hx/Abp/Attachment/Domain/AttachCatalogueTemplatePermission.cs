@@ -168,6 +168,49 @@ namespace Hx.Abp.Attachment.Domain
         }
 
         /// <summary>
+        /// 评估策略权限条件
+        /// </summary>
+        /// <param name="context">策略上下文</param>
+        /// <returns>是否满足策略条件</returns>
+        public virtual bool EvaluatePolicyCondition(PolicyConditionEvaluator.PolicyContext context)
+        {
+            if (!IsPolicyPermission)
+            {
+                return false; // 不是策略权限，无法评估
+            }
+
+            if (string.IsNullOrWhiteSpace(AttributeConditions))
+            {
+                return true; // 没有条件，默认通过
+            }
+
+            return PolicyConditionEvaluator.Evaluate(AttributeConditions, context);
+        }
+
+        /// <summary>
+        /// 检查策略权限是否匹配
+        /// </summary>
+        /// <param name="policyName">策略名称</param>
+        /// <param name="context">策略上下文</param>
+        /// <returns>是否匹配</returns>
+        public virtual bool MatchesPolicy(string policyName, PolicyConditionEvaluator.PolicyContext context)
+        {
+            if (!IsPolicyPermission)
+            {
+                return false;
+            }
+
+            // 检查策略名称是否匹配
+            if (PermissionTarget != policyName)
+            {
+                return false;
+            }
+
+            // 评估策略条件
+            return EvaluatePolicyCondition(context);
+        }
+
+        /// <summary>
         /// 获取原子值集合 - ValueObject基类要求
         /// </summary>
         /// <returns>原子值集合</returns>

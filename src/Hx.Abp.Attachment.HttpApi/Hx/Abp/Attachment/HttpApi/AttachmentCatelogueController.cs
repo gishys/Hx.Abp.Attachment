@@ -1,6 +1,7 @@
 using Hx.Abp.Attachment.Application.Contracts;
 using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.AspNetCore.Mvc;
+using Volo.Abp.Application.Dtos;
 using Volo.Abp.AspNetCore.Mvc;
 
 namespace Hx.Abp.Attachment.HttpApi
@@ -219,6 +220,7 @@ namespace Hx.Abp.Attachment.HttpApi
         /// 获取分类树形结构（用于树状展示）
         /// 基于行业最佳实践，支持多种查询条件和性能优化
         /// 参考 AttachCatalogueTemplateRepository 的最佳实践，使用路径优化
+        /// 注意：分页是对根节点进行分页，返回的每个根节点包含完整的子树结构
         /// </summary>
         /// <param name="reference">业务引用，null表示查询所有业务</param>
         /// <param name="referenceType">业务类型，null表示查询所有类型</param>
@@ -229,10 +231,12 @@ namespace Hx.Abp.Attachment.HttpApi
         /// <param name="fulltextQuery">全文搜索查询，支持中文分词</param>
         /// <param name="templateId">模板ID过滤，null表示查询所有模板</param>
         /// <param name="templateVersion">模板版本过滤，null表示查询所有版本</param>
-        /// <returns>分类树形结构列表</returns>
+        /// <param name="skipCount">跳过数量，用于分页，默认0</param>
+        /// <param name="maxResultCount">最大返回数量，用于分页，默认不限制</param>
+        /// <returns>分类树形结构分页结果</returns>
         [Route("tree")]
         [HttpGet]
-        public virtual Task<List<AttachCatalogueTreeDto>> GetCataloguesTreeAsync(
+        public virtual Task<PagedResultDto<AttachCatalogueTreeDto>> GetCataloguesTreeAsync(
             [FromQuery] string? reference = null,
             [FromQuery] int? referenceType = null,
             [FromQuery] FacetType? catalogueFacetType = null,
@@ -241,11 +245,14 @@ namespace Hx.Abp.Attachment.HttpApi
             [FromQuery] bool includeFiles = false,
             [FromQuery] string? fulltextQuery = null,
             [FromQuery] Guid? templateId = null,
-            [FromQuery] int? templateVersion = null)
+            [FromQuery] int? templateVersion = null,
+            [FromQuery] int skipCount = 0,
+            [FromQuery] int maxResultCount = int.MaxValue)
         {
             return AttachCatalogueAppService.GetCataloguesTreeAsync(
                 reference, referenceType, catalogueFacetType, cataloguePurpose,
-                includeChildren, includeFiles, fulltextQuery, templateId, templateVersion);
+                includeChildren, includeFiles, fulltextQuery, templateId, templateVersion,
+                skipCount, maxResultCount);
         }
 
         // ============= 智能分类接口 =============
@@ -253,6 +260,10 @@ namespace Hx.Abp.Attachment.HttpApi
         /// <summary>
         /// 智能分类文件上传和推荐
         /// 基于OCR内容进行智能分类推荐，适用于文件自动归类场景
+        /// 如果分类模板中存在动态分面，需要通过dynamicFacetInfoList参数传入动态分面信息数组（如案卷信息）来创建动态分面分类
+        /// 文件与动态分面的映射方式：
+        /// 1. 优先使用文件自身携带的DynamicFacetCatalogueName字段（通过fileFacetMapping从FormData读取）
+        /// 2. 如果没有，则使用dynamicFacetInfoList数组，按文件顺序对应（向后兼容）
         /// </summary>
         /// <param name="catalogueId">分类ID</param>
         /// <param name="prefix">文件前缀</param>
@@ -266,21 +277,62 @@ namespace Hx.Abp.Attachment.HttpApi
             var files = Request.Form.Files;
             var inputs = new List<AttachFileCreateDto>();
             
+            // 从FormData中读取文件与动态分面的映射关系（文件名 -> 动态分面分类名称）
+            Dictionary<string, string>? fileFacetMapping = null;
+            if (Request.Form.ContainsKey("fileFacetMapping"))
+            {
+                var mappingJson = Request.Form["fileFacetMapping"].ToString();
+                if (!string.IsNullOrEmpty(mappingJson))
+                {
+                    fileFacetMapping = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(mappingJson);
+                }
+            }
+            
             foreach (var file in files)
             {
                 using var stream = file.OpenReadStream();
                 using var memoryStream = new MemoryStream();
                 await stream.CopyToAsync(memoryStream);
                 
-                inputs.Add(new AttachFileCreateDto
+                var fileName = file.FileName ?? Guid.NewGuid().ToString();
+                var fileDto = new AttachFileCreateDto
                 {
-                    FileAlias = file.FileName ?? Guid.NewGuid().ToString(),
+                    FileAlias = fileName,
                     DocumentContent = memoryStream.ToArray(),
                     SequenceNumber = null // 让服务层自动分配序号
-                });
+                };
+                
+                // 如果存在文件与动态分面的映射关系，设置文件的动态分面分类名称
+                if (fileFacetMapping != null && fileFacetMapping.TryGetValue(fileName, out var facetCatalogueName))
+                {
+                    fileDto.DynamicFacetCatalogueName = facetCatalogueName;
+                }
+                
+                inputs.Add(fileDto);
             }
 
-            return await AttachCatalogueAppService.CreateFilesWithSmartClassificationAsync(catalogueId, inputs, prefix);
+            // 从FormData中读取dynamicFacetInfoList（JSON字符串，用于向后兼容）
+            List<DynamicFacetInfoDto>? dynamicFacetInfoList = null;
+            if (Request.Form.ContainsKey("dynamicFacetInfoList"))
+            {
+                var jsonString = Request.Form["dynamicFacetInfoList"].ToString();
+                if (!string.IsNullOrEmpty(jsonString))
+                {
+                    dynamicFacetInfoList = System.Text.Json.JsonSerializer.Deserialize<List<DynamicFacetInfoDto>>(jsonString);
+                }
+            }
+            // 如果FormData中没有，尝试从Request Body中读取（兼容直接发送JSON的情况）
+            else if (Request.ContentType?.Contains("application/json") == true)
+            {
+                using var reader = new System.IO.StreamReader(Request.Body);
+                var bodyString = await reader.ReadToEndAsync();
+                if (!string.IsNullOrEmpty(bodyString))
+                {
+                    dynamicFacetInfoList = System.Text.Json.JsonSerializer.Deserialize<List<DynamicFacetInfoDto>>(bodyString);
+                }
+            }
+
+            return await AttachCatalogueAppService.CreateFilesWithSmartClassificationAsync(catalogueId, inputs, prefix, dynamicFacetInfoList);
         }
 
         /// <summary>

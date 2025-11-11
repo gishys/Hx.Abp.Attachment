@@ -1,4 +1,5 @@
 using Hx.Abp.Attachment.Domain.Shared;
+using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 
 namespace Hx.Abp.Attachment.Application.Contracts
@@ -131,6 +132,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// 获取分类树形结构（用于树状展示）
         /// 基于行业最佳实践，支持多种查询条件和性能优化
         /// 参考 AttachCatalogueTemplateRepository 的最佳实践，使用路径优化
+        /// 注意：分页是对根节点进行分页，返回的每个根节点包含完整的子树结构
         /// </summary>
         /// <param name="reference">业务引用，null表示查询所有业务</param>
         /// <param name="referenceType">业务类型，null表示查询所有类型</param>
@@ -141,8 +143,10 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <param name="fulltextQuery">全文搜索查询，支持中文分词</param>
         /// <param name="templateId">模板ID过滤，null表示查询所有模板</param>
         /// <param name="templateVersion">模板版本过滤，null表示查询所有版本</param>
-        /// <returns>分类树形结构列表</returns>
-        Task<List<AttachCatalogueTreeDto>> GetCataloguesTreeAsync(
+        /// <param name="skipCount">跳过数量，用于分页</param>
+        /// <param name="maxResultCount">最大返回数量，用于分页，默认不限制</param>
+        /// <returns>分类树形结构分页结果</returns>
+        Task<PagedResultDto<AttachCatalogueTreeDto>> GetCataloguesTreeAsync(
             string? reference = null,
             int? referenceType = null,
             FacetType? catalogueFacetType = null,
@@ -151,20 +155,26 @@ namespace Hx.Abp.Attachment.Application.Contracts
             bool includeFiles = false,
             string? fulltextQuery = null,
             Guid? templateId = null,
-            int? templateVersion = null);
+            int? templateVersion = null,
+            int skipCount = 0,
+            int maxResultCount = int.MaxValue);
 
         /// <summary>
         /// 智能分类文件上传和推荐
         /// 基于OCR内容进行智能分类推荐，适用于文件自动归类场景
+        /// 如果分类模板中存在动态分面，需要通过dynamicFacetInfoList参数传入动态分面信息数组（如案卷信息）来创建动态分面分类
+        /// dynamicFacetInfoList数组长度应与上传的文件数量一致，每个文件对应一个动态分面信息（如果文件不需要动态分面，对应位置可以为null）
         /// </summary>
         /// <param name="catalogueId">分类ID</param>
         /// <param name="inputs">文件列表</param>
         /// <param name="prefix">文件前缀</param>
+        /// <param name="dynamicFacetInfoList">动态分面信息数组（可选，当模板中存在动态分面时必须提供，数组长度应与文件数量一致）</param>
         /// <returns>智能分类推荐结果列表</returns>
         Task<List<SmartClassificationResultDto>> CreateFilesWithSmartClassificationAsync(
             Guid catalogueId, 
             List<AttachFileCreateDto> inputs, 
-            string? prefix = null);
+            string? prefix = null,
+            List<DynamicFacetInfoDto>? dynamicFacetInfoList = null);
 
         /// <summary>
         /// 确定文件分类

@@ -220,6 +220,8 @@ namespace Hx.Abp.Attachment.Domain
         /// <param name="fulltextQuery">全文搜索查询</param>
         /// <param name="templateId">模板ID过滤</param>
         /// <param name="templateVersion">模板版本过滤</param>
+        /// <param name="skipCount">跳过数量，用于分页</param>
+        /// <param name="maxResultCount">最大返回数量，用于分页</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>分类树形结构列表</returns>
         Task<List<AttachCatalogue>> GetCataloguesTreeAsync(
@@ -229,6 +231,30 @@ namespace Hx.Abp.Attachment.Domain
             TemplatePurpose? cataloguePurpose = null,
             bool includeChildren = true,
             bool includeFiles = false,
+            string? fulltextQuery = null,
+            Guid? templateId = null,
+            int? templateVersion = null,
+            int skipCount = 0,
+            int maxResultCount = int.MaxValue,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 获取分类树形结构的根节点总数（用于分页）
+        /// </summary>
+        /// <param name="reference">业务引用过滤</param>
+        /// <param name="referenceType">业务类型过滤</param>
+        /// <param name="catalogueFacetType">分类分面类型过滤</param>
+        /// <param name="cataloguePurpose">分类用途过滤</param>
+        /// <param name="fulltextQuery">全文搜索查询</param>
+        /// <param name="templateId">模板ID过滤</param>
+        /// <param name="templateVersion">模板版本过滤</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>根节点总数</returns>
+        Task<long> GetCataloguesTreeCountAsync(
+            string? reference = null,
+            int? referenceType = null,
+            FacetType? catalogueFacetType = null,
+            TemplatePurpose? cataloguePurpose = null,
             string? fulltextQuery = null,
             Guid? templateId = null,
             int? templateVersion = null,

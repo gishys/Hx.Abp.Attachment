@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Volo.Abp;
+using Volo.Abp.Application.Dtos;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.DistributedLocking;
@@ -1323,8 +1324,9 @@ namespace Hx.Abp.Attachment.Application
         /// 获取分类树形结构（用于树状展示）
         /// 基于行业最佳实践，支持多种查询条件和性能优化
         /// 参考 AttachCatalogueTemplateRepository 的最佳实践，使用路径优化
+        /// 注意：分页是对根节点进行分页，返回的每个根节点包含完整的子树结构
         /// </summary>
-        public virtual async Task<List<AttachCatalogueTreeDto>> GetCataloguesTreeAsync(
+        public virtual async Task<PagedResultDto<AttachCatalogueTreeDto>> GetCataloguesTreeAsync(
             string? reference = null,
             int? referenceType = null,
             FacetType? catalogueFacetType = null,
@@ -1333,14 +1335,22 @@ namespace Hx.Abp.Attachment.Application
             bool includeFiles = false,
             string? fulltextQuery = null,
             Guid? templateId = null,
-            int? templateVersion = null)
+            int? templateVersion = null,
+            int skipCount = 0,
+            int maxResultCount = int.MaxValue)
         {
             try
             {
-                // 调用仓储方法获取分类树形结构
+                // 先获取根节点总数（用于分页）
+                var totalCount = await CatalogueRepository.GetCataloguesTreeCountAsync(
+                    reference, referenceType, catalogueFacetType, cataloguePurpose,
+                    fulltextQuery, templateId, templateVersion);
+
+                // 调用仓储方法获取分类树形结构（已在仓储层进行分页）
                 var catalogues = await CatalogueRepository.GetCataloguesTreeAsync(
                     reference, referenceType, catalogueFacetType, cataloguePurpose,
-                    includeChildren, includeFiles, fulltextQuery, templateId, templateVersion);
+                    includeChildren, includeFiles, fulltextQuery, templateId, templateVersion,
+                    skipCount, maxResultCount);
 
                 // 转换为树形DTO
                 var treeDtos = new List<AttachCatalogueTreeDto>();
@@ -1350,7 +1360,11 @@ namespace Hx.Abp.Attachment.Application
                     treeDtos.Add(treeDto);
                 }
 
-                return treeDtos;
+                return new PagedResultDto<AttachCatalogueTreeDto>
+                {
+                    TotalCount = totalCount,
+                    Items = treeDtos
+                };
             }
             catch (UserFriendlyException)
             {
@@ -1407,7 +1421,8 @@ namespace Hx.Abp.Attachment.Application
         public virtual async Task<List<SmartClassificationResultDto>> CreateFilesWithSmartClassificationAsync(
             Guid catalogueId,
             List<AttachFileCreateDto> inputs,
-            string? prefix = null)
+            string? prefix = null,
+            List<DynamicFacetInfoDto>? dynamicFacetInfoList = null)
         {
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             var results = new List<SmartClassificationResultDto>();
@@ -1417,30 +1432,198 @@ namespace Hx.Abp.Attachment.Application
                 // 1. 查找分类实体及其所有子实体
                 var catalogue = await CatalogueRepository.GetAsync(catalogueId) ?? throw new UserFriendlyException($"分类不存在: {catalogueId}");
 
-                // 获取所有子分类（叶子节点）
-                var leafCategories = await CatalogueRepository.GetCatalogueWithAllChildrenAsync(catalogueId);
-                // 构建分类选项列表
-                var categoryOptions = leafCategories.Where(c => c.TemplateRole == TemplateRole.Leaf).Select(c => c.CatalogueName).ToList();
-                if (categoryOptions.Count == 0)
+                // 2. 检查模板中的动态分面
+                AttachCatalogueTemplate? dynamicFacetTemplate = null;
+                if (catalogue.TemplateId.HasValue)
                 {
-                    throw new UserFriendlyException("没有找到可用的叶子分类节点");
+                    var template = await TemplateRepository.GetByVersionAsync(catalogue.TemplateId.Value, catalogue.TemplateVersion ?? 1);
+                    if (template != null)
+                    {
+                        // 检查子模板中是否有动态分面
+                        var childTemplates = await TemplateRepository.GetChildrenAsync(template.Id, template.Version);
+                        dynamicFacetTemplate = childTemplates.FirstOrDefault(t => !Domain.Shared.FacetTypePolicies.IsStaticFacet(t.FacetType));
+
+                        if (dynamicFacetTemplate != null)
+                        {
+                            // 存在动态分面，验证dynamicFacetInfoList参数
+                            if (dynamicFacetInfoList == null || dynamicFacetInfoList.Count == 0)
+                            {
+                                throw new UserFriendlyException($"分类模板中存在动态分面（{dynamicFacetTemplate.TemplateName}），必须提供动态分面信息数组（dynamicFacetInfoList），数组长度应与文件数量一致");
+                            }
+                        }
+                    }
                 }
 
-                // 2. 处理序号分配
+                // 3. 预处理：按动态分面信息分组，创建/查找动态分面分类（一个动态分面可以包含多个文件）
+                // 使用字典缓存已创建/查找的动态分面分类，避免重复创建
+                var dynamicFacetCatalogueCache = new Dictionary<string, AttachCatalogue>();
+                
+                if (dynamicFacetTemplate != null && dynamicFacetInfoList != null)
+                {
+                    // 获取所有唯一的动态分面信息（按catalogueName去重）
+                    var uniqueDynamicFacetInfos = dynamicFacetInfoList
+                        .Where(f => f != null)
+                        .GroupBy(f => f!.CatalogueName)
+                        .Select(g => g.First()!)
+                        .ToList();
+
+                    foreach (var dynamicFacetInfo in uniqueDynamicFacetInfos)
+                    {
+                        // 检查是否已存在同名的动态分面分类（在指定父分类下）
+                        var existingDynamicFacetCatalogue = await CatalogueRepository.FindByReferenceAndNameAsync(
+                            catalogue.Reference, 
+                            catalogue.ReferenceType, 
+                            dynamicFacetInfo.CatalogueName);
+
+                        // 验证找到的分类是否在指定的父分类下
+                        if (existingDynamicFacetCatalogue != null && existingDynamicFacetCatalogue.ParentId == catalogueId)
+                        {
+                            // 使用已存在的动态分面分类
+                            dynamicFacetCatalogueCache[dynamicFacetInfo.CatalogueName] = existingDynamicFacetCatalogue;
+                            Logger.LogInformation("使用已存在的动态分面分类: {CatalogueName}, ID: {CatalogueId}", 
+                                existingDynamicFacetCatalogue.CatalogueName, existingDynamicFacetCatalogue.Id);
+                        }
+                        else
+                        {
+                            // 创建新的动态分面分类
+                            var dynamicFacetCatalogueId = GuidGenerator.Create();
+                            var maxSequenceNumber = await CatalogueRepository.GetMaxSequenceNumberByReferenceAsync(
+                                catalogueId, catalogue.Reference, catalogue.ReferenceType);
+                            
+                            // 计算路径
+                            var maxPathAtSameLevel = await CatalogueRepository.GetMaxPathAtSameLevelAsync(parentPath: catalogue.Path);
+                            string dynamicFacetPath;
+                            if (string.IsNullOrEmpty(maxPathAtSameLevel))
+                            {
+                                dynamicFacetPath = AttachCatalogue.AppendPathCode(catalogue.Path, "0000001");
+                            }
+                            else
+                            {
+                                var lastUnitCode = AttachCatalogue.GetLastUnitPathCode(maxPathAtSameLevel);
+                                var nextNumber = Convert.ToInt32(lastUnitCode) + 1;
+                                var nextUnitCode = nextNumber.ToString($"D{AttachmentConstants.PATH_CODE_DIGITS}");
+                                dynamicFacetPath = AttachCatalogue.AppendPathCode(catalogue.Path, nextUnitCode);
+                            }
+
+                            // 创建动态分面分类
+                            var dynamicFacetCatalogue = new AttachCatalogue(
+                                dynamicFacetCatalogueId,
+                                catalogue.AttachReceiveType,
+                                dynamicFacetInfo.CatalogueName,
+                                dynamicFacetInfo.SequenceNumber ?? (maxSequenceNumber + 1),
+                                catalogue.Reference,
+                                catalogue.ReferenceType,
+                                catalogueId, // 父分类ID
+                                false, // IsRequired
+                                false, // IsVerification
+                                false, // VerificationPassed
+                                true,
+                                0, // AttachCount
+                                0, // PageCount
+                                dynamicFacetTemplate.Id, // TemplateId
+                                dynamicFacetTemplate.Version, // TemplateVersion
+                                dynamicFacetTemplate.FacetType, // CatalogueFacetType
+                                dynamicFacetTemplate.TemplatePurpose, // CataloguePurpose
+                                dynamicFacetTemplate.TemplateRole, // TemplateRole
+                                dynamicFacetInfo.Tags, // Tags
+                                null, // TextVector
+                                null, // MetaFields
+                                dynamicFacetPath, // Path
+                                false, // IsArchived
+                                dynamicFacetInfo.Description // Summary
+                            );
+
+                            await CatalogueRepository.InsertAsync(dynamicFacetCatalogue);
+                            
+                            // 确保数据已提交，以便后续查询
+                            if (CurrentUnitOfWork != null)
+                                await CurrentUnitOfWork.SaveChangesAsync();
+                            
+                            dynamicFacetCatalogueCache[dynamicFacetInfo.CatalogueName] = dynamicFacetCatalogue;
+                            
+                            Logger.LogInformation("创建动态分面分类: {CatalogueName}, ID: {CatalogueId}, 父分类ID: {ParentId}", 
+                                dynamicFacetCatalogue.CatalogueName, dynamicFacetCatalogue.Id, catalogueId);
+
+                            // 创建动态分面下的静态分面子分类（如果存在）
+                            var staticFacetChildTemplates = await TemplateRepository.GetChildrenAsync(
+                                dynamicFacetTemplate.Id, dynamicFacetTemplate.Version);
+                            var staticFacetTemplates = staticFacetChildTemplates
+                                .Where(t => Domain.Shared.FacetTypePolicies.IsStaticFacet(t.FacetType))
+                                .ToList();
+
+                            if (staticFacetTemplates.Count != 0)
+                            {
+                                // 递归创建静态分面子分类及其子分类
+                                foreach (var staticFacetTemplate in staticFacetTemplates)
+                                {
+                                    await CreateStaticFacetChildCataloguesAsync(
+                                        staticFacetTemplate,
+                                        dynamicFacetCatalogue,
+                                        catalogue.Reference,
+                                        catalogue.ReferenceType);
+                                }
+                                
+                                // 确保静态分面子分类已提交
+                                if (CurrentUnitOfWork != null)
+                                    await CurrentUnitOfWork.SaveChangesAsync();
+                                
+                                Logger.LogInformation("为动态分面分类创建了 {Count} 个静态分面子分类", staticFacetTemplates.Count);
+                            }
+                        }
+                    }
+                }
+
+                // 4. 处理序号分配（在原始分类下，后续会根据动态分面调整）
                 await ProcessSequenceNumbersAsync(catalogueId, inputs);
 
-                // 3. 处理每个文件
-                foreach (var input in inputs)
+                // 5. 处理每个文件
+                for (int i = 0; i < inputs.Count; i++)
                 {
+                    var input = inputs[i];
                     var result = new SmartClassificationResultDto();
                     var fileStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
                     try
                     {
-                        // 创建文件实体
+                        // 5.1 确定目标分类（可能是动态分面分类）
+                        AttachCatalogue targetCatalogue = catalogue;
+                        
+                        // 优先使用文件自身携带的动态分面分类名称
+                        string? dynamicFacetCatalogueName = input.DynamicFacetCatalogueName;
+                        
+                        // 如果存在动态分面分类名称，从缓存中获取对应的动态分面分类
+                        if (!string.IsNullOrEmpty(dynamicFacetCatalogueName))
+                        {
+                            if (dynamicFacetCatalogueCache.TryGetValue(dynamicFacetCatalogueName, out var cachedCatalogue))
+                            {
+                                targetCatalogue = cachedCatalogue;
+                                Logger.LogInformation("文件 {FileName} 分配到动态分面分类: {CatalogueName}, ID: {CatalogueId}", 
+                                    input.FileAlias, dynamicFacetCatalogueName, cachedCatalogue.Id);
+                            }
+                            else
+                            {
+                                // 如果缓存中没有，可能是动态分面信息未提供，或者分类名称不匹配
+                                if (dynamicFacetTemplate != null)
+                                {
+                                    throw new UserFriendlyException($"文件 {input.FileAlias} 指定的动态分面分类名称 '{dynamicFacetCatalogueName}' 不存在。请确保在 dynamicFacetInfoList 中提供了该动态分面信息。");
+                                }
+                                // 如果没有动态分面模板，忽略此字段
+                            }
+                        }
+
+                        // 4.2 获取所有子分类（叶子节点）- 在目标分类下查找
+                        var leafCategories = await CatalogueRepository.GetCatalogueWithAllChildrenAsync(targetCatalogue.Id);
+                        // 构建分类选项列表
+                        var categoryOptions = leafCategories.Where(c => c.TemplateRole == TemplateRole.Leaf).Select(c => c.CatalogueName).ToList();
+                        if (categoryOptions.Count == 0)
+                        {
+                            throw new UserFriendlyException("没有找到可用的叶子分类节点");
+                        }
+
+                        // 4.3 创建文件实体
                         var attachId = GuidGenerator.Create();
                         var fileName = $"{attachId}{Path.GetExtension(input.FileAlias)}";
-                        var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{catalogue.Reference}/{fileName}";
+                        var fileUrl = $"{AppGlobalProperties.AttachmentBasicPath}/{targetCatalogue.Reference}/{fileName}";
                         var fileExtension = Path.GetExtension(input.FileAlias).ToLowerInvariant();
 
                         var tempFile = new AttachFile(
@@ -1452,10 +1635,10 @@ namespace Hx.Abp.Attachment.Application
                             fileExtension,
                             input.DocumentContent.Length,
                             0,
-                            catalogueId);
+                            targetCatalogue.Id); // 使用目标分类ID（可能是动态分面分类），文件标记为属于该动态分面分类
 
                         // 设置从AttachCatalogue获取的属性
-                        tempFile.SetFromAttachCatalogue(catalogue);
+                        tempFile.SetFromAttachCatalogue(targetCatalogue);
 
                         // 保存文件到Blob存储
                         await BlobContainer.SaveAsync(fileUrl, input.DocumentContent, overrideExisting: true);
@@ -1492,22 +1675,22 @@ namespace Hx.Abp.Attachment.Application
                         // 4. 智能分类推荐
                         ClassificationResult? classificationResult = null;
 
-                        // 检查catalogue本身是否为叶子节点
-                        if (catalogue.TemplateRole == TemplateRole.Leaf)
+                        // 检查targetCatalogue本身是否为叶子节点
+                        if (targetCatalogue.TemplateRole == TemplateRole.Leaf)
                         {
-                            // 如果catalogue本身就是叶子节点，直接推荐该分类
+                            // 如果targetCatalogue本身就是叶子节点，直接推荐该分类
                             result.Classification = new ClassificationExtentResult
                             {
-                                RecommendedCategory = catalogue.CatalogueName,
-                                RecommendedCategoryId = catalogue.Id,
+                                RecommendedCategory = targetCatalogue.CatalogueName,
+                                RecommendedCategoryId = targetCatalogue.Id,
                                 Confidence = 1.0f // 叶子节点直接分类，置信度为1.0
                             };
 
                             // 设置分类ID
-                            tempFile.SetAttachCatalogueId(catalogue.Id);
+                            tempFile.SetAttachCatalogueId(targetCatalogue.Id);
 
                             // 设置从AttachCatalogue获取的属性
-                            tempFile.SetFromAttachCatalogue(catalogue);
+                            tempFile.SetFromAttachCatalogue(targetCatalogue);
 
                             // 标记为已归类
                             tempFile.SetIsCategorized(true);
@@ -1516,7 +1699,7 @@ namespace Hx.Abp.Attachment.Application
                         }
                         else
                         {
-                            // 如果catalogue不是叶子节点，进行智能分类推荐
+                            // 如果targetCatalogue不是叶子节点，进行智能分类推荐
                             if (!string.IsNullOrEmpty(ocrContent) && result.Status != SmartClassificationStatus.OcrFailed)
                             {
                                 try
@@ -1612,6 +1795,96 @@ namespace Hx.Abp.Attachment.Application
             {
                 Logger.LogError(ex, "智能分类文件上传失败");
                 throw new UserFriendlyException($"智能分类文件上传失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 递归创建静态分面子分类及其子分类
+        /// </summary>
+        /// <param name="template">静态分面模板</param>
+        /// <param name="parentCatalogue">父分类（动态分面分类）</param>
+        /// <param name="reference">业务引用</param>
+        /// <param name="referenceType">业务类型</param>
+        private async Task CreateStaticFacetChildCataloguesAsync(
+            AttachCatalogueTemplate template,
+            AttachCatalogue parentCatalogue,
+            string reference,
+            int referenceType)
+        {
+            // 计算序号和路径
+            var maxSequenceNumber = await CatalogueRepository.GetMaxSequenceNumberByReferenceAsync(
+                parentCatalogue.Id, reference, referenceType);
+            var maxPathAtSameLevel = await CatalogueRepository.GetMaxPathAtSameLevelAsync(parentPath: parentCatalogue.Path);
+            string cataloguePath;
+            if (string.IsNullOrEmpty(maxPathAtSameLevel))
+            {
+                cataloguePath = AttachCatalogue.AppendPathCode(parentCatalogue.Path, "0000001");
+            }
+            else
+            {
+                var lastUnitCode = AttachCatalogue.GetLastUnitPathCode(maxPathAtSameLevel);
+                var nextNumber = Convert.ToInt32(lastUnitCode) + 1;
+                var nextUnitCode = nextNumber.ToString($"D{AttachmentConstants.PATH_CODE_DIGITS}");
+                cataloguePath = AttachCatalogue.AppendPathCode(parentCatalogue.Path, nextUnitCode);
+            }
+
+            // 创建静态分面分类
+            var staticFacetCatalogueId = GuidGenerator.Create();
+            var staticFacetCatalogue = new AttachCatalogue(
+                staticFacetCatalogueId,
+                parentCatalogue.AttachReceiveType,
+                template.TemplateName,
+                maxSequenceNumber + 1,
+                reference,
+                referenceType,
+                parentCatalogue.Id, // 父分类ID
+                template.IsRequired,
+                false, // IsVerification
+                false, // VerificationPassed
+                true,
+                0, // AttachCount
+                0, // PageCount
+                template.Id, // TemplateId
+                template.Version, // TemplateVersion
+                template.FacetType, // CatalogueFacetType
+                template.TemplatePurpose, // CataloguePurpose
+                template.TemplateRole, // TemplateRole
+                template.Tags, // Tags
+                template.TextVector, // TextVector
+                template.MetaFields?.ToList(), // MetaFields
+                cataloguePath, // Path
+                false, // IsArchived
+                template.Description // Summary
+            );
+
+            // 复制权限
+            if (template.Permissions != null && template.Permissions.Count > 0)
+            {
+                foreach (var permission in template.Permissions)
+                {
+                    staticFacetCatalogue.AddPermission(permission);
+                }
+            }
+
+            await CatalogueRepository.InsertAsync(staticFacetCatalogue);
+            
+            // 确保数据已提交，以便后续查询
+            if (CurrentUnitOfWork != null)
+                await CurrentUnitOfWork.SaveChangesAsync();
+
+            // 递归创建子分类（只创建静态分面的子分类）
+            var childTemplates = await TemplateRepository.GetChildrenAsync(template.Id, template.Version);
+            var staticFacetChildTemplates = childTemplates
+                .Where(t => Domain.Shared.FacetTypePolicies.IsStaticFacet(t.FacetType))
+                .ToList();
+
+            foreach (var childTemplate in staticFacetChildTemplates)
+            {
+                await CreateStaticFacetChildCataloguesAsync(
+                    childTemplate,
+                    staticFacetCatalogue,
+                    reference,
+                    referenceType);
             }
         }
 

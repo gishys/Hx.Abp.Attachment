@@ -1492,6 +1492,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         /// 获取分类树形结构（用于树状展示）
         /// 基于路径优化，提供高性能的树形查询
         /// 参考 AttachCatalogueTemplateRepository 的最佳实践
+        /// 注意：分页是对根节点进行分页，返回的每个根节点包含完整的子树结构
         /// </summary>
         public async Task<List<AttachCatalogue>> GetCataloguesTreeAsync(
             string? reference = null,
@@ -1503,6 +1504,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             string? fulltextQuery = null,
             Guid? templateId = null,
             int? templateVersion = null,
+            int skipCount = 0,
+            int maxResultCount = int.MaxValue,
             CancellationToken cancellationToken = default)
         {
             try
@@ -1560,22 +1563,51 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                     //baseFilter = await ApplyJsonbFuzzySearch(baseFilter, fulltextQuery);
                 }
 
+                // 根节点过滤条件
+                var rootFilter = baseFilter.Where(c => c.ParentId == null || c.Path == null || c.Path == "");
+
                 if (includeChildren)
                 {
-                    // 使用Path进行高效查询，避免递归Include
-                    // 查询所有匹配条件的分类，然后通过路径构建树形结构
-                    var matchedCatalogues = await baseFilter
-                        .OrderBy(c => c.Path)
-                        .ThenBy(c => c.SequenceNumber)
+                    // 先对根节点进行分页查询
+                    var pagedRootCatalogues = await rootFilter
+                        .OrderBy(c => c.SequenceNumber)
                         .ThenBy(c => c.CreationTime)
+                        .Skip(skipCount)
+                        .Take(maxResultCount)
                         .ToListAsync(cancellationToken);
 
+                    if (pagedRootCatalogues.Count == 0)
+                    {
+                        return [];
+                    }
+
+                    // 获取分页后的根节点的完整子树
+                    // 通过Path前缀查询获取所有子节点
+                    var rootPaths = pagedRootCatalogues
+                        .Where(c => !string.IsNullOrEmpty(c.Path))
+                        .Select(c => c.Path!)
+                        .ToList();
+
+                    var allCatalogues = new List<AttachCatalogue>(pagedRootCatalogues);
+
+                    // 如果有根节点路径，查询所有子节点
+                    if (rootPaths.Count > 0)
+                    {
+                        var childCatalogues = await baseFilter
+                            .Where(c => rootPaths.Any(rootPath => c.Path != null && c.Path.StartsWith(rootPath + ".")))
+                            .OrderBy(c => c.Path)
+                            .ThenBy(c => c.SequenceNumber)
+                            .ThenBy(c => c.CreationTime)
+                            .ToListAsync(cancellationToken);
+
+                        allCatalogues.AddRange(childCatalogues);
+                    }
+
                     // 如果有全文检索条件，需要获取所有相关的父节点和子节点
-                    var allCatalogues = matchedCatalogues;
                     if (!string.IsNullOrWhiteSpace(fulltextQuery))
                     {
                         // 优化方案：使用单次查询获取所有相关节点
-                        allCatalogues = await GetAllNodesFromPathsAsync(matchedCatalogues, cancellationToken);
+                        allCatalogues = await GetAllNodesFromPathsAsync(allCatalogues, cancellationToken);
                     }
 
                     // 通过路径构建树形结构
@@ -1583,11 +1615,12 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 }
                 else
                 {
-                    // 只查询根节点（Path为空或null，或者ParentId为null）
-                    var rootCatalogues = await baseFilter
-                        .Where(c => c.ParentId == null || c.Path == null || c.Path == "")
+                    // 只查询根节点（Path为空或null，或者ParentId为null），并进行分页
+                    var rootCatalogues = await rootFilter
                         .OrderBy(c => c.SequenceNumber)
                         .ThenBy(c => c.CreationTime)
+                        .Skip(skipCount)
+                        .Take(maxResultCount)
                         .ToListAsync(cancellationToken);
 
                     return rootCatalogues;
@@ -1596,6 +1629,79 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             catch (Exception ex)
             {
                 throw new UserFriendlyException($"获取分类树形结构失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 获取分类树形结构的根节点总数（用于分页）
+        /// </summary>
+        public async Task<long> GetCataloguesTreeCountAsync(
+            string? reference = null,
+            int? referenceType = null,
+            FacetType? catalogueFacetType = null,
+            TemplatePurpose? cataloguePurpose = null,
+            string? fulltextQuery = null,
+            Guid? templateId = null,
+            int? templateVersion = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var dbSet = await GetDbSetAsync();
+
+                var likePattern = $"%{fulltextQuery}%";
+                // 基础过滤条件
+                var baseFilter = dbSet.Where(c => !c.IsDeleted);
+
+                // 业务引用过滤
+                if (!string.IsNullOrEmpty(reference))
+                    baseFilter = baseFilter.Where(c => c.Reference == reference);
+
+                // 业务类型过滤
+                if (referenceType.HasValue)
+                    baseFilter = baseFilter.Where(c => c.ReferenceType == referenceType.Value);
+
+                // 分类分面类型过滤
+                if (catalogueFacetType.HasValue)
+                    baseFilter = baseFilter.Where(c => c.CatalogueFacetType == catalogueFacetType.Value);
+
+                // 分类用途过滤
+                if (cataloguePurpose.HasValue)
+                    baseFilter = baseFilter.Where(c => c.CataloguePurpose == cataloguePurpose.Value);
+
+                // 模板ID过滤
+                if (templateId.HasValue)
+                    baseFilter = baseFilter.Where(c => c.TemplateId == templateId.Value);
+
+                // 模板版本过滤
+                if (templateVersion.HasValue)
+                    baseFilter = baseFilter.Where(c => c.TemplateVersion == templateVersion.Value);
+
+                // 全文检索过滤条件
+                if (!string.IsNullOrWhiteSpace(fulltextQuery))
+                {
+                    baseFilter = baseFilter.Where(c =>
+                        c.CatalogueName.Contains(fulltextQuery) ||
+                        (c.FullTextContent != null && c.FullTextContent.Contains(fulltextQuery)) ||
+                        (c.Summary != null && c.Summary.Contains(fulltextQuery)) ||
+                        (c.Tags != null && EF.Functions.JsonExistAny(c.Tags, "$[*] ? (@ like_regex {0})", $"{Regex.Escape(fulltextQuery)}")) ||
+                        (c.MetaFields != null && (
+                            EF.Functions.JsonExistAny(c.MetaFields, "FieldName", likePattern) ||
+                            EF.Functions.JsonExistAny(c.MetaFields, "DefaultValue", likePattern) ||
+                            EF.Functions.JsonExistAny(c.MetaFields, "Tags", likePattern)
+                        ))
+                    );
+                }
+
+                // 根节点过滤条件
+                var rootFilter = baseFilter.Where(c => c.ParentId == null || c.Path == null || c.Path == "");
+
+                // 返回根节点总数
+                return await rootFilter.LongCountAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw new UserFriendlyException($"获取分类树形结构总数失败: {ex.Message}");
             }
         }
 

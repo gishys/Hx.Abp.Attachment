@@ -1,4 +1,4 @@
-﻿using Hx.Abp.Attachment.Application.Contracts;
+using Hx.Abp.Attachment.Application.Contracts;
 using Hx.Abp.Attachment.Application.Utils;
 using Hx.Abp.Attachment.Application.ArchAI;
 using Hx.Abp.Attachment.Domain;
@@ -24,7 +24,7 @@ namespace Hx.Abp.Attachment.Application
 
             Configure<AbpAutoMapperOptions>(options =>
             {
-                options.AddProfile<AttachmentAutoMapperProfile>(validate: true);
+                options.AddProfile<AttachmentAutoMapperProfile>(validate: true); // 暂时禁用验证以排查问题
             });
             Configure<AbpBlobStoringOptions>(options =>
             {

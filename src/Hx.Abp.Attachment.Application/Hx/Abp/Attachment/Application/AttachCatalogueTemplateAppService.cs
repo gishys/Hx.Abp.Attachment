@@ -261,7 +261,7 @@ namespace Hx.Abp.Attachment.Application
                         throw new UserFriendlyException("模板路径格式不正确");
                     }
                 }
-                // 创建实体
+                // 创建实体（构造函数会根据 FacetType 自动计算 IsStatic，传入的 isStatic 参数会被忽略）
                 var templateId = input.Id ?? _guidGenerator.Create();
                 var template = new AttachCatalogueTemplate(
                     templateId: templateId,
@@ -270,7 +270,7 @@ namespace Hx.Abp.Attachment.Application
                     attachReceiveType: input.AttachReceiveType,
                     sequenceNumber: input.SequenceNumber,
                     isRequired: input.IsRequired,
-                    isStatic: input.IsStatic,
+                    isStatic: false, // 此参数会被构造函数根据 FacetType 重新计算，传入任意值即可
                     parentId: input.ParentId,
                     parentVersion: input.ParentVersion,
                     workflowConfig: input.WorkflowConfig,
@@ -409,13 +409,13 @@ namespace Hx.Abp.Attachment.Application
                 {
                     newTemplatePath = template.TemplatePath;
                 }
-                // 更新实体
+                // 更新实体（Update 方法会根据 FacetType 自动计算 IsStatic，传入的 isStatic 参数会被忽略）
                 template.Update(
                     input.Name,
                     input.AttachReceiveType,
                     input.SequenceNumber,
                     input.IsRequired,
-                    input.IsStatic,
+                    false, // 此参数会被 Update 方法根据 FacetType 重新计算，传入任意值即可
                     input.WorkflowConfig,
                     input.FacetType,
                     input.TemplatePurpose,
@@ -703,7 +703,7 @@ namespace Hx.Abp.Attachment.Application
             var allVersions = await _templateRepository.GetTemplateHistoryAsync(baseId);
             var nextVersion = allVersions.Max(t => t.Version) + 1;
 
-            // 创建新版本实体
+            // 创建新版本实体（构造函数会根据 FacetType 自动计算 IsStatic，传入的 isStatic 参数会被忽略）
             var newTemplate = new AttachCatalogueTemplate(
                 templateId: baseTemplate.Id, // 使用 Id 获取模板ID
                 version: nextVersion,
@@ -711,7 +711,7 @@ namespace Hx.Abp.Attachment.Application
                 attachReceiveType: input.AttachReceiveType,
                 sequenceNumber: input.SequenceNumber,
                 isRequired: input.IsRequired,
-                isStatic: input.IsStatic,
+                isStatic: false, // 此参数会被构造函数根据 FacetType 重新计算，传入任意值即可
                 parentId: baseTemplate.ParentId,
                 workflowConfig: input.WorkflowConfig,
                 isLatest: false,
@@ -803,8 +803,26 @@ namespace Hx.Abp.Attachment.Application
         {
             var template = await _templateRepository.GetByVersionAsync(id, version) ?? throw new UserFriendlyException($"未找到模板 {id} 的版本 {version}");
 
-            // 更新模板属性 - 直接通过AutoMapper映射
-            ObjectMapper.Map(input, template);
+            // 使用 Update 方法更新模板（会根据 FacetType 自动计算 IsStatic）
+            template.Update(
+                input.Name,
+                input.AttachReceiveType,
+                input.SequenceNumber,
+                input.IsRequired,
+                false, // 此参数会被 Update 方法根据 FacetType 重新计算，传入任意值即可
+                input.WorkflowConfig,
+                input.FacetType,
+                input.TemplatePurpose,
+                input.TemplateRole,
+                input.Description,
+                input.Tags,
+                input.MetaFields?.Select(mf => new MetaField(
+                    mf.EntityType, mf.FieldKey, mf.FieldName, mf.DataType, mf.IsRequired,
+                    mf.Unit, mf.RegexPattern, mf.Options, mf.Description, mf.DefaultValue,
+                    mf.Order, mf.IsEnabled, mf.Group, mf.ValidationRules, mf.Tags
+                )).ToList(),
+                template.TemplatePath // 保持原有路径
+            );
 
             await _templateRepository.UpdateAsync(template);
             return ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(template);

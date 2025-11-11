@@ -106,6 +106,14 @@ namespace Hx.Abp.Attachment.Domain
             string? customTemplateName = null,
             List<MetaField>? customMetaFields = null)
         {
+            // 动态分面：模板创建实例时不直接创建分类
+            if (!template.IsStatic)
+            {
+                throw new BusinessException("Catalogue:DynamicFacetInstantiationNotAllowed")
+                    .WithData("TemplateId", template.Id)
+                    .WithData("TemplateName", template.TemplateName);
+            }
+
             // 1. 计算正确的 sequenceNumber：基于相同父模板的最大序号+1
             int sequenceNumber = await CalculateNextSequenceNumberAsync(template.Id, template.Version, parentId);
 
@@ -331,6 +339,12 @@ namespace Hx.Abp.Attachment.Domain
 
             foreach (var childTemplate in children)
             {
+                // 动态分面子节点不自动创建，由业务逻辑/人工创建
+                if (!childTemplate.IsStatic)
+                {
+                    continue;
+                }
+
                 var childCatalogue = await CreateCatalogueFromTemplate(
                     childTemplate,
                     parentCatalogue.Id,

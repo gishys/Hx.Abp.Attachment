@@ -64,7 +64,7 @@ namespace Hx.Abp.Attachment.Domain
         public virtual int SequenceNumber { get; private set; }
 
         /// <summary>
-        /// 是否静态
+        /// 是否静态（是否为静态分面类型）
         /// </summary>
         public virtual bool IsStatic { get; private set; }
 
@@ -91,7 +91,7 @@ namespace Hx.Abp.Attachment.Domain
         public virtual ICollection<AttachCatalogueTemplate> Children { get; private set; }
 
         /// <summary>
-        /// 分面类型 - 标识模板的层级和用途
+        /// 分面类型
         /// </summary>
         public virtual FacetType FacetType { get; private set; } = FacetType.General;
 
@@ -159,7 +159,8 @@ namespace Hx.Abp.Attachment.Domain
             AttachReceiveType = attachReceiveType;
             SequenceNumber = sequenceNumber;
             IsRequired = isRequired;
-            IsStatic = isStatic;
+            // 根据分面类型计算静态标识，前端传入值不生效
+            IsStatic = Domain.Shared.FacetTypePolicies.IsStaticFacet(facetType);
             ParentId = parentId;
             ParentVersion = parentVersion;
             WorkflowConfig = workflowConfig;
@@ -197,11 +198,12 @@ namespace Hx.Abp.Attachment.Domain
             AttachReceiveType = attachReceiveType;
             SequenceNumber = sequenceNumber;
             IsRequired = isRequired;
-            IsStatic = isStatic;
             WorkflowConfig = workflowConfig;
             FacetType = facetType;
             TemplatePurpose = templatePurpose;
             TemplateRole = templateRole;
+            // 分面类型变化后同步计算静态标识（由分面计算）
+            IsStatic = Domain.Shared.FacetTypePolicies.IsStaticFacet(facetType);
             
             if (description != null)
             {
@@ -237,6 +239,7 @@ namespace Hx.Abp.Attachment.Domain
         /// <returns>新版本的模板实例</returns>
         public virtual AttachCatalogueTemplate CreateNewVersion(int newVersion, bool isLatest = true)
         {
+            // 构造函数会根据 FacetType 自动计算 IsStatic，传入的 IsStatic 参数会被忽略
             return new AttachCatalogueTemplate(
                 Id, // 使用 Id 获取模板ID
                 newVersion,
@@ -244,7 +247,7 @@ namespace Hx.Abp.Attachment.Domain
                 AttachReceiveType,
                 SequenceNumber,
                 IsRequired,
-                IsStatic,
+                false, // 此参数会被构造函数根据 FacetType 重新计算，传入任意值即可
                 ParentId,
                 ParentVersion,
                 WorkflowConfig,
@@ -323,6 +326,31 @@ namespace Hx.Abp.Attachment.Domain
         public virtual void RemoveTag(string tag)
         {
             Tags?.Remove(tag);
+        }
+
+        /// <summary>
+        /// 设置模板分面标识
+        /// </summary>
+        /// <param name="facetType">分面类型</param>
+        /// <param name="templatePurpose">模板用途</param>
+        public virtual void SetFacetIdentifiers(
+            FacetType facetType,
+            TemplatePurpose templatePurpose)
+        {
+            FacetType = facetType;
+            TemplatePurpose = templatePurpose;
+            // 分面改变时同步计算静态标识
+            IsStatic = Domain.Shared.FacetTypePolicies.IsStaticFacet(facetType);
+        }
+
+        /// <summary>
+        /// 设置静态标识（统一由分面类型推导，不接受外部直接设置）
+        /// </summary>
+        /// <param name="_">忽略的参数，保持方法签名兼容性</param>
+        public virtual void SetIsStatic(bool _)
+        {
+            // 统一由分面类型推导，不接受外部直接设置
+            IsStatic = Domain.Shared.FacetTypePolicies.IsStaticFacet(FacetType);
         }
 
         /// <summary>

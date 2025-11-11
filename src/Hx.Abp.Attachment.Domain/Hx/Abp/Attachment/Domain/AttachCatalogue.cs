@@ -62,7 +62,7 @@ namespace Hx.Abp.Attachment.Domain
         /// </summary>
         public virtual int SequenceNumber { get; private set; }
         /// <summary>
-        /// 静态标识
+        /// 静态标识（从模板创建则不可删除，且不可移动到其他分类）
         /// </summary>
         public virtual bool IsStatic { get; private set; }
 

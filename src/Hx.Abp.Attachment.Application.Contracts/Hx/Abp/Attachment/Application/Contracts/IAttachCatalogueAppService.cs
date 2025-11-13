@@ -234,8 +234,9 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// </summary>
         /// <param name="id">分类ID</param>
         /// <param name="isArchived">归档状态</param>
+        /// <param name="archiveRequiredCataloguesWithoutFiles">如果为true，当归档时，会同时归档该分类及其所有子分类（不管是否有文件）；如果为false，当归档时，如果存在必传但没有文件的分类或子分类，则抛出异常</param>
         /// <returns>更新后的分类信息</returns>
-        Task<AttachCatalogueDto?> SetCatalogueArchivedStatusAsync(Guid id, bool isArchived);
+        Task<AttachCatalogueDto?> SetCatalogueArchivedStatusAsync(Guid id, bool isArchived, bool archiveRequiredCataloguesWithoutFiles = false);
 
         /// <summary>
         /// 设置分类概要信息

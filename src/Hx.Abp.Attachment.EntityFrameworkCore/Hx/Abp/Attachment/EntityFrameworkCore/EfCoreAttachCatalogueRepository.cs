@@ -1895,7 +1895,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         }
 
         /// <summary>
-        /// 批量设置归档状态
+        /// 批量设置归档状态（包括所有子分类）
         /// </summary>
         /// <param name="catalogueIds">分类ID列表</param>
         /// <param name="isArchived">归档状态</param>
@@ -1912,17 +1912,88 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             }
 
             var dbSet = await GetDbSetAsync();
-            var catalogues = await dbSet
+            var query = (await GetQueryableAsync())
+                .Where(c => !c.IsDeleted);
+
+            // 1. 首先获取所有指定的分类
+            var targetCatalogues = await dbSet
                 .Where(c => catalogueIds.Contains(c.Id) && !c.IsDeleted)
                 .ToListAsync(cancellationToken);
 
-            foreach (var catalogue in catalogues)
+            if (targetCatalogues.Count == 0)
+            {
+                return 0;
+            }
+
+            // 2. 收集所有需要更新的分类ID（包括原始分类和所有子分类）
+            var allCatalogueIds = new HashSet<Guid>(catalogueIds);
+            var pathsToQuery = new List<string>();
+            var hasRootNode = false;
+
+            foreach (var targetCatalogue in targetCatalogues)
+            {
+                if (string.IsNullOrEmpty(targetCatalogue.Path))
+                {
+                    // 如果目标分类是根节点（Path为空），标记需要查询所有分类
+                    hasRootNode = true;
+                }
+                else
+                {
+                    // 收集所有需要查询的Path路径
+                    pathsToQuery.Add(targetCatalogue.Path);
+                }
+            }
+
+            // 3. 一次性查询所有子分类
+            List<Guid> childIds = [];
+            
+            if (hasRootNode)
+            {
+                // 如果有根节点，查询所有分类
+                var allChildren = await query
+                    .Where(c => c.Path != null && !catalogueIds.Contains(c.Id))
+                    .Select(c => c.Id)
+                    .ToListAsync(cancellationToken);
+                childIds.AddRange(allChildren);
+            }
+            else if (pathsToQuery.Count > 0)
+            {
+                // 对于每个Path，查询所有以该Path开头的子分类
+                // 由于EF Core对多个Path的OR查询支持有限，我们分别查询然后合并
+                var allChildIdsSet = new HashSet<Guid>();
+                foreach (var path in pathsToQuery)
+                {
+                    var childrenForPath = await query
+                        .Where(c => c.Path != null && 
+                            (c.Path.StartsWith(path) || c.Path == path) && 
+                            !catalogueIds.Contains(c.Id))
+                        .Select(c => c.Id)
+                        .ToListAsync(cancellationToken);
+                    foreach (var childId in childrenForPath)
+                    {
+                        allChildIdsSet.Add(childId);
+                    }
+                }
+                childIds.AddRange(allChildIdsSet);
+            }
+
+            foreach (var childId in childIds)
+            {
+                allCatalogueIds.Add(childId);
+            }
+
+            // 4. 批量更新所有分类（包括子分类）
+            var allCatalogues = await dbSet
+                .Where(c => allCatalogueIds.Contains(c.Id) && !c.IsDeleted)
+                .ToListAsync(cancellationToken);
+
+            foreach (var catalogue in allCatalogues)
             {
                 catalogue.SetIsArchived(isArchived);
             }
 
             await SaveChangesAsync(cancellationToken);
-            return catalogues.Count;
+            return allCatalogues.Count;
         }
     }
 }

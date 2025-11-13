@@ -2339,14 +2339,61 @@ namespace Hx.Abp.Attachment.Application
         /// </summary>
         /// <param name="id">分类ID</param>
         /// <param name="isArchived">归档状态</param>
+        /// <param name="archiveRequiredCataloguesWithoutFiles">如果为true，当归档时，会同时归档该分类及其所有子分类（不管是否有文件）；如果为false，当归档时，如果存在必传但没有文件的分类或子分类，则抛出异常</param>
         /// <returns>更新后的分类信息</returns>
-        public virtual async Task<AttachCatalogueDto?> SetCatalogueArchivedStatusAsync(Guid id, bool isArchived)
+        public virtual async Task<AttachCatalogueDto?> SetCatalogueArchivedStatusAsync(Guid id, bool isArchived, bool archiveRequiredCataloguesWithoutFiles = false)
         {
             try
             {
                 var catalogue = await CatalogueRepository.GetAsync(id) ?? throw new UserFriendlyException($"分类不存在: {id}");
-                catalogue.SetIsArchived(isArchived);
-                await CatalogueRepository.UpdateAsync(catalogue);
+
+                // 只有在归档操作时才进行验证和处理
+                if (isArchived)
+                {
+                    // 获取该分类及其所有子分类
+                    var allCatalogues = await CatalogueRepository.GetCatalogueWithAllChildrenAsync(id);
+                    
+                    // 找出所有必传但没有文件的分类（包括当前分类）
+                    var requiredCataloguesWithoutFiles = allCatalogues
+                        .Where(c => c.IsRequired && c.AttachCount == 0 && !c.IsArchived)
+                        .ToList();
+
+                    if (archiveRequiredCataloguesWithoutFiles)
+                    {
+                        // 如果标记为true，归档所有的分类及子分类，不管分类中是否传入了文件
+                        Logger.LogInformation("归档模式：将归档分类及其所有子分类，Id: {Id}, 子分类数量: {Count}", id, allCatalogues.Count - 1);
+                        
+                        // 归档所有未归档的分类（包括当前分类和所有子分类）
+                        foreach (var cat in allCatalogues.Where(c => !c.IsArchived))
+                        {
+                            cat.SetIsArchived(true);
+                            await CatalogueRepository.UpdateAsync(cat);
+                            Logger.LogInformation("归档分类，Id: {Id}, CatalogueName: {CatalogueName}, IsRequired: {IsRequired}, AttachCount: {AttachCount}", 
+                                cat.Id, cat.CatalogueName, cat.IsRequired, cat.AttachCount);
+                        }
+                    }
+                    else
+                    {
+                        // 如果标记为false，分类或子分类中，如果存在必须传入文件的分类（IsRequired），但是没传文件情况，则抛出异常
+                        if (requiredCataloguesWithoutFiles.Count != 0)
+                        {
+                            var catalogueNames = string.Join("、", requiredCataloguesWithoutFiles.Select(c => c.CatalogueName));
+                            var errorMessage = $"无法归档：存在必传但没有文件的分类: {catalogueNames}。如需强制归档，请设置 archiveRequiredCataloguesWithoutFiles=true";
+                            Logger.LogWarning("归档失败，Id: {Id}, 原因: {Reason}", id, errorMessage);
+                            throw new UserFriendlyException(errorMessage);
+                        }
+                        
+                        // 验证通过，归档当前分类
+                        catalogue.SetIsArchived(true);
+                        await CatalogueRepository.UpdateAsync(catalogue);
+                    }
+                }
+                else
+                {
+                    // 取消归档操作，直接设置
+                    catalogue.SetIsArchived(false);
+                    await CatalogueRepository.UpdateAsync(catalogue);
+                }
 
                 var catalogueDto = new AttachCatalogueDto
                 {
@@ -2385,7 +2432,8 @@ namespace Hx.Abp.Attachment.Application
                     DeletionTime = catalogue.DeletionTime
                 };
 
-                Logger.LogInformation("设置分类归档状态成功，Id: {Id}, IsArchived: {IsArchived}", id, isArchived);
+                Logger.LogInformation("设置分类归档状态成功，Id: {Id}, IsArchived: {IsArchived}, ArchiveRequiredCataloguesWithoutFiles: {ArchiveRequiredCataloguesWithoutFiles}", 
+                    id, isArchived, archiveRequiredCataloguesWithoutFiles);
                 return catalogueDto;
             }
             catch (UserFriendlyException)
@@ -2394,7 +2442,8 @@ namespace Hx.Abp.Attachment.Application
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "设置分类归档状态失败，Id: {Id}, IsArchived: {IsArchived}", id, isArchived);
+                Logger.LogError(ex, "设置分类归档状态失败，Id: {Id}, IsArchived: {IsArchived}, ArchiveRequiredCataloguesWithoutFiles: {ArchiveRequiredCataloguesWithoutFiles}", 
+                    id, isArchived, archiveRequiredCataloguesWithoutFiles);
                 throw new UserFriendlyException($"设置分类归档状态失败: {ex.Message}");
             }
         }

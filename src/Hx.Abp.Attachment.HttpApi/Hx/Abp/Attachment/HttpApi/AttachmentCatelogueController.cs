@@ -438,14 +438,16 @@ namespace Hx.Abp.Attachment.HttpApi
         /// </summary>
         /// <param name="id">分类ID</param>
         /// <param name="isArchived">归档状态</param>
+        /// <param name="archiveRequiredCataloguesWithoutFiles">如果为true，当归档时，会同时归档该分类及其所有子分类（不管是否有文件）；如果为false，当归档时，如果存在必传但没有文件的分类或子分类，则抛出异常</param>
         /// <returns>更新后的分类信息</returns>
         [Route("archive/set")]
         [HttpPut]
         public virtual Task<AttachCatalogueDto?> SetCatalogueArchivedStatusAsync(
             [FromQuery] Guid id, 
-            [FromQuery] bool isArchived)
+            [FromQuery] bool isArchived,
+            [FromQuery] bool archiveRequiredCataloguesWithoutFiles = false)
         {
-            return AttachCatalogueAppService.SetCatalogueArchivedStatusAsync(id, isArchived);
+            return AttachCatalogueAppService.SetCatalogueArchivedStatusAsync(id, isArchived, archiveRequiredCataloguesWithoutFiles);
         }
 
         /// <summary>

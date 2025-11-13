@@ -1377,6 +1377,90 @@ namespace Hx.Abp.Attachment.Application
         }
 
         /// <summary>
+        /// 根据分类ID获取分类及其所有子分类的树形结构
+        /// 返回树状结构，并标记每个分类是否已上传文件（通过AttachCount > 0判断，HasFiles属性）
+        /// </summary>
+        /// <param name="catalogueId">分类ID</param>
+        /// <param name="includeFiles">是否包含附件文件详情，默认false</param>
+        /// <returns>分类树形结构</returns>
+        public virtual async Task<AttachCatalogueTreeDto> GetCatalogueTreeByIdAsync(Guid catalogueId, bool includeFiles = false)
+        {
+            try
+            {
+                // 1. 获取分类及其所有子分类（平铺列表）
+                var allCatalogues = await CatalogueRepository.GetCatalogueWithAllChildrenAsync(catalogueId);
+                
+                if (allCatalogues.Count == 0)
+                {
+                    throw new UserFriendlyException($"分类不存在: {catalogueId}");
+                }
+
+                // 2. 找到根分类（指定的分类）
+                var rootCatalogue = allCatalogues.FirstOrDefault(c => c.Id == catalogueId) ?? throw new UserFriendlyException($"分类不存在: {catalogueId}");
+
+                // 3. 构建树形结构（复用仓储层的逻辑）
+                var rootCatalogueWithTree = BuildTreeFromFlatList(allCatalogues, rootCatalogue);
+
+                // 4. 转换为树形DTO（复用现有的转换逻辑）
+                var treeDto = await ConvertToTreeDtoAsync(rootCatalogueWithTree, includeFiles);
+
+                Logger.LogInformation("获取分类树形结构成功，分类ID: {CatalogueId}, 分类名称: {CatalogueName}, 子分类数量: {ChildrenCount}", 
+                    catalogueId, rootCatalogue.CatalogueName, allCatalogues.Count - 1);
+
+                return treeDto;
+            }
+            catch (UserFriendlyException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "获取分类树形结构失败，分类ID: {CatalogueId}", catalogueId);
+                throw new UserFriendlyException($"获取分类树形结构失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 从平铺列表构建树形结构（复用仓储层的逻辑）
+        /// </summary>
+        private static AttachCatalogue BuildTreeFromFlatList(List<AttachCatalogue> allCatalogues, AttachCatalogue rootCatalogue)
+        {
+            // 创建分类字典，便于快速查找
+            var catalogueDict = allCatalogues.ToDictionary(c => c.Id, c => c);
+            
+            // 为每个分类清空子节点集合（如果已初始化）
+            foreach (var catalogue in allCatalogues)
+            {
+                catalogue.Children?.Clear();
+            }
+
+            // 构建父子关系
+            foreach (var catalogue in allCatalogues)
+            {
+                if (catalogue.ParentId.HasValue && catalogueDict.TryGetValue(catalogue.ParentId.Value, out var parent))
+                {
+                    parent.Children?.Add(catalogue);
+                }
+            }
+
+            // 对每个节点的子节点进行排序
+            foreach (var catalogue in allCatalogues)
+            {
+                if (catalogue.Children?.Count > 0)
+                {
+                    var sortedChildren = catalogue.Children.OrderBy(c => c.SequenceNumber).ThenBy(c => c.CreationTime).ToList();
+                    catalogue.Children.Clear();
+                    foreach (var child in sortedChildren)
+                    {
+                        catalogue.Children.Add(child);
+                    }
+                }
+            }
+
+            return rootCatalogue;
+        }
+
+        /// <summary>
         /// 将分类实体转换为树形DTO
         /// 基于行业最佳实践，递归转换并保持树形结构
         /// </summary>

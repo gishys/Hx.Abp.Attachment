@@ -160,6 +160,15 @@ namespace Hx.Abp.Attachment.Application.Contracts
             int maxResultCount = int.MaxValue);
 
         /// <summary>
+        /// 根据分类ID获取分类及其所有子分类的树形结构
+        /// 返回树状结构，并标记每个分类是否已上传文件
+        /// </summary>
+        /// <param name="catalogueId">分类ID</param>
+        /// <param name="includeFiles">是否包含附件文件详情，默认false</param>
+        /// <returns>分类树形结构</returns>
+        Task<AttachCatalogueTreeDto> GetCatalogueTreeByIdAsync(Guid catalogueId, bool includeFiles = false);
+
+        /// <summary>
         /// 智能分类文件上传和推荐
         /// 基于OCR内容进行智能分类推荐，适用于文件自动归类场景
         /// 如果分类模板中存在动态分面，需要通过dynamicFacetInfoList参数传入动态分面信息数组（如案卷信息）来创建动态分面分类

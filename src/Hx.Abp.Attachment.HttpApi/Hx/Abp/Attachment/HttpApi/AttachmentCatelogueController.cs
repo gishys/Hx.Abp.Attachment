@@ -255,6 +255,22 @@ namespace Hx.Abp.Attachment.HttpApi
                 skipCount, maxResultCount);
         }
 
+        /// <summary>
+        /// 根据分类ID获取分类及其所有子分类的树形结构
+        /// 返回树状结构，并标记每个分类是否已上传文件（通过HasFiles属性）
+        /// </summary>
+        /// <param name="catalogueId">分类ID</param>
+        /// <param name="includeFiles">是否包含附件文件详情，默认false</param>
+        /// <returns>分类树形结构</returns>
+        [Route("tree/{catalogueId}")]
+        [HttpGet]
+        public virtual Task<AttachCatalogueTreeDto> GetCatalogueTreeByIdAsync(
+            [FromRoute] Guid catalogueId,
+            [FromQuery] bool includeFiles = false)
+        {
+            return AttachCatalogueAppService.GetCatalogueTreeByIdAsync(catalogueId, includeFiles);
+        }
+
         // ============= 智能分类接口 =============
 
         /// <summary>

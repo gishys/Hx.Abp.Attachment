@@ -57,6 +57,11 @@ namespace Hx.Abp.Attachment.Application.Contracts
         public int AttachCount { get; set; }
 
         /// <summary>
+        /// 是否已上传文件（基于AttachCount判断）
+        /// </summary>
+        public bool HasFiles => AttachCount > 0;
+
+        /// <summary>
         /// 页数
         /// </summary>
         public int PageCount { get; set; }

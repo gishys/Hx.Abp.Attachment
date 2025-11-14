@@ -55,6 +55,12 @@ namespace Hx.Abp.Attachment.Application
             // 元数据字段映射
             CreateMap<MetaField, MetaFieldDto>(MemberList.Destination);
             CreateMap<CreateUpdateMetaFieldDto, MetaField>(MemberList.Source);
+            
+            // 预设元数据内容映射
+            CreateMap<MetaFieldPreset, MetaFieldPresetDto>(MemberList.Destination)
+                .ForMember(dest => dest.MetaFields, opt => opt.MapFrom(src => src.MetaFields));
+            //CreateMap<CreateUpdateMetaFieldPresetDto, MetaFieldPreset>(MemberList.Source)
+            //    .ForAllOtherMembers(opt => opt.Ignore()); // 所有属性都在应用服务中手动处理，不使用 AutoMapper 映射
         }
     }
 }

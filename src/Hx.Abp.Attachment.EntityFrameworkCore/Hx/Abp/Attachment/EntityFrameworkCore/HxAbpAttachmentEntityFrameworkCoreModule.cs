@@ -16,6 +16,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             {
                 options.AddRepository<AttachCatalogue, EfCoreAttachCatalogueRepository>();
                 options.AddRepository<AttachFile, EfCoreAttachFileRepository>();
+                options.AddRepository<MetaFieldPreset, EfCoreMetaFieldPresetRepository>();
 
                 options.AddDefaultRepositories(includeAllEntities: true);
 

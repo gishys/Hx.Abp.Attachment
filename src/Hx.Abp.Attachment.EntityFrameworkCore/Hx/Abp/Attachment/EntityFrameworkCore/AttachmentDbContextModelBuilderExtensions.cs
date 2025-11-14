@@ -1,8 +1,6 @@
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore;
 using Volo.Abp;
-using Hx.Abp.Attachment.Domain;
-using Hx.Abp.Attachment.EntityFrameworkCore;
 
 namespace Hx.Abp.Attachment.EntityFrameworkCore
 {
@@ -14,6 +12,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.ApplyConfigurationsFromAssembly(typeof(AttachCatalogueEntityTypeConfiguration).Assembly);
             builder.ApplyConfigurationsFromAssembly(typeof(AttachFileEntityTypeConfiguration).Assembly);
             builder.ApplyConfigurationsFromAssembly(typeof(OcrTextBlockEntityTypeConfiguration).Assembly);
+            builder.ApplyConfigurationsFromAssembly(typeof(MetaFieldPresetEntityTypeConfiguration).Assembly);
+            builder.ApplyConfigurationsFromAssembly(typeof(AttachCatalogueTemplateEntityTypeConfiguration).Assembly);
         }
     }
 }

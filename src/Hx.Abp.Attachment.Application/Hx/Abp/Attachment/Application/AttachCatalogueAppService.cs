@@ -2243,7 +2243,7 @@ namespace Hx.Abp.Attachment.Application
                 var categoryOptions = leafCategories.Where(c => c.TemplateRole == TemplateRole.Leaf).Select(c => c.CatalogueName).ToList();
                 if (categoryOptions.Count == 0)
                 {
-                    throw new UserFriendlyException("没有找到可用的叶子分类节点");
+                    return [];
                 }
 
                 // 查询未归档的文件

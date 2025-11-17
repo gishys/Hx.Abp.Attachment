@@ -2,6 +2,8 @@ using Hx.Abp.Attachment.Application.Contracts;
 using Hx.Abp.Attachment.Domain;
 using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.Extensions.Logging;
+using System.IO.Compression;
+using System.Text;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
@@ -1456,5 +1458,154 @@ namespace Hx.Abp.Attachment.Application
         }
 
         #endregion
+
+        /// <summary>
+        /// 下载模板结构为压缩包
+        /// </summary>
+        public async Task<byte[]> DownloadTemplateStructureAsZipAsync(Guid id)
+        {
+            try
+            {
+                _logger.LogInformation("开始下载模板结构为压缩包：模板ID={id}", id);
+
+                // 获取模板（最新版本，包含树形结构）
+                var template = await _templateRepository.GetLatestVersionAsync(id, false)
+                    ?? throw new UserFriendlyException($"未找到模板 {id}");
+
+                // 构建模板树形结构
+                var templateDto = ObjectMapper.Map<AttachCatalogueTemplate, AttachCatalogueTemplateDto>(template);
+                await BuildTemplateTreeByPath(templateDto, template);
+
+                // 创建 ZIP 压缩包
+                using var memoryStream = new MemoryStream();
+                using (var archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, true))
+                {
+                    // 递归添加模板到压缩包
+                    await AddTemplateToZipAsync(archive, templateDto, string.Empty);
+                }
+
+                var zipBytes = memoryStream.ToArray();
+                _logger.LogInformation("下载模板结构为压缩包完成：模板ID={id}，压缩包大小={size}字节", id, zipBytes.Length);
+
+                return zipBytes;
+            }
+            catch (UserFriendlyException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "下载模板结构为压缩包失败：模板ID={id}", id);
+                throw new UserFriendlyException($"下载模板结构失败：{ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 递归添加模板到 ZIP 压缩包
+        /// </summary>
+        private static async Task AddTemplateToZipAsync(ZipArchive archive, AttachCatalogueTemplateDto template, string parentPath)
+        {
+            // 构建文件夹名称
+            var folderName = template.Name;
+            
+            // 如果是动态分面（非静态），在名称后添加标记
+            if (!template.IsStatic)
+            {
+                folderName = $"{folderName}(动态分类)";
+            }
+
+            // 清理文件夹名称，移除不允许的字符
+            folderName = SanitizeFileName(folderName);
+
+            // 构建当前路径
+            var currentPath = string.IsNullOrEmpty(parentPath) 
+                ? folderName 
+                : $"{parentPath}/{folderName}";
+
+            // 创建文件夹条目（在 ZIP 中，文件夹以 / 结尾）
+            var folderEntry = archive.CreateEntry($"{currentPath}/");
+            
+            // 创建模板信息文件
+            var infoEntry = archive.CreateEntry($"{currentPath}/模板信息.txt");
+            using (var entryStream = infoEntry.Open())
+            using (var writer = new StreamWriter(entryStream, Encoding.UTF8))
+            {
+                await writer.WriteLineAsync($"模板名称：{template.Name}");
+                await writer.WriteLineAsync($"模板ID：{template.Id}");
+                await writer.WriteLineAsync($"版本号：{template.Version}");
+                await writer.WriteLineAsync($"是否最新版本：{(template.IsLatest ? "是" : "否")}");
+                await writer.WriteLineAsync($"分面类型：{template.FacetType}");
+                await writer.WriteLineAsync($"模板用途：{template.TemplatePurpose}");
+                await writer.WriteLineAsync($"是否静态：{(template.IsStatic ? "是" : "否（动态分类）")}");
+                await writer.WriteLineAsync($"模板角色：{template.TemplateRole}");
+                await writer.WriteLineAsync($"顺序号：{template.SequenceNumber}");
+                await writer.WriteLineAsync($"是否必收：{(template.IsRequired ? "是" : "否")}");
+                
+                if (!string.IsNullOrEmpty(template.Description))
+                {
+                    await writer.WriteLineAsync($"描述：{template.Description}");
+                }
+
+                if (template.Tags != null && template.Tags.Count > 0)
+                {
+                    await writer.WriteLineAsync($"标签：{string.Join(", ", template.Tags)}");
+                }
+
+                if (!string.IsNullOrEmpty(template.TemplatePath))
+                {
+                    await writer.WriteLineAsync($"模板路径：{template.TemplatePath}");
+                }
+
+                if (template.MetaFields != null && template.MetaFields.Count > 0)
+                {
+                    await writer.WriteLineAsync();
+                    await writer.WriteLineAsync("元数据字段：");
+                    foreach (var metaField in template.MetaFields.OrderBy(m => m.Order))
+                    {
+                        await writer.WriteLineAsync($"  - {metaField.FieldName} ({metaField.FieldKey}): {metaField.DataType}" +
+                            $"{(metaField.IsRequired ? " [必填]" : "")}" +
+                            $"{(metaField.IsEnabled ? "" : " [已禁用]")}");
+                    }
+                }
+            }
+
+            // 递归处理子模板
+            if (template.Children != null && template.Children.Count > 0)
+            {
+                foreach (var child in template.Children.OrderBy(c => c.SequenceNumber))
+                {
+                    await AddTemplateToZipAsync(archive, child, currentPath);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 清理文件名，移除不允许的字符
+        /// </summary>
+        private static string SanitizeFileName(string fileName)
+        {
+            if (string.IsNullOrEmpty(fileName))
+                return "未命名";
+
+            // Windows 和 ZIP 不允许的字符
+            var invalidChars = Path.GetInvalidFileNameChars().Concat([':', '*', '?', '"', '<', '>', '|']).ToArray();
+            var sanitized = fileName;
+
+            foreach (var c in invalidChars)
+            {
+                sanitized = sanitized.Replace(c, '_');
+            }
+
+            // 移除前后空格和点
+            sanitized = sanitized.Trim(' ', '.');
+
+            // 如果清理后为空，使用默认名称
+            if (string.IsNullOrEmpty(sanitized))
+            {
+                sanitized = "未命名";
+            }
+
+            return sanitized;
+        }
     }
 }

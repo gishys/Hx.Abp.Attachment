@@ -105,5 +105,12 @@ namespace Hx.Abp.Attachment.Application.Contracts
         Task UpdateMetaFieldsOrderAsync(Guid id, List<string> fieldKeys);
 
         #endregion
+
+        /// <summary>
+        /// 下载模板结构为压缩包
+        /// </summary>
+        /// <param name="id">模板ID</param>
+        /// <returns>压缩包的字节数组</returns>
+        Task<byte[]> DownloadTemplateStructureAsZipAsync(Guid id);
     }
 }

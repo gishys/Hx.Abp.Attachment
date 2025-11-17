@@ -2,13 +2,14 @@ using Hx.Abp.Attachment.Application.Contracts;
 using Hx.Abp.Attachment.Domain.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp;
+using Volo.Abp.AspNetCore.Mvc;
 using Volo.Abp.Application.Dtos;
 
 namespace Hx.Abp.Attachment.HttpApi
 {
     [RemoteService]
     [Route("api/attach-catalogue-template")]
-    public class AttachCatalogueTemplateController(IAttachCatalogueTemplateAppService attachCatalogueTemplateAppService)
+    public class AttachCatalogueTemplateController(IAttachCatalogueTemplateAppService attachCatalogueTemplateAppService) : AbpControllerBase
     {
         private readonly IAttachCatalogueTemplateAppService _attachCatalogueTemplateAppService = attachCatalogueTemplateAppService;
 
@@ -405,6 +406,44 @@ namespace Hx.Abp.Attachment.HttpApi
             [FromQuery] bool onlyLatest = true)
         {
             return AttachCatalogueTemplateAppService.GetTemplatesByPathRangeAsync(startPath, endPath, onlyLatest);
+        }
+
+        /// <summary>
+        /// 下载模板结构为压缩包
+        /// </summary>
+        /// <param name="id">模板ID</param>
+        /// <returns>ZIP压缩包文件</returns>
+        [HttpGet("{id}/download-structure")]
+        public virtual async Task<IActionResult> DownloadTemplateStructureAsync(Guid id)
+        {
+            var zipBytes = await AttachCatalogueTemplateAppService.DownloadTemplateStructureAsZipAsync(id);
+            
+            // 获取模板名称用于文件名
+            var template = await AttachCatalogueTemplateAppService.GetAsync(id, false, false);
+            var fileName = $"{SanitizeFileName(template.Name)}_模板结构_{DateTime.Now:yyyyMMddHHmmss}.zip";
+            
+            return File(zipBytes, "application/zip", fileName);
+        }
+
+        /// <summary>
+        /// 清理文件名，移除不允许的字符
+        /// </summary>
+        private static string SanitizeFileName(string fileName)
+        {
+            if (string.IsNullOrEmpty(fileName))
+                return "未命名";
+
+            var invalidChars = System.IO.Path.GetInvalidFileNameChars();
+            var sanitized = fileName;
+
+            foreach (var c in invalidChars)
+            {
+                sanitized = sanitized.Replace(c, '_');
+            }
+
+            sanitized = sanitized.Trim(' ', '.');
+
+            return string.IsNullOrEmpty(sanitized) ? "未命名" : sanitized;
         }
     }
 }

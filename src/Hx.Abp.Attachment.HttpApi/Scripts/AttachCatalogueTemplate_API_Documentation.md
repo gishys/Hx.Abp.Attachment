@@ -3683,10 +3683,469 @@ const getTemplateStructure = async (id, includeHistory = false) => {
 -   **Branch**: 分类文件夹、组织架构中间层、知识库分类等
 -   **Leaf**: 具体文档分类、文件存储目录、内容分类等
 
+### 19. 下载模板结构为压缩包接口
+
+#### 接口信息
+
+-   **接口路径**: `GET /api/attach-catalogue-template/{id}/download-structure`
+-   **接口描述**: 下载指定模板的完整结构为 ZIP 压缩包，包含所有子模板的目录结构和详细信息
+-   **请求方式**: GET
+-   **响应类型**: application/zip (文件下载)
+
+#### 请求参数
+
+**路径参数**:
+
+| 参数名 | 类型 | 必填 | 描述    | 示例值                                 |
+| ------ | ---- | ---- | ------- | -------------------------------------- |
+| id     | Guid | 是   | 模板 ID | "3fa85f64-5717-4562-b3fc-2c963f66afa6" |
+
+#### 响应说明
+
+-   **Content-Type**: `application/zip`
+-   **Content-Disposition**: `attachment; filename="{模板名称}_模板结构_{时间戳}.zip"`
+-   **响应体**: ZIP 压缩包文件流
+
+**压缩包内容结构**:
+
+```
+{模板名称}/
+├── 模板信息.txt          # 根模板的详细信息
+├── {子模板1名称}/
+│   ├── 模板信息.txt      # 子模板1的详细信息
+│   └── {子子模板名称}/
+│       └── 模板信息.txt  # 子子模板的详细信息
+└── {子模板2名称}(动态分类)/  # 动态分面模板会添加标记
+    └── 模板信息.txt
+```
+
+**模板信息.txt 文件内容**:
+
+```
+模板名称：{模板名称}
+模板ID：{模板ID}
+版本号：{版本号}
+是否最新版本：{是/否}
+分面类型：{分面类型}
+模板用途：{模板用途}
+是否静态：{是/否（动态分类）}
+模板角色：{模板角色}
+顺序号：{顺序号}
+是否必收：{是/否}
+描述：{描述}
+标签：{标签1, 标签2, ...}
+模板路径：{模板路径}
+
+元数据字段：
+  - {字段名称} ({字段键名}): {数据类型} [必填] [已禁用]
+  ...
+```
+
+**特殊说明**:
+
+-   动态分面模板（`IsStatic = false`）的文件夹名称会添加 `(动态分类)` 标记
+-   所有文件夹和文件名会自动清理不允许的字符
+-   子模板按照 `SequenceNumber` 排序
+-   元数据字段按照 `Order` 排序
+
+#### 状态码
+
+-   `200 OK`: 下载成功，返回 ZIP 文件
+-   `404 Not Found`: 模板不存在
+-   `400 Bad Request`: 请求参数错误
+-   `500 Internal Server Error`: 服务器内部错误
+
+#### React Axios 调用示例
+
+**方式一：使用 axios 下载文件（推荐）**
+
+```javascript
+import axios from 'axios';
+
+/**
+ * 下载模板结构为压缩包
+ * @param {string} templateId - 模板ID
+ * @param {string} token - 认证令牌
+ * @returns {Promise<void>}
+ */
+const downloadTemplateStructure = async (templateId, token) => {
+    try {
+        const response = await axios.get(
+            `/api/attach-catalogue-template/${templateId}/download-structure`,
+            {
+                responseType: 'blob', // 重要：指定响应类型为 blob
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        // 从响应头获取文件名，如果没有则使用默认名称
+        const contentDisposition = response.headers['content-disposition'];
+        let fileName = `模板结构_${new Date().getTime()}.zip`;
+
+        if (contentDisposition) {
+            const fileNameMatch = contentDisposition.match(
+                /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/
+            );
+            if (fileNameMatch && fileNameMatch[1]) {
+                fileName = decodeURIComponent(
+                    fileNameMatch[1].replace(/['"]/g, '')
+                );
+            }
+        }
+
+        // 创建下载链接
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', fileName);
+        document.body.appendChild(link);
+        link.click();
+
+        // 清理
+        link.remove();
+        window.URL.revokeObjectURL(url);
+
+        console.log('模板结构下载成功');
+    } catch (error) {
+        console.error(
+            '下载模板结构失败:',
+            error.response?.data || error.message
+        );
+
+        // 如果是 blob 响应，尝试读取错误信息
+        if (error.response?.data instanceof Blob) {
+            const text = await error.response.data.text();
+            const errorData = JSON.parse(text);
+            throw new Error(errorData.error?.message || '下载失败');
+        }
+
+        throw error;
+    }
+};
+
+// 使用示例
+const handleDownload = async () => {
+    const templateId = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
+    const token = localStorage.getItem('token');
+
+    try {
+        await downloadTemplateStructure(templateId, token);
+        alert('下载成功！');
+    } catch (error) {
+        alert(`下载失败：${error.message}`);
+    }
+};
+```
+
+**方式二：使用原生 fetch API**
+
+```javascript
+/**
+ * 使用 fetch 下载模板结构
+ * @param {string} templateId - 模板ID
+ * @param {string} token - 认证令牌
+ * @returns {Promise<void>}
+ */
+const downloadTemplateStructureWithFetch = async (templateId, token) => {
+    try {
+        const response = await fetch(
+            `/api/attach-catalogue-template/${templateId}/download-structure`,
+            {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        if (!response.ok) {
+            // 尝试读取错误信息
+            const errorText = await response.text();
+            let errorMessage = '下载失败';
+            try {
+                const errorData = JSON.parse(errorText);
+                errorMessage = errorData.error?.message || errorMessage;
+            } catch {
+                errorMessage = errorText || errorMessage;
+            }
+            throw new Error(errorMessage);
+        }
+
+        // 获取文件名
+        const contentDisposition = response.headers.get('content-disposition');
+        let fileName = `模板结构_${new Date().getTime()}.zip`;
+
+        if (contentDisposition) {
+            const fileNameMatch = contentDisposition.match(
+                /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/
+            );
+            if (fileNameMatch && fileNameMatch[1]) {
+                fileName = decodeURIComponent(
+                    fileNameMatch[1].replace(/['"]/g, '')
+                );
+            }
+        }
+
+        // 转换为 blob 并下载
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', fileName);
+        document.body.appendChild(link);
+        link.click();
+
+        // 清理
+        link.remove();
+        window.URL.revokeObjectURL(url);
+
+        console.log('模板结构下载成功');
+    } catch (error) {
+        console.error('下载模板结构失败:', error);
+        throw error;
+    }
+};
+```
+
+**方式三：React Hook 封装**
+
+```javascript
+import { useState } from 'react';
+import axios from 'axios';
+
+/**
+ * 下载模板结构的 React Hook
+ * @param {string} token - 认证令牌
+ * @returns {Object} - { download, loading, error }
+ */
+const useDownloadTemplateStructure = (token) => {
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    const download = async (templateId) => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const response = await axios.get(
+                `/api/attach-catalogue-template/${templateId}/download-structure`,
+                {
+                    responseType: 'blob',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            // 获取文件名
+            const contentDisposition = response.headers['content-disposition'];
+            let fileName = `模板结构_${new Date().getTime()}.zip`;
+
+            if (contentDisposition) {
+                const fileNameMatch = contentDisposition.match(
+                    /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/
+                );
+                if (fileNameMatch && fileNameMatch[1]) {
+                    fileName = decodeURIComponent(
+                        fileNameMatch[1].replace(/['"]/g, '')
+                    );
+                }
+            }
+
+            // 创建下载链接
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', fileName);
+            document.body.appendChild(link);
+            link.click();
+
+            // 清理
+            link.remove();
+            window.URL.revokeObjectURL(url);
+
+            return { success: true };
+        } catch (err) {
+            let errorMessage = '下载失败';
+
+            // 处理 blob 错误响应
+            if (err.response?.data instanceof Blob) {
+                try {
+                    const text = await err.response.data.text();
+                    const errorData = JSON.parse(text);
+                    errorMessage = errorData.error?.message || errorMessage;
+                } catch {
+                    errorMessage = '下载失败，请稍后重试';
+                }
+            } else {
+                errorMessage =
+                    err.response?.data?.error?.message ||
+                    err.message ||
+                    errorMessage;
+            }
+
+            setError(errorMessage);
+            return { success: false, error: errorMessage };
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return { download, loading, error };
+};
+
+// 使用示例
+const TemplateDownloadButton = ({ templateId }) => {
+    const token = localStorage.getItem('token');
+    const { download, loading, error } = useDownloadTemplateStructure(token);
+
+    const handleDownload = async () => {
+        const result = await download(templateId);
+        if (result.success) {
+            alert('下载成功！');
+        } else {
+            alert(`下载失败：${result.error}`);
+        }
+    };
+
+    return (
+        <div>
+            <button onClick={handleDownload} disabled={loading}>
+                {loading ? '下载中...' : '下载模板结构'}
+            </button>
+            {error && <div style={{ color: 'red' }}>{error}</div>}
+        </div>
+    );
+};
+```
+
+**方式四：TypeScript 类型定义**
+
+```typescript
+/**
+ * 下载模板结构的函数类型定义
+ */
+interface DownloadTemplateStructureOptions {
+    templateId: string;
+    token: string;
+    onProgress?: (progress: number) => void;
+}
+
+interface DownloadResult {
+    success: boolean;
+    error?: string;
+    fileName?: string;
+}
+
+/**
+ * 下载模板结构为压缩包
+ */
+const downloadTemplateStructure = async (
+    options: DownloadTemplateStructureOptions
+): Promise<DownloadResult> => {
+    const { templateId, token, onProgress } = options;
+
+    try {
+        const response = await axios.get(
+            `/api/attach-catalogue-template/${templateId}/download-structure`,
+            {
+                responseType: 'blob',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+                onDownloadProgress: (progressEvent) => {
+                    if (onProgress && progressEvent.total) {
+                        const percentCompleted = Math.round(
+                            (progressEvent.loaded * 100) / progressEvent.total
+                        );
+                        onProgress(percentCompleted);
+                    }
+                },
+            }
+        );
+
+        // 获取文件名
+        const contentDisposition = response.headers['content-disposition'];
+        let fileName = `模板结构_${new Date().getTime()}.zip`;
+
+        if (contentDisposition) {
+            const fileNameMatch = contentDisposition.match(
+                /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/
+            );
+            if (fileNameMatch && fileNameMatch[1]) {
+                fileName = decodeURIComponent(
+                    fileNameMatch[1].replace(/['"]/g, '')
+                );
+            }
+        }
+
+        // 创建下载链接
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', fileName);
+        document.body.appendChild(link);
+        link.click();
+
+        // 清理
+        link.remove();
+        window.URL.revokeObjectURL(url);
+
+        return { success: true, fileName };
+    } catch (error: any) {
+        let errorMessage = '下载失败';
+
+        if (error.response?.data instanceof Blob) {
+            try {
+                const text = await error.response.data.text();
+                const errorData = JSON.parse(text);
+                errorMessage = errorData.error?.message || errorMessage;
+            } catch {
+                errorMessage = '下载失败，请稍后重试';
+            }
+        } else {
+            errorMessage =
+                error.response?.data?.error?.message ||
+                error.message ||
+                errorMessage;
+        }
+
+        return { success: false, error: errorMessage };
+    }
+};
+```
+
+#### 使用说明
+
+1.  **响应类型设置**: 使用 axios 时必须设置 `responseType: 'blob'`，否则无法正确处理二进制文件
+2.  **文件名获取**: 从响应头 `Content-Disposition` 中提取文件名，如果没有则使用默认名称
+3.  **错误处理**: 错误响应可能是 JSON 格式（需要解析）或文本格式，需要分别处理
+4.  **内存管理**: 下载完成后及时调用 `URL.revokeObjectURL()` 释放内存
+5.  **下载进度**: 可以使用 axios 的 `onDownloadProgress` 回调显示下载进度
+
+#### 注意事项
+
+-   确保用户有下载该模板的权限
+-   大型模板结构可能生成较大的 ZIP 文件，注意网络传输时间
+-   动态分面模板会在文件夹名称后添加 `(动态分类)` 标记，便于识别
+-   压缩包中的文件名会自动清理不允许的字符，确保跨平台兼容性
+-   建议在下载过程中显示加载状态，提升用户体验
+
+#### 业务场景
+
+-   **模板备份**: 导出模板结构用于备份和迁移
+-   **模板分享**: 将模板结构分享给其他用户或系统
+-   **文档生成**: 基于模板结构生成文档或报告
+-   **结构分析**: 分析模板的层级结构和组织方式
+
+---
+
 ## 版本信息
 
--   **文档版本**: 1.5.12
--   **API 版本**: v1.5.12
--   **最后更新**: 2025-09-10
+-   **文档版本**: 1.5.13
+-   **API 版本**: v1.5.13
+-   **最后更新**: 2025-11-17
 -   **维护人员**: 开发团队
--   **更新内容**: 新增 16 个接口（版本管理、模板标识查询、搜索增强、路径管理等）
+-   **更新内容**: 新增下载模板结构为压缩包接口

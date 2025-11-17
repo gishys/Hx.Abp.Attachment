@@ -9,6 +9,15 @@
 
 **Hx.Abp.Attachment** 是一个基于 ABP (ASP.NET Boilerplate) 框架开发的智能档案管理系统模块，其核心目标是利用人工智能技术提升传统档案管理的效率与智能化水平。
 
+**最新更新** (2025):
+
+-   ✨ 新增模板结构下载功能，支持将模板结构导出为 ZIP 压缩包
+-   ✨ 新增模板验证服务，集中管理模板创建和更新的业务规则验证
+-   🔧 优化模板名称唯一性约束，从全局唯一改为按父节点分组唯一
+-   🔧 优化验证逻辑，统一验证服务，提升代码质量和可维护性
+
+> 📖 查看 [业务介绍文档](docs/BUSINESS_INTRODUCTION.md) 了解更多业务价值和应用场景
+
 ### 🎯 核心价值
 
 -   **智能化档案管理**: 通过 AI 技术实现文档自动分类、智能检索和内容分析
@@ -125,16 +134,22 @@ public interface IIntelligentClassificationService
 #### 实体模型
 
 -   **AttachCatalogue**: 档案目录实体
--   **AttachCatalogueTemplate**: 档案目录模板
+-   **AttachCatalogueTemplate**: 档案目录模板（支持版本管理）
 -   **AttachCatalogueTemplatePermission**: 模板权限管理
 -   **Attachment**: 附件实体
 
 #### 核心特性
 
 -   **权限管理**: 基于角色的访问控制
--   **版本控制**: 支持文档版本管理
+-   **版本控制**: 支持文档和模板版本管理
 -   **元数据管理**: 丰富的文档属性管理
 -   **工作流支持**: 可配置的审批流程
+-   **模板验证**: 集中化的业务规则验证服务
+    -   根分类模板不能是动态分面
+    -   同一级只能有一个动态分面模板
+    -   动态分面和静态分面互斥
+    -   模板名称唯一性验证（按父节点分组）
+-   **模板结构导出**: 支持将模板结构导出为 ZIP 压缩包，包含完整目录结构和模板信息
 
 ## 🔧 开发环境搭建
 
@@ -205,15 +220,27 @@ dotnet run --project src/Hx.Abp.Attachment.Api
 
 #### APPATTACH_CATALOGUE_TEMPLATES (档案目录模板表)
 
-| 字段名               | 类型         | 说明     |
-| -------------------- | ------------ | -------- |
-| Id                   | UUID         | 主键     |
-| TEMPLATE_NAME        | VARCHAR(255) | 模板名称 |
-| TEMPLATE_DESCRIPTION | TEXT         | 模板描述 |
-| CATALOGUE_FACET_TYPE | INTEGER      | 目录类型 |
-| CATALOGUE_PURPOSE    | INTEGER      | 目录用途 |
-| PERMISSIONS          | JSONB        | 权限配置 |
-| IS_ACTIVE            | BOOLEAN      | 是否激活 |
+| 字段名           | 类型         | 说明                     |
+| ---------------- | ------------ | ------------------------ |
+| Id               | UUID         | 模板 ID（业务标识）      |
+| VERSION          | INTEGER      | 版本号                   |
+| TEMPLATE_NAME    | VARCHAR(255) | 模板名称                 |
+| PARENT_ID        | UUID         | 父模板 ID                |
+| PARENT_VERSION   | INTEGER      | 父模板版本               |
+| TEMPLATE_PATH    | VARCHAR(200) | 模板路径                 |
+| FACET_TYPE       | INTEGER      | 分面类型                 |
+| TEMPLATE_PURPOSE | INTEGER      | 模板用途                 |
+| TEMPLATE_ROLE    | INTEGER      | 模板角色（根/分支/叶子） |
+| IS_STATIC        | BOOLEAN      | 是否静态分面             |
+| IS_LATEST        | BOOLEAN      | 是否最新版本             |
+| META_FIELDS      | JSONB        | 元数据字段集合           |
+| PERMISSIONS      | JSONB        | 权限配置                 |
+| TAGS             | JSONB        | 标签集合                 |
+
+**唯一性约束**:
+
+-   根节点：模板名称在根节点下唯一
+-   子节点：模板名称在同一父节点下唯一
 
 ### 索引设计
 
@@ -452,6 +479,16 @@ ENTRYPOINT ["dotnet", "Hx.Abp.Attachment.Api.dll"]
 -   `POST /api/app/attachment/batch-classify` - 批量分类
 -   `GET /api/app/attachment/classification-confidence` - 分类置信度
 
+#### 模板管理
+
+-   `POST /api/app/attach-catalogue-template` - 创建模板
+-   `GET /api/app/attach-catalogue-template/{id}` - 获取模板详情
+-   `PUT /api/app/attach-catalogue-template/{id}` - 更新模板
+-   `DELETE /api/app/attach-catalogue-template/{id}` - 删除模板
+-   `GET /api/app/attach-catalogue-template/{id}/download-structure` - 下载模板结构为 ZIP
+-   `POST /api/app/attach-catalogue-template/{id}/create-version` - 创建模板新版本
+-   `GET /api/app/attach-catalogue-template/{id}/history` - 获取模板版本历史
+
 ### 接口规范
 
 #### 请求格式
@@ -530,8 +567,10 @@ chore: 更新依赖包
 -   [x] 基础档案管理功能
 -   [x] 智能检索模块
 -   [x] AI 分类功能
--   [ ] 动态分类树管理
--   [ ] 基础权限控制
+-   [x] 模板管理功能（版本管理、结构导出）
+-   [x] 模板验证服务（业务规则验证）
+-   [x] 动态/静态分面管理
+-   [ ] 基础权限控制优化
 
 ### 中期目标 (3-6 个月)
 
@@ -568,6 +607,13 @@ chore: 更新依赖包
 ## 📄 许可证
 
 本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+
+## 📚 相关文档
+
+-   [业务介绍文档](docs/BUSINESS_INTRODUCTION.md) - 从业务角度介绍项目价值和应用场景
+-   [技术栈详解](项目技术栈详解.md) - 详细的技术栈说明和架构设计
+-   [更新日志](CHANGELOG.md) - 项目变更记录和版本历史
+-   [API 文档](src/Hx.Abp.Attachment.HttpApi/Scripts/) - 完整的 API 接口文档
 
 ## 📞 联系我们
 

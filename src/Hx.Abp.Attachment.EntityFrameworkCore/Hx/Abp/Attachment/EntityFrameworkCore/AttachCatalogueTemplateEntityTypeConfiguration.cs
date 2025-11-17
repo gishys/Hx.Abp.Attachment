@@ -151,10 +151,21 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             builder.Property(p => p.DeletionTime).HasColumnName("DELETION_TIME");
 
             // 索引配置
-            // 模板名称唯一性约束（同一模板名称只能有一个最新版本）
+            // 模板名称唯一性约束（同一父节点下模板名称不能重复，根节点下也不能重复）
+            // 注意：PostgreSQL 不支持在唯一索引中包含 NULL 值，所以需要分别处理根节点和子节点
+            // 对于根节点（ParentId IS NULL）：TemplateName + IsLatest 唯一
+            // 对于子节点（ParentId IS NOT NULL）：TemplateName + ParentId + IsLatest 唯一
+            
+            // 根节点唯一性约束
             builder.HasIndex(e => new { e.TemplateName, e.IsLatest })
-                .HasDatabaseName("UK_ATTACH_CATALOGUE_TEMPLATES_NAME_LATEST")
-                .HasFilter("\"IS_DELETED\" = false AND \"IS_LATEST\" = true")
+                .HasDatabaseName("UK_ATTACH_CATALOGUE_TEMPLATES_NAME_LATEST_ROOT")
+                .HasFilter("\"IS_DELETED\" = false AND \"IS_LATEST\" = true AND \"PARENT_ID\" IS NULL")
+                .IsUnique();
+            
+            // 子节点唯一性约束（同一父节点下不能重复）
+            builder.HasIndex(e => new { e.TemplateName, e.ParentId, e.IsLatest })
+                .HasDatabaseName("UK_ATTACH_CATALOGUE_TEMPLATES_NAME_PARENT_LATEST")
+                .HasFilter("\"IS_DELETED\" = false AND \"IS_LATEST\" = true AND \"PARENT_ID\" IS NOT NULL")
                 .IsUnique();
 
             // 模板ID和最新版本索引

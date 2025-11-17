@@ -15,6 +15,7 @@ namespace Hx.Abp.Attachment.Application
         IAttachCatalogueTemplateRepository repository,
         IAttachCatalogueManager catalogueManager,
         IGuidGenerator guidGenerator,
+        AttachCatalogueTemplateValidationService validationService,
         ILogger<AttachCatalogueTemplateAppService> logger) :
         ApplicationService,
         IAttachCatalogueTemplateAppService
@@ -22,6 +23,7 @@ namespace Hx.Abp.Attachment.Application
         private readonly IAttachCatalogueTemplateRepository _templateRepository = repository;
         private readonly IAttachCatalogueManager _catalogueManager = catalogueManager;
         private readonly IGuidGenerator _guidGenerator = guidGenerator;
+        private readonly AttachCatalogueTemplateValidationService _validationService = validationService;
         private readonly ILogger<AttachCatalogueTemplateAppService> _logger = logger;
 
         #region 基本 CRUD 方法
@@ -202,13 +204,14 @@ namespace Hx.Abp.Attachment.Application
                     throw new UserFriendlyException("指定了父模板版本时必须同时指定父模板ID");
                 }
 
-                // 检查模板名称是否已存在（同级比较）
-                var nameExists = await _templateRepository.ExistsByNameAsync(input.Name, input.ParentId, input.ParentVersion);
-                if (nameExists)
-                {
-                    var scope = input.ParentId.HasValue ? "同级" : "根节点";
-                    throw new UserFriendlyException($"在{scope}下已存在名称为 '{input.Name}' 的模板，请使用其他名称");
-                }
+                // 验证业务规则（模板名称唯一性、根模板不能是动态分面、同级只能有一个动态分面、动态和静态分面互斥）
+                await _validationService.ValidateTemplateRulesAsync(
+                    input.Name,
+                    input.FacetType,
+                    input.ParentId,
+                    input.ParentVersion,
+                    null,
+                    "创建");
 
                 // 自动计算模板路径
                 string? templatePath = null;
@@ -335,15 +338,17 @@ namespace Hx.Abp.Attachment.Application
 
                 var template = await _templateRepository.GetLatestVersionAsync(id) ?? throw new UserFriendlyException($"未找到模板 {id}");
 
-                // 检查模板名称是否已存在（同级比较，排除当前模板）
-                if (template.TemplateName != input.Name)
+                // 验证业务规则（模板名称唯一性、根模板不能是动态分面、同级只能有一个动态分面、动态和静态分面互斥）
+                // 注意：如果模板名称、分面类型或父模板发生变化，需要重新验证
+                if (template.TemplateName != input.Name || template.FacetType != input.FacetType || template.ParentId != input.ParentId)
                 {
-                    var nameExists = await _templateRepository.ExistsByNameAsync(input.Name, input.ParentId, input.ParentVersion, id);
-                    if (nameExists)
-                    {
-                        var scope = input.ParentId.HasValue ? "同级" : "根节点";
-                        throw new UserFriendlyException($"在{scope}下已存在名称为 '{input.Name}' 的模板，请使用其他名称");
-                    }
+                    await _validationService.ValidateTemplateRulesAsync(
+                        input.Name,
+                        input.FacetType,
+                        input.ParentId,
+                        input.ParentVersion,
+                        id, // 排除当前模板
+                        "更新");
                 }
 
                 // 如果父模板发生变化，需要重新计算路径
@@ -701,6 +706,19 @@ namespace Hx.Abp.Attachment.Application
             var baseTemplate = await _templateRepository.GetLatestVersionAsync(baseId, true)
                 ?? throw new UserFriendlyException("未找到基础模板");
 
+            // 验证业务规则（模板名称唯一性、根模板不能是动态分面、同级只能有一个动态分面、动态和静态分面互斥）
+            // 注意：创建新版本时，如果模板名称、分面类型或父模板发生变化，需要重新验证
+            if (baseTemplate.TemplateName != input.Name || baseTemplate.FacetType != input.FacetType || baseTemplate.ParentId != input.ParentId)
+            {
+                await _validationService.ValidateTemplateRulesAsync(
+                    input.Name,
+                    input.FacetType,
+                    input.ParentId ?? baseTemplate.ParentId,
+                    input.ParentVersion ?? baseTemplate.ParentVersion,
+                    baseId, // 排除基础模板（因为新版本会替换它）
+                    "创建新版本");
+            }
+
             // 获取下一个版本号
             var allVersions = await _templateRepository.GetTemplateHistoryAsync(baseId);
             var nextVersion = allVersions.Max(t => t.Version) + 1;
@@ -804,6 +822,19 @@ namespace Hx.Abp.Attachment.Application
         public async Task<AttachCatalogueTemplateDto> UpdateVersionAsync(Guid id, int version, CreateUpdateAttachCatalogueTemplateDto input)
         {
             var template = await _templateRepository.GetByVersionAsync(id, version) ?? throw new UserFriendlyException($"未找到模板 {id} 的版本 {version}");
+
+            // 验证业务规则（模板名称唯一性、根模板不能是动态分面、同级只能有一个动态分面、动态和静态分面互斥）
+            // 注意：如果模板名称、分面类型或父模板发生变化，需要重新验证
+            if (template.TemplateName != input.Name || template.FacetType != input.FacetType || template.ParentId != input.ParentId)
+            {
+                await _validationService.ValidateTemplateRulesAsync(
+                    input.Name,
+                    input.FacetType,
+                    input.ParentId,
+                    input.ParentVersion,
+                    id, // 排除当前模板
+                    "更新版本");
+            }
 
             // 使用 Update 方法更新模板（会根据 FacetType 自动计算 IsStatic）
             template.Update(

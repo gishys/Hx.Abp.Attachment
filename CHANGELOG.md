@@ -1,0 +1,103 @@
+# 更新日志 (Changelog)
+
+本文档记录了项目的重要变更和更新内容。
+
+格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
+版本号遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
+
+## [未发布] - 2025
+
+### 新增功能
+
+#### 模板结构下载功能
+
+-   **新增接口**：`DownloadTemplateStructureAsZipAsync`
+    -   支持下载分类模板的完整目录结构为 ZIP 压缩包
+    -   压缩包包含完整的目录结构
+    -   动态分面模板在名称后添加 `(动态分类)` 标记
+    -   每个模板文件夹包含 `模板信息.txt` 文件，记录模板详细信息
+
+#### 模板验证服务
+
+-   **新增服务**：`AttachCatalogueTemplateValidationService`
+    -   集中管理模板创建和更新的业务规则验证
+    -   实现了以下业务规则：
+        1. **根分类模板不能是动态分面**：确保根模板的稳定性
+        2. **同一级只能有一个动态分面模板**：避免同级多个动态分面导致结构混乱
+        3. **动态分面和静态分面互斥**：同一级不能同时存在动态和静态分面模板，保持分类结构清晰
+        4. **模板名称唯一性验证**：同一父节点下模板名称不能重复，根节点下也不能重复
+
+### 改进
+
+#### 模板名称唯一性约束优化
+
+-   **修改前**：全局唯一性约束 `TemplateName + IsLatest`（所有模板名称全局唯一）
+-   **修改后**：
+    -   根节点唯一性约束：`TemplateName + IsLatest`（仅当 `ParentId IS NULL` 时）
+    -   子节点唯一性约束：`TemplateName + ParentId + IsLatest`（仅当 `ParentId IS NOT NULL` 时）
+-   **业务规则**：
+    -   根节点下模板名称唯一
+    -   同一父节点下模板名称唯一
+    -   不同父节点下可以有相同的模板名称
+-   **数据库迁移脚本**：`AttachCatalogueTemplate_UpdateUniqueIndexes.sql`
+    -   删除旧的全局唯一性约束
+    -   创建新的分组唯一性约束
+
+#### 验证逻辑优化
+
+-   **统一验证**：将所有业务规则验证集中到 `AttachCatalogueTemplateValidationService`
+-   **减少冗余**：移除了应用服务中重复的名称检查代码
+-   **性能优化**：仅在模板名称、分面类型或父模板变化时进行验证
+-   **错误信息优化**：所有错误消息都包含操作类型（创建/更新/创建新版本/更新版本）
+
+### 修复
+
+#### 控制器继承问题
+
+-   **问题**：`AttachCatalogueTemplateController` 未继承 `AbpControllerBase`，导致无法使用 `File` 方法
+-   **修复**：添加 `AbpControllerBase` 基类继承
+
+### 文档
+
+#### API 文档
+
+-   **更新**：`AttachCatalogueTemplate_API_Documentation.md`
+    -   添加了下载模板结构为压缩包的接口文档
+    -   包含前端调用示例（React Axios、Fetch、React Hook、TypeScript）
+
+#### 数据库脚本
+
+-   **新增**：`AttachCatalogueTemplate_UpdateUniqueIndexes.sql` - 模板名称唯一性约束更新脚本
+    -   幂等性设计，可重复执行
+    -   包含数据验证查询示例
+
+### 技术细节
+
+#### 依赖注入
+
+-   注册了 `AttachCatalogueTemplateValidationService` 到 DI 容器
+
+#### 异步操作
+
+-   所有异步方法都添加了 `CancellationToken` 参数支持
+
+#### 代码质量
+
+-   遵循 DDD（领域驱动设计）最佳实践
+-   遵循 ABP Framework 最佳实践
+-   代码结构清晰，职责分离明确
+-   减少代码冗余，提高可维护性
+
+---
+
+## 变更类型说明
+
+-   **新增功能**：新添加的功能
+-   **改进**：对现有功能的改进和优化
+-   **修复**：问题修复
+-   **文档**：文档更新
+-   **技术细节**：技术实现细节
+
+## 版本号说明
+
+当前版本标记为 `[未发布]`，待正式发布时将更新为具体的版本号（如 `v1.1.51`）。

@@ -45,6 +45,9 @@ namespace Hx.Abp.Attachment.Application
             
             // 注册模板使用统计服务
             context.Services.AddScoped<ITemplateUsageStatsAppService, TemplateUsageStatsAppService>();
+            
+            // 注册模板验证服务
+            context.Services.AddScoped<AttachCatalogueTemplateValidationService>();
         }
     }
 }

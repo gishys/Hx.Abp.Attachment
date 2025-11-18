@@ -1,5 +1,46 @@
 # React + Axios 文件上传示例
 
+## ⚠️ 重要提示：文件路径映射
+
+在使用 `fileFacetMapping` 时，需要使用**文件路径**（而非仅文件名）来唯一标识文件，以避免同名文件冲突。
+
+### 1. 文件路径获取
+
+-   **推荐方式**：使用文件夹选择器（`<input type="file" webkitdirectory>`），浏览器会自动提供 `webkitRelativePath` 属性
+-   **格式示例**：`folder1/subfolder/file.pdf` 或 `file.pdf`（根目录文件）
+-   **优势**：支持文件夹结构，通过完整路径唯一标识文件，避免同名文件冲突
+
+### 2. 文件路径格式
+
+-   **相对路径**：相对于选择的根文件夹
+-   **路径分隔符**：使用 `/`（正斜杠），浏览器会自动统一格式
+-   **示例**：
+    -   根目录文件：`document.pdf`
+    -   一级子文件夹：`folder1/document.pdf`
+    -   多级子文件夹：`folder1/subfolder/document.pdf`
+
+### 3. 后端匹配逻辑
+
+**重要**：后端 `IFormFile.FileName` **只包含文件名，不包含路径**（浏览器出于安全考虑不会发送路径）。
+
+匹配优先级：
+
+1. **文件索引匹配**（推荐，最可靠）：前端提供 `fileIndex`，后端按文件顺序匹配
+2. **文件名+大小组合匹配**（备选方案）：如果未提供索引，使用 `fileName + fileSize` 组合匹配
+
+**推荐做法**：
+
+-   ✅ 始终提供 `fileIndex`（文件在数组中的索引位置，从 0 开始）
+-   ✅ 同时提供 `fileName` 和 `fileSize` 作为备选匹配方式
+-   ✅ 使用 `filePath` 用于前端标识和显示
+
+### 4. 最佳实践
+
+-   ✅ 使用文件夹选择器获取完整的文件路径信息
+-   ✅ 优先使用 `webkitRelativePath` 作为 `filePath`
+-   ✅ 如果无法获取路径，使用文件名（仅适用于文件名唯一的情况）
+-   ✅ 确保 `filePath` 与浏览器提供的路径格式一致
+
 ## 完整示例代码（支持一个动态分面包含多个文件）
 
 ```tsx
@@ -35,7 +76,7 @@ const SmartClassificationUpload: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [results, setResults] = useState<any[]>([]);
 
-    // 处理文件选择
+    // 处理文件选择（支持文件夹选择）
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFiles = Array.from(event.target.files || []);
         setFiles((prev) => [...prev, ...selectedFiles]);
@@ -154,29 +195,47 @@ const SmartClassificationUpload: React.FC = () => {
             });
 
             // 方式1：使用fileFacetMapping明确文件与动态分面的映射关系（推荐）
-            // 构建文件与动态分面的映射关系（文件名 -> 动态分面分类名称）
-            const fileFacetMappingDict: Record<string, string> = {};
+            // 使用数组格式，包含文件索引和动态分面分类名称，避免文件名重复问题
+            // 格式：[{"fileName":"file.pdf","fileIndex":0,"fileSize":1024,"dynamicFacetCatalogueName":"案卷1"},...]
+            //
+            // 优势：
+            // 1. 通过文件索引唯一标识文件，最可靠的匹配方式
+            // 2. 避免同名文件冲突（不同文件夹中的同名文件）
+            // 3. 支持文件名+大小组合作为备选匹配方式
+
+            interface FileFacetMappingItem {
+                fileName: string; // 文件名（用于后端匹配，因为后端只能获取文件名）
+                fileIndex: number; // 文件索引（必需，最可靠的匹配方式）
+                fileSize?: number; // 文件大小（可选，用于辅助匹配）
+                dynamicFacetCatalogueName: string; // 动态分面分类名称
+            }
+
+            const fileFacetMappingList: FileFacetMappingItem[] = [];
             files.forEach((file, index) => {
                 const facetKey = fileFacetMapping.get(index);
                 if (facetKey) {
                     const facet = dynamicFacets.find((f) => f.key === facetKey);
                     if (facet && facet.info.catalogueName) {
-                        fileFacetMappingDict[file.name] =
-                            facet.info.catalogueName;
+                        fileFacetMappingList.push({
+                            fileName: file.name, // 文件名用于后端匹配（后端只能获取文件名）
+                            fileIndex: index, // 文件索引（必需，最可靠的匹配方式，避免同名文件冲突）
+                            fileSize: file.size, // 文件大小（可选，用于辅助匹配）
+                            dynamicFacetCatalogueName: facet.info.catalogueName,
+                        });
                     }
                 }
             });
 
-            // 将文件与动态分面的映射关系添加到FormData
-            if (Object.keys(fileFacetMappingDict).length > 0) {
+            // 将文件与动态分面的映射关系添加到FormData（数组格式）
+            if (fileFacetMappingList.length > 0) {
                 uploadFormData.append(
                     'fileFacetMapping',
-                    JSON.stringify(fileFacetMappingDict)
+                    JSON.stringify(fileFacetMappingList)
                 );
             }
 
             // 方式2：构建动态分面信息数组（用于向后兼容，或作为补充信息）
-            // 获取所有唯一的动态分面信息（按catalogueName去重）
+            // 获取所有唯一的动态分面信息（按catalogueName去重）[{"catalogueName":"案卷1"},{"catalogueName":"案卷1"}]
             const uniqueFacetInfos = Array.from(
                 new Map(
                     dynamicFacets
@@ -606,15 +665,19 @@ uploadFilesWithSmartClassification(
 
 1. **一个动态分面可以包含多个文件**：多个文件可以共享同一个动态分面信息（相同的`catalogueName`），后端会自动复用同一个动态分面分类，避免重复创建。
 
-2. **文件与动态分面的映射方式（推荐使用方式 1）**：
+2. **文件与动态分面的映射方式**：
 
-    - **方式 1（推荐）**：使用`fileFacetMapping`字段，通过文件名明确映射到动态分面分类名称。这种方式更清晰，不依赖数组索引顺序。
+    - **推荐方式**：使用`fileFacetMapping`字段，通过文件索引和文件名明确映射到动态分面分类名称。这种方式支持文件夹结构，避免同名文件冲突。
         ```typescript
-        // fileFacetMapping: { "file1.pdf": "案卷001", "file2.pdf": "案卷001", "file3.pdf": "案卷002" }
+        // fileFacetMapping: [
+        //   { fileName: "file1.pdf", fileIndex: 0, fileSize: 1024, dynamicFacetCatalogueName: "案卷001" },
+        //   { fileName: "file1.pdf", fileIndex: 1, fileSize: 2048, dynamicFacetCatalogueName: "案卷002" }
+        // ]
+        // 注意：后端优先使用 fileIndex 匹配（最可靠），如果未提供则使用 fileName+fileSize 组合匹配
         ```
-    - **方式 2（向后兼容）**：使用`dynamicFacetInfoList`数组，按文件顺序对应。如果文件自身没有`DynamicFacetCatalogueName`，则使用数组索引对应。
+    - **补充方式**：使用`dynamicFacetInfoList`数组提供动态分面信息，用于创建动态分面分类。
 
-3. **优先级**：文件自身携带的`DynamicFacetCatalogueName`字段优先于`dynamicFacetInfoList`数组索引对应。
+3. **文件匹配机制**：后端优先使用文件索引匹配（最可靠），如果未提供索引则使用文件名+大小组合匹配。支持文件夹结构，避免同名文件冲突。
 
 4. **可选参数**：如果文件不需要动态分面，可以不设置`DynamicFacetCatalogueName`或不在`fileFacetMapping`中指定。
 

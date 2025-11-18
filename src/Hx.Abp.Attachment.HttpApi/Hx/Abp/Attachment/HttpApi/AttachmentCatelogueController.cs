@@ -277,9 +277,7 @@ namespace Hx.Abp.Attachment.HttpApi
         /// 智能分类文件上传和推荐
         /// 基于OCR内容进行智能分类推荐，适用于文件自动归类场景
         /// 如果分类模板中存在动态分面，需要通过dynamicFacetInfoList参数传入动态分面信息数组（如案卷信息）来创建动态分面分类
-        /// 文件与动态分面的映射方式：
-        /// 1. 优先使用文件自身携带的DynamicFacetCatalogueName字段（通过fileFacetMapping从FormData读取）
-        /// 2. 如果没有，则使用dynamicFacetInfoList数组，按文件顺序对应（向后兼容）
+        /// 文件与动态分面的映射通过fileFacetMapping参数传入，格式为数组，包含文件路径和动态分面分类名称
         /// </summary>
         /// <param name="catalogueId">分类ID</param>
         /// <param name="prefix">文件前缀</param>
@@ -293,17 +291,51 @@ namespace Hx.Abp.Attachment.HttpApi
             var files = Request.Form.Files;
             var inputs = new List<AttachFileCreateDto>();
             
-            // 从FormData中读取文件与动态分面的映射关系（文件名 -> 动态分面分类名称）
-            Dictionary<string, string>? fileFacetMapping = null;
+            // 从FormData中读取文件与动态分面的映射关系
+            // 格式：List<FileFacetMappingDto>，包含文件路径和动态分面分类名称
+            List<FileFacetMappingDto>? fileFacetMappingList = null;
+            
             if (Request.Form.ContainsKey("fileFacetMapping"))
             {
                 var mappingJson = Request.Form["fileFacetMapping"].ToString();
                 if (!string.IsNullOrEmpty(mappingJson))
                 {
-                    fileFacetMapping = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(mappingJson);
+                    fileFacetMappingList = System.Text.Json.JsonSerializer.Deserialize<List<FileFacetMappingDto>>(mappingJson);
                 }
             }
             
+            // 构建文件映射（用于快速查找）
+            // 注意：IFormFile.FileName 只包含文件名，不包含路径（浏览器出于安全考虑不会发送路径）
+            // 因此需要同时支持按文件索引和文件名+大小组合匹配
+            Dictionary<int, string>? fileIndexToFacetMapping = null;
+            Dictionary<string, string>? fileNameSizeToFacetMapping = null; // Key: "fileName|fileSize"
+            
+            if (fileFacetMappingList != null && fileFacetMappingList.Count > 0)
+            {
+                fileIndexToFacetMapping = [];
+                fileNameSizeToFacetMapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                
+                foreach (var mapping in fileFacetMappingList)
+                {
+                    // 优先使用文件索引匹配（最可靠）
+                    if (mapping.FileIndex.HasValue)
+                    {
+                        fileIndexToFacetMapping[mapping.FileIndex.Value] = mapping.DynamicFacetCatalogueName;
+                    }
+                    
+                    // 同时建立文件名+大小组合映射（作为备选方案）
+                    if (!string.IsNullOrWhiteSpace(mapping.FileName) && mapping.FileSize.HasValue)
+                    {
+                        var key = $"{mapping.FileName}|{mapping.FileSize.Value}";
+                        if (!fileNameSizeToFacetMapping.ContainsKey(key))
+                        {
+                            fileNameSizeToFacetMapping[key] = mapping.DynamicFacetCatalogueName;
+                        }
+                    }
+                }
+            }
+            
+            var fileIndex = 0;
             foreach (var file in files)
             {
                 using var stream = file.OpenReadStream();
@@ -318,13 +350,24 @@ namespace Hx.Abp.Attachment.HttpApi
                     SequenceNumber = null // 让服务层自动分配序号
                 };
                 
-                // 如果存在文件与动态分面的映射关系，设置文件的动态分面分类名称
-                if (fileFacetMapping != null && fileFacetMapping.TryGetValue(fileName, out var facetCatalogueName))
+                // 匹配动态分面分类名称
+                // 优先级：1. 文件索引匹配（最可靠） 2. 文件名+大小组合匹配（备选）
+                if (fileIndexToFacetMapping != null && fileIndexToFacetMapping.TryGetValue(fileIndex, out var facetCatalogueName))
                 {
                     fileDto.DynamicFacetCatalogueName = facetCatalogueName;
                 }
+                else if (fileNameSizeToFacetMapping != null)
+                {
+                    var fileSize = memoryStream.Length;
+                    var key = $"{fileName}|{fileSize}";
+                    if (fileNameSizeToFacetMapping.TryGetValue(key, out facetCatalogueName))
+                    {
+                        fileDto.DynamicFacetCatalogueName = facetCatalogueName;
+                    }
+                }
                 
                 inputs.Add(fileDto);
+                fileIndex++;
             }
 
             // 从FormData中读取dynamicFacetInfoList（JSON字符串，用于向后兼容）

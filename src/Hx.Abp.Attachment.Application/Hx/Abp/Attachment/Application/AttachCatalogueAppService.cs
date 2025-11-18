@@ -1529,10 +1529,41 @@ namespace Hx.Abp.Attachment.Application
 
                         if (dynamicFacetTemplate != null)
                         {
-                            // 存在动态分面，验证dynamicFacetInfoList参数
-                            if (dynamicFacetInfoList == null || dynamicFacetInfoList.Count == 0)
+                            // 存在动态分面，验证所有文件都必须分配动态分面名称
+                            var filesWithoutDynamicFacet = inputs.Where(f => string.IsNullOrWhiteSpace(f.DynamicFacetCatalogueName)).ToList();
+                            if (filesWithoutDynamicFacet.Count > 0)
                             {
-                                throw new UserFriendlyException($"分类模板中存在动态分面（{dynamicFacetTemplate.TemplateName}），必须提供动态分面信息数组（dynamicFacetInfoList），数组长度应与文件数量一致");
+                                var fileNames = filesWithoutDynamicFacet.Select(f => f.FileAlias).Take(5).ToList();
+                                var fileList = string.Join("、", fileNames);
+                                var moreFiles = filesWithoutDynamicFacet.Count > 5 ? $"等{filesWithoutDynamicFacet.Count}个文件" : "";
+                                throw new UserFriendlyException(
+                                    $"分类模板中存在动态分面（{dynamicFacetTemplate.TemplateName}），所有文件都必须分配动态分面分类名称。" +
+                                    $"以下文件缺少动态分面分类名称：{fileList}{moreFiles}。请通过fileFacetMapping为每个文件指定dynamicFacetCatalogueName。");
+                            }
+                            
+                            // 验证dynamicFacetInfoList参数（向后兼容，如果提供了则验证）
+                            if (dynamicFacetInfoList != null && dynamicFacetInfoList.Count > 0)
+                            {
+                                // 验证dynamicFacetInfoList中的catalogueName是否与文件中的DynamicFacetCatalogueName匹配
+                                var fileDynamicFacetNames = inputs
+                                    .Where(f => !string.IsNullOrWhiteSpace(f.DynamicFacetCatalogueName))
+                                    .Select(f => f.DynamicFacetCatalogueName!)
+                                    .Distinct()
+                                    .ToList();
+                                
+                                var dynamicFacetInfoNames = dynamicFacetInfoList
+                                    .Where(f => f != null)
+                                    .Select(f => f!.CatalogueName)
+                                    .Distinct()
+                                    .ToList();
+                                
+                                var missingNames = fileDynamicFacetNames.Except(dynamicFacetInfoNames, StringComparer.OrdinalIgnoreCase).ToList();
+                                if (missingNames.Count > 0)
+                                {
+                                    throw new UserFriendlyException(
+                                        $"动态分面信息数组（dynamicFacetInfoList）中缺少以下动态分面分类名称：{string.Join("、", missingNames)}。" +
+                                        $"请确保dynamicFacetInfoList包含所有文件使用的动态分面分类名称。");
+                                }
                             }
                         }
                     }
@@ -1542,14 +1573,39 @@ namespace Hx.Abp.Attachment.Application
                 // 使用字典缓存已创建/查找的动态分面分类，避免重复创建
                 var dynamicFacetCatalogueCache = new Dictionary<string, AttachCatalogue>();
                 
-                if (dynamicFacetTemplate != null && dynamicFacetInfoList != null)
+                if (dynamicFacetTemplate != null)
                 {
-                    // 获取所有唯一的动态分面信息（按catalogueName去重）
-                    var uniqueDynamicFacetInfos = dynamicFacetInfoList
-                        .Where(f => f != null)
-                        .GroupBy(f => f!.CatalogueName)
-                        .Select(g => g.First()!)
-                        .ToList();
+                    // 获取所有唯一的动态分面信息
+                    // 优先使用dynamicFacetInfoList（如果提供），否则从文件的DynamicFacetCatalogueName中提取
+                    List<DynamicFacetInfoDto> uniqueDynamicFacetInfos;
+                    
+                    if (dynamicFacetInfoList != null && dynamicFacetInfoList.Count > 0)
+                    {
+                        // 使用提供的dynamicFacetInfoList（按catalogueName去重）
+                        uniqueDynamicFacetInfos = [.. dynamicFacetInfoList
+                            .Where(f => f != null)
+                            .GroupBy(f => f!.CatalogueName)
+                            .Select(g => g.First()!)];
+                    }
+                    else
+                    {
+                        // 从文件的DynamicFacetCatalogueName中提取唯一的动态分面名称
+                        var uniqueDynamicFacetNames = inputs
+                            .Where(f => !string.IsNullOrWhiteSpace(f.DynamicFacetCatalogueName))
+                            .Select(f => f.DynamicFacetCatalogueName!)
+                            .Distinct()
+                            .ToList();
+                        
+                        // 为每个唯一的动态分面名称创建DynamicFacetInfoDto（使用默认值）
+                        uniqueDynamicFacetInfos = [.. uniqueDynamicFacetNames.Select(name => new DynamicFacetInfoDto
+                        {
+                            CatalogueName = name,
+                            Description = null,
+                            SequenceNumber = null,
+                            Tags = null,
+                            Metadata = null
+                        })];
+                    }
 
                     foreach (var dynamicFacetInfo in uniqueDynamicFacetInfos)
                     {

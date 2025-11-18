@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Hx.Abp.Attachment.Application.Contracts
 {
@@ -12,6 +13,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// 文件名（仅文件名，不包含路径）
         /// 用于向后兼容和显示
         /// </summary>
+        [JsonPropertyName("fileName")]
         public string? FileName { get; set; }
 
         /// <summary>
@@ -19,12 +21,14 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// 这是最可靠的匹配方式，因为 IFormFile.FileName 只包含文件名，不包含路径
         /// 前端按顺序上传文件，后端按索引位置匹配，即使文件名重复也能准确匹配
         /// </summary>
+        [JsonPropertyName("fileIndex")]
         public int? FileIndex { get; set; }
 
         /// <summary>
         /// 文件大小（字节数，可选）
         /// 可用于辅助匹配，提高匹配准确性（文件名+大小组合）
         /// </summary>
+        [JsonPropertyName("fileSize")]
         public long? FileSize { get; set; }
 
         /// <summary>
@@ -32,6 +36,7 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// </summary>
         [Required(ErrorMessage = "动态分面分类名称不能为空")]
         [MaxLength(500, ErrorMessage = "动态分面分类名称长度不能超过500个字符")]
+        [JsonPropertyName("dynamicFacetCatalogueName")]
         public required string DynamicFacetCatalogueName { get; set; }
     }
 }

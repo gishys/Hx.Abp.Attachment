@@ -9,6 +9,34 @@
 
 ### 改进
 
+#### JSON 序列化字段命名优化
+
+-   **DTO 更新**：为所有 DTO 属性添加 `[JsonPropertyName]` 特性，支持 camelCase（首字母小写）命名
+    -   `FileFacetMappingDto`：`fileName`、`fileIndex`、`fileSize`、`dynamicFacetCatalogueName`
+    -   `DynamicFacetInfoDto`：`catalogueName`、`description`、`sequenceNumber`、`tags`、`metadata`
+-   **优势**：
+    -   符合前端 JavaScript/TypeScript 命名规范
+    -   提高前后端数据交互的一致性
+    -   无需额外的 JSON 序列化配置
+
+#### 动态分面验证逻辑增强
+
+-   **新增验证**：当子模板中存在动态分面时，验证所有文件都必须分配动态分面分类名称
+    -   检查每个文件的 `DynamicFacetCatalogueName` 是否已设置
+    -   如果存在未分配的文件，抛出明确的错误提示，列出前 5 个文件名
+-   **验证逻辑优化**：
+    -   如果提供了 `dynamicFacetInfoList`，验证其中的 `catalogueName` 是否与文件中的 `DynamicFacetCatalogueName` 匹配
+    -   如果未提供 `dynamicFacetInfoList`，从文件的 `DynamicFacetCatalogueName` 中提取动态分面信息
+-   **错误提示优化**：
+    -   明确提示缺少动态分面分类名称的文件
+    -   提示如何修复（通过 `fileFacetMapping` 为每个文件指定 `dynamicFacetCatalogueName`）
+
+---
+
+## [v1.1.53] - 2025
+
+### 改进
+
 #### 文件上传匹配机制优化
 
 -   **问题**：文件夹嵌套上传时，同名文件无法通过文件路径匹配（`IFormFile.FileName` 只包含文件名，不包含路径）
@@ -135,4 +163,4 @@
 
 ## 版本号说明
 
-当前版本标记为 `[已发布]`，待正式发布时将更新为具体的版本号（如 `v1.1.51`）。
+当前版本标记为 `[未发布]`，待正式发布时将更新为具体的版本号（如 `v1.1.54`）。

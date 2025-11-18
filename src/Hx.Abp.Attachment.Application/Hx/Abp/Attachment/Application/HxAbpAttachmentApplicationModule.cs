@@ -48,6 +48,9 @@ namespace Hx.Abp.Attachment.Application
             
             // 注册模板验证服务
             context.Services.AddScoped<AttachCatalogueTemplateValidationService>();
+            
+            // 注册动态子分类创建服务
+            context.Services.AddScoped<DynamicSubCatalogueCreationService>();
         }
     }
 }

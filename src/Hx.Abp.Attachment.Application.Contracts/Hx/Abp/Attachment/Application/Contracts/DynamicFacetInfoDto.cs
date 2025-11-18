@@ -41,6 +41,14 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// </summary>
         [JsonPropertyName("metadata")]
         public Dictionary<string, object>? Metadata { get; set; }
+
+        /// <summary>
+        /// 是否自动创建子分类（默认false）
+        /// 当设置为true时，如果文件夹中有子文件夹，将按照子文件夹结构动态创建子分类
+        /// 如果子文件夹名称与模板中的子分类名称匹配，则使用模板属性；否则动态创建子分类
+        /// </summary>
+        [JsonPropertyName("autoCreateSubCatalogues")]
+        public bool AutoCreateSubCatalogues { get; set; } = false;
     }
 }
 

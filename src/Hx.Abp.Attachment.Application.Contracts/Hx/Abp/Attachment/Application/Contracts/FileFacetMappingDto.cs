@@ -38,6 +38,15 @@ namespace Hx.Abp.Attachment.Application.Contracts
         [MaxLength(500, ErrorMessage = "动态分面分类名称长度不能超过500个字符")]
         [JsonPropertyName("dynamicFacetCatalogueName")]
         public required string DynamicFacetCatalogueName { get; set; }
+
+        /// <summary>
+        /// 子文件夹路径（相对于动态分面文件夹的路径，如 "子文件夹1/子文件夹2"）
+        /// 用于动态创建子分类，支持嵌套文件夹结构
+        /// 例如：如果文件在 "案卷A/材料类型/正本" 路径下，则此值为 "材料类型/正本"
+        /// </summary>
+        [MaxLength(1000, ErrorMessage = "子文件夹路径长度不能超过1000个字符")]
+        [JsonPropertyName("subFolderPath")]
+        public string? SubFolderPath { get; set; }
     }
 }
 

@@ -33,6 +33,7 @@ namespace Hx.Abp.Attachment.Application
                 .ForMember(dest => dest.FileName, opt => opt.MapFrom(src => src.FileName))
                 .ForMember(dest => dest.FileType, opt => opt.MapFrom(src => src.FileType));
             CreateMap<AttachFileCreateDto, AttachFile>(MemberList.Source)
+            .ForSourceMember(src => src.SubFolderPath, opt => opt.DoNotValidate())
                 .ForSourceMember(src => src.DynamicFacetCatalogueName, opt => opt.DoNotValidate()); // DynamicFacetCatalogueName是临时字段，不映射到实体
             CreateMap<AttachFileUpdateDto, AttachFile>(MemberList.Source);
             

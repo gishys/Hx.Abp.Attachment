@@ -350,11 +350,20 @@ namespace Hx.Abp.Attachment.HttpApi
                     SequenceNumber = null // 让服务层自动分配序号
                 };
                 
-                // 匹配动态分面分类名称
+                // 匹配动态分面分类名称和子文件夹路径
                 // 优先级：1. 文件索引匹配（最可靠） 2. 文件名+大小组合匹配（备选）
-                if (fileIndexToFacetMapping != null && fileIndexToFacetMapping.TryGetValue(fileIndex, out var facetCatalogueName))
+                string? facetCatalogueName = null;
+                string? subFolderPath = null;
+                
+                if (fileIndexToFacetMapping != null && fileIndexToFacetMapping.TryGetValue(fileIndex, out facetCatalogueName))
                 {
                     fileDto.DynamicFacetCatalogueName = facetCatalogueName;
+                    // 同时查找子文件夹路径
+                    var mapping = fileFacetMappingList?.FirstOrDefault(m => m.FileIndex == fileIndex);
+                    if (mapping != null && !string.IsNullOrWhiteSpace(mapping.SubFolderPath))
+                    {
+                        subFolderPath = mapping.SubFolderPath;
+                    }
                 }
                 else if (fileNameSizeToFacetMapping != null)
                 {
@@ -363,7 +372,22 @@ namespace Hx.Abp.Attachment.HttpApi
                     if (fileNameSizeToFacetMapping.TryGetValue(key, out facetCatalogueName))
                     {
                         fileDto.DynamicFacetCatalogueName = facetCatalogueName;
+                        // 同时查找子文件夹路径
+                        var mapping = fileFacetMappingList?.FirstOrDefault(m => 
+                            !string.IsNullOrWhiteSpace(m.FileName) && 
+                            m.FileName.Equals(fileName, StringComparison.OrdinalIgnoreCase) &&
+                            m.FileSize == fileSize);
+                        if (mapping != null && !string.IsNullOrWhiteSpace(mapping.SubFolderPath))
+                        {
+                            subFolderPath = mapping.SubFolderPath;
+                        }
                     }
+                }
+                
+                // 设置子文件夹路径（如果存在）
+                if (!string.IsNullOrWhiteSpace(subFolderPath))
+                {
+                    fileDto.SubFolderPath = subFolderPath;
                 }
                 
                 inputs.Add(fileDto);

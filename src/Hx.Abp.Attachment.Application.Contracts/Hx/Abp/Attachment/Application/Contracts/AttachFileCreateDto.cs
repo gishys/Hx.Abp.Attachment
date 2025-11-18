@@ -19,5 +19,11 @@
         /// 如果提供此字段，文件将被分配到对应的动态分面分类下
         /// </summary>
         public virtual string? DynamicFacetCatalogueName { get; set; }
+
+        /// <summary>
+        /// 子文件夹路径（可选，相对于动态分面文件夹的路径，如 "材料类型/正本"）
+        /// 用于动态创建子分类，支持嵌套文件夹结构
+        /// </summary>
+        public virtual string? SubFolderPath { get; set; }
     }
 }

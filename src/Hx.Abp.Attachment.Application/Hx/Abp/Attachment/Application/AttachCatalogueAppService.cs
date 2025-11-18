@@ -27,7 +27,8 @@ namespace Hx.Abp.Attachment.Application
         IAttachCatalogueTemplateRepository templateRepository,
         AIServiceFactory aiServiceFactory,
         IAttachCatalogueManager attachCatalogueManager,
-        AttachCataloguePermissionChecker permissionChecker
+        AttachCataloguePermissionChecker permissionChecker,
+        DynamicSubCatalogueCreationService dynamicSubCatalogueCreationService
         ) : AttachmentService, IAttachCatalogueAppService
     {
         private readonly IEfCoreAttachCatalogueRepository CatalogueRepository = catalogueRepository;
@@ -40,6 +41,7 @@ namespace Hx.Abp.Attachment.Application
         private readonly AIServiceFactory AIServiceFactory = aiServiceFactory;
         private readonly IAttachCatalogueManager AttachCatalogueManager = attachCatalogueManager;
         private readonly AttachCataloguePermissionChecker PermissionChecker = permissionChecker;
+        private readonly DynamicSubCatalogueCreationService DynamicSubCatalogueCreationService = dynamicSubCatalogueCreationService;
         /// <summary>
         /// 创建文件夹
         /// </summary>
@@ -1572,12 +1574,12 @@ namespace Hx.Abp.Attachment.Application
                 // 3. 预处理：按动态分面信息分组，创建/查找动态分面分类（一个动态分面可以包含多个文件）
                 // 使用字典缓存已创建/查找的动态分面分类，避免重复创建
                 var dynamicFacetCatalogueCache = new Dictionary<string, AttachCatalogue>();
+                List<DynamicFacetInfoDto>? uniqueDynamicFacetInfos = null;
                 
                 if (dynamicFacetTemplate != null)
                 {
                     // 获取所有唯一的动态分面信息
                     // 优先使用dynamicFacetInfoList（如果提供），否则从文件的DynamicFacetCatalogueName中提取
-                    List<DynamicFacetInfoDto> uniqueDynamicFacetInfos;
                     
                     if (dynamicFacetInfoList != null && dynamicFacetInfoList.Count > 0)
                     {
@@ -1739,6 +1741,31 @@ namespace Hx.Abp.Attachment.Application
                                 targetCatalogue = cachedCatalogue;
                                 Logger.LogInformation("文件 {FileName} 分配到动态分面分类: {CatalogueName}, ID: {CatalogueId}", 
                                     input.FileAlias, dynamicFacetCatalogueName, cachedCatalogue.Id);
+                                
+                                // 5.1.1 如果启用了自动创建子分类，且文件有子文件夹路径，则动态创建子分类
+                                if (dynamicFacetTemplate != null && 
+                                    !string.IsNullOrWhiteSpace(input.SubFolderPath))
+                                {
+                                    // 检查是否启用了自动创建子分类
+                                    var dynamicFacetInfo = uniqueDynamicFacetInfos?.FirstOrDefault(f => 
+                                        string.Equals(f.CatalogueName, dynamicFacetCatalogueName, StringComparison.OrdinalIgnoreCase));
+                                    
+                                    if (dynamicFacetInfo != null && dynamicFacetInfo.AutoCreateSubCatalogues)
+                                    {
+                                        // 根据子文件夹路径递归创建子分类
+                                        targetCatalogue = await DynamicSubCatalogueCreationService.CreateSubCataloguesFromFolderPathAsync(
+                                            cachedCatalogue,
+                                            input.SubFolderPath,
+                                            dynamicFacetTemplate,
+                                            catalogue.Reference,
+                                            catalogue.ReferenceType,
+                                            GuidGenerator);
+                                        
+                                        Logger.LogInformation(
+                                            "为文件 {FileName} 动态创建子分类路径: {SubFolderPath}, 最终分类ID: {CatalogueId}",
+                                            input.FileAlias, input.SubFolderPath, targetCatalogue.Id);
+                                    }
+                                }
                             }
                             else
                             {

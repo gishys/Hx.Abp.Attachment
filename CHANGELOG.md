@@ -7,12 +7,37 @@
 
 ## [未发布] - 2025
 
+---
+
+## [v1.1.54] - 2025-11-18
+
+### 新增功能
+
+#### 动态子分类创建功能
+
+-   **新增服务**：`DynamicSubCatalogueCreationService`
+    -   根据文件夹路径递归创建子分类，支持嵌套文件夹结构
+    -   自动匹配模板：如果子文件夹名称与模板名称匹配，使用模板属性创建分类
+    -   动态创建：如果没有匹配的模板，根据父模板属性动态创建子分类
+    -   避免重复：自动检查已存在的分类，避免重复创建
+-   **DTO 扩展**：
+    -   `FileFacetMappingDto` 新增 `subFolderPath` 属性，支持指定子文件夹路径
+    -   例如：如果文件在 "案卷 A/材料类型/正本" 路径下，可指定 `subFolderPath` 为 "材料类型/正本"
+-   **功能特性**：
+    -   支持多级嵌套文件夹结构（如 "材料类型/正本/扫描件"）
+    -   自动计算分类路径（Path）和序号（SequenceNumber）
+    -   自动继承父分类的引用信息（Reference、ReferenceType）
+    -   支持模板匹配和动态创建两种模式
+-   **使用场景**：
+    -   批量上传文件时，根据文件夹结构自动创建对应的分类层级
+    -   支持复杂的文件组织结构，无需预先创建所有分类
+
 ### 改进
 
 #### JSON 序列化字段命名优化
 
 -   **DTO 更新**：为所有 DTO 属性添加 `[JsonPropertyName]` 特性，支持 camelCase（首字母小写）命名
-    -   `FileFacetMappingDto`：`fileName`、`fileIndex`、`fileSize`、`dynamicFacetCatalogueName`
+    -   `FileFacetMappingDto`：`fileName`、`fileIndex`、`fileSize`、`dynamicFacetCatalogueName`、`subFolderPath`
     -   `DynamicFacetInfoDto`：`catalogueName`、`description`、`sequenceNumber`、`tags`、`metadata`
 -   **优势**：
     -   符合前端 JavaScript/TypeScript 命名规范
@@ -30,6 +55,18 @@
 -   **错误提示优化**：
     -   明确提示缺少动态分面分类名称的文件
     -   提示如何修复（通过 `fileFacetMapping` 为每个文件指定 `dynamicFacetCatalogueName`）
+
+### 技术细节
+
+#### 依赖注入
+
+-   注册了 `DynamicSubCatalogueCreationService` 到 DI 容器
+
+#### 代码质量
+
+-   遵循单一职责原则，将复杂的子分类创建逻辑隔离到独立服务
+-   支持事务管理，确保数据一致性
+-   完善的日志记录，便于问题排查
 
 ---
 

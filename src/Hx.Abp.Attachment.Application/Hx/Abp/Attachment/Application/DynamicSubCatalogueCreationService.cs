@@ -45,8 +45,8 @@ namespace Hx.Abp.Attachment.Application
             }
 
             // 分割路径为文件夹名称数组
-            var folderNames = subFolderPath.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
-            if (folderNames.Length == 0)
+            var folderNames = subFolderPath.SplitEfficient(['/', '\\' ]);
+            if (folderNames.Count == 0)
             {
                 return dynamicFacetCatalogue;
             }

@@ -13,12 +13,9 @@ namespace Hx.Abp.Attachment.Domain.Shared
         {
             Configure<AbpLocalizationOptions>(options =>
             {
+                // 注册本地化资源（只注册一次）
                 options.Resources
-                    .Add<AttachmentLocalizationResource>("zh-CN")
-                    .AddVirtualJson("/Hx/Abp/Attachment/Domain/Shared/Localization");
-
-                options.Resources
-                    .Add<AttachmentLocalizationResource>("en")
+                    .Add<AttachmentLocalizationResource>()
                     .AddVirtualJson("/Hx/Abp/Attachment/Domain/Shared/Localization");
 
                 // 设置默认语言

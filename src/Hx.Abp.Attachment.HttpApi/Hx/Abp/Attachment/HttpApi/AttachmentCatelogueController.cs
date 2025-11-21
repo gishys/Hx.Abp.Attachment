@@ -231,6 +231,8 @@ namespace Hx.Abp.Attachment.HttpApi
         /// <param name="fulltextQuery">全文搜索查询，支持中文分词</param>
         /// <param name="templateId">模板ID过滤，null表示查询所有模板</param>
         /// <param name="templateVersion">模板版本过滤，null表示查询所有版本</param>
+        /// <param name="creatorId">创建者用户ID过滤（可选，用于查询指定用户创建的分类，如果为null且targetDate不为null，则自动使用当前用户ID）</param>
+        /// <param name="targetDate">目标日期过滤（UTC时间，可选，用于查询指定日期创建的分类，null表示不过滤日期，格式：yyyy-MM-dd）</param>
         /// <param name="skipCount">跳过数量，用于分页，默认0</param>
         /// <param name="maxResultCount">最大返回数量，用于分页，默认不限制</param>
         /// <returns>分类树形结构分页结果</returns>
@@ -246,13 +248,15 @@ namespace Hx.Abp.Attachment.HttpApi
             [FromQuery] string? fulltextQuery = null,
             [FromQuery] Guid? templateId = null,
             [FromQuery] int? templateVersion = null,
+            [FromQuery] Guid? creatorId = null,
+            [FromQuery] DateTime? targetDate = null,
             [FromQuery] int skipCount = 0,
             [FromQuery] int maxResultCount = int.MaxValue)
         {
             return AttachCatalogueAppService.GetCataloguesTreeAsync(
                 reference, referenceType, catalogueFacetType, cataloguePurpose,
                 includeChildren, includeFiles, fulltextQuery, templateId, templateVersion,
-                skipCount, maxResultCount);
+                creatorId, targetDate, skipCount, maxResultCount);
         }
 
         /// <summary>
@@ -349,13 +353,12 @@ namespace Hx.Abp.Attachment.HttpApi
                     DocumentContent = memoryStream.ToArray(),
                     SequenceNumber = null // 让服务层自动分配序号
                 };
-                
+
                 // 匹配动态分面分类名称和子文件夹路径
                 // 优先级：1. 文件索引匹配（最可靠） 2. 文件名+大小组合匹配（备选）
-                string? facetCatalogueName = null;
                 string? subFolderPath = null;
-                
-                if (fileIndexToFacetMapping != null && fileIndexToFacetMapping.TryGetValue(fileIndex, out facetCatalogueName))
+
+                if (fileIndexToFacetMapping != null && fileIndexToFacetMapping.TryGetValue(fileIndex, out string? facetCatalogueName))
                 {
                     fileDto.DynamicFacetCatalogueName = facetCatalogueName;
                     // 同时查找子文件夹路径

@@ -1504,6 +1504,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             string? fulltextQuery = null,
             Guid? templateId = null,
             int? templateVersion = null,
+            Guid? creatorId = null,
+            DateTime? targetDate = null,
             int skipCount = 0,
             int maxResultCount = int.MaxValue,
             CancellationToken cancellationToken = default)
@@ -1540,6 +1542,19 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 if (templateVersion.HasValue)
                     baseFilter = baseFilter.Where(c => c.TemplateVersion == templateVersion.Value);
 
+                // 创建者用户ID过滤
+                if (creatorId.HasValue)
+                    baseFilter = baseFilter.Where(c => c.CreatorId == creatorId.Value);
+
+                // 日期过滤（如果指定了日期，查询该日期创建的分类）
+                if (targetDate.HasValue)
+                {
+                    var date = targetDate.Value.Date;
+                    var startDate = date;
+                    var endDate = date.AddDays(1).AddTicks(-1); // 当天的最后一刻
+                    baseFilter = baseFilter.Where(c => c.CreationTime >= startDate && c.CreationTime <= endDate);
+                }
+
                 // 全文检索过滤条件
                 if (!string.IsNullOrWhiteSpace(fulltextQuery))
                 {
@@ -1569,12 +1584,20 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 if (includeChildren)
                 {
                     // 先对根节点进行分页查询
-                    var pagedRootCatalogues = await rootFilter
-                        .OrderBy(c => c.SequenceNumber)
-                        .ThenBy(c => c.CreationTime)
-                        .Skip(skipCount)
-                        .Take(maxResultCount)
-                        .ToListAsync(cancellationToken);
+                    // 如果指定了创建者或日期，按创建时间倒序（最新在前），否则按序号和创建时间正序
+                    var pagedRootCatalogues = creatorId.HasValue || targetDate.HasValue
+                        ? await rootFilter
+                            .OrderByDescending(c => c.CreationTime)
+                            .ThenBy(c => c.SequenceNumber)
+                            .Skip(skipCount)
+                            .Take(maxResultCount)
+                            .ToListAsync(cancellationToken)
+                        : await rootFilter
+                            .OrderBy(c => c.SequenceNumber)
+                            .ThenBy(c => c.CreationTime)
+                            .Skip(skipCount)
+                            .Take(maxResultCount)
+                            .ToListAsync(cancellationToken);
 
                     if (pagedRootCatalogues.Count == 0)
                     {
@@ -1616,12 +1639,20 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 else
                 {
                     // 只查询根节点（Path为空或null，或者ParentId为null），并进行分页
-                    var rootCatalogues = await rootFilter
-                        .OrderBy(c => c.SequenceNumber)
-                        .ThenBy(c => c.CreationTime)
-                        .Skip(skipCount)
-                        .Take(maxResultCount)
-                        .ToListAsync(cancellationToken);
+                    // 如果指定了创建者或日期，按创建时间倒序（最新在前），否则按序号和创建时间正序
+                    var rootCatalogues = creatorId.HasValue || targetDate.HasValue
+                        ? await rootFilter
+                            .OrderByDescending(c => c.CreationTime)
+                            .ThenBy(c => c.SequenceNumber)
+                            .Skip(skipCount)
+                            .Take(maxResultCount)
+                            .ToListAsync(cancellationToken)
+                        : await rootFilter
+                            .OrderBy(c => c.SequenceNumber)
+                            .ThenBy(c => c.CreationTime)
+                            .Skip(skipCount)
+                            .Take(maxResultCount)
+                            .ToListAsync(cancellationToken);
 
                     return rootCatalogues;
                 }
@@ -1643,6 +1674,8 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             string? fulltextQuery = null,
             Guid? templateId = null,
             int? templateVersion = null,
+            Guid? creatorId = null,
+            DateTime? targetDate = null,
             CancellationToken cancellationToken = default)
         {
             try
@@ -1676,6 +1709,19 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 // 模板版本过滤
                 if (templateVersion.HasValue)
                     baseFilter = baseFilter.Where(c => c.TemplateVersion == templateVersion.Value);
+
+                // 创建者用户ID过滤
+                if (creatorId.HasValue)
+                    baseFilter = baseFilter.Where(c => c.CreatorId == creatorId.Value);
+
+                // 日期过滤（如果指定了日期，查询该日期创建的分类）
+                if (targetDate.HasValue)
+                {
+                    var date = targetDate.Value.Date;
+                    var startDate = date;
+                    var endDate = date.AddDays(1).AddTicks(-1); // 当天的最后一刻
+                    baseFilter = baseFilter.Where(c => c.CreationTime >= startDate && c.CreationTime <= endDate);
+                }
 
                 // 全文检索过滤条件
                 if (!string.IsNullOrWhiteSpace(fulltextQuery))

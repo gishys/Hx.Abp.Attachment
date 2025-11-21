@@ -11,6 +11,11 @@
     <PackageReference Include="iTextSharp.LGPLv2.Core" Version="3.4.20" />
     <PackageReference Include="RulesEngine" Version="6.0.0" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.5" />
+    <PackageReference Include="Volo.Abp.Localization" Version="8.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Hx\Abp\Attachment\Domain\Shared\Localization\*.json" />
   </ItemGroup>
 
 </Project>

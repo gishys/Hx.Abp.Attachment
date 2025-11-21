@@ -1338,21 +1338,34 @@ namespace Hx.Abp.Attachment.Application
             string? fulltextQuery = null,
             Guid? templateId = null,
             int? templateVersion = null,
+            Guid? creatorId = null,
+            DateTime? targetDate = null,
             int skipCount = 0,
             int maxResultCount = int.MaxValue)
         {
             try
             {
+                // 如果指定了targetDate但没有指定creatorId，自动使用当前用户ID
+                var finalCreatorId = creatorId;
+                if (targetDate.HasValue && !finalCreatorId.HasValue)
+                {
+                    finalCreatorId = CurrentUser?.Id;
+                    if (finalCreatorId == null)
+                    {
+                        throw new UserFriendlyException("未找到当前用户信息，请先登录");
+                    }
+                }
+
                 // 先获取根节点总数（用于分页）
                 var totalCount = await CatalogueRepository.GetCataloguesTreeCountAsync(
                     reference, referenceType, catalogueFacetType, cataloguePurpose,
-                    fulltextQuery, templateId, templateVersion);
+                    fulltextQuery, templateId, templateVersion, finalCreatorId, targetDate);
 
                 // 调用仓储方法获取分类树形结构（已在仓储层进行分页）
                 var catalogues = await CatalogueRepository.GetCataloguesTreeAsync(
                     reference, referenceType, catalogueFacetType, cataloguePurpose,
                     includeChildren, includeFiles, fulltextQuery, templateId, templateVersion,
-                    skipCount, maxResultCount);
+                    finalCreatorId, targetDate, skipCount, maxResultCount);
 
                 // 转换为树形DTO
                 var treeDtos = new List<AttachCatalogueTreeDto>();

@@ -143,6 +143,8 @@ namespace Hx.Abp.Attachment.Application.Contracts
         /// <param name="fulltextQuery">全文搜索查询，支持中文分词</param>
         /// <param name="templateId">模板ID过滤，null表示查询所有模板</param>
         /// <param name="templateVersion">模板版本过滤，null表示查询所有版本</param>
+        /// <param name="creatorId">创建者用户ID过滤（可选，用于查询指定用户创建的分类，如果为null且targetDate不为null，则自动使用当前用户ID）</param>
+        /// <param name="targetDate">目标日期过滤（UTC时间，可选，用于查询指定日期创建的分类，null表示不过滤日期）</param>
         /// <param name="skipCount">跳过数量，用于分页</param>
         /// <param name="maxResultCount">最大返回数量，用于分页，默认不限制</param>
         /// <returns>分类树形结构分页结果</returns>
@@ -156,6 +158,8 @@ namespace Hx.Abp.Attachment.Application.Contracts
             string? fulltextQuery = null,
             Guid? templateId = null,
             int? templateVersion = null,
+            Guid? creatorId = null,
+            DateTime? targetDate = null,
             int skipCount = 0,
             int maxResultCount = int.MaxValue);
 

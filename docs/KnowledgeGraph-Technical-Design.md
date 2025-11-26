@@ -114,25 +114,35 @@
 >     -   **业务实体（BusinessEntity）**：业务维度，表示项目、流程、合同等业务实体
 >     -   **工作流（Workflow）**：流程维度，管理档案的创建、审核、归档等业务流程，定义分类的生命周期和审批流程
 
+> **✅ 已创建视图模型**：以下视图模型已在项目中创建，位于 `Hx.Abp.Attachment.Application.Contracts/KnowledgeGraph/` 命名空间下。
+
 ```csharp
-// 实体基类（图谱查询视图）
+// 实体基类（图谱查询视图模型）
 // 注意：这是图谱查询的视图模型，不是数据库实体
 // 实际数据存储在现有实体表中（APPATTACH_CATALOGUES等）
-public abstract class KnowledgeGraphEntity
+// 通过 EntityId 关联到现有实体的 Id 字段，避免与继承类的标识字段冲突
+// 文件位置：KnowledgeGraphEntityViewModel.cs
+public abstract class KnowledgeGraphEntityViewModel
 {
-    public Guid Id { get; set; } // 关联到现有实体表的ID
-    public EntityType Type { get; set; } // 实体类型（Catalogue, Person, Department, BusinessEntity, Workflow）
+    /// <summary>
+    /// 关联到现有实体表的ID（如 AttachCatalogue.Id）
+    /// 使用 EntityId 而不是 Id，避免与继承类的标识字段冲突
+    /// </summary>
+    public Guid EntityId { get; set; }
+
+    public string EntityType { get; set; } // 实体类型（Catalogue, Person, Department, BusinessEntity, Workflow）
     public string Name { get; set; } // 实体名称（从现有实体表获取）
     public List<string> Tags { get; set; } // 标签列表（从现有实体表获取）
-    public EntityStatus Status { get; set; } // 统一状态管理（ACTIVE, ARCHIVED, DELETED等）
+    public string Status { get; set; } // 统一状态管理（ACTIVE, ARCHIVED, DELETED等）
     public Dictionary<string, object> GraphProperties { get; set; } // 图谱特有属性（如重要性评分、中心度等）
     // 注意：其他业务字段（如CatalogueName等）通过JOIN现有实体表获取
     // CreatedBy/UpdatedBy等信息通过ABP框架的审计字段获取
 }
 
-// 分类实体（核心）- 引用AttachCatalogue
+// 分类实体视图模型（核心）- 引用AttachCatalogue
 // 只包含图谱查询需要的核心字段
-public class CatalogueEntity : KnowledgeGraphEntity
+// 文件位置：CatalogueEntityViewModel.cs
+public class CatalogueEntityViewModel : KnowledgeGraphEntityViewModel
 {
     // 核心关联字段（用于图谱查询）
     public string Reference { get; set; } // 业务引用ID（用于关联BusinessEntity）
@@ -147,9 +157,10 @@ public class CatalogueEntity : KnowledgeGraphEntity
     // 模板和分面信息已体现在分类的FacetType等字段中，无需单独维度
 }
 
-// 人员实体 - 通过审计字段关联（CreatorId等）
+// 人员实体视图模型 - 通过审计字段关联（CreatorId等）
 // 简化定义，只包含图谱查询需要的字段
-public class PersonEntity : KnowledgeGraphEntity
+// 文件位置：PersonEntityViewModel.cs
+public class PersonEntityViewModel : KnowledgeGraphEntityViewModel
 {
     public string EmployeeId { get; set; } // 员工ID（关联到用户系统）
     public Guid? DepartmentId { get; set; } // 关联部门ID
@@ -160,9 +171,10 @@ public class PersonEntity : KnowledgeGraphEntity
     // 注意：其他字段（Position、Email、Phone等）通过关联用户系统获取
 }
 
-// 部门实体 - 组织维度
+// 部门实体视图模型 - 组织维度
 // 表示分类所属的部门，通过Reference和ReferenceType关联
-public class DepartmentEntity : KnowledgeGraphEntity
+// 文件位置：DepartmentEntityViewModel.cs
+public class DepartmentEntityViewModel : KnowledgeGraphEntityViewModel
 {
     public string DepartmentCode { get; set; } // 部门编码
     public Guid? ParentDepartmentId { get; set; } // 父部门ID（用于层级结构）
@@ -174,9 +186,10 @@ public class DepartmentEntity : KnowledgeGraphEntity
     // 注意：其他字段（DepartmentName、ManagerId等）通过关联组织系统获取
 }
 
-// 业务实体 - 通过Reference和ReferenceType关联的外部业务实体
+// 业务实体视图模型 - 通过Reference和ReferenceType关联的外部业务实体
 // 支持项目、流程、合同、任务等多种业务类型（不包括部门，部门单独作为维度）
-public class BusinessEntity : KnowledgeGraphEntity
+// 文件位置：BusinessEntityViewModel.cs
+public class BusinessEntityViewModel : KnowledgeGraphEntityViewModel
 {
     public string ReferenceId { get; set; } // 对应AttachCatalogue.Reference
     public int ReferenceType { get; set; } // 对应AttachCatalogue.ReferenceType
@@ -188,16 +201,16 @@ public class BusinessEntity : KnowledgeGraphEntity
     // 注意：业务专属属性通过关联外部业务系统获取，不在此处存储
 }
 
-// 工作流实体 - 流程维度
+// 工作流实体视图模型 - 流程维度
 // 管理档案的创建、审核、归档等业务流程，定义分类的生命周期和审批流程
-public class WorkflowEntity : KnowledgeGraphEntity
+// 文件位置：WorkflowEntityViewModel.cs
+public class WorkflowEntityViewModel : KnowledgeGraphEntityViewModel
 {
     public string WorkflowCode { get; set; } // 工作流编码（唯一标识）
-    public WorkflowType WorkflowType { get; set; } // 工作流类型（创建审批、归档审批、销毁审批等）
-    public WorkflowStatus Status { get; set; } // 工作流状态（ACTIVE, ARCHIVED, DISABLED）
-    public Guid? ParentWorkflowId { get; set; } // 父工作流ID（用于版本管理）
-    public int Version { get; set; } // 工作流版本号
-    public bool IsLatestVersion { get; set; } // 是否最新版本
+    public string WorkflowType { get; set; } // 工作流类型（创建审批、归档审批、销毁审批等）
+    public string Status { get; set; } // 工作流状态（ACTIVE, ARCHIVED, DISABLED）
+    public Guid? TemplateDefinitionId { get; set; } // 模板定义Id（关联到工作流模板定义）
+    public int TemplateDefinitionVersion { get; set; } // 模板定义版本（工作流模板定义的版本号）
 
     // 关联信息
     public Guid? OwnerDepartmentId { get; set; } // 拥有部门ID
@@ -214,27 +227,36 @@ public class WorkflowEntity : KnowledgeGraphEntity
 
 #### 3.1.2 关系模型（Relationship Model）
 
+````csharp
+> **✅ 已创建关系实体**：以下关系实体和枚举已在项目中创建。
+> - 关系实体：`Hx.Abp.Attachment.Domain/KnowledgeGraph/KnowledgeGraphRelationship.cs`
+> - 枚举类型：`Hx.Abp.Attachment.Dmain.Shared/Domain/Shared/KnowledgeGraph/` 目录下
+> - 数据库配置：`Hx.Abp.Attachment.EntityFrameworkCore/KnowledgeGraphRelationshipEntityTypeConfiguration.cs`
+
 ```csharp
-// 关系基类
-// 注意：关系数据存储在kg_relationships表中，通过entity_id关联到现有实体表
-public abstract class KnowledgeGraphRelationship
+// 知识图谱关系实体
+// 注意：关系数据存储在APPKG_RELATIONSHIPS表中，通过entity_id关联到现有实体表
+// 继承 ExtensibleFullAuditedEntity 以使用ABP的审计字段和扩展字段
+// 文件位置：KnowledgeGraphRelationship.cs
+public class KnowledgeGraphRelationship : ExtensibleFullAuditedEntity<Guid>
 {
-    public Guid Id { get; set; }
     public Guid SourceEntityId { get; set; } // 源实体ID（关联到现有实体表）
     public string SourceEntityType { get; set; } // 源实体类型（Catalogue, Person, Department, BusinessEntity, Workflow）
     public Guid TargetEntityId { get; set; } // 目标实体ID（关联到现有实体表）
     public string TargetEntityType { get; set; } // 目标实体类型
     public RelationshipType Type { get; set; }
     public string? Description { get; set; }
-    public DateTime CreatedTime { get; set; }
-    public DateTime? UpdatedTime { get; set; }
-    public Dictionary<string, object> Properties { get; set; } // 关系扩展属性
 
     // 关系语义属性（用于抽象关系类型的具体语义描述）
     public string? Role { get; set; } // 角色（用于 PersonRelatesToCatalogue、PersonRelatesToWorkflow 等）
     public string? SemanticType { get; set; } // 语义类型（用于 CatalogueRelatesToCatalogue、WorkflowRelatesToWorkflow 等）
 
     public double Weight { get; set; } = 1.0; // 关系权重（用于影响分析）
+
+    // 注意：
+    // - Id, CreationTime, LastModificationTime 等审计字段由 ExtensibleFullAuditedEntity 提供
+    // - CreatorId, LastModifierId 等创建人/修改人字段由 ExtensibleFullAuditedEntity 提供
+    // - ExtraProperties 扩展字段由 ExtensibleFullAuditedEntity 提供，用于存储关系扩展属性（替代原来的 Properties 字段）
 
     // 辅助方法：获取关系的显示名称
     public string GetDisplayName()
@@ -314,7 +336,7 @@ public enum CatalogueSemanticType
     References,           // 引用关系
     SimilarTo             // 相似关系
 }
-```
+````
 
 ### 3.2 图数据库 Schema 设计
 
@@ -408,32 +430,45 @@ CREATE FULLTEXT INDEX catalogue_tags_index FOR (c:Catalogue) ON EACH [c.tags];
 -- =====================================================
 -- 知识图谱关系表（核心表）
 -- 存储实体间的关系，不存储实体本身的数据
+-- 注意：使用ABP的审计字段（CreationTime, LastModificationTime, CreatorId, LastModifierId等）
+-- 扩展属性存储在 ExtraProperties JSONB 字段中（由 ExtensibleFullAuditedEntity 提供）
 -- =====================================================
-CREATE TABLE kg_relationships (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    source_entity_id UUID NOT NULL, -- 源实体ID（关联到APPATTACH_CATALOGUES等）
-    source_entity_type VARCHAR(50) NOT NULL, -- 源实体类型（Catalogue, Person, Department, BusinessEntity, Workflow）
-    target_entity_id UUID NOT NULL, -- 目标实体ID
-    target_entity_type VARCHAR(50) NOT NULL, -- 目标实体类型
-    relationship_type VARCHAR(50) NOT NULL, -- 关系类型（RELATES_TO, HAS_CHILD等）
-    role VARCHAR(50), -- 角色（用于 PersonRelatesToCatalogue、PersonRelatesToWorkflow 等）
-    semantic_type VARCHAR(50), -- 语义类型（用于 CatalogueRelatesToCatalogue、WorkflowRelatesToWorkflow 等）
-    description TEXT,
-    weight DOUBLE PRECISION DEFAULT 1.0, -- 关系权重（用于影响分析）
-    properties JSONB, -- 关系扩展属性
-    created_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_time TIMESTAMP,
-    CONSTRAINT uk_source_target_type_role_semantic UNIQUE (source_entity_id, target_entity_id, relationship_type, COALESCE(role, ''), COALESCE(semantic_type, ''))
+CREATE TABLE "APPKG_RELATIONSHIPS" (
+    "Id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "SOURCE_ENTITY_ID" UUID NOT NULL, -- 源实体ID（关联到APPATTACH_CATALOGUES等）
+    "SOURCE_ENTITY_TYPE" VARCHAR(50) NOT NULL, -- 源实体类型（Catalogue, Person, Department, BusinessEntity, Workflow）
+    "TARGET_ENTITY_ID" UUID NOT NULL, -- 目标实体ID
+    "TARGET_ENTITY_TYPE" VARCHAR(50) NOT NULL, -- 目标实体类型
+    "RELATIONSHIP_TYPE" VARCHAR(50) NOT NULL, -- 关系类型（RELATES_TO, HAS_CHILD等）
+    "ROLE" VARCHAR(50), -- 角色（用于 PersonRelatesToCatalogue、PersonRelatesToWorkflow 等）
+    "SEMANTIC_TYPE" VARCHAR(50), -- 语义类型（用于 CatalogueRelatesToCatalogue、WorkflowRelatesToWorkflow 等）
+    "DESCRIPTION" TEXT,
+    "WEIGHT" DOUBLE PRECISION DEFAULT 1.0, -- 关系权重（用于影响分析）
+
+    -- ABP审计字段（由 ExtensibleFullAuditedEntity 提供）
+    "CreationTime" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "CreatorId" UUID,
+    "LastModificationTime" TIMESTAMP,
+    "LastModifierId" UUID,
+    "IsDeleted" BOOLEAN NOT NULL DEFAULT FALSE,
+    "DeletionTime" TIMESTAMP,
+    "DeleterId" UUID,
+
+    -- ABP扩展字段（由 ExtensibleFullAuditedEntity 提供）
+    "ExtraProperties" JSONB, -- 关系扩展属性（替代原来的 properties 字段）
+
+    CONSTRAINT "UK_KG_RELATIONSHIPS_SOURCE_TARGET_TYPE_ROLE_SEMANTIC"
+        UNIQUE ("SOURCE_ENTITY_ID", "TARGET_ENTITY_ID", "RELATIONSHIP_TYPE", COALESCE("ROLE", ''), COALESCE("SEMANTIC_TYPE", ''))
 );
 
-CREATE INDEX idx_relationships_source ON kg_relationships(source_entity_id, source_entity_type);
-CREATE INDEX idx_relationships_target ON kg_relationships(target_entity_id, target_entity_type);
-CREATE INDEX idx_relationships_type ON kg_relationships(relationship_type);
-CREATE INDEX idx_relationships_source_type ON kg_relationships(source_entity_type, relationship_type);
-CREATE INDEX idx_relationships_role ON kg_relationships(role) WHERE role IS NOT NULL;
-CREATE INDEX idx_relationships_semantic_type ON kg_relationships(semantic_type) WHERE semantic_type IS NOT NULL;
-CREATE INDEX idx_relationships_type_role ON kg_relationships(relationship_type, role) WHERE role IS NOT NULL;
-CREATE INDEX idx_relationships_type_semantic ON kg_relationships(relationship_type, semantic_type) WHERE semantic_type IS NOT NULL;
+CREATE INDEX "IDX_KG_RELATIONSHIPS_SOURCE" ON "APPKG_RELATIONSHIPS"("SOURCE_ENTITY_ID", "SOURCE_ENTITY_TYPE");
+CREATE INDEX "IDX_KG_RELATIONSHIPS_TARGET" ON "APPKG_RELATIONSHIPS"("TARGET_ENTITY_ID", "TARGET_ENTITY_TYPE");
+CREATE INDEX "IDX_KG_RELATIONSHIPS_TYPE" ON "APPKG_RELATIONSHIPS"("RELATIONSHIP_TYPE");
+CREATE INDEX "IDX_KG_RELATIONSHIPS_SOURCE_TYPE" ON "APPKG_RELATIONSHIPS"("SOURCE_ENTITY_TYPE", "RELATIONSHIP_TYPE");
+CREATE INDEX "IDX_KG_RELATIONSHIPS_ROLE" ON "APPKG_RELATIONSHIPS"("ROLE") WHERE "ROLE" IS NOT NULL;
+CREATE INDEX "IDX_KG_RELATIONSHIPS_SEMANTIC_TYPE" ON "APPKG_RELATIONSHIPS"("SEMANTIC_TYPE") WHERE "SEMANTIC_TYPE" IS NOT NULL;
+CREATE INDEX "IDX_KG_RELATIONSHIPS_TYPE_ROLE" ON "APPKG_RELATIONSHIPS"("RELATIONSHIP_TYPE", "ROLE") WHERE "ROLE" IS NOT NULL;
+CREATE INDEX "IDX_KG_RELATIONSHIPS_TYPE_SEMANTIC" ON "APPKG_RELATIONSHIPS"("RELATIONSHIP_TYPE", "SEMANTIC_TYPE") WHERE "SEMANTIC_TYPE" IS NOT NULL;
 
 -- =====================================================
 -- 实体图查询优化表（可选，用于提升查询性能）
@@ -1254,7 +1289,7 @@ public class SearchService
     /// 注意：entity参数包含从现有实体表JOIN获取的完整信息
     /// </summary>
     public double CalculateRelevanceScore(
-        KnowledgeGraphEntity entity, // 包含从现有实体表JOIN获取的Name、Tags等信息
+        KnowledgeGraphEntityViewModel entity, // 包含从现有实体表JOIN获取的Name、Tags等信息
         string keyword,
         List<string> matchedFields)
     {
@@ -2998,7 +3033,8 @@ public class KnowledgeGraphService : IKnowledgeGraphService
                 var nodeDto = MapToNodeDto(node);
 
                 // 访问控制：利用AttachCatalogue.Permissions过滤无权限的实体
-                if (await CheckEntityAccessAsync(nodeDto.Id, nodeDto.Type, userId, PermissionAction.Read, userRoles))
+                // 注意：nodeDto.EntityId 对应现有实体的 Id（如 AttachCatalogue.Id）
+                if (await CheckEntityAccessAsync(nodeDto.EntityId, nodeDto.Type, userId, PermissionAction.Read, userRoles))
                 {
                     nodes.Add(nodeDto);
 
@@ -3026,9 +3062,11 @@ public class KnowledgeGraphService : IKnowledgeGraphService
 
     /// <summary>
     /// 检查实体访问权限（利用AttachCatalogue.Permissions）
+    /// 注意：entityId 参数对应现有实体的 Id（如 AttachCatalogue.Id），
+    /// 视图模型通过 EntityId 属性关联到现有实体
     /// </summary>
     private async Task<bool> CheckEntityAccessAsync(
-        Guid entityId,
+        Guid entityId, // 现有实体的 Id（如 AttachCatalogue.Id）
         string entityType,
         Guid userId,
         PermissionAction action,
@@ -3113,7 +3151,7 @@ public class KnowledgeGraphService : IKnowledgeGraphService
         // 转换为DTO
         var items = results.Select(x => new SearchResultDto
         {
-            Id = x.Entity.EntityId,
+            EntityId = x.Entity.EntityId, // 使用 EntityId 而不是 Id，对应视图模型的 EntityId 属性
             Type = x.Entity.EntityType,
             Name = x.Entity.GraphProperties.GetValueOrDefault("name")?.ToString() ?? "",
             MatchScore = x.MatchScore,
@@ -3248,8 +3286,18 @@ public class KnowledgeGraphService : IKnowledgeGraphService
             SemanticType = input.SemanticType, // 语义类型（用于 CatalogueRelatesToCatalogue、WorkflowRelatesToWorkflow 等）
             Description = input.Description,
             Weight = input.Weight ?? 1.0,
-            Properties = input.Properties ?? new Dictionary<string, object>(),
-            CreatedTime = DateTime.UtcNow
+            // 使用 ABP 的 ExtraProperties 存储扩展属性
+            // 注意：CreationTime 由 ExtensibleFullAuditedEntity 自动设置
+        };
+
+        // 设置扩展属性
+        if (input.Properties != null)
+        {
+            foreach (var prop in input.Properties)
+            {
+                relationship.SetProperty(prop.Key, prop.Value);
+            }
+        }
         };
 
         await _relationshipRepository.InsertAsync(relationship);
@@ -3385,9 +3433,15 @@ public class KnowledgeGraphService : IKnowledgeGraphService
             relationship.Role = input.Role;
         if (input.SemanticType != null)
             relationship.SemanticType = input.SemanticType;
+        // 更新扩展属性
         if (input.Properties != null)
-            relationship.Properties = input.Properties;
-        relationship.UpdatedTime = DateTime.UtcNow;
+        {
+            foreach (var prop in input.Properties)
+            {
+                relationship.SetProperty(prop.Key, prop.Value);
+            }
+        }
+        // 注意：LastModificationTime 由 ExtensibleFullAuditedEntity 自动更新
 
         await _relationshipRepository.UpdateAsync(relationship);
 
@@ -3767,9 +3821,10 @@ public class KnowledgeGraphService : IKnowledgeGraphService
             RelationshipType = relationship.Type,
             Description = relationship.Description,
             Weight = relationship.Weight,
-            Properties = relationship.Properties,
-            CreatedTime = relationship.CreatedTime,
-            UpdatedTime = relationship.UpdatedTime
+            // 从 ExtraProperties 获取扩展属性
+            Properties = relationship.ExtraProperties.ToDictionary(kvp => kvp.Key, kvp => kvp.Value),
+            CreationTime = relationship.CreationTime,
+            LastModificationTime = relationship.LastModificationTime
         };
     }
 
@@ -4472,8 +4527,8 @@ public class KnowledgeGraphSyncJob : AsyncBackgroundJob<KnowledgeGraphSyncJobArg
             ["workflowCode"] = "", // workflow.WorkflowCode,
             ["workflowType"] = "", // workflow.WorkflowType,
             ["status"] = "", // workflow.Status,
-            ["version"] = 0, // workflow.Version,
-            ["isLatestVersion"] = false, // workflow.IsLatestVersion,
+            ["templateDefinitionId"] = null, // workflow.TemplateDefinitionId,
+            ["templateDefinitionVersion"] = 0, // workflow.TemplateDefinitionVersion,
             ["ownerDepartmentId"] = null, // workflow.OwnerDepartmentId,
             ["managerPersonId"] = null, // workflow.ManagerPersonId,
             // 其他字段从工作流引擎获取
@@ -4697,8 +4752,8 @@ public class KnowledgeGraphSyncJob : AsyncBackgroundJob<KnowledgeGraphSyncJobArg
                 ["id"] = relationship.Id.ToString(),
                 ["description"] = relationship.Description ?? "",
                 ["weight"] = relationship.Weight,
-                ["createdTime"] = relationship.CreatedTime,
-                ["updatedTime"] = relationship.UpdatedTime ?? relationship.CreatedTime
+                ["createdTime"] = relationship.CreationTime,
+                ["updatedTime"] = relationship.LastModificationTime ?? relationship.CreationTime
             };
 
             // 添加 role 或 semanticType 属性

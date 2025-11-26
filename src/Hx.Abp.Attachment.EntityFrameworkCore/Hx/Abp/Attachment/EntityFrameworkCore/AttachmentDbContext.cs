@@ -12,6 +12,7 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
         public DbSet<OcrTextBlock> OcrTextBlocks { get; set; }
         public DbSet<AttachCatalogueTemplate> AttachCatalogueTemplates { get; set; }
         public DbSet<MetaFieldPreset> MetaFieldPresets { get; set; }
+        public DbSet<Domain.KnowledgeGraph.KnowledgeGraphRelationship> KnowledgeGraphRelationships { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

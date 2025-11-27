@@ -27,6 +27,9 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
             // 注册全文搜索仓储
             context.Services.AddScoped<IFullTextSearchRepository, FullTextSearchRepository>();
 
+            // 注册知识图谱仓储
+            context.Services.AddScoped<IKnowledgeGraphRepository, KnowledgeGraphRepository>();
+
             // 配置 Npgsql 时区处理
             ConfigureNpgsqlDateTimeHandling();
         }

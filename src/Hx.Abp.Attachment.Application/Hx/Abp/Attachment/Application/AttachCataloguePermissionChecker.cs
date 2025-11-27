@@ -1,8 +1,10 @@
 using Hx.Abp.Attachment.Domain;
 using Hx.Abp.Attachment.Domain.Shared;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.Authorization.Permissions;
 using Volo.Abp.DependencyInjection;
+using Volo.Abp.Identity;
 using Volo.Abp.Users;
 
 namespace Hx.Abp.Attachment.Application
@@ -16,12 +18,14 @@ namespace Hx.Abp.Attachment.Application
         ICurrentUser currentUser,
         IEfCoreAttachCatalogueRepository catalogueRepository,
         IAttachCatalogueTemplateRepository templateRepository,
+        IServiceProvider serviceProvider,
         ILogger<AttachCataloguePermissionChecker> logger) : ITransientDependency
     {
         private readonly IPermissionChecker _permissionChecker = permissionChecker;
         private readonly ICurrentUser _currentUser = currentUser;
         private readonly IEfCoreAttachCatalogueRepository _catalogueRepository = catalogueRepository;
         private readonly IAttachCatalogueTemplateRepository _templateRepository = templateRepository;
+        private readonly IServiceProvider _serviceProvider = serviceProvider;
         private readonly ILogger<AttachCataloguePermissionChecker> _logger = logger;
 
         /// <summary>
@@ -34,11 +38,13 @@ namespace Hx.Abp.Attachment.Application
         /// <param name="catalogue">分类实体</param>
         /// <param name="action">权限操作</param>
         /// <param name="userId">用户ID（可选，如果为空则使用当前用户）</param>
+        /// <param name="userRoles">用户角色列表（可选，如果为空则自动获取）</param>
         /// <returns>是否具有权限</returns>
         public async Task<bool> CheckPermissionAsync(
             AttachCatalogue catalogue,
             PermissionAction action,
-            Guid? userId = null)
+            Guid? userId = null,
+            List<string>? userRoles = null)
         {
             if (catalogue == null)
             {
@@ -55,6 +61,9 @@ namespace Hx.Abp.Attachment.Application
 
             try
             {
+                // 获取用户角色（如果未提供）
+                var roles = userRoles?.ToArray() ?? await GetUserRolesAsync(targetUserId.Value);
+
                 // 1. 首先检查ABP系统权限（全局权限）
                 var abpPermissionName = GetAbpPermissionName(action);
                 if (await _permissionChecker.IsGrantedAsync(abpPermissionName))
@@ -65,7 +74,7 @@ namespace Hx.Abp.Attachment.Application
                 }
 
                 // 2. 检查分类特定权限（业务权限）
-                var hasCataloguePermission = CheckCataloguePermission(catalogue, targetUserId.Value, action);
+                var hasCataloguePermission = CheckCataloguePermission(catalogue, targetUserId.Value, action, roles);
                 if (hasCataloguePermission)
                 {
                     _logger.LogDebug("用户 {UserId} 通过分类权限检查，分类: {CatalogueId}, 操作: {Action}",
@@ -74,7 +83,7 @@ namespace Hx.Abp.Attachment.Application
                 }
 
                 // 3. 检查继承权限（从父分类和模板继承）
-                var hasInheritedPermission = await CheckInheritedPermissionAsync(catalogue, targetUserId.Value, action);
+                var hasInheritedPermission = await CheckInheritedPermissionAsync(catalogue, targetUserId.Value, action, roles);
                 if (hasInheritedPermission)
                 {
                     _logger.LogDebug("用户 {UserId} 通过继承权限检查，分类: {CatalogueId}, 操作: {Action}",
@@ -104,9 +113,23 @@ namespace Hx.Abp.Attachment.Application
         private async Task<bool> CheckInheritedPermissionAsync(
             AttachCatalogue catalogue,
             Guid userId,
-            PermissionAction action)
+            PermissionAction action,
+            string[]? userRoles = null)
         {
-            var userRoles = _currentUser.Roles ?? [];
+            // 如果未提供用户角色，使用当前用户的角色或获取指定用户的角色
+            if (userRoles == null || userRoles.Length == 0)
+            {
+                if (_currentUser.Id == userId && _currentUser.IsAuthenticated)
+                {
+                    userRoles = _currentUser.Roles?.ToArray() ?? [];
+                }
+                else
+                {
+                    // 获取指定用户的角色
+                    userRoles = await GetUserRolesAsync(userId);
+                }
+            }
+
             var visitedCatalogueIds = new HashSet<Guid>(); // 防止循环引用
 
             // 1. 从父分类继承权限（递归向上查找）
@@ -522,7 +545,8 @@ namespace Hx.Abp.Attachment.Application
         public async Task<Dictionary<Guid, bool>> CheckPermissionsAsync(
             List<AttachCatalogue> catalogues,
             PermissionAction action,
-            Guid? userId = null)
+            Guid? userId = null,
+            List<string>? userRoles = null)
         {
             var results = new Dictionary<Guid, bool>();
             var targetUserId = userId ?? _currentUser.Id;
@@ -535,6 +559,9 @@ namespace Hx.Abp.Attachment.Application
                 }
                 return results;
             }
+
+            // 获取用户角色（如果未提供）
+            var roles = userRoles?.ToArray() ?? await GetUserRolesAsync(targetUserId.Value);
 
             // 批量检查ABP系统权限
             var abpPermissionName = GetAbpPermissionName(action);
@@ -549,7 +576,7 @@ namespace Hx.Abp.Attachment.Application
                 else
                 {
                     // 检查分类直接权限
-                    var hasDirectPermission = CheckCataloguePermission(catalogue, targetUserId.Value, action);
+                    var hasDirectPermission = CheckCataloguePermission(catalogue, targetUserId.Value, action, roles);
                     if (hasDirectPermission)
                     {
                         results[catalogue.Id] = true;
@@ -557,12 +584,77 @@ namespace Hx.Abp.Attachment.Application
                     else
                     {
                         // 检查继承权限
-                        results[catalogue.Id] = await CheckInheritedPermissionAsync(catalogue, targetUserId.Value, action);
+                        results[catalogue.Id] = await CheckInheritedPermissionAsync(catalogue, targetUserId.Value, action, roles);
                     }
                 }
             }
 
             return results;
+        }
+
+        /// <summary>
+        /// 获取用户角色
+        /// 使用 ABP 框架的 IIdentityUserRepository 服务获取用户角色信息（可选依赖）
+        /// </summary>
+        private async Task<string[]> GetUserRolesAsync(Guid userId)
+        {
+            try
+            {
+                // 如果查询的是当前用户且已认证，优先使用 ICurrentUser.Roles（性能更好）
+                if (_currentUser.Id == userId && _currentUser.IsAuthenticated)
+                {
+                    var roles = _currentUser.Roles?.ToArray() ?? [];
+                    
+                    // 如果 ICurrentUser.Roles 有值，直接返回
+                    if (roles.Length > 0)
+                    {
+                        return roles;
+                    }
+                    
+                    // 如果 ICurrentUser.Roles 为空，尝试从数据库获取完整角色信息
+                }
+
+                // 使用服务定位器模式获取 IIdentityUserRepository（可选依赖）
+                var identityUserRepository = _serviceProvider.GetService<IIdentityUserRepository>();
+                
+                if (identityUserRepository == null)
+                {
+                    _logger.LogWarning(
+                        "[IIdentityUserRepository]未注册服务！Identity 模块可能未安装或未配置。UserId={UserId}，将使用 ICurrentUser.Roles 作为回退方案。",
+                        userId);
+                    
+                    // 回退到 ICurrentUser.Roles
+                    if (_currentUser.Id == userId && _currentUser.IsAuthenticated)
+                    {
+                        return _currentUser.Roles?.ToArray() ?? [];
+                    }
+                    
+                    return [];
+                }
+
+                // 使用 IIdentityUserRepository 获取完整的用户角色信息
+                var user = await identityUserRepository.FindAsync(userId);
+                if (user == null)
+                {
+                    _logger.LogWarning("用户不存在: UserId={UserId}", userId);
+                    return [];
+                }
+
+                var rolesList = await identityUserRepository.GetRolesAsync(userId);
+                return [.. rolesList.Select(r => r.Name)];
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "获取用户角色失败: UserId={UserId}", userId);
+                
+                // 发生异常时，尝试使用 ICurrentUser.Roles 作为后备方案
+                if (_currentUser.Id == userId && _currentUser.IsAuthenticated)
+                {
+                    return _currentUser.Roles?.ToArray() ?? [];
+                }
+                
+                return [];
+            }
         }
     }
 }

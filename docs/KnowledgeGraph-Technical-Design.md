@@ -59,13 +59,13 @@
                             ↕
 ┌─────────────────────────────────────────────────────────────┐
 │                   数据存储层                                 │
-│  ┌──────────────┐  ┌──────────────┐                        │
-│  │ 图数据库      │  │ 关系数据库    │                        │
-│  │ Neo4j         │  │ PostgreSQL   │                        │
-│  │ - 实体节点    │  │ - 业务数据    │                        │
-│  │ - 关系边      │  │ - 元数据      │                        │
-│  │               │  │ - 全文搜索    │                        │
-│  └──────────────┘  └──────────────┘                        │
+│  ┌────────────────────────────────────────┐                 │
+│  │ PostgreSQL + Apache AGE（统一数据库）   │                 │
+│  │ - 业务数据（APPATTACH_CATALOGUES等）   │                 │
+│  │ - 图数据（通过 AGE 扩展）              │                 │
+│  │ - 关系数据（APPKG_RELATIONSHIPS）      │                 │
+│  │ - 全文搜索（PostgreSQL 内置）          │                 │
+│  └────────────────────────────────────────┘                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -83,16 +83,27 @@
 #### 2.2.2 后端技术栈
 
 -   **框架**：ASP.NET Core 8.0（基于现有 ABP 框架）
--   **图数据库**：Neo4j（成熟稳定，Cypher 查询语言强大）
+-   **数据库**：PostgreSQL 14+（统一存储业务数据和图数据）
+-   **图数据库扩展**：Apache AGE（PostgreSQL 图数据库扩展，支持 Cypher 查询语言）
 -   **全文搜索**：PostgreSQL 全文搜索（利用 PostgreSQL 内置全文搜索功能，无需额外搜索引擎）
 -   **消息队列**：RabbitMQ / Redis Streams（异步处理和通知）
 -   **缓存**：Redis（热点数据缓存）
 
+> **技术选型说明**：选择 Apache AGE 而非 Neo4j 的原因：
+>
+> -   ✅ **统一数据存储**：与现有 PostgreSQL 数据库统一，减少运维复杂度
+> -   ✅ **事务一致性**：原生支持 ACID 事务，保证数据一致性
+> -   ✅ **Cypher 兼容**：支持 Cypher 查询语言，迁移成本低
+> -   ✅ **成本效益**：开源免费，降低开发和运维成本
+> -   ✅ **性能足够**：满足中小型项目的性能需求
+> -   📖 详细分析请参考：[PostgreSQL 图数据库扩展技术分析报告](./PostgreSQL-Graph-Extension-Analysis.md)
+
 #### 2.2.3 数据同步
 
 -   **领域事件**：使用 ABP 框架的领域事件（Domain Events）机制监听实体变更
--   **后台服务**：使用 ABP 框架的后台作业（Background Jobs）进行异步数据同步
+-   **后台服务**：使用 ABP 框架的后台作业（Background Jobs）进行异步图数据更新
 -   **事件总线**：使用 ABP 框架的本地事件总线（Local Event Bus）处理领域事件
+-   **统一事务**：业务数据和图数据在同一 PostgreSQL 数据库中，支持统一事务管理（无需跨数据库同步）
 
 ---
 
@@ -340,81 +351,187 @@ public enum CatalogueSemanticType
 
 ### 3.2 图数据库 Schema 设计
 
-#### 3.2.1 Neo4j 节点标签和属性
+> **重要说明**：本项目使用 **Apache AGE**（PostgreSQL 图数据库扩展）而非 Neo4j。
+>
+> -   ✅ **统一存储**：图数据存储在 PostgreSQL 数据库中，与业务数据统一管理
+> -   ✅ **Cypher 兼容**：支持 Cypher 查询语言，语法与 Neo4j 高度兼容
+> -   ✅ **事务一致性**：原生支持 ACID 事务，保证数据一致性
+> -   📖 详细说明请参考：[PostgreSQL 图数据库扩展技术分析报告](./PostgreSQL-Graph-Extension-Analysis.md)
+
+#### 3.2.1 Apache AGE 图数据库初始化
+
+> **📝 完整初始化脚本**：已创建完整的图数据库初始化与优化脚本，包含：
+>
+> -   ✅ Apache AGE 扩展安装和配置
+> -   ✅ 图数据库创建
+> -   ✅ 数据同步函数（从业务表同步到图数据库）
+> -   ✅ 性能优化索引和配置
+> -   ✅ 数据验证和监控查询
+> -   ✅ 自动同步触发器（可选）
+>
+> 📖 脚本位置：`docs/scripts/init-apache-age-graph.sql`
+>
+> **使用方法**：
+>
+> ```bash
+> # 在 PostgreSQL 中执行脚本
+> psql -U postgres -d your_database -f docs/scripts/init-apache-age-graph.sql
+> ```
+
+**快速初始化示例**：
+
+````sql
+-- =====================================================
+-- 1. 安装和启用 Apache AGE 扩展
+-- =====================================================
+CREATE EXTENSION IF NOT EXISTS age;
+LOAD 'age';
+
+-- =====================================================
+-- 2. 创建图数据库（在 PostgreSQL 中创建图命名空间）
+-- =====================================================
+SELECT create_graph('kg_graph');
+
+-- =====================================================
+-- 3. 节点标签定义（Apache AGE 使用标签系统）
+-- =====================================================
+-- 节点标签（优化后）
+-- (:Catalogue)
+-- (:Person)
+-- (:Department)
+-- (:BusinessEntity)
+-- (:Workflow)
+
+-- =====================================================
+-- 4. PostgreSQL 索引（用于提升查询性能）
+-- =====================================================
+-- 注意：Apache AGE 使用 PostgreSQL 的索引机制
+-- 在业务表上创建索引，AGE 查询会自动利用这些索引
+
+CREATE INDEX IF NOT EXISTS idx_catalogue_id ON "APPATTACH_CATALOGUES"("Id");
+CREATE INDEX IF NOT EXISTS idx_catalogue_name ON "APPATTACH_CATALOGUES"("CATALOGUE_NAME");
+CREATE INDEX IF NOT EXISTS idx_catalogue_status ON "APPATTACH_CATALOGUES"("STATUS");
+CREATE INDEX IF NOT EXISTS idx_relationship_source ON "APPKG_RELATIONSHIPS"("SOURCE_ENTITY_ID", "SOURCE_ENTITY_TYPE");
+CREATE INDEX IF NOT EXISTS idx_relationship_target ON "APPKG_RELATIONSHIPS"("TARGET_ENTITY_ID", "TARGET_ENTITY_TYPE");
+CREATE INDEX IF NOT EXISTS idx_relationship_type ON "APPKG_RELATIONSHIPS"("RELATIONSHIP_TYPE");
+
+-- =====================================================
+-- 5. 全文搜索索引（PostgreSQL 内置）
+-- =====================================================
+CREATE INDEX IF NOT EXISTS idx_catalogue_name_fts
+ON "APPATTACH_CATALOGUES"
+USING gin(to_tsvector('chinese_fts', "CATALOGUE_NAME"));
+
+#### 3.2.2 Apache AGE 关系类型定义（Cypher 语法）
 
 ```cypher
-// 节点标签（优化后）
-(:Catalogue)
-(:Person)
-(:Department)
-(:BusinessEntity)
-(:Workflow)
+-- =====================================================
+-- 关系类型（优化后 - 采用抽象、可扩展的设计）
+-- 注意：以下为 Cypher 语法示例，实际查询使用 AGE 的 cypher() 函数
+-- =====================================================
 
-// 节点属性索引
-CREATE INDEX catalogue_name_index FOR (c:Catalogue) ON (c.catalogueName);
-CREATE INDEX catalogue_reference_index FOR (c:Catalogue) ON (c.reference, c.referenceType);
-CREATE INDEX catalogue_status_index FOR (c:Catalogue) ON (c.status);
-CREATE INDEX person_employee_id_index FOR (p:Person) ON (p.employeeId);
-CREATE INDEX department_code_index FOR (d:Department) ON (d.departmentCode);
-CREATE INDEX business_entity_reference_index FOR (b:BusinessEntity) ON (b.referenceId, b.referenceType);
-CREATE INDEX workflow_code_index FOR (w:Workflow) ON (w.workflowCode);
-CREATE INDEX workflow_status_index FOR (w:Workflow) ON (w.status);
-CREATE INDEX entity_status_index FOR (e) ON (e.status);
+-- 分类之间的关系（抽象化设计）
+(:Catalogue)-[:RELATES_TO {semanticType: 'Temporal'}]->(:Catalogue)      -- 时间关系
+(:Catalogue)-[:RELATES_TO {semanticType: 'Business'}]->(:Catalogue)       -- 业务关系
+(:Catalogue)-[:RELATES_TO {semanticType: 'Version'}]->(:Catalogue)        -- 版本关系
+(:Catalogue)-[:RELATES_TO {semanticType: 'Replaces'}]->(:Catalogue)       -- 替换关系
+(:Catalogue)-[:RELATES_TO {semanticType: 'DependsOn'}]->(:Catalogue)      -- 依赖关系
+(:Catalogue)-[:RELATES_TO {semanticType: 'References'}]->(:Catalogue)     -- 引用关系
+(:Catalogue)-[:RELATES_TO {semanticType: 'SimilarTo'}]->(:Catalogue)      -- 相似关系
+(:Catalogue)-[:HAS_CHILD]->(:Catalogue)                                   -- 树形结构（语义明确，保留独立类型）
 
-// 全文索引
-CREATE FULLTEXT INDEX catalogue_tags_index FOR (c:Catalogue) ON EACH [c.tags];
+-- 分类与人员的关系（抽象化设计）
+(:Person)-[:RELATES_TO {role: 'Creator'}]->(:Catalogue)                   -- 创建者
+(:Person)-[:RELATES_TO {role: 'Manager'}]->(:Catalogue)                  -- 管理者
+(:Person)-[:RELATES_TO {role: 'ProjectManager'}]->(:Catalogue)           -- 项目经理
+(:Person)-[:RELATES_TO {role: 'Reviewer'}]->(:Catalogue)                 -- 审核人
+(:Person)-[:RELATES_TO {role: 'Expert'}]->(:Catalogue)                   -- 专家
+(:Person)-[:RELATES_TO {role: 'Responsible'}]->(:Catalogue)               -- 责任人
+(:Person)-[:RELATES_TO {role: 'Contact'}]->(:Catalogue)                  -- 联系人
+(:Person)-[:RELATES_TO {role: 'Participant'}]->(:Catalogue)               -- 参与者
 
-// 关系类型（优化后 - 采用抽象、可扩展的设计）
-// 分类之间的关系（抽象化设计）
-(:Catalogue)-[:RELATES_TO {semanticType: 'Temporal'}]->(:Catalogue)      // 时间关系
-(:Catalogue)-[:RELATES_TO {semanticType: 'Business'}]->(:Catalogue)       // 业务关系
-(:Catalogue)-[:RELATES_TO {semanticType: 'Version'}]->(:Catalogue)        // 版本关系
-(:Catalogue)-[:RELATES_TO {semanticType: 'Replaces'}]->(:Catalogue)       // 替换关系
-(:Catalogue)-[:RELATES_TO {semanticType: 'DependsOn'}]->(:Catalogue)      // 依赖关系
-(:Catalogue)-[:RELATES_TO {semanticType: 'References'}]->(:Catalogue)     // 引用关系
-(:Catalogue)-[:RELATES_TO {semanticType: 'SimilarTo'}]->(:Catalogue)      // 相似关系
-(:Catalogue)-[:HAS_CHILD]->(:Catalogue)                                   // 树形结构（语义明确，保留独立类型）
-
-// 分类与人员的关系（抽象化设计）
-(:Person)-[:RELATES_TO {role: 'Creator'}]->(:Catalogue)                   // 创建者
-(:Person)-[:RELATES_TO {role: 'Manager'}]->(:Catalogue)                  // 管理者
-(:Person)-[:RELATES_TO {role: 'ProjectManager'}]->(:Catalogue)           // 项目经理
-(:Person)-[:RELATES_TO {role: 'Reviewer'}]->(:Catalogue)                 // 审核人
-(:Person)-[:RELATES_TO {role: 'Expert'}]->(:Catalogue)                   // 专家
-(:Person)-[:RELATES_TO {role: 'Responsible'}]->(:Catalogue)               // 责任人
-(:Person)-[:RELATES_TO {role: 'Contact'}]->(:Catalogue)                  // 联系人
-(:Person)-[:RELATES_TO {role: 'Participant'}]->(:Catalogue)               // 参与者
-
-// 分类与部门的关系
+-- 分类与部门的关系
 (:Department)-[:OWNS]->(:Catalogue)
 (:Department)-[:MANAGES]->(:Catalogue)
 
-// 分类与业务实体的关系
+-- 分类与业务实体的关系
 (:BusinessEntity)-[:HAS]->(:Catalogue)
 (:BusinessEntity)-[:MANAGES]->(:Catalogue)
 (:Catalogue)-[:REFERENCES]->(:BusinessEntity)
 
-// 人员与部门的关系
+-- 人员与部门的关系
 (:Person)-[:BELONGS_TO]->(:Department)
 
-// 部门层级关系
+-- 部门层级关系
 (:Department)-[:HAS_PARENT]->(:Department)
 
-// 分类与工作流的关系
+-- 分类与工作流的关系
 (:Catalogue)-[:USES]->(:Workflow)
 (:Workflow)-[:MANAGES]->(:Catalogue)
 (:Workflow)-[:INSTANCE_OF]->(:Catalogue)
 
-// 人员与工作流的关系（抽象化设计）
-(:Person)-[:RELATES_TO {role: 'Manager'}]->(:Workflow)                    // 工作流管理员
-(:Person)-[:RELATES_TO {role: 'Executor'}]->(:Workflow)                  // 工作流执行人
+-- 人员与工作流的关系（抽象化设计）
+(:Person)-[:RELATES_TO {role: 'Manager'}]->(:Workflow)                    -- 工作流管理员
+(:Person)-[:RELATES_TO {role: 'Executor'}]->(:Workflow)                  -- 工作流执行人
 
-// 部门与工作流的关系
+-- 部门与工作流的关系
 (:Department)-[:OWNS]->(:Workflow)
 
-// 工作流版本关系（抽象化设计）
-(:Workflow)-[:RELATES_TO {semanticType: 'Version'}]->(:Workflow)          // 版本关系
-(:Workflow)-[:RELATES_TO {semanticType: 'Replaces'}]->(:Workflow)         // 替换关系
+-- 工作流版本关系（抽象化设计）
+(:Workflow)-[:RELATES_TO {semanticType: 'Version'}]->(:Workflow)          -- 版本关系
+(:Workflow)-[:RELATES_TO {semanticType: 'Replaces'}]->(:Workflow)         -- 替换关系
+````
+
+#### 3.2.3 Apache AGE 查询示例
+
+```sql
+-- =====================================================
+-- Apache AGE Cypher 查询示例
+-- =====================================================
+
+-- 1. 创建节点
+SELECT * FROM cypher('kg_graph', $$
+  CREATE (c:Catalogue {
+    id: 'catalog-001',
+    name: '项目档案',
+    type: 'Catalogue',
+    status: 'ACTIVE'
+  })
+  RETURN c
+$$) AS (c agtype);
+
+-- 2. 创建关系
+SELECT * FROM cypher('kg_graph', $$
+  MATCH (source:Catalogue {id: $sourceId})
+  MATCH (target:Catalogue {id: $targetId})
+  CREATE (source)-[r:RELATES_TO {
+    type: 'RELATES_TO',
+    semanticType: $semanticType,
+    weight: 1.0
+  }]->(target)
+  RETURN r
+$$, '{"sourceId": "catalog-001", "targetId": "catalog-002", "semanticType": "Temporal"}') AS (r agtype);
+
+-- 3. 查询节点及其关系
+SELECT * FROM cypher('kg_graph', $$
+  MATCH (c:Catalogue {id: $catalogId})-[r]->(related)
+  RETURN c, r, related
+  LIMIT 100
+$$, '{"catalogId": "catalog-001"}') AS (c agtype, r agtype, related agtype);
+
+-- 4. 路径查询
+SELECT * FROM cypher('kg_graph', $$
+  MATCH path = (start:Catalogue {id: $startId})-[*1..5]-(end:Catalogue {id: $endId})
+  RETURN path
+  LIMIT 10
+$$, '{"startId": "catalog-001", "endId": "catalog-010"}') AS (path agtype);
+
+-- 5. 统计查询
+SELECT * FROM cypher('kg_graph', $$
+  MATCH (n)
+  RETURN labels(n) AS label, count(n) AS count
+  ORDER BY count DESC
+$$) AS (label agtype, count agtype);
 ```
 
 #### 3.2.2 关系数据库表设计
@@ -1253,10 +1370,11 @@ public class ImpactAnalysisService
 }
 ```
 
-#### 5.1.2 Neo4j Cypher 查询实现
+#### 5.1.2 Apache AGE Cypher 查询实现
 
 ```cypher
-// 影响分析查询（使用BFS遍历）
+-- 影响分析查询（使用BFS遍历）
+-- 注意：以下为 Cypher 语法，实际使用时通过 AGE 的 cypher() 函数执行
 MATCH path = (start:Entity {id: $entityId})-[*1..3]-(affected:Entity)
 WHERE start.id = $entityId
 WITH affected,
@@ -2969,94 +3087,803 @@ public interface IKnowledgeGraphService
 }
 ```
 
-#### 7.1.2 图谱服务实现
+#### 7.1.2 DTO 定义
+
+> **✅ 已实现**：以下 DTO 和接口已在项目中创建。
+>
+> -   DTO 文件位置：`Hx.Abp.Attachment.Application.Contracts/KnowledgeGraph/`
+>     -   `GraphQueryInput.cs` - 图查询输入参数
+>     -   `GraphDataDto.cs` - 图数据响应
+>     -   `NodeDto.cs` - 节点数据
+>     -   `EdgeDto.cs` - 边数据
+>     -   `GraphStatisticsDto.cs` - 统计信息
+> -   接口文件位置：`Hx.Abp.Attachment.Application.Contracts/KnowledgeGraph/IKnowledgeGraphAppService.cs`
+> -   服务实现文件位置：`Hx.Abp.Attachment.Application/KnowledgeGraphAppService.cs`
 
 ```csharp
-// KnowledgeGraphService.cs
-public class KnowledgeGraphService : IKnowledgeGraphService
+// GraphQueryInput.cs - 图查询输入参数
+public class GraphQueryInput
 {
-    private readonly INeo4jDriver _neo4jDriver;
-    private readonly IRepository<KnowledgeGraphEntityGraphMetadata, Guid> _graphMetadataRepository; // 图元数据仓库（用于全文搜索）
-    private readonly IRepository<AttachCatalogue, Guid> _catalogueRepository; // 引用现有实体仓库
-    private readonly IRepository<KnowledgeGraphRelationship, Guid> _relationshipRepository;
-    private readonly IImpactAnalysisService _impactAnalysisService;
-    private readonly IRiskAssessmentService _riskAssessmentService;
-    private readonly INotificationService _notificationService;
+    /// <summary>
+    /// 中心实体ID（可选，以该实体为中心展开查询）
+    /// </summary>
+    public Guid? CenterEntityId { get; set; }
 
+    /// <summary>
+    /// 实体类型过滤（可选）
+    /// </summary>
+    public List<string>? EntityTypes { get; set; }
+
+    /// <summary>
+    /// 关系类型过滤（可选）
+    /// </summary>
+    public List<string>? RelationshipTypes { get; set; }
+
+    /// <summary>
+    /// 查询深度（默认 2）
+    /// </summary>
+    public int? Depth { get; set; } = 2;
+
+    /// <summary>
+    /// 最大节点数（默认 500）
+    /// </summary>
+    public int? MaxNodes { get; set; } = 500;
+
+    /// <summary>
+    /// 状态过滤（可选）
+    /// </summary>
+    public string? Status { get; set; }
+}
+
+// GraphDataDto.cs - 图数据响应
+public class GraphDataDto
+{
+    /// <summary>
+    /// 节点列表
+    /// </summary>
+    public List<NodeDto> Nodes { get; set; } = new();
+
+    /// <summary>
+    /// 边列表
+    /// </summary>
+    public List<EdgeDto> Edges { get; set; } = new();
+
+    /// <summary>
+    /// 统计信息
+    /// </summary>
+    public GraphStatisticsDto? Statistics { get; set; }
+
+    /// <summary>
+    /// 查询执行时间（毫秒）
+    /// </summary>
+    public int QueryTimeMs { get; set; }
+}
+
+// NodeDto.cs - 节点数据
+public class NodeDto
+{
+    /// <summary>
+    /// 实体ID（关联到现有实体表）
+    /// </summary>
+    public Guid EntityId { get; set; }
+
+    /// <summary>
+    /// 实体类型（Catalogue, Person, Department, BusinessEntity, Workflow）
+    /// </summary>
+    public string Type { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 实体名称
+    /// </summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 标签列表
+    /// </summary>
+    public List<string> Tags { get; set; } = new();
+
+    /// <summary>
+    /// 节点属性
+    /// </summary>
+    public Dictionary<string, object> Properties { get; set; } = new();
+
+    /// <summary>
+    /// 安全级别
+    /// </summary>
+    public string? SecurityLevel { get; set; }
+
+    /// <summary>
+    /// 更新时间
+    /// </summary>
+    public DateTime UpdatedTime { get; set; }
+}
+
+// EdgeDto.cs - 边数据
+public class EdgeDto
+{
+    /// <summary>
+    /// 源节点ID
+    /// </summary>
+    public Guid Source { get; set; }
+
+    /// <summary>
+    /// 目标节点ID
+    /// </summary>
+    public Guid Target { get; set; }
+
+    /// <summary>
+    /// 关系类型
+    /// </summary>
+    public string Type { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 角色（用于抽象关系类型）
+    /// </summary>
+    public string? Role { get; set; }
+
+    /// <summary>
+    /// 语义类型（用于抽象关系类型）
+    /// </summary>
+    public string? SemanticType { get; set; }
+
+    /// <summary>
+    /// 关系权重
+    /// </summary>
+    public double Weight { get; set; } = 1.0;
+
+    /// <summary>
+    /// 关系属性
+    /// </summary>
+    public Dictionary<string, object> Properties { get; set; } = new();
+}
+
+// GraphStatisticsDto.cs - 统计信息
+public class GraphStatisticsDto
+{
+    /// <summary>
+    /// 总节点数
+    /// </summary>
+    public int TotalNodes { get; set; }
+
+    /// <summary>
+    /// 总边数
+    /// </summary>
+    public int TotalEdges { get; set; }
+
+    /// <summary>
+    /// 节点类型统计
+    /// </summary>
+    public Dictionary<string, int> NodeTypes { get; set; } = new();
+
+    /// <summary>
+    /// 边类型统计
+    /// </summary>
+    public Dictionary<string, int> EdgeTypes { get; set; } = new();
+}
+```
+
+#### 7.1.3 图谱服务实现（Apache AGE 版本）
+
+> **✅ 已实现**：服务实现已在项目中创建。
+>
+> -   文件位置：`Hx.Abp.Attachment.Application/KnowledgeGraphAppService.cs`
+> -   接口：`IKnowledgeGraphAppService`
+> -   已注册到依赖注入容器
+
+```csharp
+// KnowledgeGraphAppService.cs
+// 文件位置：src/Hx.Abp.Attachment.Application/Hx/Abp/Attachment/Application/KnowledgeGraphAppService.cs
+using Npgsql;
+using System.Text.Json;
+using System.Text;
+using Microsoft.EntityFrameworkCore;
+using Volo.Abp.Application.Services;
+using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Uow;
+
+public class KnowledgeGraphAppService : AttachmentService, IKnowledgeGraphAppService
+{
+    private readonly IDbContextProvider<AttachmentDbContext> _dbContextProvider;
+    private readonly IRepository<AttachCatalogue, Guid> _catalogueRepository;
+    private readonly IRepository<KnowledgeGraphRelationship, Guid> _relationshipRepository;
+    private readonly AttachCataloguePermissionChecker _permissionChecker;
+    private readonly ICurrentUser _currentUser;
+    private const string GraphName = "kg_graph";
+
+    /// <summary>
+    /// 获取图谱数据（Apache AGE 实现）
+    /// 基于项目实体和关系设计，支持权限控制和性能优化
+    /// </summary>
     public async Task<GraphDataDto> GetGraphDataAsync(GraphQueryInput input)
     {
-        var query = new StringBuilder();
-        query.AppendLine("MATCH (n:Entity)");
+        var stopwatch = Stopwatch.StartNew();
+        var dbContext = await _dbContextProvider.GetDbContextAsync();
+        var connection = dbContext.Database.GetDbConnection() as NpgsqlConnection;
 
-        var conditions = new List<string>();
-        if (input.EntityTypes?.Any() == true)
+        if (connection == null)
+            throw new InvalidOperationException("Database connection is not NpgsqlConnection");
+
+        // 确保连接已打开
+        if (connection.State != System.Data.ConnectionState.Open)
         {
-            conditions.Add($"n.type IN {JsonSerializer.Serialize(input.EntityTypes)}");
+            await connection.OpenAsync();
         }
 
-        if (input.CenterEntityId.HasValue)
-        {
-            query.Clear();
-            query.AppendLine($"MATCH path = (center:Entity {{id: $centerId}})-[*1..{input.Depth ?? 2}]-(related:Entity)");
-            query.AppendLine("WHERE center.id = $centerId");
-            query.AppendLine("WITH DISTINCT related as n");
-        }
-        else
-        {
-            if (conditions.Any())
-            {
-                query.AppendLine($"WHERE {string.Join(" AND ", conditions)}");
-            }
-        }
+        var nodes = new List<NodeDto>();
+        var edges = new List<EdgeDto>();
+        var nodeMap = new Dictionary<Guid, NodeDto>(); // 用于去重和快速查找
+        var edgeSet = new HashSet<string>(); // 用于关系去重
 
-        query.AppendLine("OPTIONAL MATCH (n)-[r]->(m:Entity)");
-        query.AppendLine($"RETURN n, collect({{rel: r, target: m}}) as relationships");
-        query.AppendLine($"LIMIT {input.MaxNodes ?? 500}");
+        var userId = CurrentUser.Id ?? Guid.Empty;
+        var userRoles = await GetUserRolesAsync(userId);
 
-        var session = _neo4jDriver.AsyncSession();
         try
         {
-            var result = await session.RunAsync(query.ToString(), new
+            // 构建 Cypher 查询
+            var cypherQuery = BuildCypherQuery(input);
+            var parameters = BuildParameters(input);
+
+            // 构建 Apache AGE SQL 查询
+            // 注意：Apache AGE 使用 cypher() 函数执行 Cypher 查询
+            // 语法：cypher('graph_name', $$cypher_query$$, '{"param": "value"}')
+            // 在 C# 中使用参数化查询避免 SQL 注入
+            var paramsJson = JsonSerializer.Serialize(parameters);
+
+            var sqlQuery = @"
+                SELECT * FROM cypher(@graphName, @cypherQuery, @params::jsonb) AS (result agtype)";
+
+            await using var command = new NpgsqlCommand(sqlQuery, connection);
+            command.Parameters.AddWithValue("graphName", GraphName);
+            command.Parameters.AddWithValue("cypherQuery", cypherQuery);
+            command.Parameters.AddWithValue("params", NpgsqlTypes.NpgsqlDbType.Jsonb, paramsJson);
+
+            // 设置命令超时（防止长时间运行的查询）
+            command.CommandTimeout = 30;
+
+            await using var reader = await command.ExecuteReaderAsync();
+
+            // 解析查询结果
+            while (await reader.ReadAsync())
             {
-                centerId = input.CenterEntityId?.ToString(),
-                entityTypes = input.EntityTypes
-            });
-
-            var nodes = new List<NodeDto>();
-            var edges = new List<EdgeDto>();
-            var userId = CurrentUser.Id;
-            var userRoles = await GetUserRolesAsync(userId);
-
-            await foreach (var record in result)
-            {
-                var node = record["n"].As<INode>();
-                var nodeDto = MapToNodeDto(node);
-
-                // 访问控制：利用AttachCatalogue.Permissions过滤无权限的实体
-                // 注意：nodeDto.EntityId 对应现有实体的 Id（如 AttachCatalogue.Id）
-                if (await CheckEntityAccessAsync(nodeDto.EntityId, nodeDto.Type, userId, PermissionAction.Read, userRoles))
+                try
                 {
-                    nodes.Add(nodeDto);
+                    // Apache AGE 返回 agtype，需要解析为 JSON
+                    var agtypeValue = reader.GetFieldValue<string>(0);
+                    var resultJson = JsonDocument.Parse(agtypeValue);
+                    var resultElement = resultJson.RootElement;
 
-                    var relationships = record["relationships"].As<List<object>>();
-                    foreach (var relObj in relationships)
+                    // 解析节点数据
+                    if (resultElement.TryGetProperty("n", out var nodeElement))
                     {
-                        // 解析关系数据
-                        // ...
+                        var nodeDto = await MapToNodeDtoAsync(nodeElement);
+
+                        if (nodeDto != null && !nodeMap.ContainsKey(nodeDto.EntityId))
+                        {
+                            // 权限检查：利用 AttachCatalogue.Permissions 过滤无权限的实体
+                            if (await CheckEntityAccessAsync(
+                                nodeDto.EntityId,
+                                nodeDto.Type,
+                                userId,
+                                PermissionAction.View,
+                                userRoles))
+                            {
+                                nodes.Add(nodeDto);
+                                nodeMap[nodeDto.EntityId] = nodeDto;
+                            }
+                        }
+                    }
+
+                    // 解析关系数据
+                    if (resultElement.TryGetProperty("relationships", out var relsElement))
+                    {
+                        if (relsElement.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var relItem in relsElement.EnumerateArray())
+                            {
+                                await ParseRelationshipAsync(relItem, nodeMap, edges, edgeSet, userId, userRoles);
+                            }
+                        }
+                    }
+                    // 如果关系在单独的字段中
+                    else if (resultElement.TryGetProperty("r", out var relElement))
+                    {
+                        await ParseRelationshipAsync(relElement, nodeMap, edges, edgeSet, userId, userRoles);
                     }
                 }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "解析图数据时发生错误，跳过该记录");
+                    // 继续处理下一条记录
+                }
             }
+
+            // 如果指定了中心实体，确保中心节点在结果中
+            if (input.CenterEntityId.HasValue && !nodeMap.ContainsKey(input.CenterEntityId.Value))
+            {
+                var centerNode = await LoadEntityNodeAsync(input.CenterEntityId.Value, userId, userRoles);
+                if (centerNode != null)
+                {
+                    nodes.Add(centerNode);
+                    nodeMap[centerNode.EntityId] = centerNode;
+                }
+            }
+
+            stopwatch.Stop();
+
+            // 计算统计信息
+            var statistics = CalculateStatistics(nodes, edges);
+
+            // 记录审计日志
+            await LogGraphQueryAsync(input, nodes.Count, edges.Count, stopwatch.ElapsedMilliseconds);
 
             return new GraphDataDto
             {
                 Nodes = nodes,
                 Edges = edges,
-                Statistics = CalculateStatistics(nodes, edges)
+                Statistics = statistics,
+                QueryTimeMs = (int)stopwatch.ElapsedMilliseconds
             };
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "获取图数据失败: {Input}", JsonSerializer.Serialize(input));
+            throw;
         }
         finally
         {
-            await session.CloseAsync();
+            // NpgsqlConnection 由 DbContext 管理，不需要手动关闭
+            // 但如果是临时连接，可以在这里关闭
+        }
+    }
+
+    /// <summary>
+    /// 构建 Cypher 查询语句
+    /// </summary>
+    private string BuildCypherQuery(GraphQueryInput input)
+    {
+        var query = new StringBuilder();
+
+        if (input.CenterEntityId.HasValue)
+        {
+            // 以中心实体为中心展开查询
+            var depth = input.Depth ?? 2;
+            query.AppendLine($"MATCH path = (center:Entity {{id: $centerId}})-[*1..{depth}]-(related:Entity)");
+            query.AppendLine("WHERE center.id = $centerId");
+
+            // 实体类型过滤
+            if (input.EntityTypes?.Any() == true)
+            {
+                query.AppendLine("AND related.type IN $entityTypes");
+            }
+
+            query.AppendLine("WITH DISTINCT related as n, relationships(path) as rels");
+            query.AppendLine("UNWIND rels as r");
+            query.AppendLine("MATCH (source:Entity {id: startNode(r).id})");
+            query.AppendLine("MATCH (target:Entity {id: endNode(r).id})");
+            query.AppendLine("RETURN n, collect(DISTINCT {rel: r, source: source, target: target}) as relationships");
+        }
+        else
+        {
+            // 全局查询
+            query.AppendLine("MATCH (n:Entity)");
+
+            var conditions = new List<string>();
+
+            // 实体类型过滤
+            if (input.EntityTypes?.Any() == true)
+            {
+                conditions.Add("n.type IN $entityTypes");
+            }
+
+            // 状态过滤（如果有）
+            if (!string.IsNullOrEmpty(input.Status))
+            {
+                conditions.Add("n.status = $status");
+            }
+
+            if (conditions.Any())
+            {
+                query.AppendLine($"WHERE {string.Join(" AND ", conditions)}");
+            }
+
+            query.AppendLine("OPTIONAL MATCH (n)-[r]->(m:Entity)");
+            query.AppendLine("RETURN n, collect(DISTINCT {rel: r, target: m}) as relationships");
+        }
+
+        // 限制结果数量
+        query.AppendLine($"LIMIT {input.MaxNodes ?? 500}");
+
+        return query.ToString();
+    }
+
+    /// <summary>
+    /// 构建查询参数
+    /// </summary>
+    private Dictionary<string, object> BuildParameters(GraphQueryInput input)
+    {
+        var parameters = new Dictionary<string, object>();
+
+        if (input.CenterEntityId.HasValue)
+        {
+            parameters["centerId"] = input.CenterEntityId.Value.ToString();
+        }
+
+        if (input.EntityTypes?.Any() == true)
+        {
+            parameters["entityTypes"] = input.EntityTypes;
+        }
+
+        if (!string.IsNullOrEmpty(input.Status))
+        {
+            parameters["status"] = input.Status;
+        }
+
+        return parameters;
+    }
+
+    /// <summary>
+    /// 从 AGE 结果映射到 NodeDto
+    /// </summary>
+    private async Task<NodeDto?> MapToNodeDtoAsync(JsonElement nodeElement)
+    {
+        try
+        {
+            if (nodeElement.ValueKind != JsonValueKind.Object)
+                return null;
+
+            // 获取节点 ID（agtype 中的 id 字段）
+            if (!nodeElement.TryGetProperty("id", out var idElement))
+                return null;
+
+            var idString = idElement.GetString();
+            if (string.IsNullOrEmpty(idString) || !Guid.TryParse(idString, out var entityId))
+                return null;
+
+            // 获取节点类型
+            var entityType = nodeElement.TryGetProperty("type", out var typeElement)
+                ? typeElement.GetString() ?? "Unknown"
+                : "Unknown";
+
+            // 获取节点名称
+            var name = nodeElement.TryGetProperty("name", out var nameElement)
+                ? nameElement.GetString() ?? ""
+                : "";
+
+            // 获取标签
+            var tags = new List<string>();
+            if (nodeElement.TryGetProperty("tags", out var tagsElement))
+            {
+                if (tagsElement.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var tag in tagsElement.EnumerateArray())
+                    {
+                        if (tag.ValueKind == JsonValueKind.String)
+                            tags.Add(tag.GetString() ?? "");
+                    }
+                }
+            }
+
+            // 获取其他属性
+            var properties = new Dictionary<string, object>();
+            foreach (var prop in nodeElement.EnumerateObject())
+            {
+                if (prop.Name != "id" && prop.Name != "type" && prop.Name != "name" && prop.Name != "tags")
+                {
+                    properties[prop.Name] = ExtractJsonValue(prop.Value);
+                }
+            }
+
+            return new NodeDto
+            {
+                EntityId = entityId,
+                Type = entityType,
+                Name = name,
+                Tags = tags,
+                Properties = properties,
+                SecurityLevel = properties.GetValueOrDefault("securityLevel")?.ToString(),
+                UpdatedTime = properties.TryGetValue("updatedTime", out var updatedTime)
+                    ? DateTime.TryParse(updatedTime.ToString(), out var dt) ? dt : DateTime.UtcNow
+                    : DateTime.UtcNow
+            };
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "映射节点数据失败");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 解析关系数据
+    /// </summary>
+    private async Task ParseRelationshipAsync(
+        JsonElement relElement,
+        Dictionary<Guid, NodeDto> nodeMap,
+        List<EdgeDto> edges,
+        HashSet<string> edgeSet,
+        Guid userId,
+        List<string> userRoles)
+    {
+        try
+        {
+            // 解析关系对象（可能包含 rel, source, target）
+            JsonElement relData;
+            JsonElement sourceElement;
+            JsonElement targetElement;
+
+            if (relElement.TryGetProperty("rel", out var relProp))
+            {
+                relData = relProp;
+            }
+            else
+            {
+                relData = relElement;
+            }
+
+            if (relElement.TryGetProperty("source", out var sourceProp))
+            {
+                sourceElement = sourceProp;
+            }
+            else if (relData.TryGetProperty("start", out var startProp))
+            {
+                sourceElement = startProp;
+            }
+            else
+            {
+                return; // 无法解析源节点
+            }
+
+            if (relElement.TryGetProperty("target", out var targetProp))
+            {
+                targetElement = targetProp;
+            }
+            else if (relData.TryGetProperty("end", out var endProp))
+            {
+                targetElement = endProp;
+            }
+            else
+            {
+                return; // 无法解析目标节点
+            }
+
+            // 获取源和目标节点 ID
+            var sourceIdString = sourceElement.TryGetProperty("id", out var sourceIdProp)
+                ? sourceIdProp.GetString()
+                : null;
+            var targetIdString = targetElement.TryGetProperty("id", out var targetIdProp)
+                ? targetIdProp.GetString()
+                : null;
+
+            if (string.IsNullOrEmpty(sourceIdString) || string.IsNullOrEmpty(targetIdString))
+                return;
+
+            if (!Guid.TryParse(sourceIdString, out var sourceId) ||
+                !Guid.TryParse(targetIdString, out var targetId))
+                return;
+
+            // 权限检查：确保源和目标节点都有权限访问
+            var sourceType = sourceElement.TryGetProperty("type", out var sourceTypeProp)
+                ? sourceTypeProp.GetString() ?? "Unknown"
+                : "Unknown";
+            var targetType = targetElement.TryGetProperty("type", out var targetTypeProp)
+                ? targetTypeProp.GetString() ?? "Unknown"
+                : "Unknown";
+
+            if (!await CheckEntityAccessAsync(sourceId, sourceType, userId, PermissionAction.View, userRoles) ||
+                !await CheckEntityAccessAsync(targetId, targetType, userId, PermissionAction.View, userRoles))
+            {
+                return; // 无权限访问，跳过该关系
+            }
+
+            // 确保节点在节点列表中
+            if (!nodeMap.ContainsKey(sourceId))
+            {
+                var sourceNode = await MapToNodeDtoAsync(sourceElement);
+                if (sourceNode != null)
+                {
+                    nodeMap[sourceId] = sourceNode;
+                }
+            }
+
+            if (!nodeMap.ContainsKey(targetId))
+            {
+                var targetNode = await MapToNodeDtoAsync(targetElement);
+                if (targetNode != null)
+                {
+                    nodeMap[targetId] = targetNode;
+                }
+            }
+
+            // 获取关系类型
+            var relType = relData.TryGetProperty("type", out var typeProp)
+                ? typeProp.GetString() ?? "RELATES_TO"
+                : "RELATES_TO";
+
+            // 获取关系属性
+            var relProperties = new Dictionary<string, object>();
+            var role = "";
+            var semanticType = "";
+            var weight = 1.0;
+
+            foreach (var prop in relData.EnumerateObject())
+            {
+                if (prop.Name == "type")
+                    continue;
+
+                if (prop.Name == "role")
+                {
+                    role = prop.Value.GetString() ?? "";
+                    relProperties["role"] = role;
+                }
+                else if (prop.Name == "semanticType")
+                {
+                    semanticType = prop.Value.GetString() ?? "";
+                    relProperties["semanticType"] = semanticType;
+                }
+                else if (prop.Name == "weight")
+                {
+                    weight = prop.Value.GetDouble();
+                    relProperties["weight"] = weight;
+                }
+                else
+                {
+                    relProperties[prop.Name] = ExtractJsonValue(prop.Value);
+                }
+            }
+
+            // 创建关系唯一标识（用于去重）
+            var edgeKey = $"{sourceId}_{targetId}_{relType}_{role}_{semanticType}";
+            if (edgeSet.Contains(edgeKey))
+                return; // 关系已存在，跳过
+
+            edgeSet.Add(edgeKey);
+
+            // 创建关系 DTO
+            var edge = new EdgeDto
+            {
+                Source = sourceId,
+                Target = targetId,
+                Type = relType,
+                Role = string.IsNullOrEmpty(role) ? null : role,
+                SemanticType = string.IsNullOrEmpty(semanticType) ? null : semanticType,
+                Weight = weight,
+                Properties = relProperties
+            };
+
+            edges.Add(edge);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "解析关系数据失败");
+        }
+    }
+
+    /// <summary>
+    /// 加载实体节点（用于中心节点）
+    /// </summary>
+    private async Task<NodeDto?> LoadEntityNodeAsync(Guid entityId, Guid userId, List<string> userRoles)
+    {
+        try
+        {
+            // 从业务表加载实体数据
+            // 这里可以根据实体类型加载不同的实体
+            // 简化实现：从图数据库查询
+            var dbContext = await _dbContextProvider.GetDbContextAsync();
+            var connection = dbContext.Database.GetDbConnection() as NpgsqlConnection;
+
+            if (connection == null || connection.State != System.Data.ConnectionState.Open)
+                return null;
+
+            var sqlQuery = $@"
+                SELECT * FROM cypher('{GraphName}', $$
+                    MATCH (n:Entity {{id: $id}})
+                    RETURN n
+                $$, $params) AS (result agtype)";
+
+            await using var command = new NpgsqlCommand(sqlQuery, connection);
+            command.Parameters.AddWithValue("cypherQuery", "MATCH (n:Entity {id: $id}) RETURN n");
+            command.Parameters.AddWithValue("params", NpgsqlTypes.NpgsqlDbType.Jsonb,
+                JsonSerializer.Serialize(new { id = entityId.ToString() }));
+
+            await using var reader = await command.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                var agtypeValue = reader.GetFieldValue<string>(0);
+                var resultJson = JsonDocument.Parse(agtypeValue);
+                if (resultJson.RootElement.TryGetProperty("n", out var nodeElement))
+                {
+                    return await MapToNodeDtoAsync(nodeElement);
+                }
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "加载实体节点失败: {EntityId}", entityId);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 提取 JSON 值
+    /// </summary>
+    private object ExtractJsonValue(JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.String => element.GetString() ?? "",
+            JsonValueKind.Number => element.TryGetInt64(out var i64) ? i64 : element.GetDouble(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null!,
+            JsonValueKind.Array => element.EnumerateArray().Select(ExtractJsonValue).ToList(),
+            JsonValueKind.Object => element.EnumerateObject()
+                .ToDictionary(p => p.Name, p => ExtractJsonValue(p.Value)),
+            _ => element.ToString()
+        };
+    }
+
+    /// <summary>
+    /// 计算统计信息
+    /// </summary>
+    private GraphStatisticsDto CalculateStatistics(List<NodeDto> nodes, List<EdgeDto> edges)
+    {
+        var nodeTypeCounts = nodes
+            .GroupBy(n => n.Type)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        var edgeTypeCounts = edges
+            .GroupBy(e => e.Type)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        return new GraphStatisticsDto
+        {
+            TotalNodes = nodes.Count,
+            TotalEdges = edges.Count,
+            NodeTypes = nodeTypeCounts,
+            EdgeTypes = edgeTypeCounts
+        };
+    }
+
+    /// <summary>
+    /// 记录图查询审计日志
+    /// </summary>
+    private async Task LogGraphQueryAsync(GraphQueryInput input, int nodeCount, int edgeCount, long executionTimeMs)
+    {
+        try
+        {
+            // 这里可以记录审计日志
+            // await _auditService.LogAsync(...);
+            Logger.LogInformation(
+                "图查询完成: CenterEntityId={CenterEntityId}, EntityTypes={EntityTypes}, Nodes={NodeCount}, Edges={EdgeCount}, Time={Time}ms",
+                input.CenterEntityId,
+                string.Join(",", input.EntityTypes ?? new List<string>()),
+                nodeCount,
+                edgeCount,
+                executionTimeMs
+            );
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "记录图查询审计日志失败");
+        }
+    }
+
+    /// <summary>
+    /// 获取用户角色
+    /// </summary>
+    private async Task<List<string>> GetUserRolesAsync(Guid userId)
+    {
+        try
+        {
+            // 从 ABP 框架获取用户角色
+            // 这里简化实现，实际应该从 IIdentityUserRepository 获取
+            return CurrentUser.Roles?.ToList() ?? new List<string>();
+        }
+        catch
+        {
+            return new List<string>();
         }
     }
 
@@ -3088,7 +3915,25 @@ public class KnowledgeGraphService : IKnowledgeGraphService
         // 可根据需要扩展权限检查逻辑
         return true;
     }
+}
+```
 
+> **✅ 实现说明**：
+>
+> -   ✅ **文件位置**：`src/Hx.Abp.Attachment.Application/Hx/Abp/Attachment/Application/KnowledgeGraphAppService.cs`
+> -   ✅ **接口**：`IKnowledgeGraphAppService`（位于 `Application.Contracts/KnowledgeGraph/`）
+> -   ✅ **已注册**：服务已注册到 ABP 依赖注入容器（`HxAbpAttachmentApplicationModule`）
+> -   ✅ **权限控制**：集成 `AttachCataloguePermissionChecker`，使用 `PermissionAction.View` 进行权限检查
+> -   ✅ **Apache AGE 集成**：使用 `cypher()` 函数执行 Cypher 查询
+> -   ✅ **性能优化**：支持节点和关系去重、查询深度限制、结果数量限制
+> -   ✅ **错误处理**：包含完整的异常处理和日志记录
+> -   ✅ **DTO 定义**：所有 DTO 已创建在 `Application.Contracts/KnowledgeGraph/` 目录下
+
+---
+
+#### 7.1.4 其他服务方法（待实现）
+
+```csharp
     public async Task<PagedResultDto<SearchResultDto>> SearchNodesAsync(NodeSearchInput input)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -3302,8 +4147,8 @@ public class KnowledgeGraphService : IKnowledgeGraphService
 
         await _relationshipRepository.InsertAsync(relationship);
 
-        // 7. 同步到Neo4j（异步，使用后台作业）
-        await _syncService.SyncRelationshipToNeo4jAsync(relationship);
+        // 7. 同步到 Apache AGE 图数据库（异步，使用后台作业）
+        await _syncService.SyncRelationshipToAgeGraphAsync(relationship);
 
         // 8. 记录审计日志
         stopwatch.Stop();
@@ -3485,8 +4330,8 @@ public class KnowledgeGraphService : IKnowledgeGraphService
         // 删除关系
         await _relationshipRepository.DeleteAsync(relationship);
 
-        // 从Neo4j删除
-        await _syncService.DeleteRelationshipFromNeo4jAsync(relationshipId);
+        // 从 Apache AGE 图数据库删除
+        await _syncService.DeleteRelationshipFromAgeGraphAsync(relationshipId);
 
         // 记录审计日志
         await _auditService.LogAsync(new AuditLogEntry
@@ -3756,29 +4601,38 @@ public class KnowledgeGraphService : IKnowledgeGraphService
     /// </summary>
     private async Task<bool> CheckCycleAsync(Guid ancestorId, Guid descendantId, string entityType)
     {
-        // 使用Neo4j查询检查是否存在从descendantId到ancestorId的路径
-        var session = _neo4jDriver.AsyncSession();
-        try
+        // 使用 Apache AGE 查询检查是否存在从descendantId到ancestorId的路径
+        var dbContext = await _dbContextProvider.GetDbContextAsync();
+        var connection = dbContext.Database.GetDbConnection() as NpgsqlConnection;
+
+        if (connection == null)
+            throw new InvalidOperationException("Database connection is not NpgsqlConnection");
+
+        var cypherQuery = @"
+            MATCH path = (ancestor:Entity {id: $ancestorId})-[*]->(descendant:Entity {id: $descendantId})
+            WHERE ancestor.id = $ancestorId AND descendant.id = $descendantId
+            RETURN count(path) as pathCount";
+
+        var sqlQuery = $@"
+            SELECT * FROM cypher('kg_graph', ${cypherQuery}$$, $1) AS (pathCount agtype)";
+
+        await using var command = new NpgsqlCommand(sqlQuery, connection);
+        command.Parameters.AddWithValue("cypherQuery", cypherQuery);
+        command.Parameters.AddWithValue("$1", JsonSerializer.Serialize(new
         {
-            var query = @"
-                MATCH path = (ancestor:Entity {id: $ancestorId})-[*]->(descendant:Entity {id: $descendantId})
-                WHERE ancestor.id = $ancestorId AND descendant.id = $descendantId
-                RETURN count(path) as pathCount";
+            ancestorId = ancestorId.ToString(),
+            descendantId = descendantId.ToString()
+        }));
 
-            var result = await session.RunAsync(query, new
-            {
-                ancestorId = ancestorId.ToString(),
-                descendantId = descendantId.ToString()
-            });
-
-            var record = await result.SingleAsync();
-            var pathCount = record["pathCount"].As<long>();
+        await using var reader = await command.ExecuteReaderAsync();
+        if (await reader.ReadAsync())
+        {
+            var result = reader.GetFieldValue<JsonDocument>(0);
+            var pathCount = result.RootElement.GetProperty("pathCount").GetInt64();
             return pathCount > 0;
         }
-        finally
-        {
-            await session.CloseAsync();
-        }
+
+        return false;
     }
 
     /// <summary>
@@ -3933,7 +4787,7 @@ public class KnowledgeGraphService : IKnowledgeGraphService
     ↓
 6. 创建关系实体（PostgreSQL）
     ↓
-7. 同步到Neo4j（异步后台作业）
+7. 同步到 Apache AGE 图数据库（异步后台作业）
     ↓
 8. 记录审计日志
     ↓
@@ -3965,7 +4819,7 @@ public class KnowledgeGraphService : IKnowledgeGraphService
 **4. 循环关系检查**：
 
 -   对于树形关系（如`CatalogueHasChild`），检查是否会导致循环
--   使用 Neo4j 路径查询检查是否存在从目标实体到源实体的路径
+-   使用 Apache AGE 路径查询检查是否存在从目标实体到源实体的路径
 -   防止创建导致循环的关系
 
 **5. 权限验证**：
@@ -3979,17 +4833,17 @@ public class KnowledgeGraphService : IKnowledgeGraphService
 **1. 事务处理**：
 
 -   关系创建在数据库事务中执行
--   确保 PostgreSQL 和 Neo4j 的数据一致性
+-   确保 PostgreSQL 和 Apache AGE 图数据的一致性（统一数据库，原生事务支持）
 
 **2. 异步同步**：
 
--   Neo4j 同步使用 ABP 后台作业异步处理
--   如果 Neo4j 同步失败，后台作业会自动重试
+-   Apache AGE 图数据同步使用 ABP 后台作业异步处理
+-   如果图数据同步失败，后台作业会自动重试
 -   不影响主业务流程的响应速度
 
 **3. 补偿机制**：
 
--   如果 Neo4j 同步失败，记录失败日志
+-   如果图数据同步失败，记录失败日志
 -   提供手动重试机制
 -   定期检查并修复数据不一致问题
 
@@ -4396,21 +5250,22 @@ public class KnowledgeGraphSyncJobArgs
     public string Operation { get; set; }
 }
 
-// 后台作业处理器
+// 后台作业处理器（Apache AGE 版本）
 public class KnowledgeGraphSyncJob : AsyncBackgroundJob<KnowledgeGraphSyncJobArgs>, ITransientDependency
 {
-    private readonly INeo4jDriver _neo4jDriver;
+    private readonly IDbContextProvider<AttachmentDbContext> _dbContextProvider;
     private readonly IRepository<KnowledgeGraphEntityGraphMetadata, Guid> _graphMetadataRepository;
     private readonly IRepository<AttachCatalogue, Guid> _catalogueRepository;
     private readonly ILogger<KnowledgeGraphSyncJob> _logger;
+    private const string GraphName = "kg_graph";
 
     public KnowledgeGraphSyncJob(
-        INeo4jDriver neo4jDriver,
+        IDbContextProvider<AttachmentDbContext> dbContextProvider,
         IRepository<KnowledgeGraphEntityGraphMetadata, Guid> graphMetadataRepository,
         IRepository<AttachCatalogue, Guid> catalogueRepository,
         ILogger<KnowledgeGraphSyncJob> logger)
     {
-        _neo4jDriver = neo4jDriver;
+        _dbContextProvider = dbContextProvider;
         _graphMetadataRepository = graphMetadataRepository;
         _catalogueRepository = catalogueRepository;
         _logger = logger;
@@ -4426,11 +5281,11 @@ public class KnowledgeGraphSyncJob : AsyncBackgroundJob<KnowledgeGraphSyncJobArg
             {
                 case "CREATE":
                 case "UPDATE":
-                    await SyncEntityToNeo4j(args.EntityId, args.EntityType, entityProperties);
+                    await SyncEntityToAgeGraph(args.EntityId, args.EntityType, entityProperties);
                     await UpdateFullTextSearchIndex(args.EntityId, args.EntityType, entityProperties);
                     break;
                 case "DELETE":
-                    await DeleteEntityFromNeo4j(args.EntityId, args.EntityType);
+                    await DeleteEntityFromAgeGraph(args.EntityId, args.EntityType);
                     await DeleteFullTextSearchIndex(args.EntityId, args.EntityType);
                     break;
             }
@@ -4536,55 +5391,65 @@ public class KnowledgeGraphSyncJob : AsyncBackgroundJob<KnowledgeGraphSyncJobArg
     }
 
     /// <summary>
-    /// 同步实体到Neo4j
+    /// 同步实体到 Apache AGE 图数据库
     /// </summary>
-    private async Task SyncEntityToNeo4j(Guid entityId, string entityType, Dictionary<string, object> entityProperties)
+    private async Task SyncEntityToAgeGraph(Guid entityId, string entityType, Dictionary<string, object> entityProperties)
     {
-        var session = _neo4jDriver.AsyncSession();
-        try
-        {
-            var query = $@"
-                MERGE (e:Entity {{id: $id}})
-                SET e.type = $type,
-                    e.name = $name,
-                    e.tags = $tags,
-                    e.properties = $properties,
-                    e.updatedTime = $updatedTime
-                RETURN e";
+        var dbContext = await _dbContextProvider.GetDbContextAsync();
+        var connection = dbContext.Database.GetDbConnection() as NpgsqlConnection;
 
-            await session.RunAsync(query, new
-            {
-                id = entityId.ToString(),
-                type = entityType,
-                name = entityProperties.GetValueOrDefault("name")?.ToString() ?? "",
-                tags = entityProperties.GetValueOrDefault("tags") as string[] ?? Array.Empty<string>(),
-                properties = entityProperties,
-                updatedTime = DateTime.UtcNow
-            });
-        }
-        finally
+        if (connection == null)
+            throw new InvalidOperationException("Database connection is not NpgsqlConnection");
+
+        var cypherQuery = $@"
+            MERGE (e:Entity {{id: $id}})
+            SET e.type = $type,
+                e.name = $name,
+                e.tags = $tags,
+                e.properties = $properties,
+                e.updatedTime = $updatedTime
+            RETURN e";
+
+        var sqlQuery = $@"
+            SELECT * FROM cypher('{GraphName}', ${cypherQuery}$$, $1) AS (e agtype)";
+
+        await using var command = new NpgsqlCommand(sqlQuery, connection);
+        command.Parameters.AddWithValue("cypherQuery", cypherQuery);
+        command.Parameters.AddWithValue("$1", JsonSerializer.Serialize(new
         {
-            await session.CloseAsync();
-        }
+            id = entityId.ToString(),
+            type = entityType,
+            name = entityProperties.GetValueOrDefault("name")?.ToString() ?? "",
+            tags = entityProperties.GetValueOrDefault("tags") as string[] ?? Array.Empty<string>(),
+            properties = entityProperties,
+            updatedTime = DateTime.UtcNow
+        }));
+
+        await command.ExecuteNonQueryAsync();
     }
 
-    private async Task UpdateEntityInNeo4j(Guid entityId, string entityType, Dictionary<string, object> entityProperties)
+    private async Task UpdateEntityInAgeGraph(Guid entityId, string entityType, Dictionary<string, object> entityProperties)
     {
-        await SyncEntityToNeo4j(entityId, entityType, entityProperties); // 更新逻辑与创建相同
+        await SyncEntityToAgeGraph(entityId, entityType, entityProperties); // 更新逻辑与创建相同
     }
 
-    private async Task DeleteEntityFromNeo4j(Guid entityId, string entityType)
+    private async Task DeleteEntityFromAgeGraph(Guid entityId, string entityType)
     {
-        var session = _neo4jDriver.AsyncSession();
-        try
-        {
-            var query = "MATCH (e:Entity {id: $id}) DETACH DELETE e";
-            await session.RunAsync(query, new { id = entityId.ToString() });
-        }
-        finally
-        {
-            await session.CloseAsync();
-        }
+        var dbContext = await _dbContextProvider.GetDbContextAsync();
+        var connection = dbContext.Database.GetDbConnection() as NpgsqlConnection;
+
+        if (connection == null)
+            throw new InvalidOperationException("Database connection is not NpgsqlConnection");
+
+        var cypherQuery = "MATCH (e:Entity {id: $id}) DETACH DELETE e";
+        var sqlQuery = $@"
+            SELECT * FROM cypher('{GraphName}', ${cypherQuery}$$, $1) AS (result agtype)";
+
+        await using var command = new NpgsqlCommand(sqlQuery, connection);
+        command.Parameters.AddWithValue("cypherQuery", cypherQuery);
+        command.Parameters.AddWithValue("$1", JsonSerializer.Serialize(new { id = entityId.ToString() }));
+
+        await command.ExecuteNonQueryAsync();
     }
 
     /// <summary>

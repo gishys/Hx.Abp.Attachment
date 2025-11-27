@@ -1,4 +1,5 @@
 using Hx.Abp.Attachment.Application.Contracts;
+using Hx.Abp.Attachment.Application.Contracts.KnowledgeGraph;
 using Hx.Abp.Attachment.Application.Utils;
 using Hx.Abp.Attachment.Application.ArchAI;
 using Hx.Abp.Attachment.Domain;
@@ -6,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp.AutoMapper;
 using Volo.Abp.BlobStoring;
 using Volo.Abp.BlobStoring.FileSystem;
+using Volo.Abp.Identity;
 using Volo.Abp.Modularity;
 
 namespace Hx.Abp.Attachment.Application
@@ -16,6 +18,7 @@ namespace Hx.Abp.Attachment.Application
     [DependsOn(typeof(AbpBlobStoringFileSystemModule))]
     [DependsOn(typeof(HxAbpAttachmentApplicationContractsModule))]
     [DependsOn(typeof(HxAbpAttachmentApplicationArchAIModule))]
+    // 注意：不再强制依赖 AbpIdentityDomainModule，使用服务定位器模式实现可选依赖
     public class HxAbpAttachmentApplicationModule : AbpModule
     {
         public override void ConfigureServices(ServiceConfigurationContext context)
@@ -51,6 +54,9 @@ namespace Hx.Abp.Attachment.Application
             
             // 注册动态子分类创建服务
             context.Services.AddScoped<DynamicSubCatalogueCreationService>();
+            
+            // 注册知识图谱应用服务
+            context.Services.AddScoped<IKnowledgeGraphAppService, KnowledgeGraphAppService>();
         }
     }
 }

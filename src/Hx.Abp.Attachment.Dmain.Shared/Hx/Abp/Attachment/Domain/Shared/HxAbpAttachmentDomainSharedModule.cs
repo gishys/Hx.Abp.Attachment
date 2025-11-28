@@ -1,5 +1,6 @@
 using Volo.Abp.Localization;
 using Volo.Abp.Modularity;
+using Volo.Abp.VirtualFileSystem;
 
 namespace Hx.Abp.Attachment.Domain.Shared
 {
@@ -20,6 +21,11 @@ namespace Hx.Abp.Attachment.Domain.Shared
 
                 // 设置默认语言
                 options.DefaultResourceType = typeof(AttachmentLocalizationResource);
+
+                Configure<AbpVirtualFileSystemOptions>(options =>
+                {
+                    options.FileSets.AddEmbedded<HxAbpAttachmentDomainSharedModule>();
+                });
             });
         }
     }

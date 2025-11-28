@@ -13,14 +13,14 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
     {
         public void Configure(EntityTypeBuilder<KnowledgeGraphRelationship> builder)
         {
-            // 配置ABP审计字段
-            builder.ConfigureFullAudited();
-
             // 配置表名和架构
             builder.ToTable(
                 BgAppConsts.DbTablePrefix + "KG_RELATIONSHIPS",
                 BgAppConsts.DbSchema);
-
+            
+            // 配置 ABP 约定（包括 CreationAuditedAggregateRoot 的字段）
+            builder.ConfigureCreationAuditedAggregateRoot();
+            
             // 主键配置
             builder.HasKey(r => r.Id).HasName("PK_KG_RELATIONSHIPS");
 
@@ -65,10 +65,28 @@ namespace Hx.Abp.Attachment.EntityFrameworkCore
                 .HasColumnName("WEIGHT")
                 .HasDefaultValue(1.0);
 
-            // 配置唯一约束（考虑 role 和 semanticType）
-            builder.HasIndex(r => new { r.SourceEntityId, r.TargetEntityId, r.Type, r.Role, r.SemanticType })
-                .IsUnique()
-                .HasDatabaseName("UK_KG_RELATIONSHIPS_SOURCE_TARGET_TYPE_ROLE_SEMANTIC");
+            // 配置扩展属性（ExtraProperties）
+            builder.Property(r => r.ExtraProperties)
+                .HasColumnName("EXTRA_PROPERTIES")
+                .HasColumnType("jsonb");
+
+            // 配置并发控制标记（ConcurrencyStamp）
+            builder.Property(r => r.ConcurrencyStamp)
+                .HasColumnName("CONCURRENCY_STAMP")
+                .IsConcurrencyToken();
+
+            // 配置创建审计字段（CreationTime 和 CreatorId）
+            builder.Property(r => r.CreationTime)
+                .HasColumnName("CREATION_TIME")
+                .IsRequired();
+            
+            builder.Property(r => r.CreatorId)
+                .HasColumnName("CREATOR_ID");
+
+            // 注意：唯一约束在 SQL 脚本中创建（create-kg-relationships-table.sql）
+            // 因为需要使用 COALESCE 处理 NULL 值，EF Core 的 HasIndex 不支持表达式
+            // 唯一约束名称：UK_KG_RELATIONSHIPS_SOURCE_TARGET_TYPE_ROLE_SEMANTIC
+            // 约束字段：SOURCE_ENTITY_ID, TARGET_ENTITY_ID, RELATIONSHIP_TYPE, COALESCE(ROLE, ''), COALESCE(SEMANTIC_TYPE, '')
 
             // 创建索引
             builder.HasIndex(r => new { r.SourceEntityId, r.SourceEntityType })

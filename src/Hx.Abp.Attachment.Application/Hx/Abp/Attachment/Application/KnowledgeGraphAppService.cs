@@ -1,11 +1,15 @@
 using Hx.Abp.Attachment.Application.Contracts.KnowledgeGraph;
 using Hx.Abp.Attachment.Domain;
 using Hx.Abp.Attachment.Domain.KnowledgeGraph;
+using Hx.Abp.Attachment.Domain.Shared;
+using Hx.Abp.Attachment.Domain.Shared.KnowledgeGraph;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using Volo.Abp;
+using Volo.Abp.Data;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Identity;
 using Volo.Abp.Users;
@@ -149,55 +153,75 @@ namespace Hx.Abp.Attachment.Application
 
         /// <summary>
         /// 构建 Cypher 查询语句
+        /// 注意：使用具体的实体类型标签（Catalogue, Person, Department等），而不是通用的 Entity
         /// </summary>
         private static string BuildCypherQuery(GraphQueryInput input)
         {
             var query = new StringBuilder();
 
+            // 构建实体类型标签列表（用于多标签查询）
+            var entityLabels = input.EntityTypes?.Count > 0
+                ? string.Join("|", input.EntityTypes.Select(EntityType.Normalize).Where(l => l != null))
+                : "Catalogue|Person|Department|BusinessEntity|Workflow"; // 默认查询所有类型
+
             if (input.CenterEntityId.HasValue)
             {
                 // 以中心实体为中心展开查询
+                // 注意：中心实体类型未知，需要查询所有可能的标签
                 var depth = input.Depth ?? 2;
-                query.AppendLine($"MATCH path = (center:Entity {{id: $centerId}})-[*1..{depth}]-(related:Entity)");
-                query.AppendLine("WHERE center.id = $centerId");
+                query.AppendLine($"MATCH path = (center)-[*1..{depth}]-(related)");
+                query.AppendLine($"WHERE (center:Catalogue OR center:Person OR center:Department OR center:BusinessEntity OR center:Workflow)");
+                query.AppendLine("AND center.id = $centerId");
 
                 // 实体类型过滤
                 if (input.EntityTypes?.Count > 0)
                 {
-                    query.AppendLine("AND related.type IN $entityTypes");
+                    var typeConditions = input.EntityTypes
+                        .Select(EntityType.Normalize)
+                        .Where(t => t != null)
+                        .Select(t => $"related:{t}")
+                        .ToList();
+                    if (typeConditions.Count > 0)
+                    {
+                        query.AppendLine($"AND ({string.Join(" OR ", typeConditions)})");
+                    }
                 }
 
                 query.AppendLine("WITH DISTINCT related as n, relationships(path) as rels");
                 query.AppendLine("UNWIND rels as r");
-                query.AppendLine("MATCH (source:Entity {id: startNode(r).id})");
-                query.AppendLine("MATCH (target:Entity {id: endNode(r).id})");
+                query.AppendLine("MATCH (source) WHERE source.id = startNode(r).id");
+                query.AppendLine("MATCH (target) WHERE target.id = endNode(r).id");
                 query.AppendLine("RETURN n, collect(DISTINCT {rel: r, source: source, target: target}) as relationships");
             }
             else
             {
                 // 全局查询
-                query.AppendLine("MATCH (n:Entity)");
+                // 使用多标签匹配：支持 Catalogue, Person, Department, BusinessEntity, Workflow
+                var labelConditions = input.EntityTypes?.Count > 0
+                    ? input.EntityTypes
+                        .Select(EntityType.Normalize)
+                        .Where(t => t != null)
+                        .Select(t => $"n:{t}")
+                        .ToList()
+                    : ["n:Catalogue", "n:Person", "n:Department", "n:BusinessEntity", "n:Workflow"];
+
+                query.AppendLine($"MATCH (n) WHERE ({string.Join(" OR ", labelConditions)})");
 
                 var conditions = new List<string>();
 
-                // 实体类型过滤
-                if (input.EntityTypes?.Count > 0)
-                {
-                    conditions.Add("n.type IN $entityTypes");
-                }
-
-                // 状态过滤（如果有）
+                // 状态过滤（如果有，仅适用于 Catalogue）
                 if (!string.IsNullOrEmpty(input.Status))
                 {
-                    conditions.Add("n.status = $status");
+                    conditions.Add("(NOT (n:Catalogue) OR n.status = $status)");
                 }
 
                 if (conditions.Count != 0)
                 {
-                    query.AppendLine($"WHERE {string.Join(" AND ", conditions)}");
+                    query.AppendLine($"AND {string.Join(" AND ", conditions)}");
                 }
 
-                query.AppendLine("OPTIONAL MATCH (n)-[r]->(m:Entity)");
+                query.AppendLine("OPTIONAL MATCH (n)-[r]->(m)");
+                query.AppendLine("WHERE (m:Catalogue OR m:Person OR m:Department OR m:BusinessEntity OR m:Workflow)");
                 query.AppendLine("RETURN n, collect(DISTINCT {rel: r, target: m}) as relationships");
             }
 
@@ -472,13 +496,19 @@ namespace Hx.Abp.Attachment.Application
         /// <summary>
         /// 加载实体节点（用于中心节点）
         /// 包含权限检查，确保用户有权限访问该实体
+        /// 注意：使用多标签查询，支持所有实体类型（Catalogue, Person, Department等）
         /// </summary>
         private async Task<NodeDto?> LoadEntityNodeAsync(Guid entityId, Guid userId, List<string> userRoles)
         {
             try
             {
-                // 从图数据库查询实体节点
-                var cypherQuery = "MATCH (n:Entity {id: $id}) RETURN n";
+                // 从图数据库查询实体节点（使用多标签查询，支持所有实体类型）
+                // 注意：节点标签使用具体的实体类型（Catalogue, Person, Department等），而不是通用的 Entity
+                var cypherQuery = @"
+                    MATCH (n) 
+                    WHERE (n:Catalogue OR n:Person OR n:Department OR n:BusinessEntity OR n:Workflow)
+                    AND n.id = $id 
+                    RETURN n";
                 var parameters = new Dictionary<string, object>
                 {
                     { "id", entityId.ToString() }
@@ -690,7 +720,15 @@ namespace Hx.Abp.Attachment.Application
             Domain.Shared.PermissionAction action,
             List<string> userRoles)
         {
-            if (entityType == "Catalogue")
+            // 规范化实体类型（确保大小写一致）
+            var normalizedType = EntityType.Normalize(entityType);
+            if (normalizedType == null)
+            {
+                Logger.LogWarning("无效的实体类型：{EntityType}", entityType);
+                return false;
+            }
+
+            if (EntityType.Equals(normalizedType, EntityType.Catalogue))
             {
                 try
                 {
@@ -710,6 +748,539 @@ namespace Hx.Abp.Attachment.Application
             // 其他实体类型（Person、Department、BusinessEntity、Workflow）默认允许访问
             // 可根据需要扩展权限检查逻辑
             return true;
+        }
+
+        // ========== 关系管理方法实现 ==========
+
+        /// <summary>
+        /// 创建关系
+        /// 支持抽象关系类型（通过 Role 和 SemanticType 属性）
+        /// </summary>
+        public async Task<RelationshipDto> CreateRelationshipAsync(CreateRelationshipInput input)
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            try
+            {
+                // 1. 验证源实体和目标实体是否存在
+                await ValidateEntitiesExistAsync(input.SourceEntityId, input.SourceEntityType);
+                await ValidateEntitiesExistAsync(input.TargetEntityId, input.TargetEntityType);
+
+                // 2. 验证关系类型是否有效
+                ValidateRelationshipType(input.RelationshipType, input.SourceEntityType, input.TargetEntityType);
+
+                // 3. 规范化 Role（用于后续检查）
+                var normalizedRoleForCheck = Role.Normalize(input.Role, input.RelationshipType);
+                
+                // 准备 Role 和 SemanticType 的显示字符串（用于错误消息和日志）
+                var rolePart = Role.IsNullOrEmpty(normalizedRoleForCheck) ? "" : $":{normalizedRoleForCheck}";
+                var semanticTypePart = string.IsNullOrEmpty(input.SemanticType) ? "" : $":{input.SemanticType}";
+                
+                // 4. 检查关系是否已存在（根据业务规则，某些关系类型不允许重复）
+                // 对于抽象关系类型，需要考虑 role 或 semanticType 的组合唯一性
+                var exists = await CheckRelationshipExistsAsync(
+                    input.SourceEntityId,
+                    input.TargetEntityId,
+                    input.RelationshipType,
+                    normalizedRoleForCheck,
+                    input.SemanticType);
+
+                if (exists)
+                {
+                    throw new UserFriendlyException(
+                        $"关系已存在：{input.SourceEntityType}({input.SourceEntityId}) -[{input.RelationshipType}{rolePart}{semanticTypePart}]-> " +
+                        $"{input.TargetEntityType}({input.TargetEntityId})");
+                }
+
+                // 5. 验证权限：检查用户是否有权限创建该关系
+                var userId = _currentUser.Id ?? Guid.Empty;
+                var userRoles = await GetUserRolesAsync(userId);
+                await ValidateRelationshipCreationPermissionAsync(
+                    input.SourceEntityId,
+                    input.SourceEntityType,
+                    input.TargetEntityId,
+                    input.TargetEntityType,
+                    userId,
+                    userRoles);
+
+                // 6. 验证业务规则（循环关系检查等）
+                await ValidateBusinessRulesAsync(input);
+
+                // 7. 规范化 Role（确保大小写一致，已在步骤3中完成）
+                // 验证 Role（如果提供了 Role，必须是有效的）
+                if (!Role.IsNullOrEmpty(input.Role) && normalizedRoleForCheck == null)
+                {
+                    throw new UserFriendlyException(
+                        $"无效的角色值：{input.Role}。关系类型 {input.RelationshipType} 不支持该角色。");
+                }
+
+                // 8. 创建关系实体（支持抽象关系类型）
+                var relationship = new KnowledgeGraphRelationship
+                {
+                    SourceEntityId = input.SourceEntityId,
+                    SourceEntityType = input.SourceEntityType,
+                    TargetEntityId = input.TargetEntityId,
+                    TargetEntityType = input.TargetEntityType,
+                    Type = input.RelationshipType,
+                    Role = normalizedRoleForCheck, // 使用规范化后的角色（确保大小写一致）
+                    SemanticType = input.SemanticType, // 语义类型（用于 CatalogueRelatesToCatalogue、WorkflowRelatesToWorkflow 等）
+                    Description = input.Description,
+                    Weight = input.Weight ?? 1.0
+                };
+
+                // 设置扩展属性（使用 ABP 的 ExtraProperties）
+                if (input.Properties != null)
+                {
+                    foreach (var prop in input.Properties)
+                    {
+                        relationship.SetProperty(prop.Key, prop.Value);
+                    }
+                }
+
+                await _relationshipRepository.InsertAsync(relationship);
+
+                // 7. 同步到 Apache AGE 图数据库（异步，使用后台作业或直接同步）
+                await SyncRelationshipToAgeGraphAsync(relationship);
+
+                // 9. 记录审计日志
+                stopwatch.Stop();
+                // rolePart 和 semanticTypePart 已在步骤3中定义，直接使用
+                Logger.LogInformation(
+                    "创建关系成功：{SourceEntityType}({SourceEntityId}) -[{RelationshipType}{RolePart}{SemanticTypePart}]-> {TargetEntityType}({TargetEntityId}), RelationshipId={RelationshipId}, Time={Time}ms",
+                    input.SourceEntityType,
+                    input.SourceEntityId,
+                    input.RelationshipType,
+                    rolePart,
+                    semanticTypePart,
+                    input.TargetEntityType,
+                    input.TargetEntityId,
+                    relationship.Id,
+                    stopwatch.ElapsedMilliseconds);
+
+                // 10. 返回DTO
+                return MapToRelationshipDto(relationship);
+            }
+            catch (UserFriendlyException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex,
+                    "创建关系失败：{SourceEntityType}({SourceEntityId}) -[{RelationshipType}]-> {TargetEntityType}({TargetEntityId})",
+                    input.SourceEntityType,
+                    input.SourceEntityId,
+                    input.RelationshipType,
+                    input.TargetEntityType,
+                    input.TargetEntityId);
+                throw new UserFriendlyException($"创建关系失败：{ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 验证实体是否存在
+        /// 支持 Catalogue、Person（IdentityUser）、Department（OrganizationUnit）等实体类型
+        /// </summary>
+        private async Task ValidateEntitiesExistAsync(Guid entityId, string entityType)
+        {
+            // 规范化实体类型（确保大小写一致）
+            var normalizedType = EntityType.Normalize(entityType) ?? throw new UserFriendlyException($"无效的实体类型：{entityType}");
+            var exists = normalizedType switch
+            {
+                EntityType.Catalogue => await _catalogueRepository.AnyAsync(e => e.Id == entityId),
+                
+                // Person 实体：使用 ABP Identity 模块的 IIdentityUserRepository
+                EntityType.Person => await ValidatePersonExistsAsync(entityId),
+                
+                // Department 实体：使用 ABP Identity 模块的 IOrganizationUnitRepository
+                EntityType.Department => await ValidateDepartmentExistsAsync(entityId),
+                
+                // 其他实体类型（BusinessEntity、Workflow）可以根据需要扩展
+                _ => false
+            };
+
+            if (!exists)
+            {
+                throw new UserFriendlyException($"实体不存在：{normalizedType}({entityId})");
+            }
+        }
+
+        /// <summary>
+        /// 验证人员（Person/IdentityUser）是否存在
+        /// 使用 ABP Identity 模块的 IIdentityUserRepository（可选依赖）
+        /// </summary>
+        private async Task<bool> ValidatePersonExistsAsync(Guid personId)
+        {
+            try
+            {
+                // 使用服务定位器模式获取 IIdentityUserRepository（可选依赖）
+                var identityUserRepository = _serviceProvider.GetService<IIdentityUserRepository>();
+                
+                if (identityUserRepository == null)
+                {
+                    Logger.LogWarning(
+                        "[IIdentityUserRepository]未注册服务！Identity 模块可能未安装或未配置。PersonId={PersonId}，无法验证人员是否存在。",
+                        personId);
+                    
+                    // 如果 Identity 模块未注册，无法验证，返回 false 或根据业务需求处理
+                    // 这里返回 false，让调用方抛出异常
+                    return false;
+                }
+
+                // 使用 IIdentityUserRepository 验证用户是否存在
+                var user = await identityUserRepository.FindAsync(personId);
+                return user != null;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "验证人员存在性失败：PersonId={PersonId}", personId);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 验证部门（Department/OrganizationUnit）是否存在
+        /// 使用 ABP Identity 模块的 IOrganizationUnitRepository（可选依赖）
+        /// </summary>
+        private async Task<bool> ValidateDepartmentExistsAsync(Guid departmentId)
+        {
+            try
+            {
+                // 使用服务定位器模式获取 IOrganizationUnitRepository（可选依赖）
+                // 注意：IOrganizationUnitRepository 位于 Volo.Abp.Identity 命名空间
+                var organizationUnitRepository = _serviceProvider.GetService<IOrganizationUnitRepository>();
+                
+                if (organizationUnitRepository == null)
+                {
+                    Logger.LogWarning(
+                        "[IOrganizationUnitRepository]未注册服务！Identity 模块可能未安装或未配置。DepartmentId={DepartmentId}，无法验证部门是否存在。",
+                        departmentId);
+                    
+                    // 如果 Identity 模块未注册，无法验证，返回 false 或根据业务需求处理
+                    // 这里返回 false，让调用方抛出异常
+                    return false;
+                }
+
+                // 使用 IOrganizationUnitRepository 验证组织单元是否存在
+                var organizationUnit = await organizationUnitRepository.FindAsync(departmentId);
+                return organizationUnit != null;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "验证部门存在性失败：DepartmentId={DepartmentId}", departmentId);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 验证关系类型是否有效
+        /// </summary>
+        private static void ValidateRelationshipType(RelationshipType relationshipType, string sourceEntityType, string targetEntityType)
+        {
+            // 规范化实体类型（确保大小写一致）
+            var normalizedSourceType = EntityType.Normalize(sourceEntityType);
+            var normalizedTargetType = EntityType.Normalize(targetEntityType);
+
+            if (normalizedSourceType == null || normalizedTargetType == null)
+            {
+                throw new UserFriendlyException($"无效的实体类型：源={sourceEntityType}, 目标={targetEntityType}");
+            }
+
+            // 定义有效的关系类型组合（基于优化后的抽象关系类型）
+            var validCombinations = new Dictionary<RelationshipType, (string source, string target)[]>
+            {
+                { RelationshipType.CatalogueHasChild, new[] { (EntityType.Catalogue, EntityType.Catalogue) } },
+                { RelationshipType.CatalogueRelatesToCatalogue, new[] { (EntityType.Catalogue, EntityType.Catalogue) } },
+                { RelationshipType.CatalogueReferencesBusiness, new[] { (EntityType.Catalogue, EntityType.BusinessEntity) } },
+                { RelationshipType.PersonRelatesToCatalogue, new[] { (EntityType.Person, EntityType.Catalogue) } },
+                { RelationshipType.PersonBelongsToDepartment, new[] { (EntityType.Person, EntityType.Department) } },
+                { RelationshipType.DepartmentOwnsCatalogue, new[] { (EntityType.Department, EntityType.Catalogue) } },
+                { RelationshipType.DepartmentManagesCatalogue, new[] { (EntityType.Department, EntityType.Catalogue) } },
+                { RelationshipType.DepartmentHasParent, new[] { (EntityType.Department, EntityType.Department) } },
+                { RelationshipType.BusinessEntityHasCatalogue, new[] { (EntityType.BusinessEntity, EntityType.Catalogue) } },
+                { RelationshipType.BusinessEntityManagesCatalogue, new[] { (EntityType.BusinessEntity, EntityType.Catalogue) } },
+                { RelationshipType.CatalogueUsesWorkflow, new[] { (EntityType.Catalogue, EntityType.Workflow) } },
+                { RelationshipType.WorkflowManagesCatalogue, new[] { (EntityType.Workflow, EntityType.Catalogue) } },
+                { RelationshipType.WorkflowInstanceBelongsToCatalogue, new[] { (EntityType.Workflow, EntityType.Catalogue) } },
+                { RelationshipType.PersonRelatesToWorkflow, new[] { (EntityType.Person, EntityType.Workflow) } },
+                { RelationshipType.DepartmentOwnsWorkflow, new[] { (EntityType.Department, EntityType.Workflow) } },
+                { RelationshipType.WorkflowRelatesToWorkflow, new[] { (EntityType.Workflow, EntityType.Workflow) } }
+            };
+
+            if (!validCombinations.TryGetValue(relationshipType, out (string source, string target)[]? validCombos))
+            {
+                throw new UserFriendlyException($"无效的关系类型：{relationshipType}");
+            }
+
+            var isValid = validCombos.Any(c => 
+                EntityType.Equals(c.source, normalizedSourceType) && 
+                EntityType.Equals(c.target, normalizedTargetType));
+
+            if (!isValid)
+            {
+                throw new UserFriendlyException(
+                    $"关系类型 {relationshipType} 不支持 {normalizedSourceType} -> {normalizedTargetType} 的组合");
+            }
+        }
+
+        /// <summary>
+        /// 检查关系是否已存在（考虑 role 和 semanticType）
+        /// </summary>
+        private async Task<bool> CheckRelationshipExistsAsync(
+            Guid sourceId,
+            Guid targetId,
+            RelationshipType relationshipType,
+            string? role = null,
+            string? semanticType = null)
+        {
+            // 对于抽象关系类型，需要检查 role 或 semanticType
+            if (relationshipType == RelationshipType.PersonRelatesToCatalogue ||
+                relationshipType == RelationshipType.PersonRelatesToWorkflow)
+            {
+                // 规范化角色（确保大小写一致）
+                var normalizedRole = Role.Normalize(role, relationshipType);
+                
+                if (!Role.IsNullOrEmpty(normalizedRole))
+                {
+                    // 检查是否存在相同 role 的关系（使用规范化后的角色进行比较）
+                    return await _relationshipRepository.AnyAsync(r =>
+                        r.SourceEntityId == sourceId &&
+                        r.TargetEntityId == targetId &&
+                        r.Type == relationshipType &&
+                        Role.Equals(r.Role, normalizedRole));
+                }
+                else
+                {
+                    // 如果未指定 role，检查是否存在任何 role 的关系
+                    return await _relationshipRepository.AnyAsync(r =>
+                        r.SourceEntityId == sourceId &&
+                        r.TargetEntityId == targetId &&
+                        r.Type == relationshipType &&
+                        Role.IsNullOrEmpty(r.Role));
+                }
+            }
+
+            if (relationshipType == RelationshipType.CatalogueRelatesToCatalogue ||
+                relationshipType == RelationshipType.WorkflowRelatesToWorkflow)
+            {
+                if (!string.IsNullOrEmpty(semanticType))
+                {
+                    // 检查是否存在相同 semanticType 的关系
+                    return await _relationshipRepository.AnyAsync(r =>
+                        r.SourceEntityId == sourceId &&
+                        r.TargetEntityId == targetId &&
+                        r.Type == relationshipType &&
+                        r.SemanticType == semanticType);
+                }
+                else
+                {
+                    // 如果未指定 semanticType，检查是否存在任何 semanticType 的关系
+                    return await _relationshipRepository.AnyAsync(r =>
+                        r.SourceEntityId == sourceId &&
+                        r.TargetEntityId == targetId &&
+                        r.Type == relationshipType &&
+                        (r.SemanticType == null || r.SemanticType == ""));
+                }
+            }
+
+            // 对于非抽象关系类型，只检查基本条件
+            return await _relationshipRepository.AnyAsync(r =>
+                r.SourceEntityId == sourceId &&
+                r.TargetEntityId == targetId &&
+                r.Type == relationshipType);
+        }
+
+        /// <summary>
+        /// 验证关系创建权限
+        /// </summary>
+        private async Task ValidateRelationshipCreationPermissionAsync(
+            Guid sourceEntityId,
+            string sourceEntityType,
+            Guid targetEntityId,
+            string targetEntityType,
+            Guid userId,
+            List<string> userRoles)
+        {
+            // 规范化实体类型（确保大小写一致）
+            var normalizedSourceType = EntityType.Normalize(sourceEntityType);
+            var normalizedTargetType = EntityType.Normalize(targetEntityType);
+
+            // 检查源实体的写权限
+            if (EntityType.Equals(normalizedSourceType, EntityType.Catalogue))
+            {
+                var catalogue = await _catalogueRepository.GetAsync(sourceEntityId);
+                if (!await _permissionChecker.CheckPermissionAsync(catalogue, PermissionAction.Edit, userId, userRoles))
+                {
+                    throw new UserFriendlyException("没有权限创建关系：源实体权限不足");
+                }
+            }
+
+            // 检查目标实体的读权限（至少需要读权限才能关联）
+            if (EntityType.Equals(normalizedTargetType, EntityType.Catalogue))
+            {
+                var catalogue = await _catalogueRepository.GetAsync(targetEntityId);
+                if (!await _permissionChecker.CheckPermissionAsync(catalogue, PermissionAction.View, userId, userRoles))
+                {
+                    throw new UserFriendlyException("没有权限创建关系：目标实体权限不足");
+                }
+            }
+        }
+
+        /// <summary>
+        /// 验证业务规则（循环关系检查等）
+        /// </summary>
+        private async Task ValidateBusinessRulesAsync(CreateRelationshipInput input)
+        {
+            // 检查循环关系（例如：分类A包含分类B，分类B不能包含分类A）
+            if (input.RelationshipType == RelationshipType.CatalogueHasChild ||
+                (input.RelationshipType == RelationshipType.CatalogueRelatesToCatalogue &&
+                 input.SemanticType == "DependsOn"))
+            {
+                // 检查是否会导致循环：目标分类是否是源分类的祖先
+                var hasCycle = await CheckCycleAsync(input.TargetEntityId, input.SourceEntityId);
+                if (hasCycle)
+                {
+                    throw new UserFriendlyException("不能创建循环关系：目标分类是源分类的祖先");
+                }
+            }
+
+            // 其他业务规则验证...
+        }
+
+        /// <summary>
+        /// 检查是否存在循环关系
+        /// 注意：用于 CatalogueHasChild 关系，节点类型为 Catalogue
+        /// </summary>
+        private async Task<bool> CheckCycleAsync(Guid ancestorId, Guid descendantId)
+        {
+            try
+            {
+                // 使用 Apache AGE 查询检查是否存在从 descendantId 到 ancestorId 的路径
+                // 注意：节点标签使用具体的实体类型 Catalogue，而不是通用的 Entity
+                var cypherQuery = @"
+                    MATCH path = (descendant:Catalogue {id: $descendantId})-[*1..10]->(ancestor:Catalogue {id: $ancestorId})
+                    WHERE descendant.id = $descendantId AND ancestor.id = $ancestorId
+                    RETURN count(path) as pathCount";
+
+                var parameters = new Dictionary<string, object>
+                {
+                    { "descendantId", descendantId.ToString() },
+                    { "ancestorId", ancestorId.ToString() }
+                };
+
+                var results = await _knowledgeGraphRepository.ExecuteCypherQueryAsync(cypherQuery, parameters);
+                if (results.Count == 0)
+                {
+                    return false;
+                }
+
+                // 解析结果
+                var resultJson = JsonDocument.Parse(results[0]);
+                if (resultJson.RootElement.TryGetProperty("pathCount", out var pathCountElement))
+                {
+                    var pathCount = pathCountElement.GetInt64();
+                    return pathCount > 0;
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "检查循环关系时发生错误，假设不存在循环");
+                return false; // 发生错误时，假设不存在循环，允许创建关系
+            }
+        }
+
+        /// <summary>
+        /// 同步关系到 Apache AGE 图数据库
+        /// </summary>
+        private async Task SyncRelationshipToAgeGraphAsync(KnowledgeGraphRelationship relationship)
+        {
+            try
+            {
+                // 映射关系类型到 Cypher 关系名称（与 SQL 脚本保持一致）
+                var cypherRelType = relationship.Type switch
+                {
+                    RelationshipType.CatalogueHasChild => "HAS_CHILD",
+                    RelationshipType.CatalogueRelatesToCatalogue => "RELATES_TO",
+                    RelationshipType.PersonRelatesToCatalogue => "RELATES_TO",
+                    RelationshipType.PersonBelongsToDepartment => "BELONGS_TO",
+                    RelationshipType.DepartmentOwnsCatalogue => "OWNS",
+                    RelationshipType.DepartmentManagesCatalogue => "MANAGES",
+                    RelationshipType.DepartmentHasParent => "HAS_PARENT",
+                    RelationshipType.BusinessEntityHasCatalogue => "HAS",
+                    RelationshipType.BusinessEntityManagesCatalogue => "MANAGES",
+                    RelationshipType.CatalogueReferencesBusiness => "REFERENCES",
+                    RelationshipType.CatalogueUsesWorkflow => "USES",
+                    RelationshipType.WorkflowManagesCatalogue => "MANAGES",
+                    RelationshipType.WorkflowInstanceBelongsToCatalogue => "INSTANCE_OF",
+                    RelationshipType.PersonRelatesToWorkflow => "RELATES_TO",
+                    RelationshipType.DepartmentOwnsWorkflow => "OWNS",
+                    RelationshipType.WorkflowRelatesToWorkflow => "RELATES_TO",
+                    _ => "RELATES_TO"
+                };
+
+                // 使用实际的实体类型作为节点标签（使用 EntityType 常量确保一致性）
+                var sourceEntityType = EntityType.Normalize(relationship.SourceEntityType) ?? relationship.SourceEntityType;
+                var targetEntityType = EntityType.Normalize(relationship.TargetEntityType) ?? relationship.TargetEntityType;
+
+                // 构建 Cypher 查询，创建或更新关系
+                // 注意：节点标签使用实际的实体类型（Catalogue, Person, Department等），而不是通用的 Entity
+                var cypherQuery = $@"
+                    MATCH (source:{sourceEntityType} {{id: $sourceId}})
+                    MATCH (target:{targetEntityType} {{id: $targetId}})
+                    MERGE (source)-[r:{cypherRelType} {{relationshipId: $relationshipId}}]->(target)
+                    SET r.type = $type,
+                        r.role = $role,
+                        r.semanticType = $semanticType,
+                        r.description = $description,
+                        r.weight = $weight,
+                        r.creationTime = $creationTime,
+                        r.updatedTime = $updatedTime";
+
+                var parameters = new Dictionary<string, object>
+                {
+                    { "sourceId", relationship.SourceEntityId.ToString() },
+                    { "targetId", relationship.TargetEntityId.ToString() },
+                    { "relationshipId", relationship.Id.ToString() },
+                    { "type", relationship.Type.ToString() },
+                    { "role", relationship.Role ?? "" },
+                    { "semanticType", relationship.SemanticType ?? "" },
+                    { "description", relationship.Description ?? "" },
+                    { "weight", relationship.Weight },
+                    { "creationTime", relationship.CreationTime.ToString("O") },
+                    { "updatedTime", DateTime.UtcNow.ToString("O") }
+                };
+
+                await _knowledgeGraphRepository.ExecuteCypherQueryAsync(cypherQuery, parameters);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "同步关系到 Apache AGE 图数据库失败，RelationshipId={RelationshipId}", relationship.Id);
+                // 不抛出异常，允许关系创建成功，图数据库同步失败不影响主流程
+            }
+        }
+
+        /// <summary>
+        /// 映射关系实体到DTO
+        /// </summary>
+        private static RelationshipDto MapToRelationshipDto(KnowledgeGraphRelationship relationship)
+        {
+            return new RelationshipDto
+            {
+                Id = relationship.Id,
+                SourceEntityId = relationship.SourceEntityId,
+                SourceEntityType = relationship.SourceEntityType,
+                TargetEntityId = relationship.TargetEntityId,
+                TargetEntityType = relationship.TargetEntityType,
+                RelationshipType = relationship.Type,
+                Role = relationship.Role,
+                SemanticType = relationship.SemanticType,
+                Description = relationship.Description,
+                Weight = relationship.Weight,
+                Properties = relationship.ExtraProperties?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value),
+                CreationTime = relationship.CreationTime
+            };
         }
     }
 }

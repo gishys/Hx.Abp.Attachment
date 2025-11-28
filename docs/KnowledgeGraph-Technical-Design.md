@@ -573,6 +573,7 @@ CREATE TABLE "APPKG_RELATIONSHIPS" (
 
     -- ABP扩展字段（由 ExtensibleFullAuditedEntity 提供）
     "ExtraProperties" JSONB, -- 关系扩展属性（替代原来的 properties 字段）
+    "ConcurrencyStamp" VARCHAR(40), -- 并发控制标记（由 ExtensibleFullAuditedEntity 提供）
 
     CONSTRAINT "UK_KG_RELATIONSHIPS_SOURCE_TARGET_TYPE_ROLE_SEMANTIC"
         UNIQUE ("SOURCE_ENTITY_ID", "TARGET_ENTITY_ID", "RELATIONSHIP_TYPE", COALESCE("ROLE", ''), COALESCE("SEMANTIC_TYPE", ''))
@@ -4096,7 +4097,15 @@ public class KnowledgeGraphAppService : AttachmentService, IKnowledgeGraphAppSer
     // ========== 关系管理方法实现 ==========
 
     /// <summary>
-    /// 创建关系
+    /// 创建关系（已实现）
+    /// 支持抽象关系类型（通过 Role 和 SemanticType 属性）
+    ///
+    /// 实现位置：
+    /// - 接口：src/Hx.Abp.Attachment.Application.Contracts/Hx/Abp/Attachment/Application/Contracts/KnowledgeGraph/IKnowledgeGraphAppService.cs
+    /// - 实现：src/Hx.Abp.Attachment.Application/Hx/Abp/Attachment/Application/KnowledgeGraphAppService.cs
+    /// - DTO：src/Hx.Abp.Attachment.Application.Contracts/Hx/Abp/Attachment/Application/Contracts/KnowledgeGraph/CreateRelationshipInput.cs
+    /// - DTO：src/Hx.Abp.Attachment.Application.Contracts/Hx/Abp/Attachment/Application/Contracts/KnowledgeGraph/RelationshipDto.cs
+    /// - 控制器：src/Hx.Abp.Attachment.HttpApi/Hx/Abp/Attachment/HttpApi/KnowledgeGraphController.cs
     /// </summary>
     public async Task<RelationshipDto> CreateRelationshipAsync(CreateRelationshipInput input)
     {
@@ -4111,10 +4120,16 @@ public class KnowledgeGraphAppService : AttachmentService, IKnowledgeGraphAppSer
 
         // 3. 检查关系是否已存在（根据业务规则，某些关系类型不允许重复）
         // 对于抽象关系类型，需要考虑 role 或 semanticType 的组合唯一性
-        await CheckRelationshipExistsAsync(input.SourceEntityId, input.TargetEntityId, input.RelationshipType, input.Role, input.SemanticType);
+        var exists = await CheckRelationshipExistsAsync(input.SourceEntityId, input.TargetEntityId, input.RelationshipType, input.Role, input.SemanticType);
+        if (exists)
+        {
+            throw new UserFriendlyException($"关系已存在");
+        }
 
         // 4. 验证权限：检查用户是否有权限创建该关系
-        await ValidateRelationshipCreationPermissionAsync(input.SourceEntityId, input.SourceEntityType, input.TargetEntityId, input.TargetEntityType);
+        var userId = CurrentUser.Id ?? Guid.Empty;
+        var userRoles = await GetUserRolesAsync(userId);
+        await ValidateRelationshipCreationPermissionAsync(input.SourceEntityId, input.SourceEntityType, input.TargetEntityId, input.TargetEntityType, userId, userRoles);
 
         // 5. 验证业务规则（循环关系检查等）
         await ValidateBusinessRulesAsync(input);
@@ -4130,12 +4145,10 @@ public class KnowledgeGraphAppService : AttachmentService, IKnowledgeGraphAppSer
             Role = input.Role, // 角色（用于 PersonRelatesToCatalogue、PersonRelatesToWorkflow 等）
             SemanticType = input.SemanticType, // 语义类型（用于 CatalogueRelatesToCatalogue、WorkflowRelatesToWorkflow 等）
             Description = input.Description,
-            Weight = input.Weight ?? 1.0,
-            // 使用 ABP 的 ExtraProperties 存储扩展属性
-            // 注意：CreationTime 由 ExtensibleFullAuditedEntity 自动设置
+            Weight = input.Weight ?? 1.0
         };
 
-        // 设置扩展属性
+        // 设置扩展属性（使用 ABP 的 ExtraProperties）
         if (input.Properties != null)
         {
             foreach (var prop in input.Properties)
@@ -4143,37 +4156,24 @@ public class KnowledgeGraphAppService : AttachmentService, IKnowledgeGraphAppSer
                 relationship.SetProperty(prop.Key, prop.Value);
             }
         }
-        };
 
         await _relationshipRepository.InsertAsync(relationship);
 
-        // 7. 同步到 Apache AGE 图数据库（异步，使用后台作业）
-        await _syncService.SyncRelationshipToAgeGraphAsync(relationship);
+        // 7. 同步到 Apache AGE 图数据库（使用仓储方法）
+        await SyncRelationshipToAgeGraphAsync(relationship);
 
-        // 8. 记录审计日志
+        // 8. 记录审计日志（使用日志记录）
         stopwatch.Stop();
-        await _auditService.LogAsync(new AuditLogEntry
-        {
-            EntityId = relationship.Id,
-            EntityType = "Relationship",
-            ActionType = AuditActionType.RELATIONSHIP_CREATE,
-            ActionCategory = AuditActionCategory.GRAPH_OPERATION,
-            ActionDescription = $"创建关系：{input.SourceEntityType}({input.SourceEntityId}) -[{input.RelationshipType}{(string.IsNullOrEmpty(input.Role) ? "" : $":{input.Role}")}{(string.IsNullOrEmpty(input.SemanticType) ? "" : $":{input.SemanticType}")}]-> {input.TargetEntityType}({input.TargetEntityId})",
-            NewValues = new Dictionary<string, object>
-            {
-                ["relationshipId"] = relationship.Id,
-                ["sourceEntityId"] = input.SourceEntityId,
-                ["targetEntityId"] = input.TargetEntityId,
-                ["relationshipType"] = input.RelationshipType.ToString(),
-                ["role"] = input.Role ?? "",
-                ["semanticType"] = input.SemanticType ?? ""
-            },
-            ExecutionTimeMs = (int)stopwatch.ElapsedMilliseconds,
-            Status = AuditStatus.Success
-        });
+        Logger.LogInformation(
+            "创建关系成功：{SourceEntityType}({SourceEntityId}) -[{RelationshipType}" +
+            "{(string.IsNullOrEmpty(input.Role) ? "" : $":{input.Role}")}" +
+            "{(string.IsNullOrEmpty(input.SemanticType) ? "" : $":{input.SemanticType}")}]-> " +
+            "{TargetEntityType}({TargetEntityId}), RelationshipId={RelationshipId}, Time={Time}ms",
+            input.SourceEntityType, input.SourceEntityId, input.RelationshipType, input.Role, input.SemanticType,
+            input.TargetEntityType, input.TargetEntityId, relationship.Id, stopwatch.ElapsedMilliseconds);
 
         // 9. 返回DTO
-        return await MapToRelationshipDtoAsync(relationship);
+        return MapToRelationshipDto(relationship);
     }
 
     /// <summary>

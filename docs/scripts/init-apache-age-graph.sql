@@ -3,6 +3,12 @@
 -- 项目：多维知识图谱系统
 -- 版本：v1.0
 -- 说明：本脚本用于初始化 Apache AGE 图数据库，创建图结构，同步业务数据，并进行性能优化
+-- 
+-- 前置要求：
+-- 1. PostgreSQL 12.0 或更高版本
+-- 2. Apache AGE 扩展已安装（https://github.com/apache/age）
+-- 
+-- 如果 Apache AGE 未安装，脚本会在第一部分停止并显示安装指南
 -- =====================================================
 
 -- =====================================================
@@ -19,39 +25,87 @@ END $$;
 
 -- 检查是否已安装 Apache AGE 扩展
 DO $$
+DECLARE
+    age_installed BOOLEAN;
 BEGIN
-    IF NOT EXISTS (
+    -- 检查扩展是否已安装
+    SELECT EXISTS (
         SELECT 1 FROM pg_extension WHERE extname = 'age'
-    ) THEN
-        RAISE NOTICE '正在创建 Apache AGE 扩展...';
-        CREATE EXTENSION IF NOT EXISTS age;
+    ) INTO age_installed;
+    
+    IF NOT age_installed THEN
+        BEGIN
+            RAISE NOTICE '正在创建 Apache AGE 扩展...';
+            CREATE EXTENSION IF NOT EXISTS age;
+            RAISE NOTICE 'Apache AGE 扩展创建成功';
+        EXCEPTION WHEN OTHERS THEN
+            RAISE WARNING 'Apache AGE 扩展安装失败: %', SQLERRM;
+            RAISE WARNING '========================================';
+            RAISE WARNING 'Apache AGE 扩展未安装！';
+            RAISE WARNING '========================================';
+            RAISE WARNING '请先安装 Apache AGE 扩展：';
+            RAISE WARNING '1. 下载 Apache AGE：https://github.com/apache/age';
+            RAISE WARNING '2. 编译并安装到 PostgreSQL';
+            RAISE WARNING '3. 或者使用预编译版本';
+            RAISE WARNING '';
+            RAISE WARNING '安装完成后，请重新运行此脚本。';
+            RAISE WARNING '========================================';
+            RAISE EXCEPTION 'Apache AGE 扩展未安装，无法继续执行脚本';
+        END;
     ELSE
         RAISE NOTICE 'Apache AGE 扩展已存在';
     END IF;
 END $$;
 
--- 加载 AGE 扩展
-LOAD 'age';
+-- 加载 AGE 扩展（如果已安装）
+DO $$
+BEGIN
+    BEGIN
+        LOAD 'age';
+        RAISE NOTICE 'Apache AGE 扩展加载成功';
+    EXCEPTION WHEN OTHERS THEN
+        RAISE WARNING 'Apache AGE 扩展加载失败: %', SQLERRM;
+        RAISE EXCEPTION '无法加载 Apache AGE 扩展，请检查安装';
+    END;
+END $$;
 
 -- =====================================================
 -- 第二部分：创建图数据库
 -- =====================================================
 
 -- 检查图数据库是否已存在
+-- 注意：此部分需要 Apache AGE 扩展已安装
 DO $$
 DECLARE
     graph_exists BOOLEAN;
+    age_available BOOLEAN;
 BEGIN
+    -- 检查 Apache AGE 是否可用
     SELECT EXISTS (
-        SELECT 1 FROM ag_graph WHERE name = 'kg_graph'
-    ) INTO graph_exists;
+        SELECT 1 FROM pg_extension WHERE extname = 'age'
+    ) INTO age_available;
     
-    IF NOT graph_exists THEN
-        PERFORM create_graph('kg_graph');
-        RAISE NOTICE '图数据库 kg_graph 创建成功';
-    ELSE
-        RAISE NOTICE '图数据库 kg_graph 已存在';
+    IF NOT age_available THEN
+        RAISE EXCEPTION 'Apache AGE 扩展未安装，无法创建图数据库。请先安装 Apache AGE 扩展。';
     END IF;
+    
+    -- 检查图数据库是否已存在
+    BEGIN
+        SELECT EXISTS (
+            SELECT 1 FROM ag_graph WHERE name = 'kg_graph'
+        ) INTO graph_exists;
+        
+        IF NOT graph_exists THEN
+            PERFORM create_graph('kg_graph');
+            RAISE NOTICE '图数据库 kg_graph 创建成功';
+        ELSE
+            RAISE NOTICE '图数据库 kg_graph 已存在';
+        END IF;
+    EXCEPTION WHEN undefined_table THEN
+        RAISE EXCEPTION 'ag_graph 表不存在，Apache AGE 扩展可能未正确安装或加载';
+    WHEN OTHERS THEN
+        RAISE EXCEPTION '创建图数据库失败: %', SQLERRM;
+    END;
 END $$;
 
 -- =====================================================
@@ -123,12 +177,9 @@ ON "APPATTACH_CATALOGUES"
 USING gin(to_tsvector('chinese_fts', "CATALOGUE_NAME"));
 
 -- 4. 时间戳索引（用于时间轴查询）
+-- 注意：CreationAuditedAggregateRoot 使用 CREATION_TIME 字段名
 CREATE INDEX IF NOT EXISTS idx_kg_relationships_creation_time 
-ON "APPKG_RELATIONSHIPS"("CreationTime" DESC);
-
-CREATE INDEX IF NOT EXISTS idx_kg_relationships_modification_time 
-ON "APPKG_RELATIONSHIPS"("LastModificationTime" DESC) 
-WHERE "LastModificationTime" IS NOT NULL;
+ON "APPKG_RELATIONSHIPS"("CREATION_TIME" DESC);
 
 -- =====================================================
 -- 第四部分：数据同步函数（从业务表同步到图数据库）
@@ -196,6 +247,7 @@ DECLARE
     cypher_query TEXT;
 BEGIN
     -- 获取关系数据
+    -- 注意：包含 CREATION_TIME 字段（CreationAuditedAggregateRoot 的字段）
     SELECT 
         "Id",
         "SOURCE_ENTITY_ID",
@@ -206,7 +258,8 @@ BEGIN
         "ROLE",
         "SEMANTIC_TYPE",
         "DESCRIPTION",
-        "WEIGHT"
+        "WEIGHT",
+        "CREATION_TIME"
     INTO rel_record
     FROM "APPKG_RELATIONSHIPS"
     WHERE "Id" = relationship_id;
@@ -248,6 +301,7 @@ BEGIN
             r.semanticType = $semanticType,
             r.description = $description,
             r.weight = $weight,
+            r.creationTime = $creationTime,
             r.updatedTime = $updatedTime
         RETURN r
     $cypher$,
@@ -262,10 +316,11 @@ BEGIN
         'targetId', rel_record."TARGET_ENTITY_ID"::text,
         'relationshipId', rel_record."Id"::text,
         'type', rel_record."RELATIONSHIP_TYPE",
-        'role', rel_record."ROLE",
-        'semanticType', rel_record."SEMANTIC_TYPE",
-        'description', rel_record."DESCRIPTION",
+        'role', COALESCE(rel_record."ROLE", ''),
+        'semanticType', COALESCE(rel_record."SEMANTIC_TYPE", ''),
+        'description', COALESCE(rel_record."DESCRIPTION", ''),
         'weight', rel_record."WEIGHT",
+        'creationTime', rel_record."CREATION_TIME"::text,
         'updatedTime', now()::text
     ));
     
@@ -281,9 +336,11 @@ DECLARE
     synced BIGINT := 0;
     errors BIGINT := 0;
 BEGIN
+    -- 注意：如果 AttachCatalogue 使用软删除，需要添加 IsDeleted 条件
+    -- 如果使用硬删除，则不需要此条件
     FOR catalogue_record IN 
         SELECT "Id" FROM "APPATTACH_CATALOGUES"
-        WHERE "IsDeleted" = FALSE
+        -- WHERE "IsDeleted" = FALSE  -- 根据实际的删除策略决定是否启用
     LOOP
         BEGIN
             PERFORM sync_catalogue_to_graph(catalogue_record."Id");
@@ -306,9 +363,10 @@ DECLARE
     synced BIGINT := 0;
     errors BIGINT := 0;
 BEGIN
+    -- 注意：KnowledgeGraphRelationship 使用 CreationAuditedAggregateRoot，不包含 IsDeleted 字段
+    -- 如果需要软删除，应该通过 ExtraProperties 或其他方式实现
     FOR rel_record IN 
         SELECT "Id" FROM "APPKG_RELATIONSHIPS"
-        WHERE "IsDeleted" = FALSE
     LOOP
         BEGIN
             PERFORM sync_relationship_to_graph(rel_record."Id");
@@ -352,10 +410,10 @@ SELECT
     "SOURCE_ENTITY_TYPE",
     COUNT(*) AS relationship_count,
     COUNT(DISTINCT "TARGET_ENTITY_TYPE") AS target_type_count,
-    MAX("CreationTime") AS last_relationship_time
+    MAX("CREATION_TIME") AS last_relationship_time
 FROM "APPKG_RELATIONSHIPS"
 WHERE "SOURCE_ENTITY_TYPE" = 'Catalogue'
-    AND "IsDeleted" = FALSE
+    -- 注意：CreationAuditedAggregateRoot 不包含 IsDeleted 字段
 GROUP BY "SOURCE_ENTITY_ID", "SOURCE_ENTITY_TYPE";
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_catalogue_rel_stats_id 
@@ -387,12 +445,13 @@ RETURNS TABLE(
 BEGIN
     RETURN QUERY
     -- 检查分类节点数量
+    -- 注意：根据 AttachCatalogue 的实际删除策略决定是否添加 IsDeleted 条件
     SELECT 
         'Catalogue Nodes'::TEXT,
-        (SELECT COUNT(*) FROM "APPATTACH_CATALOGUES" WHERE "IsDeleted" = FALSE)::BIGINT,
+        (SELECT COUNT(*) FROM "APPATTACH_CATALOGUES")::BIGINT,  -- 如果使用软删除，添加 WHERE "IsDeleted" = FALSE
         (SELECT COUNT(*)::BIGINT FROM cypher('kg_graph', $$MATCH (c:Catalogue) RETURN count(c)$$) AS (count agtype)),
         CASE 
-            WHEN (SELECT COUNT(*) FROM "APPATTACH_CATALOGUES" WHERE "IsDeleted" = FALSE) = 
+            WHEN (SELECT COUNT(*) FROM "APPATTACH_CATALOGUES") =  -- 如果使用软删除，添加 WHERE "IsDeleted" = FALSE
                  (SELECT COUNT(*)::BIGINT FROM cypher('kg_graph', $$MATCH (c:Catalogue) RETURN count(c)$$) AS (count agtype))
             THEN 'OK'::TEXT
             ELSE 'MISMATCH'::TEXT
@@ -401,12 +460,13 @@ BEGIN
     UNION ALL
     
     -- 检查关系数量
+    -- 注意：KnowledgeGraphRelationship 使用 CreationAuditedAggregateRoot，不包含 IsDeleted 字段
     SELECT 
         'Relationships'::TEXT,
-        (SELECT COUNT(*) FROM "APPKG_RELATIONSHIPS" WHERE "IsDeleted" = FALSE)::BIGINT,
+        (SELECT COUNT(*) FROM "APPKG_RELATIONSHIPS")::BIGINT,
         (SELECT COUNT(*)::BIGINT FROM cypher('kg_graph', $$MATCH ()-[r]->() RETURN count(r)$$) AS (count agtype)),
         CASE 
-            WHEN (SELECT COUNT(*) FROM "APPKG_RELATIONSHIPS" WHERE "IsDeleted" = FALSE) = 
+            WHEN (SELECT COUNT(*) FROM "APPKG_RELATIONSHIPS") = 
                  (SELECT COUNT(*)::BIGINT FROM cypher('kg_graph', $$MATCH ()-[r]->() RETURN count(r)$$) AS (count agtype))
             THEN 'OK'::TEXT
             ELSE 'MISMATCH'::TEXT

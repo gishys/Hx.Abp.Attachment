@@ -25,6 +25,24 @@ namespace Hx.Abp.Attachment.Application.Contracts.KnowledgeGraph
         /// - 性能优化：节点和关系去重、查询超时控制
         /// </remarks>
         Task<GraphDataDto> GetGraphDataAsync(GraphQueryInput input);
+
+        /// <summary>
+        /// 创建关系
+        /// 支持抽象关系类型（通过 Role 和 SemanticType 属性）
+        /// </summary>
+        /// <param name="input">创建关系输入参数</param>
+        /// <returns>创建的关系数据</returns>
+        /// <remarks>
+        /// 功能特性：
+        /// - 实体存在性验证
+        /// - 关系类型有效性验证
+        /// - 关系唯一性检查（考虑 Role 和 SemanticType）
+        /// - 权限验证（源实体写权限，目标实体读权限）
+        /// - 业务规则验证（循环关系检查等）
+        /// - 自动同步到 Apache AGE 图数据库
+        /// - 审计日志记录
+        /// </remarks>
+        Task<RelationshipDto> CreateRelationshipAsync(CreateRelationshipInput input);
     }
 }
 

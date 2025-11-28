@@ -6,10 +6,11 @@ namespace Hx.Abp.Attachment.Domain.KnowledgeGraph
     /// <summary>
     /// 知识图谱关系实体
     /// 注意：关系数据存储在kg_relationships表中，通过entity_id关联到现有实体表
-    /// 继承 ExtensibleFullAuditedEntity 以使用ABP的审计字段和扩展字段
+    /// 继承 CreationAuditedAggregateRoot 作为聚合根实体，包含创建审计、扩展属性和乐观锁字段
     /// </summary>
-    public class KnowledgeGraphRelationship : FullAuditedEntity<Guid>
+    public class KnowledgeGraphRelationship : CreationAuditedAggregateRoot<Guid>
     {
+
         /// <summary>
         /// 源实体ID（关联到现有实体表，如 AttachCatalogue.Id）
         /// </summary>
@@ -56,12 +57,6 @@ namespace Hx.Abp.Attachment.Domain.KnowledgeGraph
         /// </summary>
         public double Weight { get; set; } = 1.0;
 
-        // 注意：
-        // - Id, CreationTime, LastModificationTime 等审计字段由 ExtensibleFullAuditedEntity 提供
-        // - CreatorId, LastModifierId 等创建人/修改人字段由 ExtensibleFullAuditedEntity 提供
-        // - IsDeleted, DeletionTime, DeleterId 等软删除字段由 ExtensibleFullAuditedEntity 提供
-        // - ExtraProperties 扩展字段由 ExtensibleFullAuditedEntity 提供，用于存储关系扩展属性（替代原来的 Properties 字段）
-
         /// <summary>
         /// 辅助方法：获取关系的显示名称
         /// </summary>
@@ -86,4 +81,3 @@ namespace Hx.Abp.Attachment.Domain.KnowledgeGraph
         }
     }
 }
-

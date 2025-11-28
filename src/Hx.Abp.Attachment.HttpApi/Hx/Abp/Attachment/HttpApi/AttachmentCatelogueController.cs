@@ -251,7 +251,7 @@ namespace Hx.Abp.Attachment.HttpApi
             [FromQuery] Guid? creatorId = null,
             [FromQuery] DateTime? targetDate = null,
             [FromQuery] int skipCount = 0,
-            [FromQuery] int maxResultCount = int.MaxValue)
+            [FromQuery] int maxResultCount = 50)
         {
             return AttachCatalogueAppService.GetCataloguesTreeAsync(
                 reference, referenceType, catalogueFacetType, cataloguePurpose,

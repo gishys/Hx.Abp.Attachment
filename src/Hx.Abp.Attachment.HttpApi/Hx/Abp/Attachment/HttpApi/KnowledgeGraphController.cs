@@ -76,6 +76,32 @@ namespace Hx.Abp.Attachment.HttpApi
         {
             return KnowledgeGraphAppService.GetGraphDataAsync(input);
         }
+
+        /// <summary>
+        /// 创建关系
+        /// 支持抽象关系类型（通过 Role 和 SemanticType 属性）
+        /// </summary>
+        /// <param name="input">创建关系输入参数</param>
+        /// <returns>创建的关系数据</returns>
+        /// <remarks>
+        /// 示例请求：
+        /// POST /api/app/knowledge-graph/relationships
+        /// {
+        ///   "sourceEntityId": "xxx",
+        ///   "sourceEntityType": "Person",
+        ///   "targetEntityId": "yyy",
+        ///   "targetEntityType": "Catalogue",
+        ///   "relationshipType": "PersonRelatesToCatalogue",
+        ///   "role": "ProjectManager",
+        ///   "description": "人员是分类的项目经理",
+        ///   "weight": 1.0
+        /// }
+        /// </remarks>
+        [HttpPost("relationships")]
+        public virtual Task<RelationshipDto> CreateRelationshipAsync([FromBody] CreateRelationshipInput input)
+        {
+            return KnowledgeGraphAppService.CreateRelationshipAsync(input);
+        }
     }
 }
 

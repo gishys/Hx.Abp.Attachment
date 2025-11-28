@@ -6,9 +6,61 @@
 -- 
 -- 前置要求：
 -- 1. PostgreSQL 12.0 或更高版本
--- 2. Apache AGE 扩展已安装（https://github.com/apache/age）
--- 
--- 如果 Apache AGE 未安装，脚本会在第一部分停止并显示安装指南
+-- 2. Apache AGE 扩展已安装
+--
+-- =====================================================
+-- Apache AGE 安装方式（二选一）
+-- =====================================================
+--
+-- 方式一：使用 Docker 容器（推荐，适合开发测试环境）
+-- =====================================================
+-- 这是最快捷、干扰最少的方式，特别适合开发测试环境。
+-- 它会直接拉取一个已经配置好 Apache AGE 的 PostgreSQL 镜像。
+--
+-- 步骤 1：安装 Docker Desktop
+--   如果你还没有安装，请先从 Docker 官网下载并安装 Docker Desktop for Windows。
+--   下载地址：https://www.docker.com/products/docker-desktop
+--
+-- 步骤 2：拉取并运行镜像
+--   打开命令提示符（CMD）或 PowerShell，执行以下命令来启动一个包含 AGE 的 PostgreSQL 容器：
+--
+--   docker run --name my_age_db \
+--     -p 5455:5432 \
+--     -e POSTGRES_USER=postgresUser \
+--     -e POSTGRES_PASSWORD=postgresPW \
+--     -e POSTGRES_DB=postgresDB \
+--     -d apache/age
+--
+--   参数说明：
+--     --name my_age_db: 为容器指定一个名字
+--     -p 5455:5432: 将容器的 5432 端口映射到主机的 5455 端口（避免与本地可能存在的 PostgreSQL 冲突）
+--     -e POSTGRES_USER: 设置 PostgreSQL 用户名
+--     -e POSTGRES_PASSWORD: 设置 PostgreSQL 密码
+--     -e POSTGRES_DB: 设置数据库名
+--     -d: 在后台运行容器
+--
+-- 步骤 3：连接并启用扩展
+--   容器启动后，使用以下命令进入 PostgreSQL 命令行：
+--
+--   docker exec -it my_age_db psql -d postgresDB -U postgresUser
+--
+--   在 psql 提示符下，执行以下 SQL 命令来加载 AGE 扩展并配置搜索路径：
+--
+--   CREATE EXTENSION age;
+--   LOAD 'age';
+--   SET search_path = ag_catalog, "$user", public;
+--
+-- 完成以上步骤后，Apache AGE 就可以在该数据库中使用了。
+--
+-- =====================================================
+-- 方式二：从源码编译安装（适合生产环境）
+-- =====================================================
+-- 1. 下载 Apache AGE 源码：https://github.com/apache/age
+-- 2. 按照官方文档编译并安装到 PostgreSQL
+-- 3. 安装完成后，在数据库中执行：CREATE EXTENSION age;
+--
+-- =====================================================
+-- 注意：如果 Apache AGE 未安装，脚本会在第一部分停止并显示安装指南
 -- =====================================================
 
 -- =====================================================

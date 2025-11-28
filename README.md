@@ -58,7 +58,7 @@ Hx.Abp.Attachment/
 │   ├── Hx.Abp.Attachment.Application.ArchAI/      # AI 应用服务层
 │   ├── Hx.Abp.Attachment.Application.ArchAI.Contracts/  # AI 服务契约
 │   ├── Hx.Abp.Attachment.Domain/                  # 领域层
-│   ├── Hx.Abp.Attachment.Dmain.Shared/           # 共享领域层
+│   ├── Hx.Abp.Attachment.Domain.Shared/           # 共享领域层
 │   ├── Hx.Abp.Attachment.EntityFrameworkCore/    # 数据访问层
 │   └── Hx.Abp.Attachment.HttpApi/                # HTTP API 层
 ├── postgresql-fulltext-search/                    # 数据库迁移脚本

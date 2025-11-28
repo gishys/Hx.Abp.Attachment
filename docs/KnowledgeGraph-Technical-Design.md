@@ -241,7 +241,7 @@ public class WorkflowEntityViewModel : KnowledgeGraphEntityViewModel
 ````csharp
 > **✅ 已创建关系实体**：以下关系实体和枚举已在项目中创建。
 > - 关系实体：`Hx.Abp.Attachment.Domain/KnowledgeGraph/KnowledgeGraphRelationship.cs`
-> - 枚举类型：`Hx.Abp.Attachment.Dmain.Shared/Domain/Shared/KnowledgeGraph/` 目录下
+> - 枚举类型：`Hx.Abp.Attachment.Domain.Shared/Domain/Shared/KnowledgeGraph/` 目录下
 > - 数据库配置：`Hx.Abp.Attachment.EntityFrameworkCore/KnowledgeGraphRelationshipEntityTypeConfiguration.cs`
 
 ```csharp

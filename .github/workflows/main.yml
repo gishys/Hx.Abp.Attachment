@@ -30,8 +30,8 @@ jobs:
         dotnet build src/Hx.Abp.Attachment.Domain/Hx.Abp.Attachment.Domain.csproj -c Release
         dotnet pack src/Hx.Abp.Attachment.Domain/Hx.Abp.Attachment.Domain.csproj -c Release -o ./src/Hx.Abp.Attachment.Domain /p:PackageVersion=$version
 
-        dotnet build src/Hx.Abp.Attachment.Dmain.Shared/Hx.Abp.Attachment.Dmain.Shared.csproj -c Release
-        dotnet pack src/Hx.Abp.Attachment.Dmain.Shared/Hx.Abp.Attachment.Dmain.Shared.csproj -c Release -o ./src/Hx.Abp.Attachment.Dmain.Shared /p:PackageVersion=$version
+        dotnet build src/Hx.Abp.Attachment.Domain.Shared/Hx.Abp.Attachment.Domain.Shared.csproj -c Release
+        dotnet pack src/Hx.Abp.Attachment.Domain.Shared/Hx.Abp.Attachment.Domain.Shared.csproj -c Release -o ./src/Hx.Abp.Attachment.Domain.Shared /p:PackageVersion=$version
 
         dotnet build src/Hx.Abp.Attachment.EntityFrameworkCore/Hx.Abp.Attachment.EntityFrameworkCore.csproj -c Release
         dotnet pack src/Hx.Abp.Attachment.EntityFrameworkCore/Hx.Abp.Attachment.EntityFrameworkCore.csproj -c Release -o ./src/Hx.Abp.Attachment.EntityFrameworkCore /p:PackageVersion=$version
@@ -47,7 +47,7 @@ jobs:
         cp ./src/Hx.Abp.Attachment.Application/*.nupkg $GITHUB_WORKSPACE
         cp ./src/Hx.Abp.Attachment.Application.Contracts/*.nupkg $GITHUB_WORKSPACE
         cp ./src/Hx.Abp.Attachment.Domain/*.nupkg $GITHUB_WORKSPACE
-        cp ./src/Hx.Abp.Attachment.Dmain.Shared/*.nupkg $GITHUB_WORKSPACE
+        cp ./src/Hx.Abp.Attachment.Domain.Shared/*.nupkg $GITHUB_WORKSPACE
         cp ./src/Hx.Abp.Attachment.EntityFrameworkCore/*.nupkg $GITHUB_WORKSPACE
         cp ./src/Hx.Abp.Attachment.Application.ArchAI/*.nupkg $GITHUB_WORKSPACE
         cp ./src/Hx.Abp.Attachment.Application.ArchAI.Contracts/*.nupkg $GITHUB_WORKSPACE
@@ -57,7 +57,7 @@ jobs:
        dotnet nuget push ./src/Hx.Abp.Attachment.Application/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }} --skip-duplicate
        dotnet nuget push ./src/Hx.Abp.Attachment.Application.Contracts/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }} --skip-duplicate
        dotnet nuget push ./src/Hx.Abp.Attachment.Domain/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }} --skip-duplicate
-       dotnet nuget push ./src/Hx.Abp.Attachment.Dmain.Shared/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }} --skip-duplicate
+       dotnet nuget push ./src/Hx.Abp.Attachment.Domain.Shared/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }} --skip-duplicate
        dotnet nuget push ./src/Hx.Abp.Attachment.EntityFrameworkCore/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }} --skip-duplicate
        dotnet nuget push ./src/Hx.Abp.Attachment.Application.ArchAI/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }} --skip-duplicate
        dotnet nuget push ./src/Hx.Abp.Attachment.Application.ArchAI.Contracts/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }} --skip-duplicate

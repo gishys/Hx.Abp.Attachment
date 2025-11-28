@@ -12,6 +12,13 @@ namespace Hx.Abp.Attachment.Domain.Shared
     {
         public override void ConfigureServices(ServiceConfigurationContext context)
         {
+            // 配置虚拟文件系统（必须在使用本地化之前配置）
+            Configure<AbpVirtualFileSystemOptions>(options =>
+            {
+                options.FileSets.AddEmbedded<HxAbpAttachmentDomainSharedModule>();
+            });
+
+            // 配置本地化选项
             Configure<AbpLocalizationOptions>(options =>
             {
                 // 注册本地化资源（只注册一次）
@@ -21,11 +28,6 @@ namespace Hx.Abp.Attachment.Domain.Shared
 
                 // 设置默认语言
                 options.DefaultResourceType = typeof(AttachmentLocalizationResource);
-
-                Configure<AbpVirtualFileSystemOptions>(options =>
-                {
-                    options.FileSets.AddEmbedded<HxAbpAttachmentDomainSharedModule>();
-                });
             });
         }
     }

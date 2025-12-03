@@ -335,24 +335,97 @@ namespace Hx.Abp.Attachment.Domain
 
         /// <summary>
         /// 重新生成全文内容（基于所有附件文件）
+        /// 迭代更新内容：根节点和叶子节点需要维护全文内容，导航节点不需要
         /// </summary>
         public virtual void RegenerateFullTextContent()
         {
-            if (AttachFiles == null || AttachFiles.Count == 0)
+            // 判断节点类型
+            bool isRoot = TemplateRole == TemplateRole.Root || ParentId == null; // 根节点：没有父节点
+            bool isLeaf = TemplateRole == TemplateRole.Leaf; // 叶子节点：没有子节点
+            bool isNavigation = TemplateRole == TemplateRole.Navigation || TemplateRole == TemplateRole.Branch; // 导航节点：有父节点且有子节点
+
+            // 导航节点不需要维护全文内容，但需要递归处理子节点
+            if (isNavigation)
             {
+                if (Children != null && Children.Count > 0)
+                {
+                    foreach (var child in Children)
+                    {
+                        child.RegenerateFullTextContent();
+                    }
+                }
+                // 导航节点不维护全文内容，设置为null
                 FullTextContent = null;
                 FullTextContentUpdatedTime = DateTime.UtcNow;
                 return;
             }
 
-            // 收集所有文件的OCR内容
-            var contentParts = AttachFiles
-                .Where(f => !string.IsNullOrWhiteSpace(f.OcrContent))
-                .Select(f => f.OcrContent)
-                .ToList();
+            // 根节点和叶子节点需要维护全文内容
+            var contentParts = new List<string>();
 
+            // 1. 收集当前节点的文件OCR内容
+            if (AttachFiles != null && AttachFiles.Count > 0)
+            {
+                List<string> fileContents = [.. AttachFiles
+                    .Where(f => !string.IsNullOrWhiteSpace(f.OcrContent))
+                    .Select(f => f.OcrContent!)];
+                if (fileContents != null)
+                    contentParts.AddRange(fileContents);
+            }
+
+            // 2. 递归处理子节点并收集全文内容
+            if (Children != null && Children.Count > 0)
+            {
+                foreach (var child in Children)
+                {
+                    // 递归处理子节点
+                    child.RegenerateFullTextContent();
+
+                    // 收集子节点的全文内容
+                    // 对于根节点：收集所有子节点（包括导航节点下的叶子节点）的全文内容
+                    // 对于叶子节点：不会有子节点，所以不会执行到这里
+                    if (!string.IsNullOrWhiteSpace(child.FullTextContent))
+                    {
+                        // 子节点是叶子节点，直接收集其全文内容
+                        contentParts.Add(child.FullTextContent);
+                    }
+                    else
+                    {
+                        // 子节点是导航节点（FullTextContent为null），递归收集其下所有叶子节点的内容
+                        CollectLeafContents(child, contentParts);
+                    }
+                }
+            }
+
+            // 3. 更新全文内容
             FullTextContent = contentParts.Count != 0 ? string.Join("\n", contentParts) : null;
             FullTextContentUpdatedTime = DateTime.UtcNow;
+        }
+
+        /// <summary>
+        /// 递归收集叶子节点的全文内容（用于导航节点）
+        /// </summary>
+        private static void CollectLeafContents(AttachCatalogue node, List<string> contentParts)
+        {
+            if (node == null)
+                return;
+
+            // 如果是叶子节点，收集其全文内容
+            bool isLeaf = node.Children == null || node.Children.Count == 0;
+            if (isLeaf && !string.IsNullOrWhiteSpace(node.FullTextContent))
+            {
+                contentParts.Add(node.FullTextContent);
+                return;
+            }
+
+            // 如果是导航节点，递归处理子节点
+            if (node.Children != null && node.Children.Count > 0)
+            {
+                foreach (var child in node.Children)
+                {
+                    CollectLeafContents(child, contentParts);
+                }
+            }
         }
 
         /// <summary>

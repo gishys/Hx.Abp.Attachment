@@ -4,6 +4,7 @@ using Hx.Abp.Attachment.Application.Contracts;
 using Hx.Abp.Attachment.Application.Utils;
 using Hx.Abp.Attachment.Domain;
 using Hx.Abp.Attachment.Domain.Shared;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -2172,7 +2173,14 @@ namespace Hx.Abp.Attachment.Application
                 // 5. 保存文件更新
                 await EfCoreAttachFileRepository.UpdateAsync(file);
 
-                // 6. 构建返回的DTO
+                // 6. 保存工作单元，确保文件更新已提交
+                if (CurrentUnitOfWork != null)
+                    await CurrentUnitOfWork.SaveChangesAsync();
+
+                // 7. 重新生成分类的全文内容（基于所有附件文件的OCR内容）
+                await RegenerateCatalogueFullTextContentAsync(catalogueId);
+
+                // 7. 构建返回的DTO
                 var fileDto = new AttachFileDto
                 {
                     Id = file.Id,
@@ -2200,8 +2208,31 @@ namespace Hx.Abp.Attachment.Application
         }
 
         /// <summary>
+        /// 重新生成分类的全文内容（基于所有附件文件的OCR内容）
+        /// 递归处理子节点，但只对根节点和叶子节点更新全文内容，导航节点不需要
+        /// </summary>
+        /// <param name="catalogueId">分类ID</param>
+        private async Task RegenerateCatalogueFullTextContentAsync(Guid catalogueId)
+        {
+            // 使用仓储方法获取分类（包含附件文件集合和子节点）
+            var catalogueWithFiles = await CatalogueRepository.FindAsync(catalogueId, includeDetails: true);
+            
+            if (catalogueWithFiles == null)
+            {
+                Logger.LogWarning("分类不存在，分类ID: {CatalogueId}，无法重新生成全文内容", catalogueId);
+                return;
+            }
+            
+            // 递归重新生成全文内容（只对根节点和叶子节点更新）
+            catalogueWithFiles.RegenerateFullTextContent();
+            await CatalogueRepository.UpdateAsync(catalogueWithFiles);
+            Logger.LogDebug("已重新生成分类全文内容，分类ID: {CatalogueId}", catalogueId);
+        }
+
+        /// <summary>
         /// 批量确定文件分类
         /// 将多个文件归类到指定分类，并更新相关属性
+        /// 优化：先处理所有文件分类，然后按分类分组批量重新生成全文内容，减少数据库查询次数
         /// </summary>
         /// <param name="requests">文件分类请求列表</param>
         /// <returns>更新后的文件信息列表</returns>
@@ -2216,15 +2247,73 @@ namespace Hx.Abp.Attachment.Application
                 }
 
                 var results = new List<AttachFileDto>();
+                var processedCatalogueIds = new HashSet<Guid>(); // 记录已处理的分类ID
 
-                // 批量处理文件分类
+                // 批量处理文件分类（先不重新生成全文内容，避免重复更新）
                 foreach (var request in requests)
                 {
                     try
                     {
-                        // 调用单个文件分类方法
-                        var result = await ConfirmFileClassificationAsync(request.FileId, request.CatalogueId, request.OcrContent);
-                        results.Add(result);
+                        // 1. 获取文件实体
+                        var file = await EfCoreAttachFileRepository.GetAsync(request.FileId) ?? throw new UserFriendlyException($"文件不存在: {request.FileId}");
+
+                        // 2. 获取分类实体
+                        var catalogue = await CatalogueRepository.GetAsync(request.CatalogueId) ?? throw new UserFriendlyException($"分类不存在: {request.CatalogueId}");
+
+                        // 3. 更新文件属性
+                        file.SetAttachCatalogueId(request.CatalogueId);
+                        file.SetFromAttachCatalogue(catalogue);
+                        file.SetIsCategorized(true);
+
+                        // 4. 处理OCR内容
+                        if (!string.IsNullOrEmpty(request.OcrContent))
+                        {
+                            file.SetOcrContent(request.OcrContent);
+                        }
+                        else if (file.IsSupportedForOcr() && string.IsNullOrEmpty(file.OcrContent))
+                        {
+                            try
+                            {
+                                var ocrResult = await OcrService.ProcessFileAsync(request.FileId);
+                                if (ocrResult?.IsSuccess == true && !string.IsNullOrEmpty(ocrResult.ExtractedText))
+                                {
+                                    file.SetOcrContent(ocrResult.ExtractedText);
+                                }
+                                else
+                                {
+                                    file.SetOcrProcessStatus(OcrProcessStatus.Failed);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.LogWarning(ex, "OCR处理失败，文件ID: {FileId}", request.FileId);
+                                file.SetOcrProcessStatus(OcrProcessStatus.Failed);
+                            }
+                        }
+
+                        // 5. 保存文件更新
+                        await EfCoreAttachFileRepository.UpdateAsync(file);
+
+                        // 6. 记录分类ID（稍后批量重新生成全文内容）
+                        processedCatalogueIds.Add(request.CatalogueId);
+
+                        // 7. 构建返回的DTO
+                        var fileDto = new AttachFileDto
+                        {
+                            Id = file.Id,
+                            FileAlias = file.FileAlias,
+                            FilePath = $"{Configuration[AppGlobalProperties.FileServerBasePath]}/host/attachment/{file.FilePath}",
+                            SequenceNumber = file.SequenceNumber,
+                            FileName = file.FileName,
+                            FileType = file.FileType,
+                            FileSize = file.FileSize,
+                            DownloadTimes = file.DownloadTimes,
+                            AttachCatalogueId = file.AttachCatalogueId,
+                            Reference = file.Reference,
+                            TemplatePurpose = file.TemplatePurpose,
+                            IsCategorized = file.IsCategorized
+                        };
+                        results.Add(fileDto);
                     }
                     catch (Exception ex)
                     {
@@ -2232,13 +2321,26 @@ namespace Hx.Abp.Attachment.Application
                             request.FileId, request.CatalogueId);
 
                         // 继续处理其他文件，不中断整个批量操作
-                        // 可以考虑添加错误信息到结果中
                         Logger.LogWarning("跳过失败的文件分类，文件ID: {FileId}", request.FileId);
                     }
                 }
 
-                Logger.LogInformation("批量确定文件分类完成，请求数量: {RequestCount}, 成功数量: {SuccessCount}",
-                    requests.Count, results.Count);
+                // 批量重新生成所有涉及分类的全文内容（按分类分组，避免重复更新）
+                foreach (var catalogueId in processedCatalogueIds)
+                {
+                    try
+                    {
+                        await RegenerateCatalogueFullTextContentAsync(catalogueId);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogWarning(ex, "批量重新生成分类全文内容失败，分类ID: {CatalogueId}", catalogueId);
+                        // 不中断整个批量操作，继续处理其他分类
+                    }
+                }
+
+                Logger.LogInformation("批量确定文件分类完成，请求数量: {RequestCount}, 成功数量: {SuccessCount}, 涉及分类数量: {CatalogueCount}",
+                    requests.Count, results.Count, processedCatalogueIds.Count);
 
                 return results;
             }

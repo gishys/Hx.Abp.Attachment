@@ -8,6 +8,7 @@ namespace Hx.Abp.Attachment.HttpApi
 {
     [ApiController]
     [Route("api/app/attachment")]
+    [IgnoreAntiforgeryToken]  // 让移动端 / 非浏览器调用不必带防伪令牌
     public class AttachmentCatalogueController(IAttachCatalogueAppService attachCatalogueAppService) : AbpControllerBase
     {
         protected IAttachCatalogueAppService AttachCatalogueAppService { get; } = attachCatalogueAppService;

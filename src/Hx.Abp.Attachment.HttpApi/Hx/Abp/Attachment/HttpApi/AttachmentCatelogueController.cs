@@ -103,6 +103,16 @@ namespace Hx.Abp.Attachment.HttpApi
             return AttachCatalogueAppService.VerifyUploadAsync(inputs, details);
         }
 
+        /// <summary>
+        /// 校验分类是否存在（与 verifyupload 相同逻辑，别名便于客户端统一命名）
+        /// </summary>
+        [Route("verifycatalogues")]
+        [HttpPost]
+        public virtual Task<FileVerifyResultDto> VerifyCataloguesAsync(List<GetAttachListInput> inputs, bool details = false)
+        {
+            return AttachCatalogueAppService.VerifyUploadAsync(inputs, details);
+        }
+
         [Route("deletebyreference")]
         [HttpPost]
         public virtual Task DeleteByReferenceAsync(List<GetAttachListInput> inputs)
